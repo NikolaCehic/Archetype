@@ -241,6 +241,30 @@ interface WorkspaceActivityEntry {
   createdAt: string;
 }
 
+interface WorkspaceHealthSnapshot {
+  generatedAt: string;
+  totalPackages: number;
+  activeCount: number;
+  archivedCount: number;
+  readyCount: number;
+  holdCount: number;
+  highPriorityCount: number;
+  pinnedCount: number;
+  untaggedCount: number;
+  missingNotesCount: number;
+  reviewQueue: Array<{
+    id: string;
+    name: string;
+    projectSlug: string;
+    packageId: string;
+    readinessScore: number;
+    priority: WorkspacePriority;
+    pinned: boolean;
+    archived: boolean;
+    signals: string[];
+  }>;
+}
+
 interface SavedPackageComparison {
   baseName: string;
   targetName: string;
@@ -684,39 +708,106 @@ function renderWorkspaceActivity(): string {
   `;
 }
 
+function workspaceHealthSnapshot(entries: WorkspaceEntry[]): WorkspaceHealthSnapshot {
+  const readyCount = entries.filter((entry) => entry.readyForFrontendAgent).length;
+  const reviewQueue = entries.map((entry) => {
+    const signals = [
+      !entry.readyForFrontendAgent ? "hold" : "",
+      entry.priority === "high" ? "high" : "",
+      entry.pinned ? "pinned" : "",
+      !(entry.tags ?? []).length ? "untagged" : "",
+      !entry.notes?.trim() ? "no notes" : ""
+    ].filter(Boolean);
+    return {
+      id: entry.id,
+      name: entry.name,
+      projectSlug: entry.projectSlug,
+      packageId: entry.packageId || entry.id,
+      readinessScore: entry.readinessScore,
+      priority: entry.priority ?? "medium",
+      pinned: !!entry.pinned,
+      archived: !!entry.archivedAt,
+      signals
+    };
+  }).filter((entry) => entry.signals.length).slice(0, 20);
+  return {
+    generatedAt: new Date().toISOString(),
+    totalPackages: entries.length,
+    activeCount: entries.filter((entry) => !entry.archivedAt).length,
+    archivedCount: entries.filter((entry) => entry.archivedAt).length,
+    readyCount,
+    holdCount: entries.length - readyCount,
+    highPriorityCount: entries.filter((entry) => entry.priority === "high").length,
+    pinnedCount: entries.filter((entry) => entry.pinned).length,
+    untaggedCount: entries.filter((entry) => !(entry.tags ?? []).length).length,
+    missingNotesCount: entries.filter((entry) => !entry.notes?.trim()).length,
+    reviewQueue
+  };
+}
+
+function workspaceHealthMarkdown(snapshot: WorkspaceHealthSnapshot): string {
+  const lines = [
+    "# Archetype Workspace Health",
+    "",
+    `Generated: ${snapshot.generatedAt}`,
+    "",
+    "## Summary",
+    "",
+    `- Packages: ${snapshot.totalPackages}`,
+    `- Active: ${snapshot.activeCount}`,
+    `- Archived: ${snapshot.archivedCount}`,
+    `- Ready: ${snapshot.readyCount}`,
+    `- Hold: ${snapshot.holdCount}`,
+    `- High priority: ${snapshot.highPriorityCount}`,
+    `- Pinned: ${snapshot.pinnedCount}`,
+    `- Untagged: ${snapshot.untaggedCount}`,
+    `- Missing notes: ${snapshot.missingNotesCount}`,
+    "",
+    "## Review Queue",
+    ""
+  ];
+  if (!snapshot.reviewQueue.length) {
+    lines.push("No workspace health issues found.", "");
+    return `${lines.join("\n")}\n`;
+  }
+  for (const [index, entry] of snapshot.reviewQueue.entries()) {
+    lines.push(
+      `### ${index + 1}. ${entry.name}`,
+      "",
+      `- Project: ${entry.projectSlug}`,
+      `- Package id: ${entry.packageId}`,
+      `- Readiness: ${entry.readinessScore}`,
+      `- Priority: ${entry.priority}`,
+      `- Pinned: ${entry.pinned ? "yes" : "no"}`,
+      `- Archived: ${entry.archived ? "yes" : "no"}`,
+      `- Signals: ${entry.signals.join(", ")}`,
+      ""
+    );
+  }
+  return `${lines.join("\n")}\n`;
+}
+
 function renderWorkspaceHealth(entries: WorkspaceEntry[]): string {
   if (!entries.length) return `<div class="empty">No workspace packages to summarize.</div>`;
-  const readyCount = entries.filter((entry) => entry.readyForFrontendAgent).length;
-  const highPriorityCount = entries.filter((entry) => entry.priority === "high").length;
-  const pinnedCount = entries.filter((entry) => entry.pinned).length;
-  const untaggedCount = entries.filter((entry) => !(entry.tags ?? []).length).length;
-  const missingNotesCount = entries.filter((entry) => !entry.notes?.trim()).length;
-  const reviewQueue = entries.filter((entry) => (
-    !entry.readyForFrontendAgent ||
-    entry.priority === "high" ||
-    !(entry.tags ?? []).length ||
-    !entry.notes?.trim()
-  )).slice(0, 10);
+  const health = workspaceHealthSnapshot(entries);
   return `
     <div class="mini-metrics">
-      <div><strong>${esc(readyCount)}</strong><span>ready</span></div>
-      <div><strong>${esc(entries.length - readyCount)}</strong><span>hold</span></div>
-      <div><strong>${esc(highPriorityCount)}</strong><span>high priority</span></div>
-      <div><strong>${esc(pinnedCount)}</strong><span>pinned</span></div>
-      <div><strong>${esc(untaggedCount)}</strong><span>untagged</span></div>
-      <div><strong>${esc(missingNotesCount)}</strong><span>missing notes</span></div>
+      <div><strong>${esc(health.readyCount)}</strong><span>ready</span></div>
+      <div><strong>${esc(health.holdCount)}</strong><span>hold</span></div>
+      <div><strong>${esc(health.highPriorityCount)}</strong><span>high priority</span></div>
+      <div><strong>${esc(health.pinnedCount)}</strong><span>pinned</span></div>
+      <div><strong>${esc(health.untaggedCount)}</strong><span>untagged</span></div>
+      <div><strong>${esc(health.missingNotesCount)}</strong><span>missing notes</span></div>
     </div>
     <div style="margin-top:10px">
-      ${reviewQueue.length ? table(["Package", "Signals"], reviewQueue.map((entry) => [
+      ${health.reviewQueue.length ? table(["Package", "Signals"], health.reviewQueue.slice(0, 10).map((entry) => [
         `<div><strong>${esc(entry.name)}</strong><div class="muted">${esc(entry.projectSlug)}</div></div>`,
-        [
-          !entry.readyForFrontendAgent ? badge("hold", "danger") : "",
-          entry.priority === "high" ? badge("high", "danger") : "",
-          entry.pinned ? badge("pinned", "success") : "",
-          !(entry.tags ?? []).length ? badge("untagged", "warning") : "",
-          !entry.notes?.trim() ? badge("no notes", "warning") : ""
-        ].filter(Boolean).join(" ")
+        entry.signals.map((signal) => badge(signal, signal === "hold" || signal === "high" ? "danger" : signal === "pinned" ? "success" : "warning")).join(" ")
       ])) : `<div class="empty">Workspace package metadata is complete.</div>`}
+    </div>
+    <div class="control-row">
+      <button class="button" id="export-workspace-health-json" type="button">Export health JSON</button>
+      <button class="button" id="export-workspace-health-report" type="button">Export health report</button>
     </div>
   `;
 }
@@ -2993,6 +3084,24 @@ function bindEvents(): void {
     state.workspaceActivity = [];
     saveWorkspaceActivity();
     state.workspaceMessage = "Workspace activity cleared.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#export-workspace-health-json")?.addEventListener("click", () => {
+    const health = workspaceHealthSnapshot(state.workspaceEntries);
+    downloadText("archetype-workspace-health.json", `${pretty({
+      exportVersion: 1,
+      exportedAt: new Date().toISOString(),
+      health
+    })}\n`, "application/json");
+    recordWorkspaceActivity("export", "Prepared workspace health JSON.");
+    state.workspaceMessage = "Workspace health JSON export prepared.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#export-workspace-health-report")?.addEventListener("click", () => {
+    const health = workspaceHealthSnapshot(state.workspaceEntries);
+    downloadText("archetype-workspace-health.md", workspaceHealthMarkdown(health), "text/markdown");
+    recordWorkspaceActivity("export", "Prepared workspace health report.");
+    state.workspaceMessage = "Workspace health report export prepared.";
     render();
   });
   document.querySelector<HTMLButtonElement>("#bulk-workspace-priority")?.addEventListener("click", async () => {
