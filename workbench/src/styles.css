@@ -421,6 +421,11 @@ td {
   margin-top: 10px;
 }
 
+.control-row.compact {
+  margin-top: 0;
+  gap: 6px;
+}
+
 .notice {
   margin-top: 10px;
   border: 1px solid var(--line);

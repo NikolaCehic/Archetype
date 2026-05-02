@@ -2,6 +2,7 @@ import "./styles.css";
 
 type ViewId =
   | "overview"
+  | "workspace"
   | "generation"
   | "evidence"
   | "architecture"
@@ -54,6 +55,20 @@ interface ImpactRecord {
   reason: string;
   depth: number;
   type: "changed" | "downstream" | "rule";
+}
+
+interface WorkspaceEntry {
+  id: string;
+  name: string;
+  projectSlug: string;
+  packageId: string;
+  sourceHash: string;
+  savedAt: string;
+  generatedAt: string;
+  readinessScore: number;
+  readyForFrontendAgent: boolean;
+  artifactCount: number;
+  warningCount: number;
 }
 
 interface Bundle {
@@ -114,6 +129,7 @@ interface ApprovalOverride {
 
 const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => number | string }> = [
   { id: "overview", label: "Overview", count: (bundle) => bundle.readiness.score },
+  { id: "workspace", label: "Workspace", count: () => state.workspaceEntries.length },
   { id: "generation", label: "Generate", count: () => "draft" },
   { id: "evidence", label: "Evidence", count: (bundle) => bundle.evidence.sources?.length ?? 0 },
   { id: "architecture", label: "Architecture", count: (bundle) => bundle.routeMap.routes.length },
@@ -141,6 +157,8 @@ const state: {
   baselineName: string;
   impactMessage: string;
   handoffMessage: string;
+  workspaceEntries: WorkspaceEntry[];
+  workspaceMessage: string;
 } = {
   bundle: null,
   view: "overview",
@@ -154,7 +172,9 @@ const state: {
   baselineSnapshot: null,
   baselineName: "",
   impactMessage: "",
-  handoffMessage: ""
+  handoffMessage: "",
+  workspaceEntries: [],
+  workspaceMessage: ""
 };
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -257,9 +277,163 @@ function renderOverview(bundle: Bundle): string {
   `;
 }
 
+function renderWorkspace(bundle: Bundle): string {
+  const activeId = workspaceIdForBundle(bundle);
+  const activeSaved = state.workspaceEntries.some((entry) => entry.id === activeId);
+  return `
+    <div class="grid cols-3">
+      ${metric("Saved packages", state.workspaceEntries.length)}
+      ${metric("Active score", bundle.readiness.score, bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
+      ${metric("Active saved", activeSaved ? "yes" : "no", activeSaved ? "success" : "warning")}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Active Package", `
+        <div class="snapshot-line">
+          <div>
+            <h3>${esc(bundle.productModel.product_name ?? bundle.manifest.project_slug)}</h3>
+            <div class="muted">${esc(`${bundle.manifest.project_slug ?? "package"} · ${bundle.manifest.package_id ?? "no package id"}`)}</div>
+          </div>
+          ${badge(bundle.readiness.readyForFrontendAgent ? "ready" : "hold", bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
+        </div>
+        <div class="control-row">
+          <button class="button primary" id="save-workspace-package" type="button">Save active</button>
+          <button class="button" id="refresh-workspace" type="button">Refresh workspace</button>
+        </div>
+        ${state.workspaceMessage ? `<div class="notice">${esc(state.workspaceMessage)}</div>` : ""}
+      `)}
+      ${panel("Active Snapshot", code({
+        packageName: state.packageName,
+        projectSlug: bundle.manifest.project_slug,
+        packageId: bundle.manifest.package_id,
+        sourceHash: bundle.manifest.source_hash,
+        generatedAt: bundle.manifest.generated_at,
+        readinessScore: bundle.readiness.score,
+        artifactCount: bundle.manifest.artifact_index?.length ?? 0,
+        digestCount: bundle.artifacts?.length ?? 0
+      }))}
+    </div>
+    <div style="margin-top:14px">
+      ${panel("Saved Packages", state.workspaceEntries.length ? table(["Package", "Score", "Artifacts", "Saved", "Actions"], state.workspaceEntries.map((entry) => [
+        `<div><strong>${esc(entry.name)}</strong><div class="muted">${esc(entry.projectSlug)} · ${esc(entry.sourceHash.slice(0, 8) || entry.packageId.slice(0, 8))}</div></div>`,
+        badge(String(entry.readinessScore), entry.readyForFrontendAgent ? "success" : "danger"),
+        esc(entry.artifactCount),
+        esc(new Date(entry.savedAt).toLocaleString()),
+        `<div class="control-row compact"><button class="button small" data-workspace-load="${esc(entry.id)}" type="button">Load</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
+      ])) : `<div class="empty">No saved packages.</div>`)}
+    </div>
+  `;
+}
+
 function list(items: unknown[]): string {
   if (!items || items.length === 0) return `<div class="empty">None.</div>`;
   return `<div class="list">${items.map((item) => `<div class="list-button">${esc(typeof item === "string" ? item : JSON.stringify(item))}</div>`).join("")}</div>`;
+}
+
+const WORKSPACE_DB = "archetype-workbench";
+const WORKSPACE_STORE = "packages";
+
+function requestResult<T>(request: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function transactionDone(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+    transaction.onabort = () => reject(transaction.error);
+  });
+}
+
+function openWorkspaceDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(WORKSPACE_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(WORKSPACE_STORE)) {
+        db.createObjectStore(WORKSPACE_STORE, { keyPath: "entry.id" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function workspaceIdForBundle(bundle: Bundle): string {
+  const slug = String(bundle.manifest.project_slug ?? "package");
+  const identity = String(bundle.manifest.package_id ?? bundle.manifest.source_hash ?? bundle.generatedAt);
+  return `${slug}:${identity}`;
+}
+
+function workspaceEntryFromBundle(bundle: Bundle, name: string): WorkspaceEntry {
+  return {
+    id: workspaceIdForBundle(bundle),
+    name,
+    projectSlug: String(bundle.manifest.project_slug ?? "package"),
+    packageId: String(bundle.manifest.package_id ?? ""),
+    sourceHash: String(bundle.manifest.source_hash ?? ""),
+    savedAt: new Date().toISOString(),
+    generatedAt: String(bundle.manifest.generated_at ?? bundle.generatedAt),
+    readinessScore: bundle.readiness.score,
+    readyForFrontendAgent: bundle.readiness.readyForFrontendAgent,
+    artifactCount: bundle.manifest.artifact_index?.length ?? bundle.artifacts?.length ?? 0,
+    warningCount: bundle.readiness.warnings.length
+  };
+}
+
+async function listWorkspaceEntries(): Promise<WorkspaceEntry[]> {
+  const db = await openWorkspaceDb();
+  try {
+    const transaction = db.transaction(WORKSPACE_STORE, "readonly");
+    const values = await requestResult<Array<{ entry: WorkspaceEntry }>>(transaction.objectStore(WORKSPACE_STORE).getAll());
+    return values.map((value) => value.entry).sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+  } finally {
+    db.close();
+  }
+}
+
+async function saveWorkspaceBundle(bundle: Bundle, name: string): Promise<WorkspaceEntry> {
+  const db = await openWorkspaceDb();
+  const entry = workspaceEntryFromBundle(bundle, name);
+  try {
+    const transaction = db.transaction(WORKSPACE_STORE, "readwrite");
+    transaction.objectStore(WORKSPACE_STORE).put({ entry, bundle });
+    await transactionDone(transaction);
+    return entry;
+  } finally {
+    db.close();
+  }
+}
+
+async function loadWorkspaceBundle(id: string): Promise<{ entry: WorkspaceEntry; bundle: Bundle } | null> {
+  const db = await openWorkspaceDb();
+  try {
+    const transaction = db.transaction(WORKSPACE_STORE, "readonly");
+    return await requestResult<{ entry: WorkspaceEntry; bundle: Bundle } | undefined>(transaction.objectStore(WORKSPACE_STORE).get(id)) ?? null;
+  } finally {
+    db.close();
+  }
+}
+
+async function deleteWorkspaceBundle(id: string): Promise<void> {
+  const db = await openWorkspaceDb();
+  try {
+    const transaction = db.transaction(WORKSPACE_STORE, "readwrite");
+    transaction.objectStore(WORKSPACE_STORE).delete(id);
+    await transactionDone(transaction);
+  } finally {
+    db.close();
+  }
+}
+
+async function refreshWorkspaceEntries(): Promise<void> {
+  try {
+    state.workspaceEntries = await listWorkspaceEntries();
+  } catch (error) {
+    state.workspaceMessage = error instanceof Error ? error.message : "Workspace storage unavailable.";
+  }
 }
 
 function artifactKind(filePath: string): string {
@@ -1029,6 +1203,8 @@ function renderContent(bundle: Bundle): string {
   switch (state.view) {
     case "overview":
       return renderOverview(bundle);
+    case "workspace":
+      return renderWorkspace(bundle);
     case "generation":
       return renderGeneration(bundle);
     case "evidence":
@@ -1124,6 +1300,52 @@ function bindEvents(): void {
     state.screenFilter = (event.target as HTMLInputElement).value;
     state.selectedScreen = null;
     render();
+  });
+  document.querySelector<HTMLButtonElement>("#save-workspace-package")?.addEventListener("click", async () => {
+    if (!state.bundle) return;
+    const entry = await saveWorkspaceBundle(state.bundle, state.packageName);
+    await refreshWorkspaceEntries();
+    state.workspaceMessage = `Saved ${entry.name}.`;
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#refresh-workspace")?.addEventListener("click", async () => {
+    await refreshWorkspaceEntries();
+    state.workspaceMessage = "Workspace refreshed.";
+    render();
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-workspace-load]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.workspaceLoad;
+      if (!id) return;
+      const record = await loadWorkspaceBundle(id);
+      if (!record) {
+        state.workspaceMessage = "Saved package not found.";
+        render();
+        return;
+      }
+      state.bundle = record.bundle;
+      state.packageName = record.entry.name;
+      state.view = "overview";
+      state.selectedScreen = null;
+      state.generationDraft = "";
+      state.generationMessage = "";
+      state.activeGateNote = "";
+      state.handoffMessage = "";
+      loadApprovalOverrides();
+      loadBaselineSnapshot();
+      await refreshWorkspaceEntries();
+      render();
+    });
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-workspace-delete]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.workspaceDelete;
+      if (!id) return;
+      await deleteWorkspaceBundle(id);
+      await refreshWorkspaceEntries();
+      state.workspaceMessage = "Saved package deleted.";
+      render();
+    });
   });
   document.querySelector<HTMLTextAreaElement>("#generation-draft")?.addEventListener("input", (event) => {
     state.generationDraft = (event.target as HTMLTextAreaElement).value;
@@ -1260,6 +1482,7 @@ function bindEvents(): void {
       state.handoffMessage = "";
       loadApprovalOverrides();
       loadBaselineSnapshot();
+      await refreshWorkspaceEntries();
       render();
     }
   });
@@ -1276,6 +1499,7 @@ async function loadSample(): Promise<void> {
   state.activeGateNote = "";
   state.handoffMessage = "";
   loadBaselineSnapshot();
+  await refreshWorkspaceEntries();
   render();
 }
 
