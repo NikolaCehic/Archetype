@@ -176,6 +176,12 @@ interface ContractGap {
   updatedAt: string;
 }
 
+interface SimulationTriageOverride {
+  state: "untriaged" | "accepted" | "needs_work" | "blocked";
+  note: string;
+  updatedAt: string;
+}
+
 const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => number | string }> = [
   { id: "overview", label: "Overview", count: (bundle) => bundle.readiness.score },
   { id: "workspace", label: "Workspace", count: () => state.workspaceEntries.length },
@@ -209,6 +215,8 @@ const state: {
   contractGaps: ContractGap[];
   contractGapDraft: Omit<ContractGap, "id" | "status" | "updatedAt">;
   contractMessage: string;
+  simulationTriageOverrides: Record<string, SimulationTriageOverride>;
+  activeSimulationTriageNote: string;
   baselineSnapshot: PackageSnapshot | null;
   baselineName: string;
   impactMessage: string;
@@ -236,6 +244,8 @@ const state: {
   contractGaps: [],
   contractGapDraft: { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" },
   contractMessage: "",
+  simulationTriageOverrides: {},
+  activeSimulationTriageNote: "",
   baselineSnapshot: null,
   baselineName: "",
   impactMessage: "",
@@ -814,6 +824,21 @@ function gapTone(gap: ContractGap): "success" | "warning" | "danger" | "neutral"
   return "neutral";
 }
 
+function simulationTriageKey(kind: "route" | "acceptance", id: string): string {
+  return `${kind}:${id}`;
+}
+
+function simulationTriageState(key: string): SimulationTriageOverride["state"] {
+  return state.simulationTriageOverrides[key]?.state ?? "untriaged";
+}
+
+function simulationTriageTone(value: SimulationTriageOverride["state"]): "success" | "warning" | "danger" | "neutral" {
+  if (value === "accepted") return "success";
+  if (value === "blocked") return "danger";
+  if (value === "needs_work") return "warning";
+  return "neutral";
+}
+
 function handoffPrompt(bundle: Bundle): string {
   const required = requiredHandoffArtifacts(bundle).filter((artifact) => artifact.present).map((artifact) => `- ${artifact.path}`).join("\n");
   return [
@@ -872,6 +897,11 @@ function handoffMarkdown(bundle: Bundle): string {
       ? state.contractGaps.map((gap) => `- [${gap.status}] ${gap.severity} ${gap.category} in ${gap.artifact}: ${gap.description}`)
       : ["- None"]),
     "",
+    "## Build Simulation Triage",
+    ...(Object.keys(state.simulationTriageOverrides).length
+      ? Object.entries(state.simulationTriageOverrides).map(([itemId, triage]) => `- ${itemId}: ${triage.state}${triage.note ? `, ${triage.note}` : ""}`)
+      : ["- None"]),
+    "",
     "## Required Handoff Artifacts",
     ...required.map((artifact) => `- ${artifact.present ? "present" : "missing"}: ${artifact.path}`),
     "",
@@ -901,6 +931,7 @@ function handoffJson(bundle: Bundle): Record<string, unknown> {
     screenCoverage: state.coverageOverrides,
     designSystemReview: state.designReviewOverrides,
     contractGaps: state.contractGaps,
+    buildSimulationTriage: state.simulationTriageOverrides,
     artifactDigests: bundle.artifacts ?? [],
     commands: handoffCommands(),
     frontendAgentPrompt: handoffPrompt(bundle)
@@ -1404,17 +1435,63 @@ function renderContract(bundle: Bundle): string {
 }
 
 function renderSimulation(bundle: Bundle): string {
+  const routeItems = bundle.buildSimulation.routeSimulation?.routes ?? [];
+  const acceptanceItems = bundle.buildSimulation.acceptanceSimulation?.screens ?? [];
+  const triageKeys = [
+    ...routeItems.map((route: any) => simulationTriageKey("route", String(route.route))),
+    ...acceptanceItems.map((screen: any) => simulationTriageKey("acceptance", String(screen.screen_id)))
+  ];
+  const accepted = triageKeys.filter((key) => simulationTriageState(key) === "accepted").length;
+  const needsWork = triageKeys.filter((key) => simulationTriageState(key) === "needs_work").length;
+  const blocked = triageKeys.filter((key) => simulationTriageState(key) === "blocked").length;
   return `
     <div class="grid cols-3">
       ${metric("Simulation", bundle.buildSimulation.status ?? "warning", statusTone(bundle.buildSimulation.status))}
       ${metric("Routes", bundle.buildSimulation.routeSimulation?.routes?.length ?? 0)}
       ${metric("Screens", bundle.buildSimulation.stateCoverage?.screens?.length ?? 0)}
     </div>
+    <div class="grid cols-3" style="margin-top:14px">
+      ${metric("Accepted checks", `${accepted}/${triageKeys.length}`, accepted === triageKeys.length ? "success" : "warning")}
+      ${metric("Needs work", needsWork, needsWork ? "warning" : "success")}
+      ${metric("Blocked", blocked, blocked ? "danger" : "success")}
+    </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Simulation Report", code(bundle.buildSimulation.report))}
       ${panel("Route Simulation", code(bundle.buildSimulation.routeSimulation))}
       ${panel("Component Resolution", code(bundle.buildSimulation.componentResolution))}
       ${panel("Data Coverage", code(bundle.buildSimulation.dataContractCoverage))}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Route Triage", table(["Route", "Screen", "Simulation", "Triage", "Actions"], routeItems.map((route: any) => {
+        const key = simulationTriageKey("route", String(route.route));
+        const triage = simulationTriageState(key);
+        return [
+          `<code>${esc(route.route)}</code>`,
+          esc(route.screen_id),
+          badge(route.status, statusTone(route.status)),
+          badge(triage, simulationTriageTone(triage)),
+          `<div class="control-row compact"><button class="button small" data-simulation-triage="${esc(key)}" data-simulation-state="accepted" type="button">Accept</button><button class="button small" data-simulation-triage="${esc(key)}" data-simulation-state="needs_work" type="button">Needs work</button><button class="button small" data-simulation-triage="${esc(key)}" data-simulation-state="blocked" type="button">Block</button></div>`
+        ];
+      })))}
+      ${panel("Acceptance Coverage", table(["Screen", "Criteria", "Methods", "Triage", "Actions"], acceptanceItems.map((screen: any) => {
+        const key = simulationTriageKey("acceptance", String(screen.screen_id));
+        const triage = simulationTriageState(key);
+        return [
+          esc(screen.screen_id),
+          esc(screen.criteria_count),
+          esc((screen.verification_methods ?? []).join(", ")),
+          badge(triage, simulationTriageTone(triage)),
+          `<div class="control-row compact"><button class="button small" data-simulation-triage="${esc(key)}" data-simulation-state="accepted" type="button">Accept</button><button class="button small" data-simulation-triage="${esc(key)}" data-simulation-state="needs_work" type="button">Needs work</button><button class="button small" data-simulation-triage="${esc(key)}" data-simulation-state="blocked" type="button">Block</button></div>`
+        ];
+      })))}
+    </div>
+    <div style="margin-top:14px">
+      ${panel("Simulation Triage Note", `
+        ${textArea("simulation-triage-note", state.activeSimulationTriageNote, "Simulation note for the next triage action", "textarea short")}
+        <div class="control-row">
+          <button class="button" id="reset-simulation-triage" type="button">Reset simulation triage</button>
+        </div>
+      `)}
     </div>
   `;
 }
@@ -1819,6 +1896,29 @@ function bindEvents(): void {
       render();
     });
   });
+  document.querySelector<HTMLTextAreaElement>("#simulation-triage-note")?.addEventListener("input", (event) => {
+    state.activeSimulationTriageNote = (event.target as HTMLTextAreaElement).value;
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-simulation-triage]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const itemId = button.dataset.simulationTriage;
+      const triageState = button.dataset.simulationState as SimulationTriageOverride["state"] | undefined;
+      if (!itemId || !triageState) return;
+      state.simulationTriageOverrides[itemId] = {
+        state: triageState,
+        note: state.activeSimulationTriageNote.trim(),
+        updatedAt: new Date().toISOString()
+      };
+      saveSimulationTriageOverrides();
+      render();
+    });
+  });
+  document.querySelector<HTMLButtonElement>("#reset-simulation-triage")?.addEventListener("click", () => {
+    state.simulationTriageOverrides = {};
+    state.activeSimulationTriageNote = "";
+    saveSimulationTriageOverrides();
+    render();
+  });
   document.querySelector<HTMLButtonElement>("#save-workspace-package")?.addEventListener("click", async () => {
     if (!state.bundle) return;
     const entry = await saveWorkspaceBundle(state.bundle, state.packageName);
@@ -1852,6 +1952,7 @@ function bindEvents(): void {
       state.activeDesignReviewNote = "";
       state.handoffMessage = "";
       state.contractMessage = "";
+      state.activeSimulationTriageNote = "";
       state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
       state.intakeForm = null;
       state.sourceMaterials = [];
@@ -1861,6 +1962,7 @@ function bindEvents(): void {
       loadCoverageOverrides();
       loadDesignReviewOverrides();
       loadContractGaps();
+      loadSimulationTriageOverrides();
       loadBaselineSnapshot();
       await refreshWorkspaceEntries();
       render();
@@ -2135,6 +2237,7 @@ function bindEvents(): void {
       state.activeDesignReviewNote = "";
       state.handoffMessage = "";
       state.contractMessage = "";
+      state.activeSimulationTriageNote = "";
       state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
       state.intakeForm = null;
       state.sourceMaterials = [];
@@ -2144,6 +2247,7 @@ function bindEvents(): void {
       loadCoverageOverrides();
       loadDesignReviewOverrides();
       loadContractGaps();
+      loadSimulationTriageOverrides();
       loadBaselineSnapshot();
       await refreshWorkspaceEntries();
       render();
@@ -2164,6 +2268,7 @@ async function loadSample(): Promise<void> {
   state.activeDesignReviewNote = "";
   state.handoffMessage = "";
   state.contractMessage = "";
+  state.activeSimulationTriageNote = "";
   state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
   state.intakeForm = null;
   state.sourceMaterials = [];
@@ -2173,6 +2278,7 @@ async function loadSample(): Promise<void> {
   loadCoverageOverrides();
   loadDesignReviewOverrides();
   loadContractGaps();
+  loadSimulationTriageOverrides();
   await refreshWorkspaceEntries();
   render();
 }
@@ -2243,6 +2349,23 @@ function loadContractGaps(): void {
 
 function saveContractGaps(): void {
   localStorage.setItem(contractGapsStorageKey(), JSON.stringify(state.contractGaps));
+}
+
+function simulationTriageStorageKey(): string {
+  const slug = state.bundle?.manifest.project_slug ?? state.packageName;
+  return `archetype:simulation-triage:${slug}`;
+}
+
+function loadSimulationTriageOverrides(): void {
+  try {
+    state.simulationTriageOverrides = JSON.parse(localStorage.getItem(simulationTriageStorageKey()) ?? "{}");
+  } catch {
+    state.simulationTriageOverrides = {};
+  }
+}
+
+function saveSimulationTriageOverrides(): void {
+  localStorage.setItem(simulationTriageStorageKey(), JSON.stringify(state.simulationTriageOverrides));
 }
 
 function baselineStorageKey(): string {

@@ -545,3 +545,31 @@ Verification:
 Next phase:
 
 - Build simulation triage and acceptance coverage review.
+
+## Completed Phase: Build Simulation Triage and Acceptance Review
+
+Status: complete
+
+Implemented:
+
+- Route simulation triage states.
+- Acceptance coverage triage states.
+- Simulation triage notes.
+- Accepted, needs-work, and blocked triage actions.
+- Simulation triage reset action.
+- Package-specific simulation triage persistence.
+- Simulation triage metrics.
+- Build simulation triage included in handoff markdown and JSON.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench revision change-request composer.
