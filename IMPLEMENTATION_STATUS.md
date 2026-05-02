@@ -1024,3 +1024,32 @@ Verification:
 Next phase:
 
 - Workbench bulk package actions.
+
+## Completed Phase: Workbench Bulk Package Actions
+
+Status: complete
+
+Implemented:
+
+- Bulk priority draft state.
+- Bulk priority selector in the workspace package browser.
+- Apply-priority action for the current visible package set.
+- Pin visible packages action.
+- Unpin visible packages action.
+- Archive visible packages action.
+- Restore visible packages action.
+- Bulk actions use current view, search, readiness, and sorting browser result boundaries.
+- Inspected package draft state syncs after bulk metadata and archive operations.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench workspace activity log.

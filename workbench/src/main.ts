@@ -298,6 +298,7 @@ const state: {
   workspacePriorityDraft: WorkspacePriority;
   workspaceTagDraft: string;
   workspaceNoteDraft: string;
+  workspaceBulkPriority: WorkspacePriority;
   workspaceImportPreview: WorkspaceExport | null;
   workspaceImportFileName: string;
   workspaceMessage: string;
@@ -346,6 +347,7 @@ const state: {
   workspacePriorityDraft: "medium",
   workspaceTagDraft: "",
   workspaceNoteDraft: "",
+  workspaceBulkPriority: "medium",
   workspaceImportPreview: null,
   workspaceImportFileName: "",
   workspaceMessage: "",
@@ -604,6 +606,15 @@ function workspaceCollectionReport(entries: WorkspaceEntry[]): string {
   return `${lines.join("\n")}\n`;
 }
 
+function syncInspectedWorkspaceEntry(): void {
+  const entry = state.workspaceEntries.find((candidate) => candidate.id === state.workspaceInspectId);
+  if (!entry) return;
+  state.workspaceNameDraft = entry.name;
+  state.workspacePriorityDraft = entry.priority ?? "medium";
+  state.workspaceTagDraft = (entry.tags ?? []).join(", ");
+  state.workspaceNoteDraft = entry.notes ?? "";
+}
+
 async function workspaceRecordsForEntries(entries: WorkspaceEntry[]): Promise<Array<{ entry: WorkspaceEntry; bundle: Bundle }>> {
   const records = await Promise.all(entries.map((entry) => loadWorkspaceBundle(entry.id)));
   return records.filter((record): record is { entry: WorkspaceEntry; bundle: Bundle } => !!record);
@@ -849,6 +860,21 @@ function renderWorkspace(bundle: Bundle): string {
           <button class="button" id="export-workspace-collection" type="button" ${visibleWorkspaceEntries.length ? "" : "disabled"}>Export collection</button>
           <button class="button" id="export-workspace-collection-report" type="button" ${visibleWorkspaceEntries.length ? "" : "disabled"}>Export report</button>
         </div>
+        <div class="control-row">
+          <label class="field" style="min-width:180px">
+            <span>Bulk priority</span>
+            <select id="workspace-bulk-priority" class="input">
+              <option value="low" ${state.workspaceBulkPriority === "low" ? "selected" : ""}>low</option>
+              <option value="medium" ${state.workspaceBulkPriority === "medium" ? "selected" : ""}>medium</option>
+              <option value="high" ${state.workspaceBulkPriority === "high" ? "selected" : ""}>high</option>
+            </select>
+          </label>
+          <button class="button" id="bulk-workspace-priority" type="button" ${visibleWorkspaceEntries.length ? "" : "disabled"}>Apply priority</button>
+          <button class="button" id="bulk-workspace-pin" type="button" ${visibleWorkspaceEntries.length ? "" : "disabled"}>Pin visible</button>
+          <button class="button" id="bulk-workspace-unpin" type="button" ${visibleWorkspaceEntries.some((entry) => entry.pinned) ? "" : "disabled"}>Unpin visible</button>
+          <button class="button" id="bulk-workspace-archive" type="button" ${visibleWorkspaceEntries.some((entry) => !entry.archivedAt) ? "" : "disabled"}>Archive visible</button>
+          <button class="button" id="bulk-workspace-restore" type="button" ${visibleWorkspaceEntries.some((entry) => entry.archivedAt) ? "" : "disabled"}>Restore visible</button>
+        </div>
         <div class="muted" style="margin-top:10px">${esc(`Showing ${visibleWorkspaceEntries.length} of ${state.workspaceEntries.length} workspace packages.`)}</div>
       `)}
     </div>
@@ -1093,6 +1119,25 @@ async function setWorkspaceBundlePinned(id: string, pinned: boolean): Promise<Wo
   const entry: WorkspaceEntry = {
     ...record.entry,
     pinned,
+    updatedAt: new Date().toISOString()
+  };
+  try {
+    const transaction = db.transaction(WORKSPACE_STORE, "readwrite");
+    transaction.objectStore(WORKSPACE_STORE).put({ entry, bundle: record.bundle });
+    await transactionDone(transaction);
+    return entry;
+  } finally {
+    db.close();
+  }
+}
+
+async function setWorkspaceBundlePriority(id: string, priority: WorkspacePriority): Promise<WorkspaceEntry | null> {
+  const record = await loadWorkspaceBundle(id);
+  if (!record) return null;
+  const db = await openWorkspaceDb();
+  const entry: WorkspaceEntry = {
+    ...record.entry,
+    priority,
     updatedAt: new Date().toISOString()
   };
   try {
@@ -2819,6 +2864,9 @@ function bindEvents(): void {
     state.workspaceSortDirection = value === "asc" ? "asc" : "desc";
     render();
   });
+  document.querySelector<HTMLSelectElement>("#workspace-bulk-priority")?.addEventListener("input", (event) => {
+    state.workspaceBulkPriority = workspacePriorityFromValue((event.target as HTMLSelectElement).value);
+  });
   document.querySelectorAll<HTMLButtonElement>("[data-workspace-package-view]").forEach((button) => {
     button.addEventListener("click", () => {
       const view = button.dataset.workspacePackageView;
@@ -2855,6 +2903,63 @@ function bindEvents(): void {
     const entries = currentWorkspaceEntries();
     downloadText("archetype-workspace-collection.md", workspaceCollectionReport(entries), "text/markdown");
     state.workspaceMessage = `Workspace collection report prepared with ${entries.length} packages.`;
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#bulk-workspace-priority")?.addEventListener("click", async () => {
+    const entries = currentWorkspaceEntries();
+    let updated = 0;
+    for (const entry of entries) {
+      const result = await setWorkspaceBundlePriority(entry.id, state.workspaceBulkPriority);
+      if (result) updated += 1;
+    }
+    await refreshWorkspaceEntries();
+    syncInspectedWorkspaceEntry();
+    state.workspaceMessage = `Applied ${state.workspaceBulkPriority} priority to ${updated} visible packages.`;
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#bulk-workspace-pin")?.addEventListener("click", async () => {
+    const entries = currentWorkspaceEntries();
+    let updated = 0;
+    for (const entry of entries) {
+      const result = await setWorkspaceBundlePinned(entry.id, true);
+      if (result) updated += 1;
+    }
+    await refreshWorkspaceEntries();
+    syncInspectedWorkspaceEntry();
+    state.workspaceMessage = `Pinned ${updated} visible packages.`;
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#bulk-workspace-unpin")?.addEventListener("click", async () => {
+    const entries = currentWorkspaceEntries();
+    let updated = 0;
+    for (const entry of entries) {
+      if (!entry.pinned) continue;
+      const result = await setWorkspaceBundlePinned(entry.id, false);
+      if (result) updated += 1;
+    }
+    await refreshWorkspaceEntries();
+    syncInspectedWorkspaceEntry();
+    state.workspaceMessage = `Unpinned ${updated} visible packages.`;
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#bulk-workspace-archive")?.addEventListener("click", async () => {
+    const entries = currentWorkspaceEntries().filter((entry) => !entry.archivedAt);
+    for (const entry of entries) {
+      await archiveWorkspaceBundle(entry.id, true);
+    }
+    await refreshWorkspaceEntries();
+    syncInspectedWorkspaceEntry();
+    state.workspaceMessage = `Archived ${entries.length} visible packages.`;
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#bulk-workspace-restore")?.addEventListener("click", async () => {
+    const entries = currentWorkspaceEntries().filter((entry) => entry.archivedAt);
+    for (const entry of entries) {
+      await archiveWorkspaceBundle(entry.id, false);
+    }
+    await refreshWorkspaceEntries();
+    syncInspectedWorkspaceEntry();
+    state.workspaceMessage = `Restored ${entries.length} visible packages.`;
     render();
   });
   document.querySelector<HTMLButtonElement>("#save-workspace-package")?.addEventListener("click", async () => {
