@@ -225,6 +225,7 @@ interface WorkbenchStateExport {
 interface WorkspaceExport {
   exportVersion: 1;
   exportedAt: string;
+  collection?: Record<string, unknown>;
   packages: Array<{ entry: WorkspaceEntry; bundle: Bundle }>;
 }
 
@@ -291,6 +292,8 @@ const state: {
   workspaceInspectBundle: Bundle | null;
   workspaceTagDraft: string;
   workspaceNoteDraft: string;
+  workspaceImportPreview: WorkspaceExport | null;
+  workspaceImportFileName: string;
   workspaceMessage: string;
   workspaceCompareBaseId: string;
   workspaceCompareTargetId: string;
@@ -335,6 +338,8 @@ const state: {
   workspaceInspectBundle: null,
   workspaceTagDraft: "",
   workspaceNoteDraft: "",
+  workspaceImportPreview: null,
+  workspaceImportFileName: "",
   workspaceMessage: "",
   workspaceCompareBaseId: "",
   workspaceCompareTargetId: "",
@@ -581,6 +586,39 @@ async function workspaceRecordsForEntries(entries: WorkspaceEntry[]): Promise<Ar
   return records.filter((record): record is { entry: WorkspaceEntry; bundle: Bundle } => !!record);
 }
 
+function renderWorkspaceImportReview(preview: WorkspaceExport | null): string {
+  if (!preview) return "";
+  const existingIds = new Set(state.workspaceEntries.map((entry) => entry.id));
+  const activeCount = preview.packages.filter((record) => !record.entry.archivedAt).length;
+  const archivedCount = preview.packages.length - activeCount;
+  const updateCount = preview.packages.filter((record) => existingIds.has(record.entry.id)).length;
+  return `
+    <div style="margin-top:14px">
+      ${panel("Import Review", `
+        <div class="snapshot-line">
+          <div>
+            <h3>${esc(state.workspaceImportFileName || "Workspace import")}</h3>
+            <div class="muted">${esc(`${preview.packages.length} packages · ${activeCount} active · ${archivedCount} archived · ${updateCount} updates`)}</div>
+          </div>
+          ${badge(preview.collection ? "collection" : "workspace", "neutral")}
+        </div>
+        ${preview.collection ? code(preview.collection) : ""}
+        ${preview.packages.length ? table(["Package", "Status", "Score", "Saved", "Import"], preview.packages.slice(0, 80).map((record) => [
+          `<div><strong>${esc(record.entry.name)}</strong><div class="muted">${esc(record.entry.projectSlug)} · ${esc(record.entry.packageId || record.entry.id)}</div></div>`,
+          badge(record.entry.archivedAt ? "archived" : "active", record.entry.archivedAt ? "warning" : "success"),
+          badge(String(record.entry.readinessScore), record.entry.readyForFrontendAgent ? "success" : "danger"),
+          esc(new Date(record.entry.savedAt).toLocaleString()),
+          badge(existingIds.has(record.entry.id) ? "update" : "add", existingIds.has(record.entry.id) ? "warning" : "success")
+        ])) : `<div class="empty">No packages found in this import.</div>`}
+        <div class="control-row">
+          <button class="button primary" id="confirm-workspace-import" type="button" ${preview.packages.length ? "" : "disabled"}>Import reviewed packages</button>
+          <button class="button" id="cancel-workspace-import" type="button">Cancel import</button>
+        </div>
+      `)}
+    </div>
+  `;
+}
+
 function renderWorkspacePackageActions(entry: WorkspaceEntry): string {
   return entry.archivedAt
     ? `<div class="control-row compact"><button class="button small" data-workspace-inspect="${esc(entry.id)}" type="button">Inspect</button><button class="button small" data-workspace-restore="${esc(entry.id)}" type="button">Restore</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
@@ -776,6 +814,7 @@ function renderWorkspace(bundle: Bundle): string {
         <div class="muted" style="margin-top:10px">${esc(`Showing ${visibleWorkspaceEntries.length} of ${state.workspaceEntries.length} workspace packages.`)}</div>
       `)}
     </div>
+    ${renderWorkspaceImportReview(state.workspaceImportPreview)}
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Active Snapshot", code({
         packageName: state.packageName,
@@ -2762,18 +2801,35 @@ function bindEvents(): void {
       const parsed = JSON.parse(await file.text());
       if (!isWorkspaceExport(parsed)) {
         state.workspaceMessage = "Workspace file is not a valid Archetype workspace export.";
+        input.value = "";
         render();
         return;
       }
-      const imported = await importWorkspaceRecords(parsed.packages);
-      await refreshWorkspaceEntries();
-      state.workspaceMessage = `Imported ${imported} workspace packages.`;
+      state.workspaceImportPreview = parsed;
+      state.workspaceImportFileName = file.name;
+      state.workspaceMessage = `Review ${parsed.packages.length} workspace packages before importing.`;
       input.value = "";
       render();
     } catch (error) {
       state.workspaceMessage = error instanceof Error ? error.message : "Could not import workspace.";
+      input.value = "";
       render();
     }
+  });
+  document.querySelector<HTMLButtonElement>("#confirm-workspace-import")?.addEventListener("click", async () => {
+    if (!state.workspaceImportPreview) return;
+    const imported = await importWorkspaceRecords(state.workspaceImportPreview.packages);
+    state.workspaceImportPreview = null;
+    state.workspaceImportFileName = "";
+    await refreshWorkspaceEntries();
+    state.workspaceMessage = `Imported ${imported} reviewed workspace packages.`;
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#cancel-workspace-import")?.addEventListener("click", () => {
+    state.workspaceImportPreview = null;
+    state.workspaceImportFileName = "";
+    state.workspaceMessage = "Workspace import canceled.";
+    render();
   });
   document.querySelector<HTMLButtonElement>("#purge-archived-packages")?.addEventListener("click", async () => {
     const purged = await purgeArchivedWorkspaceBundles();

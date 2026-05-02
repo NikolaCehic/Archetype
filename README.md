@@ -48,6 +48,7 @@ Implemented:
 - Workbench saved package detail inspection.
 - Workbench workspace package tagging and notes.
 - Workbench package collection exports.
+- Workbench package collection import review.
 
 ## Run
 
@@ -99,7 +100,7 @@ Run the browser workbench:
 npm run workbench:dev
 ```
 
-The workbench can review generated packages, import an exported package folder, save packages into a local browser workspace, tag, annotate, search, filter, sort, browse, inspect, and export saved package collections, archive and clean up packages, export and restore an active workbench session, import and export multi-package workspaces, compare saved packages, prepare an intake JSON draft from structured form controls, collect source materials with a safety preview, copy a matching CLI command, track route and screen coverage, review design-system components and tokens, report frontend contract gaps, triage build simulation and acceptance coverage, compose revision change requests, track local approval gate decisions, compare package baselines for revision impact, summarize governance actions, and generate handoff artifacts for downstream frontend work.
+The workbench can review generated packages, import an exported package folder, save packages into a local browser workspace, tag, annotate, search, filter, sort, browse, inspect, export saved package collections, and review collection imports before writing them, archive and clean up packages, export and restore an active workbench session, import and export multi-package workspaces, compare saved packages, prepare an intake JSON draft from structured form controls, collect source materials with a safety preview, copy a matching CLI command, track route and screen coverage, review design-system components and tokens, report frontend contract gaps, triage build simulation and acceptance coverage, compose revision change requests, track local approval gate decisions, compare package baselines for revision impact, summarize governance actions, and generate handoff artifacts for downstream frontend work.
 
 Run all checks:
 
@@ -135,4 +136,4 @@ node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archety
 
 ## Next Implementation Target
 
-The next pass should add workbench package collection import review.
+The next pass should add workbench package duplication controls.
