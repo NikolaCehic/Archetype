@@ -219,6 +219,16 @@ interface WorkspaceExport {
   packages: Array<{ entry: WorkspaceEntry; bundle: Bundle }>;
 }
 
+interface SavedPackageComparison {
+  baseName: string;
+  targetName: string;
+  generatedAt: string;
+  diffs: ArtifactDiff[];
+  routeDelta: { added: string[]; removed: string[] };
+  screenDelta: { added: string[]; removed: string[] };
+  componentDelta: { added: string[]; removed: string[] };
+}
+
 const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => number | string }> = [
   { id: "overview", label: "Overview", count: (bundle) => bundle.readiness.score },
   { id: "workspace", label: "Workspace", count: () => state.workspaceEntries.length },
@@ -264,6 +274,9 @@ const state: {
   handoffMessage: string;
   workspaceEntries: WorkspaceEntry[];
   workspaceMessage: string;
+  workspaceCompareBaseId: string;
+  workspaceCompareTargetId: string;
+  workspaceComparison: SavedPackageComparison | null;
   intakeForm: IntakeFormState | null;
   sourceMaterials: SourceMaterialDraft[];
   sourceDraft: SourceMaterialDraft;
@@ -296,6 +309,9 @@ const state: {
   handoffMessage: "",
   workspaceEntries: [],
   workspaceMessage: "",
+  workspaceCompareBaseId: "",
+  workspaceCompareTargetId: "",
+  workspaceComparison: null,
   intakeForm: null,
   sourceMaterials: [],
   sourceDraft: { id: "", label: "", type: "document", content: "", notes: "", path: "" },
@@ -425,6 +441,9 @@ function renderOverview(bundle: Bundle): string {
 function renderWorkspace(bundle: Bundle): string {
   const activeId = workspaceIdForBundle(bundle);
   const activeSaved = state.workspaceEntries.some((entry) => entry.id === activeId);
+  const compareOptions = (selectedId: string) => state.workspaceEntries.map((entry) => `<option value="${esc(entry.id)}" ${entry.id === selectedId ? "selected" : ""}>${esc(`${entry.name} · ${entry.projectSlug} · score ${entry.readinessScore}`)}</option>`).join("");
+  const comparison = state.workspaceComparison;
+  const changedDiffs = comparison?.diffs.filter((diff) => diff.status !== "unchanged") ?? [];
   return `
     <div class="grid cols-3">
       ${metric("Saved packages", state.workspaceEntries.length)}
@@ -494,6 +513,47 @@ function renderWorkspace(bundle: Bundle): string {
         esc(new Date(entry.savedAt).toLocaleString()),
         `<div class="control-row compact"><button class="button small" data-workspace-load="${esc(entry.id)}" type="button">Load</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
       ])) : `<div class="empty">No saved packages.</div>`)}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Compare Saved Packages", `
+        <div class="form-grid">
+          <label class="field">
+            <span>Base package</span>
+            <select id="workspace-compare-base" class="input">
+              <option value="">Select base</option>
+              ${compareOptions(state.workspaceCompareBaseId)}
+            </select>
+          </label>
+          <label class="field">
+            <span>Target package</span>
+            <select id="workspace-compare-target" class="input">
+              <option value="">Select target</option>
+              ${compareOptions(state.workspaceCompareTargetId)}
+            </select>
+          </label>
+        </div>
+        <div class="control-row">
+          <button class="button primary" id="compare-workspace-packages" type="button" ${state.workspaceEntries.length >= 2 ? "" : "disabled"}>Compare packages</button>
+          <button class="button" id="clear-workspace-comparison" type="button" ${comparison ? "" : "disabled"}>Clear comparison</button>
+        </div>
+      `)}
+      ${panel("Comparison Summary", comparison ? code({
+        base: comparison.baseName,
+        target: comparison.targetName,
+        changedArtifacts: changedDiffs.length,
+        routes: comparison.routeDelta,
+        screens: comparison.screenDelta,
+        components: comparison.componentDelta
+      }) : `<div class="empty">Select two saved packages to compare.</div>`)}
+    </div>
+    <div style="margin-top:14px">
+      ${panel("Workspace Diff", comparison ? table(["Status", "Area", "Artifact", "Before", "After"], changedDiffs.slice(0, 120).map((diff) => [
+        badge(diff.status, diffTone(diff.status)),
+        esc(diff.group),
+        `<code>${esc(diff.path)}</code>`,
+        esc(formatBytes(diff.beforeBytes)),
+        esc(formatBytes(diff.afterBytes))
+      ])) : `<div class="empty">No workspace comparison yet.</div>`)}
     </div>
   `;
 }
@@ -635,6 +695,23 @@ async function importWorkspaceRecords(records: Array<{ entry: WorkspaceEntry; bu
   } finally {
     db.close();
   }
+}
+
+async function compareWorkspacePackages(baseId: string, targetId: string): Promise<SavedPackageComparison | null> {
+  const base = await loadWorkspaceBundle(baseId);
+  const target = await loadWorkspaceBundle(targetId);
+  if (!base || !target) return null;
+  const baseSnapshot = snapshotFromBundle(base.bundle, base.entry.name);
+  const targetSnapshot = snapshotFromBundle(target.bundle, target.entry.name);
+  return {
+    baseName: base.entry.name,
+    targetName: target.entry.name,
+    generatedAt: new Date().toISOString(),
+    diffs: computeArtifactDiffs(targetSnapshot, baseSnapshot),
+    routeDelta: compareStringSets(baseSnapshot.routes, targetSnapshot.routes),
+    screenDelta: compareStringSets(baseSnapshot.screens, targetSnapshot.screens),
+    componentDelta: compareStringSets(baseSnapshot.components, targetSnapshot.components)
+  };
 }
 
 async function loadWorkspaceBundle(id: string): Promise<{ entry: WorkspaceEntry; bundle: Bundle } | null> {
@@ -2314,6 +2391,40 @@ function bindEvents(): void {
       state.workspaceMessage = error instanceof Error ? error.message : "Could not restore state.";
       render();
     }
+  });
+  document.querySelector<HTMLSelectElement>("#workspace-compare-base")?.addEventListener("input", (event) => {
+    state.workspaceCompareBaseId = (event.target as HTMLSelectElement).value;
+  });
+  document.querySelector<HTMLSelectElement>("#workspace-compare-target")?.addEventListener("input", (event) => {
+    state.workspaceCompareTargetId = (event.target as HTMLSelectElement).value;
+  });
+  document.querySelector<HTMLButtonElement>("#compare-workspace-packages")?.addEventListener("click", async () => {
+    if (!state.workspaceCompareBaseId || !state.workspaceCompareTargetId) {
+      state.workspaceMessage = "Choose a base and target package.";
+      render();
+      return;
+    }
+    if (state.workspaceCompareBaseId === state.workspaceCompareTargetId) {
+      state.workspaceMessage = "Choose two different packages.";
+      render();
+      return;
+    }
+    const comparison = await compareWorkspacePackages(state.workspaceCompareBaseId, state.workspaceCompareTargetId);
+    if (!comparison) {
+      state.workspaceMessage = "One of the selected packages could not be loaded.";
+      render();
+      return;
+    }
+    state.workspaceComparison = comparison;
+    state.workspaceMessage = `Compared ${comparison.baseName} to ${comparison.targetName}.`;
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#clear-workspace-comparison")?.addEventListener("click", () => {
+    state.workspaceComparison = null;
+    state.workspaceCompareBaseId = "";
+    state.workspaceCompareTargetId = "";
+    state.workspaceMessage = "Workspace comparison cleared.";
+    render();
   });
   document.querySelectorAll<HTMLButtonElement>("[data-workspace-load]").forEach((button) => {
     button.addEventListener("click", async () => {
