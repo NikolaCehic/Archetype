@@ -262,6 +262,167 @@ function buildFormContracts(profile: DomainProfile, experience: ExperienceArtifa
   };
 }
 
+function buildVerificationContracts(
+  experience: ExperienceArtifacts,
+  designSystem: DesignSystemArtifacts,
+  dataOperationContracts: Record<string, unknown>,
+  actionContracts: Record<string, unknown>,
+  formContracts: Record<string, unknown>
+): Record<string, unknown> {
+  const componentContracts = designSystem.componentContracts as { contracts?: Array<{ name?: string }> };
+  const patternContracts = designSystem.patternContracts as { contracts?: Array<{ name?: string }> };
+  const tokenContracts = designSystem.tokenContracts as { layers?: Record<string, unknown> };
+  const typographySystem = designSystem.typographySystem as { type_roles?: Record<string, unknown> };
+  const actions = (actionContracts.actions as Array<{ action_id?: string; screen_id?: string }> | undefined) ?? [];
+  const queries = (dataOperationContracts.queries as Array<{ query_id?: string; screen_id?: string }> | undefined) ?? [];
+  const forms = (formContracts.forms as Array<{ form_id?: string; screen_id?: string }> | undefined) ?? [];
+
+  const screenTests = experience.screenSpecs.flatMap((screen) => [
+    {
+      test_id: `${screen.screen_id}.route.renders`,
+      screen_id: screen.screen_id,
+      type: "route_render",
+      selector: `[data-archetype-screen="${screen.screen_id}"]`,
+      assertion: `Route ${screen.route} renders ${screen.name} with the declared layout and page heading.`,
+      required_artifacts: ["route-map.json", `${screen.screen_id.replace(/[.]/g, "-")}.yaml`]
+    },
+    ...Object.keys(screen.states).map((state) => ({
+      test_id: `${screen.screen_id}.state.${state}`,
+      screen_id: screen.screen_id,
+      type: "state_render",
+      selector: `[data-archetype-screen="${screen.screen_id}"][data-state="${state}"]`,
+      assertion: `${screen.screen_id} renders ${state} state with declared feedback, recovery, data, and accessibility behavior.`,
+      required_artifacts: ["ux-flow-state-completeness.json", `${screen.screen_id.replace(/[.]/g, "-")}.yaml`]
+    })),
+    ...screen.required_components.map((component) => ({
+      test_id: `${screen.screen_id}.component.${component}`,
+      screen_id: screen.screen_id,
+      type: "component_contract",
+      selector: `[data-archetype-component="${slugify(component)}"]`,
+      assertion: `${component} is implemented from component-contracts.json and uses declared tokens.`,
+      required_artifacts: ["component-contracts.json", "component-registry.json"]
+    })),
+    ...screen.required_patterns.map((pattern) => ({
+      test_id: `${screen.screen_id}.pattern.${pattern}`,
+      screen_id: screen.screen_id,
+      type: "pattern_contract",
+      selector: `[data-archetype-pattern="${slugify(pattern)}"]`,
+      assertion: `${pattern} is implemented from pattern-contracts.json and appears only where declared.`,
+      required_artifacts: ["pattern-contracts.json", "pattern-registry.json"]
+    }))
+  ]);
+
+  const suite = [
+    {
+      suite_id: "route_and_screen_contracts",
+      required: true,
+      tests: screenTests.filter((test) => ["route_render", "state_render"].includes(test.type))
+    },
+    {
+      suite_id: "design_system_contracts",
+      required: true,
+      tests: [
+        ...screenTests.filter((test) => ["component_contract", "pattern_contract"].includes(test.type)),
+        {
+          test_id: "tokens.layers.present",
+          type: "token_contract",
+          selector: ":root",
+          assertion: `Token contract exposes ${Object.keys(tokenContracts.layers ?? {}).length} required token layers.`,
+          required_artifacts: ["token-contracts.json", "css-variables.css"]
+        },
+        {
+          test_id: "typography.roles.present",
+          type: "typography_contract",
+          selector: ":root",
+          assertion: `Typography system exposes ${Object.keys(typographySystem.type_roles ?? {}).length} type roles and CSS variables.`,
+          required_artifacts: ["typography-system.json", "typography.css"]
+        }
+      ]
+    },
+    {
+      suite_id: "data_action_form_contracts",
+      required: true,
+      tests: [
+        ...queries.map((query) => ({
+          test_id: `${query.query_id}.contract`,
+          screen_id: query.screen_id,
+          type: "query_contract",
+          selector: `[data-archetype-screen="${query.screen_id}"]`,
+          assertion: "Screen data loading maps query outcomes to required screen states.",
+          required_artifacts: ["data-operation-contracts.json", "screen-state-matrix.json"]
+        })),
+        ...actions.map((action) => ({
+          test_id: `${action.action_id}.contract`,
+          screen_id: action.screen_id,
+          type: "action_contract",
+          selector: `[data-archetype-action="${action.action_id}"]`,
+          assertion: "Action honors preconditions, permission, state transitions, result contract, and route policy.",
+          required_artifacts: ["action-contracts.json", "route-map.json"]
+        })),
+        ...forms.map((form) => ({
+          test_id: `${form.form_id}.contract`,
+          screen_id: form.screen_id,
+          type: "form_contract",
+          selector: `[data-archetype-form="${form.form_id}"]`,
+          assertion: "Form implements declared fields, validation timing, dirty-state behavior, submission states, and accessibility behavior.",
+          required_artifacts: ["form-contracts.json"]
+        }))
+      ]
+    },
+    {
+      suite_id: "accessibility_contracts",
+      required: true,
+      tests: experience.screenSpecs.map((screen) => ({
+        test_id: `${screen.screen_id}.accessibility`,
+        screen_id: screen.screen_id,
+        type: "accessibility_contract",
+        selector: `[data-archetype-screen="${screen.screen_id}"]`,
+        assertion: "Screen has visible focus, keyboard path, accessible names, non-color-only status, and chart fallback where required.",
+        required_artifacts: ["accessibility-rules.json", `${screen.screen_id.replace(/[.]/g, "-")}.yaml`]
+      }))
+    }
+  ];
+
+  const testCount = suite.reduce((sum, item) => sum + item.tests.length, 0);
+  return {
+    contract_version: "1.0",
+    test_suites: suite,
+    coverage: {
+      suite_count: suite.length,
+      test_count: testCount,
+      screens: experience.screenSpecs.length,
+      components: componentContracts.contracts?.length ?? 0,
+      patterns: patternContracts.contracts?.length ?? 0,
+      queries: queries.length,
+      actions: actions.length,
+      forms: forms.length
+    },
+    blockers: testCount > 0 ? [] : ["No verification tests were generated."],
+    warnings: ["Verification contracts define required downstream proof, but they do not execute generated frontend code inside this compiler."],
+    evidence_refs: ["decision_compiler_order"]
+  };
+}
+
+function verificationPlanMarkdown(verificationContracts: Record<string, unknown>): string {
+  const suites = (verificationContracts.test_suites as Array<{ suite_id: string; tests: unknown[] }> | undefined) ?? [];
+  return [
+    "# Verification Plan",
+    "",
+    "A downstream frontend agent must satisfy these verification suites before handoff.",
+    "",
+    ...suites.map((suite) => `- ${suite.suite_id}: ${suite.tests.length} tests`),
+    "",
+    "## Required Execution",
+    "",
+    "1. Build routes from route-map.json.",
+    "2. Implement screens from screen specs.",
+    "3. Implement states from ux-flow-state-completeness.json.",
+    "4. Implement components, patterns, tokens, typography, data operations, actions, and forms from their contract files.",
+    "5. Run the verification suites from verification-contracts.json.",
+    "6. Report every failed test as a contract gap instead of inventing missing behavior."
+  ].join("\n");
+}
+
 export function buildFrontendContractArtifacts(
   input: ArchetypeInput,
   profile: DomainProfile,
@@ -332,6 +493,7 @@ export function buildFrontendContractArtifacts(
   const dataOperationContracts = buildDataOperationContracts(profile, experience);
   const actionContracts = buildActionContracts(experience, new Set(experience.routeMap.routes.map((route) => route.route)));
   const formContracts = buildFormContracts(profile, experience);
+  const verificationContracts = buildVerificationContracts(experience, designSystem, dataOperationContracts, actionContracts, formContracts);
 
   return {
     buildManifest: {
@@ -395,6 +557,8 @@ export function buildFrontendContractArtifacts(
     dataOperationContracts,
     actionContracts,
     formContracts,
+    verificationContracts,
+    verificationPlan: verificationPlanMarkdown(verificationContracts),
     routingContract: {
       routes: experience.routeMap.routes,
       route_creation_policy: "Create only the routes listed here unless the contract is revised.",
@@ -430,7 +594,8 @@ export function buildFrontendContractArtifacts(
       "13. 06-frontend-agent-contract/data-operation-contracts.json",
       "14. 06-frontend-agent-contract/action-contracts.json",
       "15. 06-frontend-agent-contract/form-contracts.json",
-      "16. 06-frontend-agent-contract/acceptance-criteria.json"
+      "16. 06-frontend-agent-contract/verification-contracts.json",
+      "17. 06-frontend-agent-contract/acceptance-criteria.json"
     ].join("\n")
   };
 }

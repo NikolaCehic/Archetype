@@ -1406,3 +1406,43 @@ Verification:
 Next phase:
 
 - Acceptance-test and implementation verification contracts.
+
+## Completed Phase: Acceptance-Test and Implementation Verification Contracts
+
+Status: complete
+
+Implemented:
+
+- Added deterministic verification contracts for downstream frontend-agent proof.
+- Added route and screen verification suite.
+- Added state verification tests for every generated screen state.
+- Added component and pattern contract verification tests.
+- Added token and typography verification tests.
+- Added data operation, action, and form verification tests.
+- Added accessibility verification tests for every screen.
+- Added `06-frontend-agent-contract/verification-contracts.json`.
+- Added `06-frontend-agent-contract/verification-plan.md`.
+- Added `09-schemas/verification-contracts.schema.json`.
+- Frontend-agent instructions now include verification contracts.
+- Build simulation now includes verification suite summaries and blocks empty verification contracts.
+- Quality checks now validate verification suites, test count, blockers, and screen coverage.
+- Revision dependency graph and approval gates now include verification contracts.
+- Workbench sample bundle now includes verification contracts.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Manifest-listed files checked by validator: 144.
+- Verification suites: 4.
+- Verification tests: 207.
+- Verification blockers: 0.
+- Screens covered by verification contracts: 6/6.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench deterministic contract artifact inspection.

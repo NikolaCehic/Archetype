@@ -57,6 +57,7 @@ export function buildFrontendBuildSimulationArtifacts(input: {
   const dataOperationContracts = input.frontendContract.dataOperationContracts as { queries?: Array<{ screen_id?: string }>; mutations?: unknown[]; blockers?: string[] };
   const actionContracts = input.frontendContract.actionContracts as { actions?: Array<{ screen_id?: string; route_target_declared?: boolean }>; blockers?: string[] };
   const formContracts = input.frontendContract.formContracts as { forms?: Array<{ screen_id?: string; fields?: unknown[] }>; blockers?: string[] };
+  const verificationContracts = input.frontendContract.verificationContracts as { test_suites?: Array<{ suite_id?: string; tests?: unknown[] }>; coverage?: { test_count?: number }; blockers?: string[] };
   const entityNames = new Set(Object.keys(dataContracts.entities ?? {}));
   const buildManifest = input.frontendContract.buildManifest as { build_order?: string[]; entry_routes?: string[] };
   const componentUsageMap = input.frontendContract.componentUsageMap as Record<string, {
@@ -231,6 +232,8 @@ export function buildFrontendBuildSimulationArtifacts(input: {
   blockers.push(...((dataOperationContracts.blockers ?? []).map((blocker) => `Data operations: ${blocker}`)));
   blockers.push(...((actionContracts.blockers ?? []).map((blocker) => `Action contracts: ${blocker}`)));
   blockers.push(...((formContracts.blockers ?? []).map((blocker) => `Form contracts: ${blocker}`)));
+  blockers.push(...((verificationContracts.blockers ?? []).map((blocker) => `Verification contracts: ${blocker}`)));
+  if ((verificationContracts.coverage?.test_count ?? 0) === 0) blockers.push("Verification contracts contain no tests.");
   if (warnings.length === 0 && blockers.length === 0) {
     warnings.push("Simulation used generated contracts and fixture assumptions; it does not compile a real frontend app yet.");
   }
@@ -257,7 +260,14 @@ export function buildFrontendBuildSimulationArtifacts(input: {
       screens: dataResults,
       forms: formResults
     },
-    acceptanceSimulation: { screens: acceptanceResults },
+    acceptanceSimulation: {
+      screens: acceptanceResults,
+      verification_suites: verificationContracts.test_suites?.map((suite) => ({
+        suite_id: suite.suite_id,
+        tests: Array.isArray(suite.tests) ? suite.tests.length : 0
+      })) ?? [],
+      verification_test_count: verificationContracts.coverage?.test_count ?? 0
+    },
     simulationReport: [
       "# Frontend Build Simulation Report",
       "",

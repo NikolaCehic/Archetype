@@ -105,6 +105,12 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   const dataOperationContracts = input.frontendContract.dataOperationContracts as { queries?: unknown[]; mutations?: unknown[]; blockers?: string[]; warnings?: string[] };
   const actionContracts = input.frontendContract.actionContracts as { actions?: Array<{ action_id?: string; route_target_declared?: boolean }>; blockers?: string[]; warnings?: string[] };
   const formContracts = input.frontendContract.formContracts as { forms?: Array<{ form_id?: string; fields?: unknown[] }>; blockers?: string[]; warnings?: string[] };
+  const verificationContracts = input.frontendContract.verificationContracts as {
+    test_suites?: Array<{ tests?: unknown[] }>;
+    coverage?: { test_count?: number; screens?: number };
+    blockers?: string[];
+    warnings?: string[];
+  };
   const tokenContracts = input.designSystem.tokenContracts as {
     layers?: Record<string, unknown>;
     usage_map?: Record<string, unknown>;
@@ -167,6 +173,10 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   checks.push(check("forms.contracts.present", Array.isArray(formContracts.forms) && formContracts.forms.length > 0, "Form contracts exist for create, update, or settings flows."));
   checks.push(check("forms.contracts.no_blockers", (formContracts.blockers ?? []).length === 0, "Form contracts have no blockers."));
   checks.push(check("forms.contracts.fields", (formContracts.forms ?? []).every((form) => Array.isArray(form.fields) && form.fields.length > 0), "Every form contract declares fields."));
+  checks.push(check("verification.contracts.present", Array.isArray(verificationContracts.test_suites) && verificationContracts.test_suites.length >= 4, "Verification contracts declare required test suites."));
+  checks.push(check("verification.contracts.no_blockers", (verificationContracts.blockers ?? []).length === 0, "Verification contracts have no blockers."));
+  checks.push(check("verification.contracts.tests", (verificationContracts.coverage?.test_count ?? 0) > screenCount, "Verification contracts include screen, state, design-system, data, action, form, and accessibility tests."));
+  checks.push(check("verification.contracts.screens", verificationContracts.coverage?.screens === screenCount, "Verification contracts cover every screen."));
   checks.push(check("accessibility.rules.present", Object.keys(input.designSystem.accessibilityRules).length > 0, "Accessibility rules exist."));
   checks.push(check("tokens.contracts.present", Object.keys(tokenContracts.layers ?? {}).length >= 4, "Token contracts declare primitive, semantic, component, and typography layers."));
   checks.push(check("tokens.contracts.no_blockers", (tokenContracts.blockers ?? []).length === 0, "Token contracts have no blockers."));
@@ -210,6 +220,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   validateRequiredFields(checks, "data-operation-contracts.schema.json", input.schemas.schemas["data-operation-contracts.schema.json"], input.frontendContract.dataOperationContracts, "data-operation-contracts");
   validateRequiredFields(checks, "action-contracts.schema.json", input.schemas.schemas["action-contracts.schema.json"], input.frontendContract.actionContracts, "action-contracts");
   validateRequiredFields(checks, "form-contracts.schema.json", input.schemas.schemas["form-contracts.schema.json"], input.frontendContract.formContracts, "form-contracts");
+  validateRequiredFields(checks, "verification-contracts.schema.json", input.schemas.schemas["verification-contracts.schema.json"], input.frontendContract.verificationContracts, "verification-contracts");
   validateRequiredFields(checks, "token-contracts.schema.json", input.schemas.schemas["token-contracts.schema.json"], input.designSystem.tokenContracts, "token-contracts");
   validateRequiredFields(checks, "typography-system.schema.json", input.schemas.schemas["typography-system.schema.json"], input.designSystem.typographySystem, "typography-system");
   validateRequiredFields(checks, "frontend-build-manifest.schema.json", input.schemas.schemas["frontend-build-manifest.schema.json"], input.frontendContract.buildManifest, "frontend-build-manifest");
@@ -283,6 +294,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   warnings.push(...((dataOperationContracts.warnings ?? []).map((warning) => `Data operations: ${warning}`)));
   warnings.push(...((actionContracts.warnings ?? []).map((warning) => `Action contracts: ${warning}`)));
   warnings.push(...((formContracts.warnings ?? []).map((warning) => `Form contracts: ${warning}`)));
+  warnings.push(...((verificationContracts.warnings ?? []).map((warning) => `Verification contracts: ${warning}`)));
   warnings.push(...((tokenContracts.warnings ?? []).map((warning) => `Token contracts: ${warning}`)));
   warnings.push(...((typographySystem.warnings ?? []).map((warning) => `Typography system: ${warning}`)));
   warnings.push(...input.ingestion.safetyFindings.filter((finding) => finding.severity !== "blocker").map((finding) => `Safety ${finding.severity}: ${finding.finding} (${finding.source_id})`));
@@ -302,7 +314,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     screen_spec_completeness: input.experience.screenSpecs.every((screen) => requiredStates.every((state) => Object.prototype.hasOwnProperty.call(screen.states, state))) && input.experience.uxFlowStateCompleteness.summary.incomplete_screens === 0 ? 15 : 8,
     design_system_coherence: Array.isArray(componentRegistry.components) && Array.isArray(patternRegistry.patterns) && (componentContracts.blockers ?? []).length === 0 && (patternContracts.blockers ?? []).length === 0 && (tokenContracts.blockers ?? []).length === 0 && (typographySystem.blockers ?? []).length === 0 && input.dsag.integrity.status !== "fail" ? 15 : 0,
     accessibility_coverage: Object.keys(input.designSystem.accessibilityRules).length > 0 ? 15 : 0,
-    frontend_contract_quality: input.frontendContract.frontendAgentInstructions.length > 0 && !!dataContracts.entities && (dataOperationContracts.blockers ?? []).length === 0 && (actionContracts.blockers ?? []).length === 0 && (formContracts.blockers ?? []).length === 0 && input.buildSimulation.status !== "fail" ? 15 : 0,
+    frontend_contract_quality: input.frontendContract.frontendAgentInstructions.length > 0 && !!dataContracts.entities && (dataOperationContracts.blockers ?? []).length === 0 && (actionContracts.blockers ?? []).length === 0 && (formContracts.blockers ?? []).length === 0 && (verificationContracts.blockers ?? []).length === 0 && input.buildSimulation.status !== "fail" ? 15 : 0,
     evidence_traceability: input.evidence.decisions.length > 0 ? 10 : 0
   };
 
@@ -362,6 +374,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
       `Data operation queries: ${dataOperationContracts.queries?.length ?? 0}`,
       `Action contracts: ${actionContracts.actions?.length ?? 0}`,
       `Form contracts: ${formContracts.forms?.length ?? 0}`,
+      `Verification tests: ${verificationContracts.coverage?.test_count ?? 0}`,
       `Token contract layers: ${Object.keys(tokenContracts.layers ?? {}).length}`,
       `Typography roles: ${Object.keys(typographySystem.type_roles ?? {}).length}`,
       `DSAG nodes: ${input.dsag.nodes.length}`,

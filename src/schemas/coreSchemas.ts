@@ -108,6 +108,11 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Form Contracts",
       ["contract_version", "forms", "blockers", "warnings", "evidence_refs"]
     ),
+    "verification-contracts.schema.json": objectSchema(
+      "verification-contracts.schema.json",
+      "Verification Contracts",
+      ["contract_version", "test_suites", "coverage", "blockers", "warnings", "evidence_refs"]
+    ),
     "token-contracts.schema.json": objectSchema(
       "token-contracts.schema.json",
       "Token Contracts",
@@ -156,6 +161,7 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "06-frontend-agent-contract/data-operation-contracts.json", schema_file: "data-operation-contracts.schema.json", description: "Query and mutation behavior contracts." },
       { artifact: "06-frontend-agent-contract/action-contracts.json", schema_file: "action-contracts.schema.json", description: "Screen action precondition, permission, and result contracts." },
       { artifact: "06-frontend-agent-contract/form-contracts.json", schema_file: "form-contracts.schema.json", description: "Form field, validation, and submission contracts." },
+      { artifact: "06-frontend-agent-contract/verification-contracts.json", schema_file: "verification-contracts.schema.json", description: "Deterministic acceptance and implementation proof contract." },
       { artifact: "04-design-system/tokens/token-contracts.json", schema_file: "token-contracts.schema.json", description: "Deterministic token layer and usage contract." },
       { artifact: "04-design-system/tokens/typography-system.json", schema_file: "typography-system.schema.json", description: "Typography roles, scale, and CSS contract." },
       { artifact: "06-frontend-agent-contract/build-manifest.json", schema_file: "frontend-build-manifest.schema.json", description: "Frontend build manifest schema." },

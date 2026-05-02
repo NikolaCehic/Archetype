@@ -26,6 +26,7 @@ const ARTIFACTS = {
   dataOperationContracts: "06-frontend-agent-contract/data-operation-contracts.json",
   actionContracts: "06-frontend-agent-contract/action-contracts.json",
   formContracts: "06-frontend-agent-contract/form-contracts.json",
+  verificationContracts: "06-frontend-agent-contract/verification-contracts.json",
   frontendContract: "06-frontend-agent-contract",
   dsag: "03-experience-architecture/dsag.json",
   readiness: "00-manifest/implementation-readiness.json"
@@ -64,6 +65,8 @@ export function buildRevisionArtifacts(input: {
       { from: "dataOperationContracts", to: "frontendContract", reason: "Frontend build needs query and mutation behavior." },
       { from: "actionContracts", to: "frontendContract", reason: "Frontend build needs action preconditions and results." },
       { from: "formContracts", to: "frontendContract", reason: "Frontend build needs form validation behavior." },
+      { from: "frontendContract", to: "verificationContracts", reason: "Verification contracts prove the frontend contract was implemented." },
+      { from: "verificationContracts", to: "readiness", reason: "Readiness depends on implementation proof coverage." },
       { from: "frontendContract", to: "dsag", reason: "DSAG validates implementation graph coherence." },
       { from: "dsag", to: "readiness", reason: "Readiness depends on graph integrity." }
     ]
@@ -88,7 +91,7 @@ export function buildRevisionArtifacts(input: {
       },
       {
         trigger: "screen_spec_changed",
-        invalidates: ["componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "dataOperationContracts", "actionContracts", "formContracts", "frontendContract", "dsag", "readiness"],
+        invalidates: ["componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "dataOperationContracts", "actionContracts", "formContracts", "frontendContract", "verificationContracts", "dsag", "readiness"],
         reason: "Screen composition determines system and contract requirements."
       },
       {
@@ -108,7 +111,7 @@ export function buildRevisionArtifacts(input: {
       },
       {
         trigger: "data_contract_changed",
-        invalidates: ["screenSpecs", "dataOperationContracts", "actionContracts", "formContracts", "frontendContract", "dsag", "readiness"],
+        invalidates: ["screenSpecs", "dataOperationContracts", "actionContracts", "formContracts", "frontendContract", "verificationContracts", "dsag", "readiness"],
         reason: "Data shape changes affect UI states, fixtures, and build expectations."
       },
       {
@@ -156,7 +159,7 @@ export function buildRevisionArtifacts(input: {
       {
         id: "gate_frontend_contract",
         label: "Frontend Contract Approval",
-        required_artifacts: [ARTIFACTS.frontendContract, ARTIFACTS.dataContracts, ARTIFACTS.dataOperationContracts, ARTIFACTS.actionContracts, ARTIFACTS.formContracts],
+        required_artifacts: [ARTIFACTS.frontendContract, ARTIFACTS.dataContracts, ARTIFACTS.dataOperationContracts, ARTIFACTS.actionContracts, ARTIFACTS.formContracts, ARTIFACTS.verificationContracts],
         approval_state: "pending_human_review"
       },
       {

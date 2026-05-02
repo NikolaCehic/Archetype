@@ -173,6 +173,8 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeJson(outDir, "06-frontend-agent-contract/data-operation-contracts.json", pkg.frontendContract.dataOperationContracts);
   writeJson(outDir, "06-frontend-agent-contract/action-contracts.json", pkg.frontendContract.actionContracts);
   writeJson(outDir, "06-frontend-agent-contract/form-contracts.json", pkg.frontendContract.formContracts);
+  writeJson(outDir, "06-frontend-agent-contract/verification-contracts.json", pkg.frontendContract.verificationContracts);
+  writeText(outDir, "06-frontend-agent-contract/verification-plan.md", pkg.frontendContract.verificationPlan);
   writeJson(outDir, "06-frontend-agent-contract/routing-contract.json", pkg.frontendContract.routingContract);
   writeJson(outDir, "06-frontend-agent-contract/acceptance-criteria.json", pkg.frontendContract.acceptanceCriteria);
   writeJson(outDir, "06-frontend-agent-contract/fixture-data.json", pkg.frontendContract.fixtureData);
