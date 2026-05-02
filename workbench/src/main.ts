@@ -291,6 +291,7 @@ const state: {
   workspaceSortDirection: WorkspaceSortDirection;
   workspaceInspectId: string;
   workspaceInspectBundle: Bundle | null;
+  workspaceNameDraft: string;
   workspaceTagDraft: string;
   workspaceNoteDraft: string;
   workspaceImportPreview: WorkspaceExport | null;
@@ -337,6 +338,7 @@ const state: {
   workspaceSortDirection: "desc",
   workspaceInspectId: "",
   workspaceInspectBundle: null,
+  workspaceNameDraft: "",
   workspaceTagDraft: "",
   workspaceNoteDraft: "",
   workspaceImportPreview: null,
@@ -689,6 +691,7 @@ function renderWorkspaceInspection(entry: WorkspaceEntry | undefined, bundle: Bu
       })}
     </div>
     <div class="form-grid" style="margin-top:10px">
+      ${inputField("workspace-name", state.workspaceNameDraft, "Package name")}
       ${inputField("workspace-tags", state.workspaceTagDraft, "Tags")}
       ${textArea("workspace-notes", state.workspaceNoteDraft, "Notes", "textarea short")}
     </div>
@@ -703,7 +706,7 @@ function renderWorkspaceInspection(entry: WorkspaceEntry | undefined, bundle: Bu
       </div>
     </div>
     <div class="control-row">
-      <button class="button primary" id="save-workspace-metadata" type="button">Save notes</button>
+      <button class="button primary" id="save-workspace-metadata" type="button">Save details</button>
       <button class="button" data-workspace-load="${esc(entry.id)}" type="button">Load package</button>
       <button class="button" data-workspace-duplicate="${esc(entry.id)}" type="button">Duplicate</button>
       <button class="button" data-workspace-compare-select="${esc(entry.id)}" data-workspace-compare-role="base" type="button">Use as base</button>
@@ -1030,12 +1033,13 @@ async function importWorkspaceRecords(records: Array<{ entry: WorkspaceEntry; bu
   }
 }
 
-async function updateWorkspaceBundleMetadata(id: string, tags: string[], notes: string): Promise<WorkspaceEntry | null> {
+async function updateWorkspaceBundleMetadata(id: string, name: string, tags: string[], notes: string): Promise<WorkspaceEntry | null> {
   const record = await loadWorkspaceBundle(id);
   if (!record) return null;
   const db = await openWorkspaceDb();
   const entry: WorkspaceEntry = {
     ...record.entry,
+    name,
     tags,
     notes,
     updatedAt: new Date().toISOString()
@@ -1195,6 +1199,7 @@ async function refreshWorkspaceEntries(): Promise<void> {
     if (state.workspaceInspectId && !state.workspaceEntries.some((entry) => entry.id === state.workspaceInspectId)) {
       state.workspaceInspectId = "";
       state.workspaceInspectBundle = null;
+      state.workspaceNameDraft = "";
       state.workspaceTagDraft = "";
       state.workspaceNoteDraft = "";
     }
@@ -2936,6 +2941,7 @@ function bindEvents(): void {
       if (!record) {
         state.workspaceInspectId = "";
         state.workspaceInspectBundle = null;
+        state.workspaceNameDraft = "";
         state.workspaceTagDraft = "";
         state.workspaceNoteDraft = "";
         state.workspaceMessage = "Saved package not found.";
@@ -2944,6 +2950,7 @@ function bindEvents(): void {
       }
       state.workspaceInspectId = record.entry.id;
       state.workspaceInspectBundle = record.bundle;
+      state.workspaceNameDraft = record.entry.name;
       state.workspaceTagDraft = (record.entry.tags ?? []).join(", ");
       state.workspaceNoteDraft = record.entry.notes ?? "";
       state.workspaceMessage = `Inspecting ${record.entry.name}.`;
@@ -2964,12 +2971,16 @@ function bindEvents(): void {
       state.workspaceInspectId = entry.id;
       const record = await loadWorkspaceBundle(entry.id);
       state.workspaceInspectBundle = record?.bundle ?? null;
+      state.workspaceNameDraft = entry.name;
       state.workspaceTagDraft = (entry.tags ?? []).join(", ");
       state.workspaceNoteDraft = entry.notes ?? "";
       state.workspacePackageView = "active";
       state.workspaceMessage = `Duplicated ${entry.name}.`;
       render();
     });
+  });
+  document.querySelector<HTMLInputElement>("#workspace-name")?.addEventListener("input", (event) => {
+    state.workspaceNameDraft = (event.target as HTMLInputElement).value;
   });
   document.querySelector<HTMLInputElement>("#workspace-tags")?.addEventListener("input", (event) => {
     state.workspaceTagDraft = (event.target as HTMLInputElement).value;
@@ -2979,18 +2990,28 @@ function bindEvents(): void {
   });
   document.querySelector<HTMLButtonElement>("#save-workspace-metadata")?.addEventListener("click", async () => {
     if (!state.workspaceInspectId) return;
+    const name = state.workspaceNameDraft.trim();
+    if (!name) {
+      state.workspaceMessage = "Package name is required.";
+      render();
+      return;
+    }
     const tags = normalizeWorkspaceTags(state.workspaceTagDraft);
     const notes = state.workspaceNoteDraft.trim();
-    const entry = await updateWorkspaceBundleMetadata(state.workspaceInspectId, tags, notes);
+    const entry = await updateWorkspaceBundleMetadata(state.workspaceInspectId, name, tags, notes);
     if (!entry) {
       state.workspaceMessage = "Saved package not found.";
       render();
       return;
     }
+    state.workspaceNameDraft = name;
     state.workspaceTagDraft = tags.join(", ");
     state.workspaceNoteDraft = notes;
+    if (state.bundle && state.workspaceInspectId === workspaceIdForBundle(state.bundle)) {
+      state.packageName = name;
+    }
     await refreshWorkspaceEntries();
-    state.workspaceMessage = `Saved notes for ${entry.name}.`;
+    state.workspaceMessage = `Saved details for ${entry.name}.`;
     render();
   });
   document.querySelectorAll<HTMLButtonElement>("[data-workspace-compare-select]").forEach((button) => {
@@ -3011,6 +3032,7 @@ function bindEvents(): void {
   document.querySelector<HTMLButtonElement>("#clear-workspace-inspection")?.addEventListener("click", () => {
     state.workspaceInspectId = "";
     state.workspaceInspectBundle = null;
+    state.workspaceNameDraft = "";
     state.workspaceTagDraft = "";
     state.workspaceNoteDraft = "";
     state.workspaceMessage = "Package details cleared.";
@@ -3064,6 +3086,7 @@ function bindEvents(): void {
       if (state.workspaceInspectId === id) {
         state.workspaceInspectId = "";
         state.workspaceInspectBundle = null;
+        state.workspaceNameDraft = "";
         state.workspaceTagDraft = "";
         state.workspaceNoteDraft = "";
       }

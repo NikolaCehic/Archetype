@@ -968,3 +968,31 @@ Verification:
 Next phase:
 
 - Workbench package rename controls.
+
+## Completed Phase: Workbench Package Rename Controls
+
+Status: complete
+
+Implemented:
+
+- Workspace package rename draft state.
+- Package name editor in the package details panel.
+- Required-name validation before saving package details.
+- Unified save action for package name, tags, and notes.
+- Renamed package names persist in IndexedDB workspace records.
+- Renamed package names are preserved through workspace export/import.
+- Active package display name syncs when the active saved package is renamed.
+- Rename draft cleanup when inspection is cleared, deleted, or no longer present after refresh.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench package pinning and priority controls.
