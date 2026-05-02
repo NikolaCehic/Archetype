@@ -815,9 +815,10 @@ function renderWorkspaceHealth(entries: WorkspaceEntry[]): string {
       <div><strong>${esc(health.missingNotesCount)}</strong><span>missing notes</span></div>
     </div>
     <div style="margin-top:10px">
-      ${filteredReviewQueue.length ? table(["Package", "Signals"], filteredReviewQueue.slice(0, 10).map((entry) => [
+      ${filteredReviewQueue.length ? table(["Package", "Signals", "Actions"], filteredReviewQueue.slice(0, 10).map((entry) => [
         `<div><strong>${esc(entry.name)}</strong><div class="muted">${esc(entry.projectSlug)}</div></div>`,
-        entry.signals.map((signal) => badge(signal, signal === "hold" || signal === "high" ? "danger" : signal === "pinned" ? "success" : "warning")).join(" ")
+        entry.signals.map((signal) => badge(signal, signal === "hold" || signal === "high" ? "danger" : signal === "pinned" ? "success" : "warning")).join(" "),
+        `<div class="control-row compact"><button class="button small" data-workspace-inspect="${esc(entry.id)}" type="button">Inspect</button><button class="button small" data-workspace-pin="${esc(entry.id)}" data-workspace-pinned="${entry.pinned ? "false" : "true"}" type="button">${entry.pinned ? "Unpin" : "Pin"}</button><button class="button small" data-workspace-priority="${esc(entry.id)}" data-workspace-priority-value="${entry.priority === "high" ? "medium" : "high"}" type="button">${entry.priority === "high" ? "Set medium" : "Set high"}</button></div>`
       ])) : `<div class="empty">${health.reviewQueue.length ? "No packages match this health filter." : "Workspace package metadata is complete."}</div>`}
     </div>
     <div class="control-row">
@@ -3399,6 +3400,29 @@ function bindEvents(): void {
       }
       recordWorkspaceActivity(entry.pinned ? "pin" : "unpin", `${entry.pinned ? "Pinned" : "Unpinned"} ${entry.name}.`, entry.id);
       state.workspaceMessage = `${entry.pinned ? "Pinned" : "Unpinned"} ${entry.name}.`;
+      render();
+    });
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-workspace-priority]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.workspacePriority;
+      if (!id) return;
+      const priority = workspacePriorityFromValue(button.dataset.workspacePriorityValue ?? "medium");
+      const entry = await setWorkspaceBundlePriority(id, priority);
+      if (!entry) {
+        state.workspaceMessage = "Saved package not found.";
+        render();
+        return;
+      }
+      await refreshWorkspaceEntries();
+      if (state.workspaceInspectId === entry.id) {
+        state.workspaceNameDraft = entry.name;
+        state.workspacePriorityDraft = entry.priority ?? "medium";
+        state.workspaceTagDraft = (entry.tags ?? []).join(", ");
+        state.workspaceNoteDraft = entry.notes ?? "";
+      }
+      recordWorkspaceActivity("priority", `Set ${entry.name} priority to ${priority}.`, entry.id);
+      state.workspaceMessage = `Set ${entry.name} priority to ${priority}.`;
       render();
     });
   });

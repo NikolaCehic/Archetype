@@ -1162,3 +1162,29 @@ Verification:
 Next phase:
 
 - Workbench workspace health actions.
+
+## Completed Phase: Workbench Workspace Health Actions
+
+Status: complete
+
+Implemented:
+
+- Health review queue action column.
+- Inspect action from health queue rows.
+- Pin and unpin action from health queue rows.
+- High/medium priority toggle from health queue rows.
+- Health queue priority action activity log entries.
+- Health queue actions refresh workspace entries and inspected package draft state.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench workspace saved views.
