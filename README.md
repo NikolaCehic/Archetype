@@ -23,6 +23,10 @@ Implemented:
 - Readiness score.
 - Package exporter.
 - CLI runner.
+- CI validation and frontend build simulation.
+- Browser workbench for package review.
+- Workbench generation draft controls.
+- Workbench approval gate controls.
 
 ## Run
 
@@ -74,6 +78,8 @@ Run the browser workbench:
 npm run workbench:dev
 ```
 
+The workbench can review generated packages, import an exported package folder, prepare an intake JSON draft, copy a matching CLI command, and track local approval gate decisions.
+
 Run all checks:
 
 ```bash
@@ -108,4 +114,4 @@ node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archety
 
 ## Next Implementation Target
 
-The next pass should add the DSAG graph engine and schema files, then wire graph validation into readiness scoring.
+The next pass should add workbench artifact diffing and revision impact review.

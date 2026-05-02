@@ -277,3 +277,32 @@ Verification:
 Next phase:
 
 - Workbench package generation controls and approval gate interactions.
+
+## Completed Phase: Workbench Package Generation Controls and Approval Gates
+
+Status: complete
+
+Implemented:
+
+- Workbench generation draft view.
+- Current-package-to-intake seed generation.
+- Intake JSON validation controls.
+- Intake JSON download action.
+- CLI generation command preview and clipboard action.
+- Package-specific local approval gate overrides.
+- Approval notes for gate actions.
+- Approval reset controls.
+- Package load and import state reset behavior.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench artifact diffing and revision impact review.

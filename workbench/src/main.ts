@@ -2,6 +2,7 @@ import "./styles.css";
 
 type ViewId =
   | "overview"
+  | "generation"
   | "evidence"
   | "architecture"
   | "dsag"
@@ -60,8 +61,15 @@ interface Bundle {
   screens: Array<{ path: string; name: string; content: string }>;
 }
 
+interface ApprovalOverride {
+  state: "pending_human_review" | "approved" | "changes_requested" | "blocked";
+  note: string;
+  updatedAt: string;
+}
+
 const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => number | string }> = [
   { id: "overview", label: "Overview", count: (bundle) => bundle.readiness.score },
+  { id: "generation", label: "Generate", count: () => "draft" },
   { id: "evidence", label: "Evidence", count: (bundle) => bundle.evidence.sources?.length ?? 0 },
   { id: "architecture", label: "Architecture", count: (bundle) => bundle.routeMap.routes.length },
   { id: "dsag", label: "DSAG", count: (bundle) => bundle.dsag.integrity.status },
@@ -78,12 +86,20 @@ const state: {
   selectedScreen: string | null;
   screenFilter: string;
   packageName: string;
+  generationDraft: string;
+  generationMessage: string;
+  approvalOverrides: Record<string, ApprovalOverride>;
+  activeGateNote: string;
 } = {
   bundle: null,
   view: "overview",
   selectedScreen: null,
   screenFilter: "",
-  packageName: "sample-package"
+  packageName: "sample-package",
+  generationDraft: "",
+  generationMessage: "",
+  approvalOverrides: {},
+  activeGateNote: ""
 };
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -141,6 +157,15 @@ function code(value: unknown): string {
   return `<pre class="code">${esc(typeof value === "string" ? value : pretty(value))}</pre>`;
 }
 
+function textArea(id: string, value: string, label: string): string {
+  return `
+    <label class="field">
+      <span>${esc(label)}</span>
+      <textarea id="${esc(id)}" class="textarea" spellcheck="false">${esc(value)}</textarea>
+    </label>
+  `;
+}
+
 function metric(label: string, value: unknown, tone: "success" | "warning" | "danger" | "neutral" = "neutral"): string {
   return `
     <section class="panel">
@@ -180,6 +205,102 @@ function renderOverview(bundle: Bundle): string {
 function list(items: unknown[]): string {
   if (!items || items.length === 0) return `<div class="empty">None.</div>`;
   return `<div class="list">${items.map((item) => `<div class="list-button">${esc(typeof item === "string" ? item : JSON.stringify(item))}</div>`).join("")}</div>`;
+}
+
+function defaultIntakeFromBundle(bundle: Bundle): Record<string, unknown> {
+  return {
+    projectName: bundle.productModel.product_name ?? "Archetype Project",
+    context: `${bundle.productModel.product_type ?? "Product"}: ${bundle.productModel.primary_goal ?? "Generate product architecture."}`,
+    goals: (bundle.productModel.core_jobs ?? []).map((job: any) => job.job).filter(Boolean),
+    businessGoals: bundle.productModel.business_goals ?? [],
+    users: bundle.productModel.primary_users ?? [],
+    brand: {
+      attributes: ["clear", "precise", "trustworthy"],
+      primaryColor: "#2563EB",
+      tone: "Clear, direct, and low-hype."
+    },
+    operatingMode: bundle.manifest.operating_mode ?? "full_architecture"
+  };
+}
+
+function ensureGenerationDraft(bundle: Bundle): string {
+  if (!state.generationDraft) {
+    state.generationDraft = pretty(defaultIntakeFromBundle(bundle));
+  }
+  return state.generationDraft;
+}
+
+function intakeFileName(value: Record<string, unknown>): string {
+  const projectName = String(value.projectName ?? "custom-project");
+  return `${projectName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "custom-project"}-intake.json`;
+}
+
+function parseGenerationDraft(): { ok: true; value: Record<string, unknown> } | { ok: false; error: string } {
+  try {
+    const value = JSON.parse(state.generationDraft);
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return { ok: false, error: "Draft must be a JSON object." };
+    }
+    const record = value as Record<string, unknown>;
+    if (typeof record.context !== "string" || record.context.trim().length === 0) {
+      return { ok: false, error: "Draft requires a non-empty context field." };
+    }
+    return { ok: true, value: record };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Invalid JSON." };
+  }
+}
+
+async function copyTextToClipboard(value: string): Promise<void> {
+  if (navigator.clipboard) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+  const text = document.createElement("textarea");
+  text.value = value;
+  text.style.position = "fixed";
+  text.style.left = "-9999px";
+  document.body.appendChild(text);
+  text.focus();
+  text.select();
+  document.execCommand("copy");
+  text.remove();
+}
+
+function renderGeneration(bundle: Bundle): string {
+  const draft = ensureGenerationDraft(bundle);
+  const parsed = parseGenerationDraft();
+  const fileName = parsed.ok ? intakeFileName(parsed.value) : "custom-project-intake.json";
+  const command = `node dist/cli.js generate --input examples/${fileName} --out tmp/${fileName.replace("-intake.json", "-output")}`;
+  return `
+    <div class="grid cols-2">
+      ${panel("Generation Draft", `
+        ${textArea("generation-draft", draft, "Intake JSON")}
+        <div class="control-row">
+          <button class="button primary" id="validate-draft" type="button">Validate draft</button>
+          <button class="button" id="reset-draft" type="button">Use current package</button>
+          <button class="button" id="download-draft" type="button">Download intake</button>
+        </div>
+        ${state.generationMessage ? `<div class="notice">${esc(state.generationMessage)}</div>` : ""}
+      `)}
+      ${panel("Run Command", `
+        ${parsed.ok ? badge("draft valid", "success") : badge("draft invalid", "danger")}
+        <div style="height:10px"></div>
+        ${parsed.ok ? code(command) : `<div class="empty">${esc(parsed.error)}</div>`}
+        <div class="control-row">
+          <button class="button" id="copy-command" type="button" ${parsed.ok ? "" : "disabled"}>Copy command</button>
+        </div>
+      `)}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Generation Contract", code({
+        required: ["context"],
+        recommended: ["projectName", "goals", "businessGoals", "users", "brand", "operatingMode"],
+        supportedModes: ["fast_architecture", "full_architecture", "existing_product_audit", "contract_repair"]
+      }))}
+      ${panel("Current Package Seed", code(defaultIntakeFromBundle(bundle)))}
+    </div>
+  `;
 }
 
 function renderEvidence(bundle: Bundle): string {
@@ -319,13 +440,37 @@ function renderSimulation(bundle: Bundle): string {
 }
 
 function renderRevision(bundle: Bundle): string {
+  const gates = bundle.revision.approvalGates?.gates ?? [];
   return `
     <div class="grid cols-2">
-      ${panel("Approval Gates", table(["Gate", "State", "Artifacts"], (bundle.revision.approvalGates?.gates ?? []).map((gate: any) => [
-        esc(gate.label),
-        badge(gate.approval_state, "warning"),
-        esc((gate.required_artifacts ?? []).join(", "))
-      ])))}
+      ${panel("Approval Gates", `
+        <div class="list">
+          ${gates.map((gate: any) => {
+            const override = state.approvalOverrides[gate.id];
+            const approvalState = override?.state ?? gate.approval_state;
+            return `
+              <div class="gate-row">
+                <div>
+                  <h3>${esc(gate.label)}</h3>
+                  <div class="muted">${esc((gate.required_artifacts ?? []).join(", "))}</div>
+                  ${override?.note ? `<div class="gate-note">${esc(override.note)}</div>` : ""}
+                </div>
+                <div class="gate-actions">
+                  ${badge(approvalState, approvalState === "approved" ? "success" : approvalState === "blocked" ? "danger" : "warning")}
+                  <button class="button small" data-gate="${esc(gate.id)}" data-approval-state="approved" type="button">Approve</button>
+                  <button class="button small" data-gate="${esc(gate.id)}" data-approval-state="changes_requested" type="button">Request changes</button>
+                  <button class="button small" data-gate="${esc(gate.id)}" data-approval-state="blocked" type="button">Block</button>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+        <div style="height:10px"></div>
+        ${textArea("gate-note", state.activeGateNote, "Approval note for the next gate action")}
+        <div class="control-row">
+          <button class="button" id="reset-gates" type="button">Reset local gate states</button>
+        </div>
+      `)}
       ${panel("Initial Change Set", code(bundle.revision.initialChangeSet))}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
@@ -339,6 +484,8 @@ function renderContent(bundle: Bundle): string {
   switch (state.view) {
     case "overview":
       return renderOverview(bundle);
+    case "generation":
+      return renderGeneration(bundle);
     case "evidence":
       return renderEvidence(bundle);
     case "architecture":
@@ -429,6 +576,68 @@ function bindEvents(): void {
     state.selectedScreen = null;
     render();
   });
+  document.querySelector<HTMLTextAreaElement>("#generation-draft")?.addEventListener("input", (event) => {
+    state.generationDraft = (event.target as HTMLTextAreaElement).value;
+  });
+  document.querySelector<HTMLButtonElement>("#validate-draft")?.addEventListener("click", () => {
+    const parsed = parseGenerationDraft();
+    state.generationMessage = parsed.ok ? "Draft is valid JSON and includes context." : parsed.error;
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#reset-draft")?.addEventListener("click", () => {
+    if (state.bundle) state.generationDraft = pretty(defaultIntakeFromBundle(state.bundle));
+    state.generationMessage = "Draft reset from the current package.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#download-draft")?.addEventListener("click", () => {
+    const parsed = parseGenerationDraft();
+    if (!parsed.ok) {
+      state.generationMessage = parsed.error;
+      render();
+      return;
+    }
+    const fileName = intakeFileName(parsed.value);
+    const blob = new Blob([`${pretty(parsed.value)}\n`], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    state.generationMessage = `Prepared ${fileName}.`;
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#copy-command")?.addEventListener("click", async () => {
+    const parsed = parseGenerationDraft();
+    if (!parsed.ok) return;
+    const fileName = intakeFileName(parsed.value);
+    const command = `node dist/cli.js generate --input examples/${fileName} --out tmp/${fileName.replace("-intake.json", "-output")}`;
+    await copyTextToClipboard(command);
+    state.generationMessage = "Command copied.";
+    render();
+  });
+  document.querySelector<HTMLTextAreaElement>("#gate-note")?.addEventListener("input", (event) => {
+    state.activeGateNote = (event.target as HTMLTextAreaElement).value;
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-gate]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const gateId = button.dataset.gate;
+      const approvalState = button.dataset.approvalState as ApprovalOverride["state"] | undefined;
+      if (!gateId || !approvalState) return;
+      state.approvalOverrides[gateId] = {
+        state: approvalState,
+        note: state.activeGateNote.trim(),
+        updatedAt: new Date().toISOString()
+      };
+      saveApprovalOverrides();
+      render();
+    });
+  });
+  document.querySelector<HTMLButtonElement>("#reset-gates")?.addEventListener("click", () => {
+    state.approvalOverrides = {};
+    state.activeGateNote = "";
+    saveApprovalOverrides();
+    render();
+  });
   document.querySelector<HTMLButtonElement>("#load-sample")?.addEventListener("click", () => loadSample());
   document.querySelector<HTMLButtonElement>("#import-folder")?.addEventListener("click", () => {
     document.querySelector<HTMLInputElement>("#folder-input")?.click();
@@ -440,6 +649,10 @@ function bindEvents(): void {
       state.packageName = input.files[0]?.webkitRelativePath?.split("/")[0] || "imported-package";
       state.view = "overview";
       state.selectedScreen = null;
+      state.generationDraft = "";
+      state.generationMessage = "";
+      state.activeGateNote = "";
+      loadApprovalOverrides();
       render();
     }
   });
@@ -449,8 +662,29 @@ async function loadSample(): Promise<void> {
   const response = await fetch("/sample-package.json");
   state.bundle = await response.json() as Bundle;
   state.packageName = "sample-package";
+  loadApprovalOverrides();
   state.selectedScreen = null;
+  state.generationDraft = "";
+  state.generationMessage = "";
+  state.activeGateNote = "";
   render();
+}
+
+function approvalStorageKey(): string {
+  const slug = state.bundle?.manifest.project_slug ?? state.packageName;
+  return `archetype:approval:${slug}`;
+}
+
+function loadApprovalOverrides(): void {
+  try {
+    state.approvalOverrides = JSON.parse(localStorage.getItem(approvalStorageKey()) ?? "{}");
+  } catch {
+    state.approvalOverrides = {};
+  }
+}
+
+function saveApprovalOverrides(): void {
+  localStorage.setItem(approvalStorageKey(), JSON.stringify(state.approvalOverrides));
 }
 
 async function readFile(file: File): Promise<string> {
