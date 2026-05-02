@@ -38,6 +38,11 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Evidence Ledger",
       ["project_id", "ledger_version", "sources", "known_facts", "observations", "inferences", "assumptions", "conflicts", "missing_information", "risks", "decisions"]
     ),
+    "visual-evidence-extraction.schema.json": objectSchema(
+      "visual-evidence-extraction.schema.json",
+      "Visual Evidence Extraction",
+      ["extraction_version", "source_count", "sources", "aggregate"]
+    ),
     "product-model.schema.json": objectSchema(
       "product-model.schema.json",
       "Product Model",
@@ -97,6 +102,7 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "input", schema_file: "archetype-intake.schema.json", description: "Structured project intake accepted by the compiler." },
       { artifact: "00-manifest/manifest.json", schema_file: "manifest.schema.json", description: "Export package manifest." },
       { artifact: "01-evidence/evidence-ledger.json", schema_file: "evidence-ledger.schema.json", description: "Evidence Ledger contract." },
+      { artifact: "01-evidence/visual-evidence-extraction.json", schema_file: "visual-evidence-extraction.schema.json", description: "Visual evidence extraction contract." },
       { artifact: "02-product-model/product-model.json", schema_file: "product-model.schema.json", description: "Product model contract." },
       { artifact: "03-experience-architecture/route-map.json", schema_file: "route-map.schema.json", description: "Route map contract." },
       { artifact: "03-experience-architecture/screen-inventory.json", schema_file: "screen-inventory.schema.json", description: "Screen inventory contract." },

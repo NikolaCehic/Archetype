@@ -30,6 +30,7 @@ export function buildEvidenceLedger(input: ArchetypeInput, profile: DomainProfil
   const routeDecisionRefs = [
     ...new Set(profile.routes.flatMap((route) => route.evidence_refs).filter((ref) => ref.startsWith("decision_")))
   ];
+  const visualObservationRefs = ingestion.visualEvidence.sources.flatMap((source) => source.evidence_refs);
 
   return {
     project_id: projectId,
@@ -49,15 +50,13 @@ export function buildEvidenceLedger(input: ArchetypeInput, profile: DomainProfil
         source_refs: ["source_user_goals"]
       }))
     ],
-    observations: sources
-      .filter((source) => source.source_type === "image_reference")
-      .map((source) => ({
-        id: stableId("observation", source.source_id),
-        claim: `Reference ${source.source_label} suggests ${source.observations.join(" ")}`,
-        confidence: source.confidence,
-        reason: "Reference materials are useful design evidence but must not be copied directly.",
-        source_refs: [source.source_id]
-      })),
+    observations: ingestion.visualEvidence.sources.map((source) => ({
+      id: stableId("observation", source.source_id),
+      claim: `Visual source ${source.source_label} suggests density ${source.density}, layouts ${source.layout_patterns.join(", ") || "none"}, components ${source.component_candidates.join(", ") || "none"}, and states ${source.interaction_states.join(", ") || "none"}.`,
+      confidence: source.confidence,
+      reason: "Visual materials are useful design evidence but must be abstracted into structural signals, not copied directly.",
+      source_refs: [source.source_id]
+    })),
     inferences: [
       {
         id: "inference_domain_profile",
@@ -72,6 +71,13 @@ export function buildEvidenceLedger(input: ArchetypeInput, profile: DomainProfil
         confidence: "medium",
         reason: "The product requires dashboards, tables, status, and reporting surfaces.",
         source_refs: ["source_user_context"]
+      },
+      {
+        id: "inference_visual_evidence_profile",
+        claim: `Visual evidence extraction found ${ingestion.visualEvidence.aggregate.density_profile} density, layouts ${ingestion.visualEvidence.aggregate.layout_patterns.join(", ") || "none"}, components ${ingestion.visualEvidence.aggregate.component_candidates.join(", ") || "none"}, and states ${ingestion.visualEvidence.aggregate.interaction_states.join(", ") || "none"}.`,
+        confidence: ingestion.visualEvidence.source_count > 0 ? "medium" : "low",
+        reason: "Derived from reference images, screenshots, and design materials as abstract implementation evidence.",
+        source_refs: ingestion.visualEvidence.sources.map((source) => source.source_id)
       }
     ],
     assumptions: [
@@ -112,7 +118,7 @@ export function buildEvidenceLedger(input: ArchetypeInput, profile: DomainProfil
         claim: "Reference images must be used as design evidence and not copied.",
         confidence: "high",
         reason: "The product spec requires abstract extraction rather than direct copying.",
-        source_refs: sources.filter((source) => source.source_type === "image_reference").map((source) => source.source_id)
+        source_refs: ingestion.visualEvidence.sources.map((source) => source.source_id)
       },
       ...ingestion.safetyFindings.map((finding) => ({
         id: finding.id,
@@ -136,6 +142,13 @@ export function buildEvidenceLedger(input: ArchetypeInput, profile: DomainProfil
         status: "accepted",
         confidence: "medium",
         evidence_refs: ["fact_product_context", "inference_interface_density"]
+      },
+      {
+        id: "decision_visual_evidence_constraints",
+        decision: "Use visual materials only as abstract evidence for density, hierarchy, navigation, components, states, and layout constraints.",
+        status: "accepted",
+        confidence: ingestion.visualEvidence.source_count > 0 ? "high" : "medium",
+        evidence_refs: visualObservationRefs.length ? visualObservationRefs : ["inference_visual_evidence_profile"]
       },
       {
         id: "decision_financial_entities",

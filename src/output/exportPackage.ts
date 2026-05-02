@@ -87,6 +87,8 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
 
   writeJson(outDir, "01-evidence/evidence-ledger.json", pkg.evidence);
   writeJson(outDir, "01-evidence/source-analysis-report.json", pkg.ingestion.sourceAnalysisReport);
+  writeJson(outDir, "01-evidence/visual-evidence-extraction.json", pkg.ingestion.visualEvidence);
+  writeText(outDir, "01-evidence/visual-evidence-extraction.md", pkg.ingestion.visualEvidenceReport);
   writeText(outDir, "01-evidence/assumptions.md", listMarkdown("Assumptions", pkg.evidence.assumptions));
   writeText(outDir, "01-evidence/conflicts.md", listMarkdown("Conflicts", pkg.evidence.conflicts));
   writeText(outDir, "01-evidence/risks.md", listMarkdown("Risks", pkg.evidence.risks));

@@ -83,6 +83,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
 
   checks.push(check("evidence.sources.present", input.evidence.sources.length > 0, "Evidence Ledger has at least one source."));
   checks.push(check("ingestion.sources.normalized", input.ingestion.normalizedSources.length > 0, "Source normalization produced normalized sources."));
+  checks.push(check("ingestion.visual_evidence.extracted", input.ingestion.visualEvidence.source_count > 0 || input.ingestion.normalizedSources.every((source) => !["image_reference", "screenshot", "design_file"].includes(source.source_type)), "Visual evidence extraction ran for visual sources."));
   checks.push(check("ingestion.safety.no_blockers", input.ingestion.safetyFindings.every((finding) => finding.severity !== "blocker"), "No blocker-severity safety findings were detected."));
   checks.push(check("product.model.present", Object.keys(input.product.productModel).length > 0, "Product model artifact exists."));
   checks.push(check("routes.present", routeCount > 0, "Route map has at least one route."));
@@ -113,6 +114,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   checks.push(check("build_simulation.passable", input.buildSimulation.status !== "fail", "Frontend build simulation has no blockers."));
 
   validateRequiredFields(checks, "evidence-ledger.schema.json", input.schemas.schemas["evidence-ledger.schema.json"], input.evidence as unknown as Record<string, unknown>, "evidence-ledger");
+  validateRequiredFields(checks, "visual-evidence-extraction.schema.json", input.schemas.schemas["visual-evidence-extraction.schema.json"], input.ingestion.visualEvidence as unknown as Record<string, unknown>, "visual-evidence-extraction");
   validateRequiredFields(checks, "product-model.schema.json", input.schemas.schemas["product-model.schema.json"], input.product.productModel, "product-model");
   validateRequiredFields(checks, "route-map.schema.json", input.schemas.schemas["route-map.schema.json"], input.experience.routeMap as unknown as Record<string, unknown>, "route-map");
   validateRequiredFields(checks, "screen-inventory.schema.json", input.schemas.schemas["screen-inventory.schema.json"], input.experience.screenInventory, "screen-inventory");

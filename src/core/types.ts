@@ -106,6 +106,45 @@ export interface NormalizedSource {
   redactions: string[];
 }
 
+export interface VisualEvidenceSignal {
+  category: "density" | "navigation" | "layout" | "component" | "state" | "typography" | "data_display" | "safety";
+  signal: string;
+  evidence: string;
+  implication: string;
+  confidence: "high" | "medium" | "low";
+}
+
+export interface VisualEvidenceExtraction {
+  source_id: string;
+  source_label: string;
+  source_type: string;
+  summary: string;
+  confidence: "high" | "medium" | "low";
+  density: "dense" | "medium" | "spacious" | "unknown";
+  navigation_patterns: string[];
+  layout_patterns: string[];
+  component_candidates: string[];
+  interaction_states: string[];
+  visual_signals: VisualEvidenceSignal[];
+  safety_constraints: string[];
+  evidence_refs: string[];
+}
+
+export interface VisualEvidenceReport {
+  extraction_version: string;
+  source_count: number;
+  sources: VisualEvidenceExtraction[];
+  aggregate: {
+    density_profile: string;
+    navigation_patterns: string[];
+    layout_patterns: string[];
+    component_candidates: string[];
+    interaction_states: string[];
+    safety_constraints: string[];
+    build_implications: string[];
+  };
+}
+
 export interface SafetyFinding {
   id: string;
   source_id: string;
@@ -117,8 +156,10 @@ export interface SafetyFinding {
 
 export interface IngestionArtifacts {
   normalizedSources: NormalizedSource[];
+  visualEvidence: VisualEvidenceReport;
   safetyFindings: SafetyFinding[];
   sourceAnalysisReport: Record<string, unknown>;
+  visualEvidenceReport: string;
   safetyReport: string;
 }
 

@@ -1188,3 +1188,35 @@ Verification:
 Next phase:
 
 - Workbench workspace saved views.
+
+## Completed Phase: Visual Evidence Extraction Pipeline
+
+Status: complete
+
+Implemented:
+
+- Visual evidence extraction model.
+- Deterministic extraction from reference images, screenshots, and design-file materials.
+- Visual signals for density, navigation, layout, components, interaction states, typography, data display, and safety constraints.
+- Structured export at `01-evidence/visual-evidence-extraction.json`.
+- Markdown report at `01-evidence/visual-evidence-extraction.md`.
+- Visual extraction schema at `09-schemas/visual-evidence-extraction.schema.json`.
+- Source analysis report includes visual extraction aggregate.
+- Evidence ledger observations now derive from visual extraction results.
+- Evidence ledger includes visual evidence profile inference and visual evidence constraints decision.
+- Quality checks validate visual extraction and its schema contract.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Manifest-listed files checked by validator: 121.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Sample visual sources extracted: 2.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- UX flow and state matrix completeness.

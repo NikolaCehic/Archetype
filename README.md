@@ -10,6 +10,7 @@ Implemented:
 
 - Domain inference.
 - Evidence Ledger.
+- Visual evidence extraction.
 - Product Model.
 - User, role, permission, entity, and lifecycle artifacts.
 - Experience architecture.
@@ -109,7 +110,7 @@ Run the browser workbench:
 npm run workbench:dev
 ```
 
-The workbench can review generated packages, import an exported package folder, save packages into a local browser workspace, duplicate, rename, prioritize, pin, tag, annotate, search, filter, sort, browse, inspect, bulk-update visible package sets, export saved package collections, review collection imports before writing them, track workspace activity, summarize, filter, act on, and export workspace health, archive and clean up packages, export and restore an active workbench session, import and export multi-package workspaces, compare saved packages, prepare an intake JSON draft from structured form controls, collect source materials with a safety preview, copy a matching CLI command, track route and screen coverage, review design-system components and tokens, report frontend contract gaps, triage build simulation and acceptance coverage, compose revision change requests, track local approval gate decisions, compare package baselines for revision impact, summarize governance actions, and generate handoff artifacts for downstream frontend work.
+The compiler extracts visual evidence from screenshots, reference images, and design materials into density, navigation, layout, component, state, typography, data-display, and safety signals. The workbench can review generated packages, import an exported package folder, save packages into a local browser workspace, duplicate, rename, prioritize, pin, tag, annotate, search, filter, sort, browse, inspect, bulk-update visible package sets, export saved package collections, review collection imports before writing them, track workspace activity, summarize, filter, act on, and export workspace health, archive and clean up packages, export and restore an active workbench session, import and export multi-package workspaces, compare saved packages, prepare an intake JSON draft from structured form controls, collect source materials with a safety preview, copy a matching CLI command, track route and screen coverage, review design-system components and tokens, report frontend contract gaps, triage build simulation and acceptance coverage, compose revision change requests, track local approval gate decisions, compare package baselines for revision impact, summarize governance actions, and generate handoff artifacts for downstream frontend work.
 
 Run all checks:
 
@@ -145,4 +146,4 @@ node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archety
 
 ## Next Implementation Target
 
-The next pass should add workbench workspace saved views.
+The next pass should improve UX flow and state matrix completeness.
