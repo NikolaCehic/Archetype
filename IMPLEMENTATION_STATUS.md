@@ -996,3 +996,31 @@ Verification:
 Next phase:
 
 - Workbench package pinning and priority controls.
+
+## Completed Phase: Workbench Package Pinning and Priority Controls
+
+Status: complete
+
+Implemented:
+
+- Workspace package priority metadata.
+- Workspace package pinned metadata.
+- Priority editor in the package details panel.
+- Pin and unpin actions in the package table.
+- Pin and unpin action in the package details panel.
+- Pinned packages sort ahead of unpinned packages.
+- Priority sort option in the package browser.
+- Priority and pinned state included in package search, details, table badges, exports, and collection reports.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench bulk package actions.
