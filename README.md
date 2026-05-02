@@ -50,6 +50,12 @@ Validate the generated package:
 npm run validate
 ```
 
+Simulate whether the exported frontend contract is buildable:
+
+```bash
+npm run simulate
+```
+
 Run golden examples:
 
 ```bash
@@ -76,6 +82,7 @@ node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archety
 - `src/modules/`: Generation modules.
 - `src/quality/quality.ts`: Validation and readiness scoring.
 - `src/quality/validatePackage.ts`: CI-friendly exported package validator.
+- `src/quality/simulatePackage.ts`: CI-friendly frontend build simulation validator.
 - `src/output/exportPackage.ts`: Package writer.
 - `examples/fintech-intake.json`: Smoke-test intake.
 

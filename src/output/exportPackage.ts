@@ -185,6 +185,15 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeText(outDir, "10-revision/decision-diff-policy.md", pkg.revision.decisionDiffPolicy);
   writeText(outDir, "10-revision/artifact-invalidation-report.md", pkg.revision.artifactInvalidationReport);
 
+  writeJson(outDir, "11-build-simulation/build-plan.json", pkg.buildSimulation.buildPlan);
+  writeJson(outDir, "11-build-simulation/route-simulation.json", pkg.buildSimulation.routeSimulation);
+  writeJson(outDir, "11-build-simulation/component-resolution.json", pkg.buildSimulation.componentResolution);
+  writeJson(outDir, "11-build-simulation/pattern-resolution.json", pkg.buildSimulation.patternResolution);
+  writeJson(outDir, "11-build-simulation/state-coverage.json", pkg.buildSimulation.stateCoverage);
+  writeJson(outDir, "11-build-simulation/data-contract-coverage.json", pkg.buildSimulation.dataContractCoverage);
+  writeJson(outDir, "11-build-simulation/acceptance-simulation.json", pkg.buildSimulation.acceptanceSimulation);
+  writeText(outDir, "11-build-simulation/frontend-build-simulation-report.md", pkg.buildSimulation.simulationReport);
+
   writeText(outDir, "08-quality/consistency-report.md", pkg.quality.consistencyReport);
   writeText(outDir, "08-quality/accessibility-report.md", pkg.quality.accessibilityReport);
   writeText(outDir, "08-quality/safety-report.md", pkg.ingestion.safetyReport);

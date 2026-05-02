@@ -355,6 +355,20 @@ export interface RevisionArtifacts {
   artifactInvalidationReport: string;
 }
 
+export interface FrontendBuildSimulationArtifacts {
+  status: "pass" | "warning" | "fail";
+  blockers: string[];
+  warnings: string[];
+  buildPlan: Record<string, unknown>;
+  routeSimulation: Record<string, unknown>;
+  componentResolution: Record<string, unknown>;
+  patternResolution: Record<string, unknown>;
+  stateCoverage: Record<string, unknown>;
+  dataContractCoverage: Record<string, unknown>;
+  acceptanceSimulation: Record<string, unknown>;
+  simulationReport: string;
+}
+
 export interface ValidationReport {
   status: "pass" | "warning" | "fail";
   checks: Array<{
@@ -417,5 +431,6 @@ export interface ArchetypePackage {
   llm: LLMDecisionArtifacts;
   referenceSurfaces: ReferenceSurfaceArtifacts;
   revision: RevisionArtifacts;
+  buildSimulation: FrontendBuildSimulationArtifacts;
   quality: QualityArtifacts;
 }

@@ -3,12 +3,14 @@ import path from "node:path";
 import { runArchetypeCompiler } from "./core/pipeline";
 import { exportPackage } from "./output/exportPackage";
 import { validateExportedPackage } from "./quality/validatePackage";
+import { simulateExportedPackage } from "./quality/simulatePackage";
 import type { ArchetypeInput } from "./core/types";
 
 function usage(): never {
   console.log("Usage:");
   console.log("  archetype generate --input <intake.json> --out <output-dir>");
   console.log("  archetype validate --out <output-dir>");
+  console.log("  archetype simulate --out <output-dir>");
   process.exit(1);
 }
 
@@ -20,12 +22,21 @@ function getArg(name: string): string | undefined {
 
 async function main(): Promise<void> {
   const command = process.argv[2];
-  if (command !== "generate" && command !== "validate") usage();
+  if (command !== "generate" && command !== "validate" && command !== "simulate") usage();
 
   if (command === "validate") {
     const outDir = getArg("--out");
     if (!outDir) usage();
     const result = validateExportedPackage(path.resolve(outDir));
+    console.log(JSON.stringify(result, null, 2));
+    if (result.status === "fail") process.exit(1);
+    return;
+  }
+
+  if (command === "simulate") {
+    const outDir = getArg("--out");
+    if (!outDir) usage();
+    const result = simulateExportedPackage(path.resolve(outDir));
     console.log(JSON.stringify(result, null, 2));
     if (result.status === "fail") process.exit(1);
     return;

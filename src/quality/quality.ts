@@ -4,6 +4,7 @@ import type {
   DSAGGraph,
   EvidenceLedger,
   ExperienceArtifacts,
+  FrontendBuildSimulationArtifacts,
   FrontendContractArtifacts,
   IngestionArtifacts,
   LLMDecisionArtifacts,
@@ -28,6 +29,7 @@ interface QualityInput {
   llm: LLMDecisionArtifacts;
   referenceSurfaces: ReferenceSurfaceArtifacts;
   revision: RevisionArtifacts;
+  buildSimulation: FrontendBuildSimulationArtifacts;
 }
 
 function check(id: string, condition: boolean, details: string, warning = false): ValidationReport["checks"][number] {
@@ -107,6 +109,8 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   checks.push(check("revision.invalidation_rules.present", Array.isArray((input.revision.invalidationRules.rules as unknown[] | undefined)) && (input.revision.invalidationRules.rules as unknown[]).length > 0, "Invalidation rules exist."));
   checks.push(check("revision.change_set.present", Object.keys(input.revision.initialChangeSet).length > 0, "Initial change set exists."));
   checks.push(check("revision.approval_gates.present", Array.isArray((input.revision.approvalGates.gates as unknown[] | undefined)) && (input.revision.approvalGates.gates as unknown[]).length > 0, "Approval gates exist."));
+  checks.push(check("build_simulation.present", input.buildSimulation.status !== undefined, "Frontend build simulation exists."));
+  checks.push(check("build_simulation.passable", input.buildSimulation.status !== "fail", "Frontend build simulation has no blockers."));
 
   validateRequiredFields(checks, "evidence-ledger.schema.json", input.schemas.schemas["evidence-ledger.schema.json"], input.evidence as unknown as Record<string, unknown>, "evidence-ledger");
   validateRequiredFields(checks, "product-model.schema.json", input.schemas.schemas["product-model.schema.json"], input.product.productModel, "product-model");
@@ -151,6 +155,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   for (const item of failed) blockers.push(`${item.id}: ${item.details}`);
   blockers.push(...input.dsag.integrity.blockers.map((item) => `DSAG: ${item}`));
   blockers.push(...input.ingestion.safetyFindings.filter((finding) => finding.severity === "blocker").map((finding) => `Safety blocker in ${finding.source_id}: ${finding.finding}`));
+  blockers.push(...input.buildSimulation.blockers.map((blocker) => `Build simulation: ${blocker}`));
 
   if (input.evidence.missing_information.length > 0) {
     warnings.push(...input.evidence.missing_information.map((item) => `Missing context: ${item}`));
@@ -160,6 +165,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   }
   warnings.push(...input.ingestion.safetyFindings.filter((finding) => finding.severity !== "blocker").map((finding) => `Safety ${finding.severity}: ${finding.finding} (${finding.source_id})`));
   warnings.push(...input.dsag.integrity.warnings.map((item) => `DSAG warning: ${item}`));
+  warnings.push(...input.buildSimulation.warnings.map((warning) => `Build simulation: ${warning}`));
 
   const validation: ValidationReport = {
     status: blockers.length > 0 ? "fail" : warnings.length > 0 ? "warning" : "pass",
@@ -174,7 +180,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     screen_spec_completeness: p0Screens.every((screen) => requiredStates.every((state) => Object.prototype.hasOwnProperty.call(screen.states, state))) ? 15 : 8,
     design_system_coherence: Array.isArray(componentRegistry.components) && Array.isArray(patternRegistry.patterns) && input.dsag.integrity.status !== "fail" ? 15 : 0,
     accessibility_coverage: Object.keys(input.designSystem.accessibilityRules).length > 0 ? 15 : 0,
-    frontend_contract_quality: input.frontendContract.frontendAgentInstructions.length > 0 && !!dataContracts.entities ? 15 : 0,
+    frontend_contract_quality: input.frontendContract.frontendAgentInstructions.length > 0 && !!dataContracts.entities && input.buildSimulation.status !== "fail" ? 15 : 0,
     evidence_traceability: input.evidence.decisions.length > 0 ? 10 : 0
   };
 
@@ -235,6 +241,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
       `LLM module contracts: ${Object.keys(input.llm.moduleContracts).length}`,
       "Reference surfaces: dashboard, table, form, mobile, chart",
       `Revision invalidation rules: ${(input.revision.invalidationRules.rules as unknown[] | undefined)?.length ?? 0}`,
+      `Frontend build simulation: ${input.buildSimulation.status}`,
       "",
       blockers.length === 0 ? "No consistency blockers detected." : `Blockers:\n${blockers.map((item) => `- ${item}`).join("\n")}`
     ].join("\n"),

@@ -13,6 +13,7 @@ import { buildSchemaArtifacts } from "../schemas/coreSchemas";
 import { buildLLMDecisionArtifacts } from "../modules/llmDecisionLayer";
 import { buildReferenceSurfaceArtifacts } from "../modules/referenceSurfaces";
 import { buildRevisionArtifacts } from "../modules/revisionProtocol";
+import { buildFrontendBuildSimulationArtifacts } from "../modules/frontendBuildSimulation";
 
 const ARTIFACT_INDEX = [
   "00-manifest/manifest.json",
@@ -97,6 +98,14 @@ const ARTIFACT_INDEX = [
   "10-revision/approval-gates.json",
   "10-revision/decision-diff-policy.md",
   "10-revision/artifact-invalidation-report.md",
+  "11-build-simulation/build-plan.json",
+  "11-build-simulation/route-simulation.json",
+  "11-build-simulation/component-resolution.json",
+  "11-build-simulation/pattern-resolution.json",
+  "11-build-simulation/state-coverage.json",
+  "11-build-simulation/data-contract-coverage.json",
+  "11-build-simulation/acceptance-simulation.json",
+  "11-build-simulation/frontend-build-simulation-report.md",
   "08-quality/consistency-report.md",
   "08-quality/accessibility-report.md",
   "08-quality/safety-report.md",
@@ -151,6 +160,11 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     frontendContract,
     dsag
   });
+  const buildSimulation = buildFrontendBuildSimulationArtifacts({
+    experience,
+    designSystem,
+    frontendContract
+  });
   const quality = buildQualityArtifacts({
     ingestion,
     evidence,
@@ -162,6 +176,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     llm,
     referenceSurfaces,
     revision,
+    buildSimulation,
     dsag
   });
 
@@ -197,6 +212,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     llm,
     referenceSurfaces,
     revision,
+    buildSimulation,
     quality
   };
 }
