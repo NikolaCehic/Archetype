@@ -826,3 +826,31 @@ Verification:
 Next phase:
 
 - Workbench saved package detail inspection.
+
+## Completed Phase: Workbench Saved Package Detail Inspection
+
+Status: complete
+
+Implemented:
+
+- Saved package inspection state.
+- Inspect action for active and archived workspace packages.
+- Package details panel with saved metadata, readiness status, artifact counts, routes, screens, components, patterns, DSAG status, and schema status.
+- Warning and human-review previews for inspected packages.
+- Load inspected package action.
+- Compare-as-base and compare-as-target actions from package details.
+- Clear package details action.
+- Inspection cleanup when the selected package is deleted or no longer present after refresh.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench workspace package tagging and notes.
