@@ -166,6 +166,11 @@ interface Bundle {
   verificationContracts: Record<string, any>;
   productionIntegrationContracts: Record<string, any>;
   productionIntegrationPlan: string;
+  sourceFileManifest: Record<string, any>;
+  routeComponentMap: Record<string, any>;
+  codegenTasks: Record<string, any>;
+  adapterInterfaceSource: string;
+  sourceGenerationRunbook: string;
   acceptanceCriteria: { criteria: Array<Record<string, any>> };
   buildSimulation: Record<string, any>;
   revision: Record<string, any>;
@@ -1536,6 +1541,7 @@ function artifactArea(filePath: string): { group: string; nodeId: string | null 
   if (filePath === "06-frontend-agent-contract/data-contracts.json") return { group: "Data Contracts", nodeId: "dataContracts" };
   if (filePath.startsWith("06-frontend-agent-contract/production-integration")) return { group: "Production Integration", nodeId: "productionIntegrationContracts" };
   if (filePath.startsWith("06-frontend-agent-contract/")) return { group: "Frontend Contract", nodeId: "frontendContract" };
+  if (filePath.startsWith("12-target-frontend/")) return { group: "Target Frontend", nodeId: "targetFrontend" };
   if (filePath === "00-manifest/implementation-readiness.json" || filePath.startsWith("08-quality/")) return { group: "Readiness", nodeId: "readiness" };
   if (filePath.startsWith("10-revision/")) return { group: "Revision", nodeId: "revision" };
   if (filePath.startsWith("11-build-simulation/")) return { group: "Build Simulation", nodeId: "frontendContract" };
@@ -1632,6 +1638,7 @@ function triggerForNode(nodeId: string): string | null {
     patternRegistry: "component_registry_changed",
     dataContracts: "data_contract_changed",
     productionIntegrationContracts: "production_integration_changed",
+    targetFrontend: "production_integration_changed",
     designSystem: "accessibility_rule_changed"
   };
   return triggers[nodeId] ?? null;
@@ -1754,6 +1761,11 @@ function requiredHandoffArtifacts(bundle: Bundle): Array<{ path: string; label: 
     ["06-frontend-agent-contract/production-integration-contracts.json", "Production integration contracts"],
     ["06-frontend-agent-contract/production-integration-plan.md", "Production integration plan"],
     ["06-frontend-agent-contract/frontend-agent-instructions.md", "Frontend agent instructions"],
+    ["12-target-frontend/source-file-manifest.json", "Target source file manifest"],
+    ["12-target-frontend/route-component-map.json", "Route component map"],
+    ["12-target-frontend/codegen-tasks.json", "Codegen tasks"],
+    ["12-target-frontend/adapter-interfaces.ts", "Adapter interfaces"],
+    ["12-target-frontend/source-generation-runbook.md", "Source generation runbook"],
     ["03-experience-architecture/dsag.json", "DSAG graph"],
     ["08-quality/export-readiness-checklist.md", "Export readiness checklist"],
     ["11-build-simulation/frontend-build-simulation-report.md", "Build simulation report"]
@@ -1905,7 +1917,7 @@ function handoffPrompt(bundle: Bundle): string {
   return [
     `You are building from the Archetype package for ${bundle.productModel.product_name ?? bundle.manifest.project_slug}.`,
     "",
-    "Use the package as the source of truth. Build only the routes, screens, components, patterns, tokens, data contracts, production integration adapters, states, and acceptance criteria declared in the package.",
+    "Use the package as the source of truth. Build only the source files, routes, screens, components, patterns, tokens, data contracts, production integration adapters, states, and acceptance criteria declared in the package.",
     "",
     "Required starting artifacts:",
     required,
@@ -2000,6 +2012,11 @@ function handoffJson(bundle: Bundle): Record<string, unknown> {
     buildSimulationTriage: state.simulationTriageOverrides,
     revisionRequests: state.revisionRequests,
     productionIntegration: bundle.productionIntegrationContracts,
+    targetFrontend: {
+      sourceFileManifest: bundle.sourceFileManifest,
+      routeComponentMap: bundle.routeComponentMap,
+      codegenTasks: bundle.codegenTasks
+    },
     artifactDigests: bundle.artifacts ?? [],
     commands: handoffCommands(),
     frontendAgentPrompt: handoffPrompt(bundle)
@@ -2495,6 +2512,9 @@ function renderContract(bundle: Bundle): string {
   const actionGuards = productionIntegration.authentication_authorization?.action_guards ?? [];
   const copySurfaces = productionIntegration.content_brand?.copy_surfaces ?? [];
   const reviewGates = productionIntegration.human_review?.review_gates ?? [];
+  const sourceFiles = bundle.sourceFileManifest.files ?? [];
+  const codegenTasks = bundle.codegenTasks.tasks ?? [];
+  const routeComponentRows = bundle.routeComponentMap.routes ?? [];
   return `
     <div class="grid cols-3">
       ${metric("Open gaps", openGaps.length, openGaps.length ? "warning" : "success")}
@@ -2510,6 +2530,11 @@ function renderContract(bundle: Bundle): string {
       ${metric("Integration endpoints", endpointMappings.length, endpointMappings.length ? "success" : "warning")}
       ${metric("Auth guards", routeGuards.length + actionGuards.length, routeGuards.length ? "success" : "warning")}
       ${metric("Review gates", reviewGates.length, reviewGates.length ? "warning" : "danger")}
+    </div>
+    <div class="grid cols-3" style="margin-top:14px">
+      ${metric("Source files", bundle.sourceFileManifest.file_count ?? sourceFiles.length, sourceFiles.length ? "success" : "warning")}
+      ${metric("Codegen tasks", codegenTasks.length, codegenTasks.length ? "success" : "warning")}
+      ${metric("Mapped routes", routeComponentRows.length, routeComponentRows.length ? "success" : "warning")}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Build Manifest", code(bundle.buildManifest))}
@@ -2559,6 +2584,23 @@ function renderContract(bundle: Bundle): string {
         esc((surface.primary_action_labels ?? []).join(", ") || "none")
       ])))}
       ${panel("Production Integration Plan", code(bundle.productionIntegrationPlan))}
+      ${panel("Target Source Files", table(["Kind", "Path", "Reads"], sourceFiles.slice(0, 40).map((file: any) => [
+        badge(file.kind ?? "file"),
+        `<code>${esc(file.path)}</code>`,
+        esc((file.reads ?? []).join(", "))
+      ])))}
+      ${panel("Codegen Tasks", table(["Order", "Task", "Writes"], codegenTasks.map((task: any) => [
+        esc(task.order),
+        esc(task.task_id),
+        esc((task.writes ?? []).slice(0, 4).join(", ") || "none")
+      ])))}
+      ${panel("Route Component Map", table(["Route", "Screen", "File", "States"], routeComponentRows.map((route: any) => [
+        `<code>${esc(route.route)}</code>`,
+        esc(route.screen_id),
+        `<code>${esc(route.route_file)}</code>`,
+        esc((route.states ?? []).join(", "))
+      ])))}
+      ${panel("Source Generation Runbook", code(bundle.sourceGenerationRunbook))}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Gap Reporter", `
@@ -4284,6 +4326,11 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
     verificationContracts: await getJson("06-frontend-agent-contract/verification-contracts.json"),
     productionIntegrationContracts: await getJson("06-frontend-agent-contract/production-integration-contracts.json"),
     productionIntegrationPlan: await getText("06-frontend-agent-contract/production-integration-plan.md"),
+    sourceFileManifest: await getJson("12-target-frontend/source-file-manifest.json"),
+    routeComponentMap: await getJson("12-target-frontend/route-component-map.json"),
+    codegenTasks: await getJson("12-target-frontend/codegen-tasks.json"),
+    adapterInterfaceSource: await getText("12-target-frontend/adapter-interfaces.ts"),
+    sourceGenerationRunbook: await getText("12-target-frontend/source-generation-runbook.md"),
     acceptanceCriteria: await getJson("06-frontend-agent-contract/acceptance-criteria.json"),
     buildSimulation: {
       buildPlan: await getJson("11-build-simulation/build-plan.json"),

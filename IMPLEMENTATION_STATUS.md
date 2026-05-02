@@ -1547,3 +1547,46 @@ Verification:
 Next phase:
 
 - Decide whether to build a real target frontend generator/executor or a backend/auth adapter import workflow.
+
+## Completed Phase: Target Frontend Source Manifest
+
+Status: complete
+
+Implemented:
+
+- Added `12-target-frontend/source-file-manifest.json`.
+- Added `12-target-frontend/route-component-map.json`.
+- Added `12-target-frontend/codegen-tasks.json`.
+- Added `12-target-frontend/adapter-interfaces.ts`.
+- Added `12-target-frontend/source-generation-runbook.md`.
+- Added deterministic route file paths for every generated screen.
+- Added deterministic component and pattern file paths for every generated contract.
+- Added data, auth, copy, token, shell, config, and verification test support file entries.
+- Added ordered downstream codegen tasks for stack install, token/shell setup, adapters, components, patterns, routes/screens, and verification tests.
+- Added adapter interface source for data and auth adapters.
+- Added target frontend schemas for source manifests, route component maps, and codegen tasks.
+- Wired target frontend artifacts into export, quality validation, spec coverage audit, revision invalidation, workbench package import, workbench handoff artifacts, and Frontend Contract inspection.
+
+Verification:
+
+- `npm run build` passes.
+- `npm run smoke` passes.
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Manifest-listed files checked by validator: 158.
+- Target frontend source files: 54.
+- Target route files: 6.
+- Target component files: 31.
+- Target pattern files: 7.
+- Target verification files: 4.
+- Target codegen tasks: 7.
+- Target source blockers: 0.
+- Spec coverage: 13 pass, 2 warning, 0 fail.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Decide whether to write generated frontend source files to a target repository or build a backend/auth adapter import workflow.

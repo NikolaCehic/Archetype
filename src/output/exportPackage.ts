@@ -212,6 +212,12 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeJson(outDir, "11-build-simulation/acceptance-simulation.json", pkg.buildSimulation.acceptanceSimulation);
   writeText(outDir, "11-build-simulation/frontend-build-simulation-report.md", pkg.buildSimulation.simulationReport);
 
+  writeJson(outDir, "12-target-frontend/source-file-manifest.json", pkg.targetFrontend.sourceFileManifest);
+  writeJson(outDir, "12-target-frontend/route-component-map.json", pkg.targetFrontend.routeComponentMap);
+  writeJson(outDir, "12-target-frontend/codegen-tasks.json", pkg.targetFrontend.codegenTasks);
+  writeText(outDir, "12-target-frontend/adapter-interfaces.ts", pkg.targetFrontend.adapterInterfaceSource);
+  writeText(outDir, "12-target-frontend/source-generation-runbook.md", pkg.targetFrontend.sourceGenerationRunbook);
+
   writeText(outDir, "08-quality/consistency-report.md", pkg.quality.consistencyReport);
   writeText(outDir, "08-quality/accessibility-report.md", pkg.quality.accessibilityReport);
   writeText(outDir, "08-quality/safety-report.md", pkg.ingestion.safetyReport);

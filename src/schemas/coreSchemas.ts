@@ -133,6 +133,21 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Spec Coverage Audit",
       ["audit_version", "coverage", "summary", "remaining_gaps", "blockers", "warnings", "evidence_refs"]
     ),
+    "source-file-manifest.schema.json": objectSchema(
+      "source-file-manifest.schema.json",
+      "Target Frontend Source File Manifest",
+      ["manifest_version", "target_stack", "build_order", "file_count", "files", "coverage", "forbidden_behavior", "blockers", "warnings"]
+    ),
+    "route-component-map.schema.json": objectSchema(
+      "route-component-map.schema.json",
+      "Target Frontend Route Component Map",
+      ["contract_version", "routes", "blockers", "warnings"]
+    ),
+    "codegen-tasks.schema.json": objectSchema(
+      "codegen-tasks.schema.json",
+      "Target Frontend Codegen Tasks",
+      ["task_version", "tasks", "blockers", "warnings"]
+    ),
     "frontend-build-manifest.schema.json": objectSchema(
       "frontend-build-manifest.schema.json",
       "Frontend Build Manifest",
@@ -176,6 +191,9 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "04-design-system/tokens/token-contracts.json", schema_file: "token-contracts.schema.json", description: "Deterministic token layer and usage contract." },
       { artifact: "04-design-system/tokens/typography-system.json", schema_file: "typography-system.schema.json", description: "Typography roles, scale, and CSS contract." },
       { artifact: "08-quality/spec-coverage-audit.json", schema_file: "spec-coverage-audit.schema.json", description: "Spec promise coverage and remaining gap audit." },
+      { artifact: "12-target-frontend/source-file-manifest.json", schema_file: "source-file-manifest.schema.json", description: "Deterministic target frontend source file manifest." },
+      { artifact: "12-target-frontend/route-component-map.json", schema_file: "route-component-map.schema.json", description: "Target route, screen, component, pattern, data, action, and test selector map." },
+      { artifact: "12-target-frontend/codegen-tasks.json", schema_file: "codegen-tasks.schema.json", description: "Ordered downstream frontend code-generation tasks." },
       { artifact: "06-frontend-agent-contract/build-manifest.json", schema_file: "frontend-build-manifest.schema.json", description: "Frontend build manifest schema." },
       { artifact: "03-experience-architecture/dsag.json", schema_file: "dsag.schema.json", description: "DSAG graph schema." },
       { artifact: "00-manifest/implementation-readiness.json", schema_file: "readiness-report.schema.json", description: "Readiness report schema." }

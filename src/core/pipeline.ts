@@ -14,6 +14,7 @@ import { buildLLMDecisionArtifacts } from "../modules/llmDecisionLayer";
 import { buildReferenceSurfaceArtifacts } from "../modules/referenceSurfaces";
 import { buildRevisionArtifacts } from "../modules/revisionProtocol";
 import { buildFrontendBuildSimulationArtifacts } from "../modules/frontendBuildSimulation";
+import { buildTargetFrontendArtifacts } from "../modules/targetFrontend";
 
 const ARTIFACT_INDEX = [
   "00-manifest/manifest.json",
@@ -124,6 +125,11 @@ const ARTIFACT_INDEX = [
   "11-build-simulation/data-contract-coverage.json",
   "11-build-simulation/acceptance-simulation.json",
   "11-build-simulation/frontend-build-simulation-report.md",
+  "12-target-frontend/source-file-manifest.json",
+  "12-target-frontend/route-component-map.json",
+  "12-target-frontend/codegen-tasks.json",
+  "12-target-frontend/adapter-interfaces.ts",
+  "12-target-frontend/source-generation-runbook.md",
   "08-quality/consistency-report.md",
   "08-quality/accessibility-report.md",
   "08-quality/safety-report.md",
@@ -157,6 +163,9 @@ const ARTIFACT_INDEX = [
   "09-schemas/token-contracts.schema.json",
   "09-schemas/typography-system.schema.json",
   "09-schemas/spec-coverage-audit.schema.json",
+  "09-schemas/source-file-manifest.schema.json",
+  "09-schemas/route-component-map.schema.json",
+  "09-schemas/codegen-tasks.schema.json",
   "09-schemas/frontend-build-manifest.schema.json",
   "09-schemas/dsag.schema.json",
   "09-schemas/readiness-report.schema.json"
@@ -197,6 +206,11 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     designSystem,
     frontendContract
   });
+  const targetFrontend = buildTargetFrontendArtifacts({
+    experience,
+    designSystem,
+    frontendContract
+  });
   const quality = buildQualityArtifacts({
     ingestion,
     evidence,
@@ -209,6 +223,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     referenceSurfaces,
     revision,
     buildSimulation,
+    targetFrontend,
     dsag
   });
 
@@ -245,6 +260,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     referenceSurfaces,
     revision,
     buildSimulation,
+    targetFrontend,
     quality
   };
 }

@@ -476,6 +476,14 @@ export interface FrontendBuildSimulationArtifacts {
   simulationReport: string;
 }
 
+export interface TargetFrontendArtifacts {
+  sourceFileManifest: Record<string, unknown>;
+  routeComponentMap: Record<string, unknown>;
+  codegenTasks: Record<string, unknown>;
+  adapterInterfaceSource: string;
+  sourceGenerationRunbook: string;
+}
+
 export interface ValidationReport {
   status: "pass" | "warning" | "fail";
   checks: Array<{
@@ -541,5 +549,6 @@ export interface ArchetypePackage {
   referenceSurfaces: ReferenceSurfaceArtifacts;
   revision: RevisionArtifacts;
   buildSimulation: FrontendBuildSimulationArtifacts;
+  targetFrontend: TargetFrontendArtifacts;
   quality: QualityArtifacts;
 }

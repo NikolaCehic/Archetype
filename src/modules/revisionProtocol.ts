@@ -28,6 +28,7 @@ const ARTIFACTS = {
   formContracts: "06-frontend-agent-contract/form-contracts.json",
   verificationContracts: "06-frontend-agent-contract/verification-contracts.json",
   productionIntegrationContracts: "06-frontend-agent-contract/production-integration-contracts.json",
+  targetFrontend: "12-target-frontend",
   frontendContract: "06-frontend-agent-contract",
   dsag: "03-experience-architecture/dsag.json",
   readiness: "00-manifest/implementation-readiness.json"
@@ -71,6 +72,11 @@ export function buildRevisionArtifacts(input: {
       { from: "actionContracts", to: "productionIntegrationContracts", reason: "Production integration maps actions to auth and permission guards." },
       { from: "formContracts", to: "productionIntegrationContracts", reason: "Production integration maps forms to production validation alignment." },
       { from: "verificationContracts", to: "productionIntegrationContracts", reason: "Production integration declares target-stack proof work from verification contracts." },
+      { from: "frontendContract", to: "targetFrontend", reason: "Target frontend source manifest depends on the frontend build contract." },
+      { from: "componentContracts", to: "targetFrontend", reason: "Target component files derive from component contracts." },
+      { from: "patternContracts", to: "targetFrontend", reason: "Target pattern files derive from pattern contracts." },
+      { from: "productionIntegrationContracts", to: "targetFrontend", reason: "Target adapter files derive from production integration contracts." },
+      { from: "targetFrontend", to: "readiness", reason: "Readiness includes deterministic source generation coverage." },
       { from: "productionIntegrationContracts", to: "readiness", reason: "Readiness reports require explicit production confirmation gates." },
       { from: "verificationContracts", to: "readiness", reason: "Readiness depends on implementation proof coverage." },
       { from: "frontendContract", to: "dsag", reason: "DSAG validates implementation graph coherence." },
@@ -82,52 +88,52 @@ export function buildRevisionArtifacts(input: {
     rules: [
       {
         trigger: "evidence_changed",
-        invalidates: ["productModel", "userModel", "entityModel", "routeMap", "screenInventory", "screenSpecs", "designSystem", "frontendContract", "dsag", "readiness"],
+        invalidates: ["productModel", "userModel", "entityModel", "routeMap", "screenInventory", "screenSpecs", "designSystem", "frontendContract", "targetFrontend", "dsag", "readiness"],
         reason: "Evidence changes can alter all downstream architecture decisions."
       },
       {
         trigger: "product_model_changed",
-        invalidates: ["routeMap", "screenInventory", "screenSpecs", "designSystem", "frontendContract", "dsag", "readiness"],
+        invalidates: ["routeMap", "screenInventory", "screenSpecs", "designSystem", "frontendContract", "targetFrontend", "dsag", "readiness"],
         reason: "Product and workflow changes alter UX architecture and contracts."
       },
       {
         trigger: "route_map_changed",
-        invalidates: ["screenInventory", "screenSpecs", "frontendContract", "dsag", "readiness"],
+        invalidates: ["screenInventory", "screenSpecs", "frontendContract", "targetFrontend", "dsag", "readiness"],
         reason: "Routes determine screen inventory and build contract."
       },
       {
         trigger: "screen_spec_changed",
-        invalidates: ["componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "dataOperationContracts", "actionContracts", "formContracts", "frontendContract", "verificationContracts", "productionIntegrationContracts", "dsag", "readiness"],
+        invalidates: ["componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "dataOperationContracts", "actionContracts", "formContracts", "frontendContract", "verificationContracts", "productionIntegrationContracts", "targetFrontend", "dsag", "readiness"],
         reason: "Screen composition determines system and contract requirements."
       },
       {
         trigger: "component_registry_changed",
-        invalidates: ["frontendContract", "dsag", "readiness"],
+        invalidates: ["targetFrontend", "frontendContract", "dsag", "readiness"],
         reason: "Contract and graph must reflect component availability."
       },
       {
         trigger: "token_contract_changed",
-        invalidates: ["componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "frontendContract", "dsag", "readiness"],
+        invalidates: ["componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "frontendContract", "targetFrontend", "dsag", "readiness"],
         reason: "Token changes alter component, pattern, and frontend style contracts."
       },
       {
         trigger: "pattern_contract_changed",
-        invalidates: ["patternRegistry", "frontendContract", "dsag", "readiness"],
+        invalidates: ["patternRegistry", "frontendContract", "targetFrontend", "dsag", "readiness"],
         reason: "Pattern contract changes alter reusable product-specific composition."
       },
       {
         trigger: "data_contract_changed",
-        invalidates: ["screenSpecs", "dataOperationContracts", "actionContracts", "formContracts", "frontendContract", "verificationContracts", "productionIntegrationContracts", "dsag", "readiness"],
+        invalidates: ["screenSpecs", "dataOperationContracts", "actionContracts", "formContracts", "frontendContract", "verificationContracts", "productionIntegrationContracts", "targetFrontend", "dsag", "readiness"],
         reason: "Data shape changes affect UI states, fixtures, and build expectations."
       },
       {
         trigger: "production_integration_changed",
-        invalidates: ["dataOperationContracts", "actionContracts", "formContracts", "verificationContracts", "frontendContract", "readiness"],
+        invalidates: ["dataOperationContracts", "actionContracts", "formContracts", "verificationContracts", "frontendContract", "targetFrontend", "readiness"],
         reason: "Backend, auth, copy, validation, or target-stack changes alter integration contracts and proof obligations."
       },
       {
         trigger: "accessibility_rule_changed",
-        invalidates: ["screenSpecs", "componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "frontendContract", "readiness"],
+        invalidates: ["screenSpecs", "componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "frontendContract", "targetFrontend", "readiness"],
         reason: "Accessibility rules constrain screens, components, and export readiness."
       }
     ]
@@ -171,6 +177,12 @@ export function buildRevisionArtifacts(input: {
         id: "gate_frontend_contract",
         label: "Frontend Contract Approval",
         required_artifacts: [ARTIFACTS.frontendContract, ARTIFACTS.dataContracts, ARTIFACTS.dataOperationContracts, ARTIFACTS.actionContracts, ARTIFACTS.formContracts, ARTIFACTS.verificationContracts, ARTIFACTS.productionIntegrationContracts],
+        approval_state: "pending_human_review"
+      },
+      {
+        id: "gate_target_frontend_source",
+        label: "Target Frontend Source Manifest Approval",
+        required_artifacts: [ARTIFACTS.targetFrontend, ARTIFACTS.frontendContract, ARTIFACTS.productionIntegrationContracts],
         approval_state: "pending_human_review"
       },
       {

@@ -79,6 +79,11 @@ const bundle = {
   verificationContracts: readJson("06-frontend-agent-contract/verification-contracts.json"),
   productionIntegrationContracts: readJson("06-frontend-agent-contract/production-integration-contracts.json"),
   productionIntegrationPlan: readText("06-frontend-agent-contract/production-integration-plan.md"),
+  sourceFileManifest: readJson("12-target-frontend/source-file-manifest.json"),
+  routeComponentMap: readJson("12-target-frontend/route-component-map.json"),
+  codegenTasks: readJson("12-target-frontend/codegen-tasks.json"),
+  adapterInterfaceSource: readText("12-target-frontend/adapter-interfaces.ts"),
+  sourceGenerationRunbook: readText("12-target-frontend/source-generation-runbook.md"),
   acceptanceCriteria: readJson("06-frontend-agent-contract/acceptance-criteria.json"),
   buildSimulation: {
     buildPlan: readJson("11-build-simulation/build-plan.json"),

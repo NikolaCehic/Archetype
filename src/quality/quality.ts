@@ -14,6 +14,7 @@ import type {
   RevisionArtifacts,
   ReadinessReport,
   SchemaArtifacts,
+  TargetFrontendArtifacts,
   ValidationReport
 } from "../core/types";
 
@@ -30,6 +31,7 @@ interface QualityInput {
   referenceSurfaces: ReferenceSurfaceArtifacts;
   revision: RevisionArtifacts;
   buildSimulation: FrontendBuildSimulationArtifacts;
+  targetFrontend: TargetFrontendArtifacts;
 }
 
 function check(id: string, condition: boolean, details: string, warning = false): ValidationReport["checks"][number] {
@@ -88,6 +90,14 @@ function buildSpecCoverageAudit(input: QualityInput, readiness: ReadinessReport)
     target_stack_execution?: { required_commands?: unknown[] };
     blockers?: string[];
   };
+  const sourceFileManifest = input.targetFrontend.sourceFileManifest as {
+    file_count?: number;
+    files?: unknown[];
+    coverage?: { routes?: number; components?: number; patterns?: number; tests?: number };
+    blockers?: string[];
+  };
+  const routeComponentMap = input.targetFrontend.routeComponentMap as { routes?: unknown[]; blockers?: string[] };
+  const codegenTasks = input.targetFrontend.codegenTasks as { tasks?: unknown[]; blockers?: string[] };
   const coverage = [
     coverageItem("evidence", "Evidence and source normalization", input.evidence.sources.length > 0 && input.ingestion.normalizedSources.length > 0, ["01-evidence/evidence-ledger.json", "01-evidence/source-analysis-report.json"], "Evidence Ledger and normalized source analysis exist."),
     coverageItem("visual_evidence", "Visual evidence extraction", input.ingestion.visualEvidence.source_count > 0 || input.ingestion.normalizedSources.every((source) => !["image_reference", "screenshot", "design_file"].includes(source.source_type)), ["01-evidence/visual-evidence-extraction.json"], "Visual sources are converted into abstract design signals when present."),
@@ -99,6 +109,7 @@ function buildSpecCoverageAudit(input: QualityInput, readiness: ReadinessReport)
     coverageItem("frontend_contract", "Frontend build contract", Object.keys(input.frontendContract.buildManifest).length > 0 && (dataOperationContracts.queries?.length ?? 0) > 0 && (actionContracts.actions?.length ?? 0) > 0 && (formContracts.forms?.length ?? 0) > 0, ["06-frontend-agent-contract/build-manifest.json", "06-frontend-agent-contract/data-operation-contracts.json", "06-frontend-agent-contract/action-contracts.json", "06-frontend-agent-contract/form-contracts.json"], "Frontend-agent contract includes build order, data operations, actions, forms, routing, and acceptance criteria."),
     coverageItem("verification", "Implementation verification", (verificationContracts.coverage?.test_count ?? 0) > 0 && (verificationContracts.blockers ?? []).length === 0, ["06-frontend-agent-contract/verification-contracts.json"], "Verification suites define downstream proof obligations."),
     coverageItem("production_integration_contract", "Production integration contract", (productionIntegrationContracts.backend_api?.endpoint_mappings?.length ?? 0) > 0 && (productionIntegrationContracts.authentication_authorization?.route_guards?.length ?? 0) > 0 && (productionIntegrationContracts.content_brand?.copy_surfaces?.length ?? 0) > 0 && (productionIntegrationContracts.human_review?.review_gates?.length ?? 0) > 0 && (productionIntegrationContracts.target_stack_execution?.required_commands?.length ?? 0) > 0 && (productionIntegrationContracts.blockers ?? []).length === 0, ["06-frontend-agent-contract/production-integration-contracts.json", "06-frontend-agent-contract/production-integration-plan.md"], "Backend, auth, copy, review, and target-stack confirmation work is exported as explicit contracts."),
+    coverageItem("target_frontend_source_manifest", "Target frontend source manifest", (sourceFileManifest.file_count ?? 0) > 0 && (sourceFileManifest.coverage?.routes ?? 0) === input.experience.screenSpecs.length && (routeComponentMap.routes?.length ?? 0) === input.experience.screenSpecs.length && (codegenTasks.tasks?.length ?? 0) > 0 && (sourceFileManifest.blockers ?? []).length === 0 && (routeComponentMap.blockers ?? []).length === 0 && (codegenTasks.blockers ?? []).length === 0, ["12-target-frontend/source-file-manifest.json", "12-target-frontend/route-component-map.json", "12-target-frontend/codegen-tasks.json", "12-target-frontend/adapter-interfaces.ts", "12-target-frontend/source-generation-runbook.md"], "Downstream frontend builders receive exact file paths, route/component mapping, adapter interfaces, and ordered generation tasks."),
     coverageItem("traceability", "DSAG traceability", input.dsag.integrity.status !== "fail", ["03-experience-architecture/dsag.json", "08-quality/dsag-integrity-report.md"], "DSAG connects evidence, product, UX, design system, contracts, and quality gates."),
     coverageItem("workbench", "Workbench review and handoff", input.referenceSurfaces.dashboard.length > 0 && input.revision.revisionProtocol.length > 0, ["07-reference-surfaces/*.md", "10-revision/revision-protocol.md"], "Workbench package includes review surfaces, governance, revision, simulation, and handoff artifacts."),
     coverageItem("production_backend", "Production backend/API confirmation", false, ["06-frontend-agent-contract/production-integration-contracts.json"], "Live backend API, auth provider, and production validation rules still require project-specific confirmation.", true),
@@ -212,6 +223,23 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     blockers?: string[];
     warnings?: string[];
   };
+  const sourceFileManifest = input.targetFrontend.sourceFileManifest as {
+    file_count?: number;
+    files?: Array<{ kind?: string; path?: string }>;
+    coverage?: { routes?: number; components?: number; patterns?: number; tests?: number };
+    blockers?: string[];
+    warnings?: string[];
+  };
+  const routeComponentMap = input.targetFrontend.routeComponentMap as {
+    routes?: unknown[];
+    blockers?: string[];
+    warnings?: string[];
+  };
+  const codegenTasks = input.targetFrontend.codegenTasks as {
+    tasks?: unknown[];
+    blockers?: string[];
+    warnings?: string[];
+  };
   const tokenContracts = input.designSystem.tokenContracts as {
     layers?: Record<string, unknown>;
     usage_map?: Record<string, unknown>;
@@ -286,6 +314,14 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   checks.push(check("production.integration.review_gates", (productionIntegrationContracts.human_review?.review_gates?.length ?? 0) >= 5, "Production integration contracts include backend, auth, copy, accessibility, and target-stack review gates."));
   checks.push(check("production.integration.target_execution", (productionIntegrationContracts.target_stack_execution?.required_commands?.length ?? 0) > 0 && (productionIntegrationContracts.target_stack_execution?.proof_artifacts?.length ?? 0) > 0, "Production integration contracts declare target-stack commands and proof artifacts."));
   checks.push(check("production.integration.no_blockers", (productionIntegrationContracts.blockers ?? []).length === 0, "Production integration contracts have no blockers."));
+  checks.push(check("target_frontend.source_manifest.present", (sourceFileManifest.file_count ?? 0) === (sourceFileManifest.files?.length ?? -1) && (sourceFileManifest.file_count ?? 0) > 0, "Target frontend source file manifest exists and file count matches."));
+  checks.push(check("target_frontend.source_manifest.routes", sourceFileManifest.coverage?.routes === screenCount, "Target frontend source manifest includes a route file for every screen."));
+  checks.push(check("target_frontend.source_manifest.components", (sourceFileManifest.coverage?.components ?? 0) === (componentContracts.contracts?.length ?? -1), "Target frontend source manifest includes a source file for every component contract."));
+  checks.push(check("target_frontend.source_manifest.patterns", (sourceFileManifest.coverage?.patterns ?? 0) === (patternContracts.contracts?.length ?? -1), "Target frontend source manifest includes a source file for every pattern contract."));
+  checks.push(check("target_frontend.route_component_map.routes", (routeComponentMap.routes?.length ?? 0) === screenCount, "Target frontend route component map covers every screen."));
+  checks.push(check("target_frontend.codegen_tasks.present", (codegenTasks.tasks?.length ?? 0) >= 7, "Target frontend codegen tasks define the downstream build order."));
+  checks.push(check("target_frontend.adapter_interfaces.present", input.targetFrontend.adapterInterfaceSource.includes("ArchetypeDataAdapter") && input.targetFrontend.adapterInterfaceSource.includes("ArchetypeAuthAdapter"), "Target frontend adapter interface source declares data and auth adapters."));
+  checks.push(check("target_frontend.no_blockers", (sourceFileManifest.blockers ?? []).length === 0 && (routeComponentMap.blockers ?? []).length === 0 && (codegenTasks.blockers ?? []).length === 0, "Target frontend source artifacts have no blockers."));
   checks.push(check("accessibility.rules.present", Object.keys(input.designSystem.accessibilityRules).length > 0, "Accessibility rules exist."));
   checks.push(check("tokens.contracts.present", Object.keys(tokenContracts.layers ?? {}).length >= 4, "Token contracts declare primitive, semantic, component, and typography layers."));
   checks.push(check("tokens.contracts.no_blockers", (tokenContracts.blockers ?? []).length === 0, "Token contracts have no blockers."));
@@ -334,6 +370,9 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   validateRequiredFields(checks, "token-contracts.schema.json", input.schemas.schemas["token-contracts.schema.json"], input.designSystem.tokenContracts, "token-contracts");
   validateRequiredFields(checks, "typography-system.schema.json", input.schemas.schemas["typography-system.schema.json"], input.designSystem.typographySystem, "typography-system");
   validateRequiredFields(checks, "frontend-build-manifest.schema.json", input.schemas.schemas["frontend-build-manifest.schema.json"], input.frontendContract.buildManifest, "frontend-build-manifest");
+  validateRequiredFields(checks, "source-file-manifest.schema.json", input.schemas.schemas["source-file-manifest.schema.json"], input.targetFrontend.sourceFileManifest, "source-file-manifest");
+  validateRequiredFields(checks, "route-component-map.schema.json", input.schemas.schemas["route-component-map.schema.json"], input.targetFrontend.routeComponentMap, "route-component-map");
+  validateRequiredFields(checks, "codegen-tasks.schema.json", input.schemas.schemas["codegen-tasks.schema.json"], input.targetFrontend.codegenTasks, "codegen-tasks");
   validateRequiredFields(checks, "dsag.schema.json", input.schemas.schemas["dsag.schema.json"], input.dsag as unknown as Record<string, unknown>, "dsag");
   for (const screen of input.experience.screenSpecs) {
     validateRequiredFields(checks, "screen-spec.schema.json", input.schemas.schemas["screen-spec.schema.json"], screen as unknown as Record<string, unknown>, `screen-spec.${screen.screen_id}`);
@@ -406,6 +445,9 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   warnings.push(...((formContracts.warnings ?? []).map((warning) => `Form contracts: ${warning}`)));
   warnings.push(...((verificationContracts.warnings ?? []).map((warning) => `Verification contracts: ${warning}`)));
   warnings.push(...((productionIntegrationContracts.warnings ?? []).map((warning) => `Production integration contracts: ${warning}`)));
+  warnings.push(...((sourceFileManifest.warnings ?? []).map((warning) => `Target frontend source manifest: ${warning}`)));
+  warnings.push(...((routeComponentMap.warnings ?? []).map((warning) => `Target frontend route map: ${warning}`)));
+  warnings.push(...((codegenTasks.warnings ?? []).map((warning) => `Target frontend codegen tasks: ${warning}`)));
   warnings.push(...((tokenContracts.warnings ?? []).map((warning) => `Token contracts: ${warning}`)));
   warnings.push(...((typographySystem.warnings ?? []).map((warning) => `Typography system: ${warning}`)));
   warnings.push(...input.ingestion.safetyFindings.filter((finding) => finding.severity !== "blocker").map((finding) => `Safety ${finding.severity}: ${finding.finding} (${finding.source_id})`));
@@ -425,7 +467,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     screen_spec_completeness: input.experience.screenSpecs.every((screen) => requiredStates.every((state) => Object.prototype.hasOwnProperty.call(screen.states, state))) && input.experience.uxFlowStateCompleteness.summary.incomplete_screens === 0 ? 15 : 8,
     design_system_coherence: Array.isArray(componentRegistry.components) && Array.isArray(patternRegistry.patterns) && (componentContracts.blockers ?? []).length === 0 && (patternContracts.blockers ?? []).length === 0 && (tokenContracts.blockers ?? []).length === 0 && (typographySystem.blockers ?? []).length === 0 && input.dsag.integrity.status !== "fail" ? 15 : 0,
     accessibility_coverage: Object.keys(input.designSystem.accessibilityRules).length > 0 ? 15 : 0,
-    frontend_contract_quality: input.frontendContract.frontendAgentInstructions.length > 0 && !!dataContracts.entities && (dataOperationContracts.blockers ?? []).length === 0 && (actionContracts.blockers ?? []).length === 0 && (formContracts.blockers ?? []).length === 0 && (verificationContracts.blockers ?? []).length === 0 && (productionIntegrationContracts.blockers ?? []).length === 0 && input.buildSimulation.status !== "fail" ? 15 : 0,
+    frontend_contract_quality: input.frontendContract.frontendAgentInstructions.length > 0 && !!dataContracts.entities && (dataOperationContracts.blockers ?? []).length === 0 && (actionContracts.blockers ?? []).length === 0 && (formContracts.blockers ?? []).length === 0 && (verificationContracts.blockers ?? []).length === 0 && (productionIntegrationContracts.blockers ?? []).length === 0 && (sourceFileManifest.blockers ?? []).length === 0 && (routeComponentMap.blockers ?? []).length === 0 && (codegenTasks.blockers ?? []).length === 0 && input.buildSimulation.status !== "fail" ? 15 : 0,
     evidence_traceability: input.evidence.decisions.length > 0 ? 10 : 0
   };
 
@@ -489,6 +531,8 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
       `Verification tests: ${verificationContracts.coverage?.test_count ?? 0}`,
       `Production endpoint mappings: ${productionIntegrationContracts.backend_api?.endpoint_mappings?.length ?? 0}`,
       `Production review gates: ${productionIntegrationContracts.human_review?.review_gates?.length ?? 0}`,
+      `Target frontend source files: ${sourceFileManifest.file_count ?? 0}`,
+      `Target frontend codegen tasks: ${codegenTasks.tasks?.length ?? 0}`,
       `Token contract layers: ${Object.keys(tokenContracts.layers ?? {}).length}`,
       `Typography roles: ${Object.keys(typographySystem.type_roles ?? {}).length}`,
       `DSAG nodes: ${input.dsag.nodes.length}`,
