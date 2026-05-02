@@ -61,7 +61,8 @@ export function buildFrontendContractArtifacts(
         required_patterns: screen.required_patterns,
         forbidden_components: [],
         allowed_new_components: false,
-        required_states: Object.keys(screen.states)
+        required_states: Object.keys(screen.states),
+        state_contract_ref: `03-experience-architecture/ux-flow-state-completeness.json#${screen.screen_id}`
       }
     ])
   );
@@ -83,7 +84,10 @@ export function buildFrontendContractArtifacts(
       returns: screen.data_needs,
       loading_state: "loading",
       error_state: "error",
-      empty_state: "empty"
+      empty_state: "empty",
+      offline_state: "offline",
+      partial_data_state: "partial_data",
+      stale_data_state: "stale_data"
     })),
     mutations: experience.screenSpecs.flatMap((screen) =>
       screen.actions
@@ -120,6 +124,7 @@ export function buildFrontendContractArtifacts(
         "Do not invent unapproved routes.",
         "Do not invent visual styles outside generated tokens.",
         "Do not omit required states.",
+        "Do not omit state recovery actions or transition behavior declared in ux-flow-state-completeness.json.",
         "Do not treat missing data contracts as permission to invent backend behavior."
       ]
     },
@@ -178,10 +183,11 @@ export function buildFrontendContractArtifacts(
       "2. 02-product-model/product-model.json",
       "3. 03-experience-architecture/route-map.json",
       "4. 05-screen-specs/screen-spec-index.json",
-      "5. 04-design-system/components/component-registry.json",
-      "6. 04-design-system/patterns/pattern-registry.json",
-      "7. 06-frontend-agent-contract/data-contracts.json",
-      "8. 06-frontend-agent-contract/acceptance-criteria.json"
+      "5. 03-experience-architecture/ux-flow-state-completeness.json",
+      "6. 04-design-system/components/component-registry.json",
+      "7. 04-design-system/patterns/pattern-registry.json",
+      "8. 06-frontend-agent-contract/data-contracts.json",
+      "9. 06-frontend-agent-contract/acceptance-criteria.json"
     ].join("\n")
   };
 }

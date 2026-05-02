@@ -25,6 +25,20 @@ interface RegistryPattern {
   evidence_refs?: string[];
 }
 
+interface ExperienceFlowSpec {
+  flow_id?: string;
+  evidence_refs?: string[];
+  steps?: Array<{
+    step_id?: string;
+    order?: number;
+    route?: string;
+    screen_id?: string;
+    intent?: string;
+    interaction?: string;
+    required_states?: string[];
+  }>;
+}
+
 function addNode(nodes: Map<string, DSAGNode>, node: DSAGNode): void {
   if (!nodes.has(node.id)) nodes.set(node.id, node);
 }
@@ -199,6 +213,36 @@ export function buildDSAGGraph(input: {
     addNode(nodes, { id: workflowNode, type: "Workflow", label: workflow, evidence_refs: ["inference_domain_profile"] });
     for (const job of jobs) {
       addEdge(edges, nodeId("UserJob", job.job_id ?? job.job ?? "job"), workflowNode, "requires", job.evidence_refs ?? ["inference_domain_profile"]);
+    }
+  }
+
+  for (const flow of ((input.experience.flowSpecs as { flows?: ExperienceFlowSpec[] }).flows ?? [])) {
+    const workflowNode = nodeId("Workflow", flow.flow_id ?? "workflow");
+    for (const step of flow.steps ?? []) {
+      const stepLabel = step.intent ?? step.step_id ?? "Flow step";
+      const stepNode = nodeId("FlowStep", step.step_id ?? `${flow.flow_id}.${step.order ?? "step"}`);
+      const evidenceRefs = flow.evidence_refs ?? ["inference_domain_profile"];
+      addNode(nodes, {
+        id: stepNode,
+        type: "FlowStep",
+        label: stepLabel,
+        evidence_refs: evidenceRefs,
+        metadata: {
+          order: step.order,
+          route: step.route,
+          screen_id: step.screen_id,
+          interaction: step.interaction,
+          required_states: step.required_states ?? []
+        }
+      });
+      addEdge(edges, workflowNode, stepNode, "composed_of", evidenceRefs);
+      if (step.route) addEdge(edges, stepNode, nodeId("Route", step.route), "requires", evidenceRefs);
+      if (step.screen_id) addEdge(edges, stepNode, nodeId("Screen", step.screen_id), "requires", evidenceRefs);
+      if (step.screen_id) {
+        for (const state of step.required_states ?? []) {
+          addEdge(edges, stepNode, nodeId("State", `${step.screen_id}.${state}`), "requires", evidenceRefs);
+        }
+      }
     }
   }
 

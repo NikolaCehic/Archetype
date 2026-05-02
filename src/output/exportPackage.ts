@@ -118,6 +118,8 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeJson(outDir, "03-experience-architecture/navigation-model.json", pkg.experience.navigationModel);
   writeJson(outDir, "03-experience-architecture/state-models.json", pkg.experience.stateModels);
   writeJson(outDir, "03-experience-architecture/screen-state-matrix.json", pkg.experience.screenStateMatrix);
+  writeJson(outDir, "03-experience-architecture/ux-flow-state-completeness.json", pkg.experience.uxFlowStateCompleteness);
+  writeText(outDir, "03-experience-architecture/ux-flow-state-completeness.md", pkg.experience.uxFlowStateCompletenessReport);
   writeJson(outDir, "03-experience-architecture/action-taxonomy.json", pkg.experience.actionTaxonomy);
   writeJson(outDir, "03-experience-architecture/dsag.json", pkg.dsag);
 

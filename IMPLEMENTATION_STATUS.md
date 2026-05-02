@@ -1220,3 +1220,38 @@ Verification:
 Next phase:
 
 - UX flow and state matrix completeness.
+
+## Completed Phase: UX Flow and State Matrix Completeness
+
+Status: complete
+
+Implemented:
+
+- Expanded every generated screen with required state keys: default, loading, empty, error, permission_denied, offline, partial_data, and stale_data.
+- Added contextual state definitions for filtered_empty, validation_error, and success_confirmation.
+- Added deterministic state triggers, user feedback, recovery actions, required components, data-contract expectations, accessibility behavior, and acceptance references.
+- Rebuilt flow specs as ordered implementation steps with routes, screens, interactions, required states, completion signals, and failure recovery.
+- Added state transition contracts for each screen.
+- Added `03-experience-architecture/ux-flow-state-completeness.json`.
+- Added `03-experience-architecture/ux-flow-state-completeness.md`.
+- Added `09-schemas/ux-flow-state-completeness.schema.json`.
+- Added DSAG FlowStep nodes and workflow-to-step-to-route/screen/state traceability.
+- Added frontend-agent contract references to the UX flow/state completeness artifact.
+- Tightened quality and build-simulation gates so required states and recovery actions are checked across every screen.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Manifest-listed files checked by validator: 124.
+- UX completeness screens: 6/6 complete.
+- UX completeness flows: 5/5 complete.
+- UX flow/state blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Deterministic component contract expansion.

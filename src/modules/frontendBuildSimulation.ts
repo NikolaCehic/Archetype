@@ -91,15 +91,25 @@ export function buildFrontendBuildSimulationArtifacts(input: {
     };
   });
 
-  const requiredStates = ["default", "loading", "empty", "error", "permission_denied"];
+  const requiredStates = ["default", "loading", "empty", "error", "permission_denied", "offline", "partial_data", "stale_data"];
+  const recoveryStates = ["error", "permission_denied", "offline", "partial_data", "stale_data", "filtered_empty", "validation_error"];
   const stateResults = input.experience.screenSpecs.map((screen) => {
     const missing = requiredStates.filter((state) => !Object.prototype.hasOwnProperty.call(screen.states, state));
+    const missingRecovery = recoveryStates
+      .filter((state) => Object.prototype.hasOwnProperty.call(screen.states, state))
+      .filter((state) => {
+        const definition = screen.states[state];
+        return typeof definition !== "object" || definition === null || typeof (definition as Record<string, unknown>).recovery_action !== "string";
+      });
     if (missing.length > 0) blockers.push(`${screen.screen_id}: missing states ${missing.join(", ")}`);
+    if (missingRecovery.length > 0) blockers.push(`${screen.screen_id}: missing recovery actions for states ${missingRecovery.join(", ")}`);
     return {
       screen_id: screen.screen_id,
       states: Object.keys(screen.states),
       missing_required_states: missing,
-      status: missing.length > 0 ? "fail" : "pass"
+      missing_recovery_actions: missingRecovery,
+      transition_count: input.experience.uxFlowStateCompleteness.state_transition_contracts.find((contract) => contract.screen_id === screen.screen_id)?.transitions.length ?? 0,
+      status: missing.length > 0 || missingRecovery.length > 0 ? "fail" : "pass"
     };
   });
 

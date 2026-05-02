@@ -68,7 +68,8 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
 
   const routeCount = input.experience.routeMap.routes.length;
   const screenCount = input.experience.screenSpecs.length;
-  const p0Screens = input.experience.screenSpecs.filter((screen) => screen.priority === "P0");
+  const requiredStates = ["default", "loading", "empty", "error", "permission_denied", "offline", "partial_data", "stale_data"];
+  const recoveryStates = ["error", "permission_denied", "offline", "partial_data", "stale_data", "filtered_empty", "validation_error"];
   const componentRegistry = input.designSystem.componentRegistry as { components?: unknown[] };
   const patternRegistry = input.designSystem.patternRegistry as { patterns?: unknown[] };
   const dataContracts = input.frontendContract.dataContracts as { entities?: Record<string, unknown> };
@@ -89,6 +90,11 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   checks.push(check("routes.present", routeCount > 0, "Route map has at least one route."));
   checks.push(check("screens.present", screenCount > 0, "Screen specs exist."));
   checks.push(check("screens.cover.routes", routeCount === screenCount, "Every generated route has a generated screen spec."));
+  checks.push(check("ux_flow_state.completeness.present", input.experience.uxFlowStateCompleteness.summary.screen_count === screenCount, "UX flow/state completeness artifact covers every screen."));
+  checks.push(check("ux_flow_state.completeness.no_blockers", input.experience.uxFlowStateCompleteness.blockers.length === 0, "UX flow/state completeness has no blockers."));
+  checks.push(check("ux_flow_state.completeness.screens", input.experience.uxFlowStateCompleteness.summary.incomplete_screens === 0, "Every screen passes state coverage."));
+  checks.push(check("ux_flow_state.completeness.flows", input.experience.uxFlowStateCompleteness.summary.incomplete_flows === 0, "Every primary flow passes state coverage."));
+  checks.push(check("ux_flow_state.transitions.present", input.experience.uxFlowStateCompleteness.state_transition_contracts.every((contract) => contract.transitions.length > 0), "Every screen has state transition contracts."));
   checks.push(check("components.registry.present", Array.isArray(componentRegistry.components) && componentRegistry.components.length > 0, "Component registry exists."));
   checks.push(check("patterns.registry.present", Array.isArray(patternRegistry.patterns) && patternRegistry.patterns.length > 0, "Pattern registry exists."));
   checks.push(check("data.contracts.present", !!dataContracts.entities && Object.keys(dataContracts.entities).length > 0, "Data contracts exist."));
@@ -118,6 +124,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   validateRequiredFields(checks, "product-model.schema.json", input.schemas.schemas["product-model.schema.json"], input.product.productModel, "product-model");
   validateRequiredFields(checks, "route-map.schema.json", input.schemas.schemas["route-map.schema.json"], input.experience.routeMap as unknown as Record<string, unknown>, "route-map");
   validateRequiredFields(checks, "screen-inventory.schema.json", input.schemas.schemas["screen-inventory.schema.json"], input.experience.screenInventory, "screen-inventory");
+  validateRequiredFields(checks, "ux-flow-state-completeness.schema.json", input.schemas.schemas["ux-flow-state-completeness.schema.json"], input.experience.uxFlowStateCompleteness as unknown as Record<string, unknown>, "ux-flow-state-completeness");
   validateRequiredFields(checks, "component-registry.schema.json", input.schemas.schemas["component-registry.schema.json"], input.designSystem.componentRegistry, "component-registry");
   validateRequiredFields(checks, "pattern-registry.schema.json", input.schemas.schemas["pattern-registry.schema.json"], input.designSystem.patternRegistry, "pattern-registry");
   validateRequiredFields(checks, "data-contracts.schema.json", input.schemas.schemas["data-contracts.schema.json"], input.frontendContract.dataContracts, "data-contracts");
@@ -127,11 +134,17 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     validateRequiredFields(checks, "screen-spec.schema.json", input.schemas.schemas["screen-spec.schema.json"], screen as unknown as Record<string, unknown>, `screen-spec.${screen.screen_id}`);
   }
 
-  const requiredStates = ["default", "loading", "empty", "error", "permission_denied"];
-  for (const screen of p0Screens) {
+  for (const screen of input.experience.screenSpecs) {
     for (const state of requiredStates) {
       const hasState = Object.prototype.hasOwnProperty.call(screen.states, state);
       checks.push(check(`screen.${screen.screen_id}.state.${state}`, hasState, `${screen.screen_id} includes ${state} state.`));
+    }
+    for (const state of recoveryStates) {
+      const definition = screen.states[state];
+      if (typeof definition === "object" && definition !== null) {
+        const recovery = (definition as Record<string, unknown>).recovery_action;
+        checks.push(check(`screen.${screen.screen_id}.state.${state}.recovery`, typeof recovery === "string" && recovery.length > 0, `${screen.screen_id} ${state} state includes a recovery action.`));
+      }
     }
   }
 
@@ -151,6 +164,13 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     for (const ref of screen.evidence_refs) {
       checks.push(check(`screen.${screen.screen_id}.evidence_ref.${ref}`, evidenceIds.has(ref), `${screen.screen_id} evidence ref ${ref} exists in ledger.`));
     }
+    for (const [state, definition] of Object.entries(screen.states)) {
+      const typed = definition as Record<string, unknown>;
+      checks.push(check(`screen.${screen.screen_id}.state.${state}.trigger`, typeof typed.trigger === "string" && typed.trigger.length > 0, `${screen.screen_id} ${state} state includes a trigger.`));
+      checks.push(check(`screen.${screen.screen_id}.state.${state}.feedback`, typeof typed.user_feedback === "string" && typed.user_feedback.length > 0, `${screen.screen_id} ${state} state includes user feedback.`));
+      checks.push(check(`screen.${screen.screen_id}.state.${state}.accessibility`, typeof typed.accessibility === "string" && typed.accessibility.length > 0, `${screen.screen_id} ${state} state includes accessibility behavior.`));
+      checks.push(check(`screen.${screen.screen_id}.state.${state}.data`, typeof typed.data_contract_expectation === "string" && typed.data_contract_expectation.length > 0, `${screen.screen_id} ${state} state includes data contract expectation.`));
+    }
   }
 
   const failed = checks.filter((item) => item.status === "fail");
@@ -165,6 +185,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   if (input.evidence.risks.length > 0) {
     warnings.push(...input.evidence.risks.map((item) => item.claim ?? "Unspecified risk"));
   }
+  warnings.push(...input.experience.uxFlowStateCompleteness.warnings.map((warning) => `UX flow/state completeness: ${warning}`));
   warnings.push(...input.ingestion.safetyFindings.filter((finding) => finding.severity !== "blocker").map((finding) => `Safety ${finding.severity}: ${finding.finding} (${finding.source_id})`));
   warnings.push(...input.dsag.integrity.warnings.map((item) => `DSAG warning: ${item}`));
   warnings.push(...input.buildSimulation.warnings.map((warning) => `Build simulation: ${warning}`));
@@ -179,7 +200,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   const dimensions = {
     product_understanding: input.product.productModel ? 15 : 0,
     ux_architecture: routeCount > 0 && screenCount > 0 ? 15 : 0,
-    screen_spec_completeness: p0Screens.every((screen) => requiredStates.every((state) => Object.prototype.hasOwnProperty.call(screen.states, state))) ? 15 : 8,
+    screen_spec_completeness: input.experience.screenSpecs.every((screen) => requiredStates.every((state) => Object.prototype.hasOwnProperty.call(screen.states, state))) && input.experience.uxFlowStateCompleteness.summary.incomplete_screens === 0 ? 15 : 8,
     design_system_coherence: Array.isArray(componentRegistry.components) && Array.isArray(patternRegistry.patterns) && input.dsag.integrity.status !== "fail" ? 15 : 0,
     accessibility_coverage: Object.keys(input.designSystem.accessibilityRules).length > 0 ? 15 : 0,
     frontend_contract_quality: input.frontendContract.frontendAgentInstructions.length > 0 && !!dataContracts.entities && input.buildSimulation.status !== "fail" ? 15 : 0,
@@ -241,6 +262,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
       `DSAG edges: ${input.dsag.edges.length}`,
       `Schema files: ${Object.keys(input.schemas.schemas).length}`,
       `LLM module contracts: ${Object.keys(input.llm.moduleContracts).length}`,
+      `UX state completeness blockers: ${input.experience.uxFlowStateCompleteness.blockers.length}`,
       "Reference surfaces: dashboard, table, form, mobile, chart",
       `Revision invalidation rules: ${(input.revision.invalidationRules.rules as unknown[] | undefined)?.length ?? 0}`,
       `Frontend build simulation: ${input.buildSimulation.status}`,
@@ -262,7 +284,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     screenCoverageReport: [
       "# Screen Coverage Report",
       "",
-      ...input.experience.screenSpecs.map((screen) => `- ${screen.screen_id}: ${screen.route}, ${screen.priority}, states ${Object.keys(screen.states).join(", ")}`)
+      ...input.experience.uxFlowStateCompleteness.screen_coverage.map((screen) => `- ${screen.screen_id}: ${screen.route}, ${screen.priority}, ${screen.status}, states ${screen.covered_states.join(", ")}, missing ${screen.missing_required_states.length > 0 ? screen.missing_required_states.join(", ") : "none"}`)
     ].join("\n"),
     componentCoverageReport: [
       "# Component Coverage Report",

@@ -58,6 +58,11 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Screen Inventory",
       ["screens"]
     ),
+    "ux-flow-state-completeness.schema.json": objectSchema(
+      "ux-flow-state-completeness.schema.json",
+      "UX Flow and State Completeness",
+      ["required_state_keys", "contextual_state_keys", "screen_coverage", "flow_coverage", "state_transition_contracts", "summary", "blockers", "warnings", "evidence_refs"]
+    ),
     "screen-spec.schema.json": objectSchema(
       "screen-spec.schema.json",
       "Screen Specification",
@@ -106,6 +111,7 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "02-product-model/product-model.json", schema_file: "product-model.schema.json", description: "Product model contract." },
       { artifact: "03-experience-architecture/route-map.json", schema_file: "route-map.schema.json", description: "Route map contract." },
       { artifact: "03-experience-architecture/screen-inventory.json", schema_file: "screen-inventory.schema.json", description: "Screen inventory contract." },
+      { artifact: "03-experience-architecture/ux-flow-state-completeness.json", schema_file: "ux-flow-state-completeness.schema.json", description: "UX flow and state completeness contract." },
       { artifact: "05-screen-specs/*.yaml", schema_file: "screen-spec.schema.json", description: "Screen specification contract." },
       { artifact: "04-design-system/components/component-registry.json", schema_file: "component-registry.schema.json", description: "Component registry contract." },
       { artifact: "04-design-system/patterns/pattern-registry.json", schema_file: "pattern-registry.schema.json", description: "Pattern registry contract." },

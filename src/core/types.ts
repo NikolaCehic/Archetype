@@ -213,6 +213,56 @@ export interface ScreenSpec {
   forbidden_inventions: string[];
 }
 
+export interface UXFlowStateCompleteness {
+  required_state_keys: string[];
+  contextual_state_keys: string[];
+  screen_coverage: Array<{
+    screen_id: string;
+    route: string;
+    priority: ScreenSpec["priority"];
+    covered_states: string[];
+    missing_required_states: string[];
+    recovery_states_with_actions: string[];
+    missing_recovery_actions: string[];
+    action_count: number;
+    acceptance_count: number;
+    status: "pass" | "fail";
+  }>;
+  flow_coverage: Array<{
+    flow_id: string;
+    name: string;
+    route_refs: string[];
+    screen_refs: string[];
+    required_states_covered: string[];
+    missing_required_states: string[];
+    has_entry_route: boolean;
+    has_action_step: boolean;
+    has_recovery_step: boolean;
+    status: "pass" | "fail";
+  }>;
+  state_transition_contracts: Array<{
+    screen_id: string;
+    transitions: Array<{
+      from: string;
+      on: string;
+      to: string;
+      feedback: string;
+      recovery_action?: string;
+    }>;
+  }>;
+  summary: {
+    screen_count: number;
+    complete_screens: number;
+    incomplete_screens: number;
+    flow_count: number;
+    complete_flows: number;
+    incomplete_flows: number;
+  };
+  blockers: string[];
+  warnings: string[];
+  evidence_refs: string[];
+}
+
 export interface AcceptanceCriterion {
   id: string;
   subject: string;
@@ -241,6 +291,8 @@ export interface ExperienceArtifacts {
   navigationModel: Record<string, unknown>;
   stateModels: Record<string, unknown>;
   screenStateMatrix: Record<string, unknown>;
+  uxFlowStateCompleteness: UXFlowStateCompleteness;
+  uxFlowStateCompletenessReport: string;
   actionTaxonomy: Record<string, unknown>;
   screenSpecs: ScreenSpec[];
 }
