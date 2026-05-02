@@ -1506,3 +1506,44 @@ Verification:
 Next phase:
 
 - Use the spec coverage audit to choose the next production integration target.
+
+## Completed Phase: Production Integration Contracts
+
+Status: complete
+
+Implemented:
+
+- Added `06-frontend-agent-contract/production-integration-contracts.json`.
+- Added `06-frontend-agent-contract/production-integration-plan.md`.
+- Added backend endpoint mappings for generated queries and mutations.
+- Added route guards and action guards for authentication and authorization confirmation.
+- Added copy surfaces for every generated screen.
+- Added production review gates for backend API, auth, copy/brand, accessibility/compliance, target-stack execution, and high-risk domain review.
+- Added target-stack proof commands and proof artifact requirements.
+- Added form validation alignment records.
+- Added `09-schemas/production-integration-contracts.schema.json`.
+- Wired production integration contracts into quality validation, build simulation coverage, revision invalidation, approval gates, export handoff artifacts, workbench import, and workbench Frontend Contract inspection.
+- Updated spec coverage audit so the production integration contract passes while live backend/auth/human confirmations remain explicit warnings.
+
+Verification:
+
+- `npm run build` passes.
+- `npm run smoke` passes.
+- `npm run validate` passes.
+- `npm run simulate` passes with expected generated-source execution warning.
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Manifest-listed files checked by validator: 150.
+- Production endpoint mappings: 18.
+- Production route guards: 6.
+- Production action guards: 18.
+- Production copy surfaces: 6.
+- Production review gates: 6.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Decide whether to build a real target frontend generator/executor or a backend/auth adapter import workflow.

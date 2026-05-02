@@ -423,6 +423,297 @@ function verificationPlanMarkdown(verificationContracts: Record<string, unknown>
   ].join("\n");
 }
 
+function methodForAction(actionType: string): string {
+  if (actionType === "create") return "POST";
+  if (actionType === "update") return "PATCH";
+  if (actionType === "delete") return "DELETE";
+  if (actionType === "export") return "POST";
+  return "POST";
+}
+
+function endpointForEntity(entity: string, actionType?: string): string {
+  const base = `/api/${slugify(entity)}`;
+  if (actionType === "update" || actionType === "delete") return `${base}/:id`;
+  if (actionType === "export") return `${base}/export`;
+  return base;
+}
+
+function buildProductionIntegrationContracts(
+  input: ArchetypeInput,
+  stack: Record<string, string>,
+  profile: DomainProfile,
+  product: ProductArtifacts,
+  experience: ExperienceArtifacts,
+  dataOperationContracts: Record<string, unknown>,
+  actionContracts: Record<string, unknown>,
+  formContracts: Record<string, unknown>,
+  verificationContracts: Record<string, unknown>
+): Record<string, unknown> {
+  const queries = (dataOperationContracts.queries as Array<Record<string, unknown>> | undefined) ?? [];
+  const mutations = (dataOperationContracts.mutations as Array<Record<string, unknown>> | undefined) ?? [];
+  const actions = (actionContracts.actions as Array<Record<string, unknown>> | undefined) ?? [];
+  const forms = (formContracts.forms as Array<Record<string, unknown>> | undefined) ?? [];
+  const routeByScreen = new Map(experience.routeMap.routes.map((route) => [route.screen_id, route]));
+  const permissionMatrix = product.permissionMatrix as { permissions?: Array<Record<string, unknown>>; fallback_state?: string };
+  const roleModel = product.roleModel as { roles?: Array<{ role_id?: string; label?: string }> };
+
+  const queryEndpointMappings = queries.map((query) => {
+    const screenId = String(query.screen_id ?? "");
+    const entityRefs = Array.isArray(query.entity_refs) ? query.entity_refs.map(String) : [];
+    const primaryEntity = entityRefs[0] ?? profile.entities[0];
+    const route = routeByScreen.get(screenId);
+    return {
+      operation_id: String(query.query_id ?? `${screenId}.load`),
+      operation_kind: "query",
+      screen_id: screenId,
+      route: String(query.route ?? route?.route ?? ""),
+      entity_refs: entityRefs,
+      proposed_endpoint: {
+        method: "GET",
+        path_template: endpointForEntity(primaryEntity),
+        route_params: query.route_params ?? [],
+        query_params: query.request_contract ?? {},
+        response_contract: query.response_contract ?? {}
+      },
+      auth_contract: {
+        auth_requirement: route?.auth_requirement ?? "authenticated",
+        role_requirement: route?.role_requirement ?? [],
+        permission: query.permission ?? "can_view_dashboard",
+        denied_state: permissionMatrix.fallback_state ?? "permission_denied"
+      },
+      ui_state_mapping: query.state_mapping ?? {},
+      adapter_interface: {
+        function_name: `load${screenId.split(".").map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`).join("")}`,
+        return_policy: "Return the declared success, empty, stale, partial, offline, permission, and error shapes without inventing fields."
+      },
+      confirmation_status: "pending_external_confirmation"
+    };
+  });
+
+  const mutationEndpointMappings = mutations.map((mutation) => {
+    const screenId = String(mutation.screen_id ?? "");
+    const actionType = String(mutation.action_type ?? mutation.action ?? "mutation");
+    const entity = String(mutation.entity_ref ?? profile.entities[0]);
+    const route = routeByScreen.get(screenId);
+    return {
+      operation_id: String(mutation.mutation_id ?? `${screenId}.${actionType}`),
+      operation_kind: "mutation",
+      screen_id: screenId,
+      route: String(mutation.route ?? route?.route ?? ""),
+      entity_ref: entity,
+      action_type: actionType,
+      proposed_endpoint: {
+        method: methodForAction(actionType),
+        path_template: endpointForEntity(entity, actionType),
+        input_contract: mutation.input_contract ?? {},
+        success_response: mutation.success_response ?? "Return updated resource or accepted job status.",
+        error_response: mutation.error_response ?? "Return structured error with retryability."
+      },
+      auth_contract: {
+        auth_requirement: route?.auth_requirement ?? "authenticated",
+        role_requirement: route?.role_requirement ?? [],
+        permission: mutation.permission ?? "can_manage_core_entities",
+        denied_state: permissionMatrix.fallback_state ?? "permission_denied"
+      },
+      ui_state_mapping: mutation.state_mapping ?? {},
+      invalidates_queries: mutation.invalidates_queries ?? [],
+      adapter_interface: {
+        function_name: `${actionType}${entity.replace(/[^a-zA-Z0-9]/g, "")}`,
+        optimistic_update_allowed: mutation.optimistic_update === true
+      },
+      confirmation_status: "pending_external_confirmation"
+    };
+  });
+
+  const routeGuards = experience.routeMap.routes.map((route) => ({
+    route: route.route,
+    screen_id: route.screen_id,
+    auth_requirement: route.auth_requirement,
+    role_requirement: route.role_requirement,
+    denied_state: permissionMatrix.fallback_state ?? "permission_denied",
+    guard_behavior: "Gate route rendering before screen data loads and render the declared permission_denied state on failure.",
+    confirmation_status: "pending_external_confirmation"
+  }));
+
+  const actionGuards = actions.map((action) => ({
+    action_id: action.action_id,
+    screen_id: action.screen_id,
+    permission: action.permission,
+    auth_requirement: routeByScreen.get(String(action.screen_id ?? ""))?.auth_requirement ?? "authenticated",
+    role_requirement: routeByScreen.get(String(action.screen_id ?? ""))?.role_requirement ?? [],
+    failure_state: "permission_denied",
+    guard_behavior: "Disable or intercept the action before mutation execution when permission is missing.",
+    confirmation_status: "pending_external_confirmation"
+  }));
+
+  const copySurfaces = experience.screenSpecs.map((screen) => ({
+    screen_id: screen.screen_id,
+    route: screen.route,
+    heading: screen.name,
+    purpose_copy: screen.purpose,
+    primary_action_labels: screen.actions.map((action) => actionValue(action, "label")).filter(Boolean),
+    state_messages: Object.entries(screen.states).map(([state, definition]) => ({
+      state,
+      trigger: typeof definition === "object" && definition !== null ? (definition as Record<string, unknown>).trigger ?? "" : "",
+      user_feedback: typeof definition === "object" && definition !== null ? (definition as Record<string, unknown>).user_feedback ?? "" : "",
+      recovery_action: typeof definition === "object" && definition !== null ? (definition as Record<string, unknown>).recovery_action ?? null : null
+    })),
+    content_rules: screen.content_rules,
+    confirmation_status: "pending_brand_and_copy_review"
+  }));
+
+  const highRiskReviews = profile.riskFlags.map((flag) => ({
+    review_id: `domain_${slugify(flag)}_review`,
+    label: `${flag} domain review`,
+    required: true,
+    reason: "High-risk domains require qualified human review before compliance or safety claims.",
+    artifacts: ["01-evidence/risks.md", "04-design-system/accessibility/accessibility-guidelines.md", "08-quality/accessibility-report.md"],
+    status: "pending_human_review"
+  }));
+
+  const reviewGates = [
+    {
+      review_id: "backend_api_confirmation",
+      label: "Backend API confirmation",
+      required: true,
+      reason: "Generated data operations are frontend expectations until mapped to a real backend API.",
+      artifacts: ["06-frontend-agent-contract/data-contracts.json", "06-frontend-agent-contract/data-operation-contracts.json"],
+      status: "pending_external_confirmation"
+    },
+    {
+      review_id: "auth_authorization_confirmation",
+      label: "Authentication and authorization confirmation",
+      required: true,
+      reason: "Route and action guards require production session, role, and permission mapping.",
+      artifacts: ["02-product-model/permission-matrix.json", "06-frontend-agent-contract/action-contracts.json"],
+      status: "pending_external_confirmation"
+    },
+    {
+      review_id: "copy_brand_confirmation",
+      label: "Copy and brand confirmation",
+      required: true,
+      reason: "Generated microcopy and brand tone are architectural defaults, not approved production copy.",
+      artifacts: ["04-design-system/content-rules.md", "06-frontend-agent-contract/production-integration-contracts.json"],
+      status: "pending_brand_and_copy_review"
+    },
+    {
+      review_id: "accessibility_compliance_confirmation",
+      label: "Accessibility and compliance review",
+      required: true,
+      reason: "The compiler can require accessibility behavior, but qualified human review is needed before compliance claims.",
+      artifacts: ["04-design-system/accessibility/accessibility-rules.json", "08-quality/accessibility-report.md"],
+      status: "pending_human_review"
+    },
+    {
+      review_id: "target_stack_execution",
+      label: "Target stack execution proof",
+      required: true,
+      reason: "Generated frontend source must build, run, and test in the target repository before production handoff.",
+      artifacts: ["06-frontend-agent-contract/verification-contracts.json", "11-build-simulation/frontend-build-simulation-report.md"],
+      status: "pending_external_execution"
+    },
+    ...highRiskReviews
+  ];
+
+  const endpointMappings = [...queryEndpointMappings, ...mutationEndpointMappings];
+  return {
+    contract_version: "1.0",
+    status: "integration_contract_ready",
+    backend_api: {
+      endpoint_mappings: endpointMappings,
+      adapter_policy: "Implement a typed data adapter from these mappings. Use fixture data for local frontend simulation, and do not claim production backend integration until every mapping is confirmed.",
+      unresolved_confirmation: endpointMappings.map((mapping) => mapping.operation_id)
+    },
+    authentication_authorization: {
+      roles: roleModel.roles ?? [],
+      permission_matrix: permissionMatrix.permissions ?? [],
+      route_guards: routeGuards,
+      action_guards: actionGuards,
+      session_contract: {
+        required_fields: ["user.id", "user.role_id", "permissions", "auth_state"],
+        unauthenticated_state: "permission_denied",
+        wallet_state_required: profile.domain === "web3"
+      }
+    },
+    content_brand: {
+      brand_inputs: input.brand ?? {},
+      copy_surfaces: copySurfaces,
+      content_source_policy: "Generated copy is a contract placeholder. Production copy must be confirmed or supplied before launch."
+    },
+    human_review: {
+      review_gates: reviewGates,
+      required_human_review_count: reviewGates.filter((gate) => gate.required).length
+    },
+    target_stack_execution: {
+      target_stack: stack,
+      required_commands: [
+        "install dependencies in the target frontend repo",
+        "run typecheck",
+        "run lint",
+        "run production build",
+        "run verification suites from 06-frontend-agent-contract/verification-contracts.json"
+      ],
+      proof_artifacts: [
+        "target build log",
+        "route render test results",
+        "state render test results",
+        "accessibility check results",
+        "backend/auth adapter mapping report"
+      ],
+      verification_contract_summary: verificationContracts.coverage ?? {},
+      execution_status: "pending_external_execution"
+    },
+    form_validation_alignment: {
+      forms: forms.map((form) => ({
+        form_id: form.form_id,
+        screen_id: form.screen_id,
+        entity_ref: form.entity_ref,
+        fields: Array.isArray(form.fields) ? form.fields.length : 0,
+        confirmation_status: "pending_production_validation_alignment"
+      }))
+    },
+    blockers: [],
+    warnings: [
+      "Production integration contracts are explicit, but live backend API, auth provider, production copy, human review, and target-stack execution remain external confirmations."
+    ],
+    evidence_refs: ["decision_compiler_order", "inference_domain_profile"]
+  };
+}
+
+function productionIntegrationPlanMarkdown(productionIntegrationContracts: Record<string, unknown>): string {
+  const backend = productionIntegrationContracts.backend_api as { endpoint_mappings?: Array<Record<string, unknown>> } | undefined;
+  const auth = productionIntegrationContracts.authentication_authorization as { route_guards?: unknown[]; action_guards?: unknown[] } | undefined;
+  const content = productionIntegrationContracts.content_brand as { copy_surfaces?: unknown[] } | undefined;
+  const humanReview = productionIntegrationContracts.human_review as { review_gates?: Array<Record<string, unknown>> } | undefined;
+  const execution = productionIntegrationContracts.target_stack_execution as { required_commands?: string[]; proof_artifacts?: string[] } | undefined;
+  const reviewGates = humanReview?.review_gates ?? [];
+  return [
+    "# Production Integration Plan",
+    "",
+    "This plan converts remaining production warnings into explicit confirmation work. A frontend agent may build deterministic UI and adapters from these contracts, but it must not claim production backend, auth, copy, compliance, or target-stack execution until these gates are confirmed.",
+    "",
+    "## Coverage",
+    "",
+    `- Backend endpoint mappings: ${backend?.endpoint_mappings?.length ?? 0}`,
+    `- Route guards: ${auth?.route_guards?.length ?? 0}`,
+    `- Action guards: ${auth?.action_guards?.length ?? 0}`,
+    `- Copy surfaces: ${content?.copy_surfaces?.length ?? 0}`,
+    `- Human review gates: ${reviewGates.length}`,
+    "",
+    "## Review Gates",
+    "",
+    ...reviewGates.map((gate) => `- ${gate.review_id}: ${gate.status}`),
+    "",
+    "## Required Target Execution",
+    "",
+    ...((execution?.required_commands ?? []).map((command) => `- ${command}`)),
+    "",
+    "## Proof Artifacts",
+    "",
+    ...((execution?.proof_artifacts ?? []).map((artifact) => `- ${artifact}`))
+  ].join("\n");
+}
+
 export function buildFrontendContractArtifacts(
   input: ArchetypeInput,
   profile: DomainProfile,
@@ -494,6 +785,7 @@ export function buildFrontendContractArtifacts(
   const actionContracts = buildActionContracts(experience, new Set(experience.routeMap.routes.map((route) => route.route)));
   const formContracts = buildFormContracts(profile, experience);
   const verificationContracts = buildVerificationContracts(experience, designSystem, dataOperationContracts, actionContracts, formContracts);
+  const productionIntegrationContracts = buildProductionIntegrationContracts(input, stack, profile, product, experience, dataOperationContracts, actionContracts, formContracts, verificationContracts);
 
   return {
     buildManifest: {
@@ -559,6 +851,8 @@ export function buildFrontendContractArtifacts(
     formContracts,
     verificationContracts,
     verificationPlan: verificationPlanMarkdown(verificationContracts),
+    productionIntegrationContracts,
+    productionIntegrationPlan: productionIntegrationPlanMarkdown(productionIntegrationContracts),
     routingContract: {
       routes: experience.routeMap.routes,
       route_creation_policy: "Create only the routes listed here unless the contract is revised.",
@@ -595,7 +889,8 @@ export function buildFrontendContractArtifacts(
       "14. 06-frontend-agent-contract/action-contracts.json",
       "15. 06-frontend-agent-contract/form-contracts.json",
       "16. 06-frontend-agent-contract/verification-contracts.json",
-      "17. 06-frontend-agent-contract/acceptance-criteria.json"
+      "17. 06-frontend-agent-contract/production-integration-contracts.json",
+      "18. 06-frontend-agent-contract/acceptance-criteria.json"
     ].join("\n")
   };
 }

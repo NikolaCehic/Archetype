@@ -164,6 +164,8 @@ interface Bundle {
   actionContracts: Record<string, any>;
   formContracts: Record<string, any>;
   verificationContracts: Record<string, any>;
+  productionIntegrationContracts: Record<string, any>;
+  productionIntegrationPlan: string;
   acceptanceCriteria: { criteria: Array<Record<string, any>> };
   buildSimulation: Record<string, any>;
   revision: Record<string, any>;
@@ -191,7 +193,7 @@ interface DesignReviewOverride {
 
 interface ContractGap {
   id: string;
-  category: "route" | "screen_state" | "component" | "data_contract" | "accessibility" | "copy" | "other";
+  category: "route" | "screen_state" | "component" | "data_contract" | "backend" | "auth" | "production_integration" | "accessibility" | "copy" | "other";
   severity: "blocker" | "major" | "minor";
   artifact: string;
   description: string;
@@ -208,7 +210,7 @@ interface SimulationTriageOverride {
 interface RevisionRequest {
   id: string;
   priority: "low" | "medium" | "high";
-  changeType: "evidence_changed" | "product_model_changed" | "route_map_changed" | "screen_spec_changed" | "component_registry_changed" | "data_contract_changed" | "accessibility_rule_changed";
+  changeType: "evidence_changed" | "product_model_changed" | "route_map_changed" | "screen_spec_changed" | "component_registry_changed" | "data_contract_changed" | "production_integration_changed" | "accessibility_rule_changed";
   summary: string;
   affectedArtifacts: string;
   requestedChanges: string;
@@ -1532,6 +1534,7 @@ function artifactArea(filePath: string): { group: string; nodeId: string | null 
   if (filePath === "04-design-system/patterns/pattern-registry.json") return { group: "Pattern Registry", nodeId: "patternRegistry" };
   if (filePath.startsWith("04-design-system/")) return { group: "Design System", nodeId: "designSystem" };
   if (filePath === "06-frontend-agent-contract/data-contracts.json") return { group: "Data Contracts", nodeId: "dataContracts" };
+  if (filePath.startsWith("06-frontend-agent-contract/production-integration")) return { group: "Production Integration", nodeId: "productionIntegrationContracts" };
   if (filePath.startsWith("06-frontend-agent-contract/")) return { group: "Frontend Contract", nodeId: "frontendContract" };
   if (filePath === "00-manifest/implementation-readiness.json" || filePath.startsWith("08-quality/")) return { group: "Readiness", nodeId: "readiness" };
   if (filePath.startsWith("10-revision/")) return { group: "Revision", nodeId: "revision" };
@@ -1628,6 +1631,7 @@ function triggerForNode(nodeId: string): string | null {
     componentRegistry: "component_registry_changed",
     patternRegistry: "component_registry_changed",
     dataContracts: "data_contract_changed",
+    productionIntegrationContracts: "production_integration_changed",
     designSystem: "accessibility_rule_changed"
   };
   return triggers[nodeId] ?? null;
@@ -1743,6 +1747,12 @@ function requiredHandoffArtifacts(bundle: Bundle): Array<{ path: string; label: 
     ["04-design-system/patterns/pattern-registry.json", "Pattern registry"],
     ["06-frontend-agent-contract/build-manifest.json", "Build manifest"],
     ["06-frontend-agent-contract/data-contracts.json", "Data contracts"],
+    ["06-frontend-agent-contract/data-operation-contracts.json", "Data operation contracts"],
+    ["06-frontend-agent-contract/action-contracts.json", "Action contracts"],
+    ["06-frontend-agent-contract/form-contracts.json", "Form contracts"],
+    ["06-frontend-agent-contract/verification-contracts.json", "Verification contracts"],
+    ["06-frontend-agent-contract/production-integration-contracts.json", "Production integration contracts"],
+    ["06-frontend-agent-contract/production-integration-plan.md", "Production integration plan"],
     ["06-frontend-agent-contract/frontend-agent-instructions.md", "Frontend agent instructions"],
     ["03-experience-architecture/dsag.json", "DSAG graph"],
     ["08-quality/export-readiness-checklist.md", "Export readiness checklist"],
@@ -1826,7 +1836,13 @@ function suggestedRevisionDraft(): Omit<RevisionRequest, "id" | "status" | "upda
   const blockedDesign = Object.entries(state.designReviewOverrides).filter(([, value]) => value.state === "blocked" || value.state === "needs_changes");
   return {
     priority: openGaps.some((gap) => gap.severity === "blocker") || blockedScreens.some(([, value]) => value.state === "blocked") ? "high" : "medium",
-    changeType: openGaps.some((gap) => gap.category === "data_contract") ? "data_contract_changed" : blockedDesign.length ? "component_registry_changed" : "screen_spec_changed",
+    changeType: openGaps.some((gap) => gap.category === "backend" || gap.category === "auth" || gap.category === "production_integration")
+      ? "production_integration_changed"
+      : openGaps.some((gap) => gap.category === "data_contract")
+        ? "data_contract_changed"
+        : blockedDesign.length
+          ? "component_registry_changed"
+          : "screen_spec_changed",
     summary: "Resolve open workbench review findings.",
     affectedArtifacts: [
       ...openGaps.map((gap) => gap.artifact),
@@ -1889,12 +1905,12 @@ function handoffPrompt(bundle: Bundle): string {
   return [
     `You are building from the Archetype package for ${bundle.productModel.product_name ?? bundle.manifest.project_slug}.`,
     "",
-    "Use the package as the source of truth. Build only the routes, screens, components, patterns, tokens, data contracts, states, and acceptance criteria declared in the package.",
+    "Use the package as the source of truth. Build only the routes, screens, components, patterns, tokens, data contracts, production integration adapters, states, and acceptance criteria declared in the package.",
     "",
     "Required starting artifacts:",
     required,
     "",
-    "Do not invent new routes, visual styles, components, or backend behavior when the package is missing a required decision. Report a gap instead.",
+    "Do not invent new routes, visual styles, components, backend behavior, auth behavior, or production copy when the package is missing a required decision. Report a gap instead.",
     "",
     `Readiness score: ${bundle.readiness.score}`,
     `Ready for frontend agent: ${bundle.readiness.readyForFrontendAgent}`,
@@ -1983,6 +1999,7 @@ function handoffJson(bundle: Bundle): Record<string, unknown> {
     contractGaps: state.contractGaps,
     buildSimulationTriage: state.simulationTriageOverrides,
     revisionRequests: state.revisionRequests,
+    productionIntegration: bundle.productionIntegrationContracts,
     artifactDigests: bundle.artifacts ?? [],
     commands: handoffCommands(),
     frontendAgentPrompt: handoffPrompt(bundle)
@@ -2472,6 +2489,12 @@ function renderContract(bundle: Bundle): string {
   const actionContracts = bundle.actionContracts.actions ?? [];
   const formContracts = bundle.formContracts.forms ?? [];
   const verificationSuites = bundle.verificationContracts.test_suites ?? [];
+  const productionIntegration = bundle.productionIntegrationContracts ?? {};
+  const endpointMappings = productionIntegration.backend_api?.endpoint_mappings ?? [];
+  const routeGuards = productionIntegration.authentication_authorization?.route_guards ?? [];
+  const actionGuards = productionIntegration.authentication_authorization?.action_guards ?? [];
+  const copySurfaces = productionIntegration.content_brand?.copy_surfaces ?? [];
+  const reviewGates = productionIntegration.human_review?.review_gates ?? [];
   return `
     <div class="grid cols-3">
       ${metric("Open gaps", openGaps.length, openGaps.length ? "warning" : "success")}
@@ -2482,6 +2505,11 @@ function renderContract(bundle: Bundle): string {
       ${metric("Queries", operationQueries.length, operationQueries.length ? "success" : "warning")}
       ${metric("Actions", actionContracts.length, actionContracts.length ? "success" : "warning")}
       ${metric("Verification tests", bundle.verificationContracts.coverage?.test_count ?? 0, (bundle.verificationContracts.coverage?.test_count ?? 0) ? "success" : "warning")}
+    </div>
+    <div class="grid cols-3" style="margin-top:14px">
+      ${metric("Integration endpoints", endpointMappings.length, endpointMappings.length ? "success" : "warning")}
+      ${metric("Auth guards", routeGuards.length + actionGuards.length, routeGuards.length ? "success" : "warning")}
+      ${metric("Review gates", reviewGates.length, reviewGates.length ? "warning" : "danger")}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Build Manifest", code(bundle.buildManifest))}
@@ -2514,11 +2542,28 @@ function renderContract(bundle: Bundle): string {
         esc(suite.suite_id),
         String(suite.tests?.length ?? 0)
       ])))}
+      ${panel("Production Endpoints", table(["Operation", "Kind", "Method", "Path"], endpointMappings.slice(0, 24).map((mapping: any) => [
+        esc(mapping.operation_id),
+        esc(mapping.operation_kind),
+        esc(mapping.proposed_endpoint?.method),
+        `<code>${esc(mapping.proposed_endpoint?.path_template)}</code>`
+      ])))}
+      ${panel("Production Review Gates", table(["Gate", "Status", "Artifacts"], reviewGates.map((gate: any) => [
+        esc(gate.label ?? gate.review_id),
+        badge(gate.status ?? "pending", "warning"),
+        esc((gate.artifacts ?? []).join(", "))
+      ])))}
+      ${panel("Copy Surfaces", table(["Screen", "Heading", "Actions"], copySurfaces.map((surface: any) => [
+        esc(surface.screen_id),
+        esc(surface.heading),
+        esc((surface.primary_action_labels ?? []).join(", ") || "none")
+      ])))}
+      ${panel("Production Integration Plan", code(bundle.productionIntegrationPlan))}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Gap Reporter", `
         <div class="form-grid">
-          ${selectField("gap-category", state.contractGapDraft.category, "Category", ["route", "screen_state", "component", "data_contract", "accessibility", "copy", "other"])}
+          ${selectField("gap-category", state.contractGapDraft.category, "Category", ["route", "screen_state", "component", "data_contract", "backend", "auth", "production_integration", "accessibility", "copy", "other"])}
           ${selectField("gap-severity", state.contractGapDraft.severity, "Severity", ["blocker", "major", "minor"])}
           ${inputField("gap-artifact", state.contractGapDraft.artifact, "Artifact")}
         </div>
@@ -2844,7 +2889,7 @@ function renderRevision(bundle: Bundle): string {
       ${panel("Change Request Composer", `
         <div class="form-grid">
           ${selectField("revision-priority", state.revisionDraft.priority, "Priority", ["low", "medium", "high"])}
-          ${selectField("revision-change-type", state.revisionDraft.changeType, "Change type", ["evidence_changed", "product_model_changed", "route_map_changed", "screen_spec_changed", "component_registry_changed", "data_contract_changed", "accessibility_rule_changed"])}
+          ${selectField("revision-change-type", state.revisionDraft.changeType, "Change type", ["evidence_changed", "product_model_changed", "route_map_changed", "screen_spec_changed", "component_registry_changed", "data_contract_changed", "production_integration_changed", "accessibility_rule_changed"])}
         </div>
         <div style="height:10px"></div>
         ${inputField("revision-summary", state.revisionDraft.summary, "Summary")}
@@ -4237,6 +4282,8 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
     actionContracts: await getJson("06-frontend-agent-contract/action-contracts.json"),
     formContracts: await getJson("06-frontend-agent-contract/form-contracts.json"),
     verificationContracts: await getJson("06-frontend-agent-contract/verification-contracts.json"),
+    productionIntegrationContracts: await getJson("06-frontend-agent-contract/production-integration-contracts.json"),
+    productionIntegrationPlan: await getText("06-frontend-agent-contract/production-integration-plan.md"),
     acceptanceCriteria: await getJson("06-frontend-agent-contract/acceptance-criteria.json"),
     buildSimulation: {
       buildPlan: await getJson("11-build-simulation/build-plan.json"),

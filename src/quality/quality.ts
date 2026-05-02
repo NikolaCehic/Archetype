@@ -80,6 +80,14 @@ function buildSpecCoverageAudit(input: QualityInput, readiness: ReadinessReport)
   const actionContracts = input.frontendContract.actionContracts as { actions?: unknown[]; blockers?: string[] };
   const formContracts = input.frontendContract.formContracts as { forms?: unknown[]; blockers?: string[] };
   const verificationContracts = input.frontendContract.verificationContracts as { coverage?: { test_count?: number }; blockers?: string[] };
+  const productionIntegrationContracts = input.frontendContract.productionIntegrationContracts as {
+    backend_api?: { endpoint_mappings?: unknown[] };
+    authentication_authorization?: { route_guards?: unknown[]; action_guards?: unknown[] };
+    content_brand?: { copy_surfaces?: unknown[] };
+    human_review?: { review_gates?: unknown[] };
+    target_stack_execution?: { required_commands?: unknown[] };
+    blockers?: string[];
+  };
   const coverage = [
     coverageItem("evidence", "Evidence and source normalization", input.evidence.sources.length > 0 && input.ingestion.normalizedSources.length > 0, ["01-evidence/evidence-ledger.json", "01-evidence/source-analysis-report.json"], "Evidence Ledger and normalized source analysis exist."),
     coverageItem("visual_evidence", "Visual evidence extraction", input.ingestion.visualEvidence.source_count > 0 || input.ingestion.normalizedSources.every((source) => !["image_reference", "screenshot", "design_file"].includes(source.source_type)), ["01-evidence/visual-evidence-extraction.json"], "Visual sources are converted into abstract design signals when present."),
@@ -90,9 +98,10 @@ function buildSpecCoverageAudit(input: QualityInput, readiness: ReadinessReport)
     coverageItem("tokens_typography", "Tokens and typography", Object.keys(tokenContracts.layers ?? {}).length >= 4 && Object.keys(typographySystem.type_roles ?? {}).length > 0, ["04-design-system/tokens/token-contracts.json", "04-design-system/tokens/typography-system.json"], "Token layers and typography roles are deterministic."),
     coverageItem("frontend_contract", "Frontend build contract", Object.keys(input.frontendContract.buildManifest).length > 0 && (dataOperationContracts.queries?.length ?? 0) > 0 && (actionContracts.actions?.length ?? 0) > 0 && (formContracts.forms?.length ?? 0) > 0, ["06-frontend-agent-contract/build-manifest.json", "06-frontend-agent-contract/data-operation-contracts.json", "06-frontend-agent-contract/action-contracts.json", "06-frontend-agent-contract/form-contracts.json"], "Frontend-agent contract includes build order, data operations, actions, forms, routing, and acceptance criteria."),
     coverageItem("verification", "Implementation verification", (verificationContracts.coverage?.test_count ?? 0) > 0 && (verificationContracts.blockers ?? []).length === 0, ["06-frontend-agent-contract/verification-contracts.json"], "Verification suites define downstream proof obligations."),
+    coverageItem("production_integration_contract", "Production integration contract", (productionIntegrationContracts.backend_api?.endpoint_mappings?.length ?? 0) > 0 && (productionIntegrationContracts.authentication_authorization?.route_guards?.length ?? 0) > 0 && (productionIntegrationContracts.content_brand?.copy_surfaces?.length ?? 0) > 0 && (productionIntegrationContracts.human_review?.review_gates?.length ?? 0) > 0 && (productionIntegrationContracts.target_stack_execution?.required_commands?.length ?? 0) > 0 && (productionIntegrationContracts.blockers ?? []).length === 0, ["06-frontend-agent-contract/production-integration-contracts.json", "06-frontend-agent-contract/production-integration-plan.md"], "Backend, auth, copy, review, and target-stack confirmation work is exported as explicit contracts."),
     coverageItem("traceability", "DSAG traceability", input.dsag.integrity.status !== "fail", ["03-experience-architecture/dsag.json", "08-quality/dsag-integrity-report.md"], "DSAG connects evidence, product, UX, design system, contracts, and quality gates."),
     coverageItem("workbench", "Workbench review and handoff", input.referenceSurfaces.dashboard.length > 0 && input.revision.revisionProtocol.length > 0, ["07-reference-surfaces/*.md", "10-revision/revision-protocol.md"], "Workbench package includes review surfaces, governance, revision, simulation, and handoff artifacts."),
-    coverageItem("production_backend", "Production backend/API confirmation", false, ["06-frontend-agent-contract/data-contracts.json"], "Backend API, auth, and production validation rules still require project-specific confirmation.", true),
+    coverageItem("production_backend", "Production backend/API confirmation", false, ["06-frontend-agent-contract/production-integration-contracts.json"], "Live backend API, auth provider, and production validation rules still require project-specific confirmation.", true),
     coverageItem("human_review", "Human accessibility, compliance, and brand review", false, ["08-quality/accessibility-report.md", "00-manifest/implementation-readiness.json"], "Human review remains required for accessibility, compliance, exact copy, and brand judgment.", true)
   ];
   const pass = coverage.filter((item) => item.status === "pass").length;
@@ -193,6 +202,16 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     blockers?: string[];
     warnings?: string[];
   };
+  const productionIntegrationContracts = input.frontendContract.productionIntegrationContracts as {
+    backend_api?: { endpoint_mappings?: unknown[] };
+    authentication_authorization?: { route_guards?: unknown[]; action_guards?: unknown[] };
+    content_brand?: { copy_surfaces?: unknown[] };
+    human_review?: { review_gates?: unknown[] };
+    target_stack_execution?: { required_commands?: unknown[]; proof_artifacts?: unknown[] };
+    form_validation_alignment?: { forms?: unknown[] };
+    blockers?: string[];
+    warnings?: string[];
+  };
   const tokenContracts = input.designSystem.tokenContracts as {
     layers?: Record<string, unknown>;
     usage_map?: Record<string, unknown>;
@@ -259,6 +278,14 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   checks.push(check("verification.contracts.no_blockers", (verificationContracts.blockers ?? []).length === 0, "Verification contracts have no blockers."));
   checks.push(check("verification.contracts.tests", (verificationContracts.coverage?.test_count ?? 0) > screenCount, "Verification contracts include screen, state, design-system, data, action, form, and accessibility tests."));
   checks.push(check("verification.contracts.screens", verificationContracts.coverage?.screens === screenCount, "Verification contracts cover every screen."));
+  checks.push(check("production.integration.present", Object.keys(productionIntegrationContracts).length > 0, "Production integration contracts exist."));
+  checks.push(check("production.integration.endpoints", (productionIntegrationContracts.backend_api?.endpoint_mappings?.length ?? 0) >= ((dataOperationContracts.queries?.length ?? 0) + (dataOperationContracts.mutations?.length ?? 0)), "Production integration contracts map every generated data operation to a proposed endpoint."));
+  checks.push(check("production.integration.route_guards", (productionIntegrationContracts.authentication_authorization?.route_guards?.length ?? 0) === routeCount, "Production integration contracts include route guards for every route."));
+  checks.push(check("production.integration.action_guards", (productionIntegrationContracts.authentication_authorization?.action_guards?.length ?? 0) >= (actionContracts.actions?.length ?? 0), "Production integration contracts include action guards for generated actions."));
+  checks.push(check("production.integration.copy_surfaces", (productionIntegrationContracts.content_brand?.copy_surfaces?.length ?? 0) === screenCount, "Production integration contracts include copy surfaces for every screen."));
+  checks.push(check("production.integration.review_gates", (productionIntegrationContracts.human_review?.review_gates?.length ?? 0) >= 5, "Production integration contracts include backend, auth, copy, accessibility, and target-stack review gates."));
+  checks.push(check("production.integration.target_execution", (productionIntegrationContracts.target_stack_execution?.required_commands?.length ?? 0) > 0 && (productionIntegrationContracts.target_stack_execution?.proof_artifacts?.length ?? 0) > 0, "Production integration contracts declare target-stack commands and proof artifacts."));
+  checks.push(check("production.integration.no_blockers", (productionIntegrationContracts.blockers ?? []).length === 0, "Production integration contracts have no blockers."));
   checks.push(check("accessibility.rules.present", Object.keys(input.designSystem.accessibilityRules).length > 0, "Accessibility rules exist."));
   checks.push(check("tokens.contracts.present", Object.keys(tokenContracts.layers ?? {}).length >= 4, "Token contracts declare primitive, semantic, component, and typography layers."));
   checks.push(check("tokens.contracts.no_blockers", (tokenContracts.blockers ?? []).length === 0, "Token contracts have no blockers."));
@@ -303,6 +330,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   validateRequiredFields(checks, "action-contracts.schema.json", input.schemas.schemas["action-contracts.schema.json"], input.frontendContract.actionContracts, "action-contracts");
   validateRequiredFields(checks, "form-contracts.schema.json", input.schemas.schemas["form-contracts.schema.json"], input.frontendContract.formContracts, "form-contracts");
   validateRequiredFields(checks, "verification-contracts.schema.json", input.schemas.schemas["verification-contracts.schema.json"], input.frontendContract.verificationContracts, "verification-contracts");
+  validateRequiredFields(checks, "production-integration-contracts.schema.json", input.schemas.schemas["production-integration-contracts.schema.json"], input.frontendContract.productionIntegrationContracts, "production-integration-contracts");
   validateRequiredFields(checks, "token-contracts.schema.json", input.schemas.schemas["token-contracts.schema.json"], input.designSystem.tokenContracts, "token-contracts");
   validateRequiredFields(checks, "typography-system.schema.json", input.schemas.schemas["typography-system.schema.json"], input.designSystem.typographySystem, "typography-system");
   validateRequiredFields(checks, "frontend-build-manifest.schema.json", input.schemas.schemas["frontend-build-manifest.schema.json"], input.frontendContract.buildManifest, "frontend-build-manifest");
@@ -377,6 +405,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   warnings.push(...((actionContracts.warnings ?? []).map((warning) => `Action contracts: ${warning}`)));
   warnings.push(...((formContracts.warnings ?? []).map((warning) => `Form contracts: ${warning}`)));
   warnings.push(...((verificationContracts.warnings ?? []).map((warning) => `Verification contracts: ${warning}`)));
+  warnings.push(...((productionIntegrationContracts.warnings ?? []).map((warning) => `Production integration contracts: ${warning}`)));
   warnings.push(...((tokenContracts.warnings ?? []).map((warning) => `Token contracts: ${warning}`)));
   warnings.push(...((typographySystem.warnings ?? []).map((warning) => `Typography system: ${warning}`)));
   warnings.push(...input.ingestion.safetyFindings.filter((finding) => finding.severity !== "blocker").map((finding) => `Safety ${finding.severity}: ${finding.finding} (${finding.source_id})`));
@@ -396,7 +425,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     screen_spec_completeness: input.experience.screenSpecs.every((screen) => requiredStates.every((state) => Object.prototype.hasOwnProperty.call(screen.states, state))) && input.experience.uxFlowStateCompleteness.summary.incomplete_screens === 0 ? 15 : 8,
     design_system_coherence: Array.isArray(componentRegistry.components) && Array.isArray(patternRegistry.patterns) && (componentContracts.blockers ?? []).length === 0 && (patternContracts.blockers ?? []).length === 0 && (tokenContracts.blockers ?? []).length === 0 && (typographySystem.blockers ?? []).length === 0 && input.dsag.integrity.status !== "fail" ? 15 : 0,
     accessibility_coverage: Object.keys(input.designSystem.accessibilityRules).length > 0 ? 15 : 0,
-    frontend_contract_quality: input.frontendContract.frontendAgentInstructions.length > 0 && !!dataContracts.entities && (dataOperationContracts.blockers ?? []).length === 0 && (actionContracts.blockers ?? []).length === 0 && (formContracts.blockers ?? []).length === 0 && (verificationContracts.blockers ?? []).length === 0 && input.buildSimulation.status !== "fail" ? 15 : 0,
+    frontend_contract_quality: input.frontendContract.frontendAgentInstructions.length > 0 && !!dataContracts.entities && (dataOperationContracts.blockers ?? []).length === 0 && (actionContracts.blockers ?? []).length === 0 && (formContracts.blockers ?? []).length === 0 && (verificationContracts.blockers ?? []).length === 0 && (productionIntegrationContracts.blockers ?? []).length === 0 && input.buildSimulation.status !== "fail" ? 15 : 0,
     evidence_traceability: input.evidence.decisions.length > 0 ? 10 : 0
   };
 
@@ -458,6 +487,8 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
       `Action contracts: ${actionContracts.actions?.length ?? 0}`,
       `Form contracts: ${formContracts.forms?.length ?? 0}`,
       `Verification tests: ${verificationContracts.coverage?.test_count ?? 0}`,
+      `Production endpoint mappings: ${productionIntegrationContracts.backend_api?.endpoint_mappings?.length ?? 0}`,
+      `Production review gates: ${productionIntegrationContracts.human_review?.review_gates?.length ?? 0}`,
       `Token contract layers: ${Object.keys(tokenContracts.layers ?? {}).length}`,
       `Typography roles: ${Object.keys(typographySystem.type_roles ?? {}).length}`,
       `DSAG nodes: ${input.dsag.nodes.length}`,

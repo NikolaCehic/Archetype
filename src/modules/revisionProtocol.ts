@@ -27,6 +27,7 @@ const ARTIFACTS = {
   actionContracts: "06-frontend-agent-contract/action-contracts.json",
   formContracts: "06-frontend-agent-contract/form-contracts.json",
   verificationContracts: "06-frontend-agent-contract/verification-contracts.json",
+  productionIntegrationContracts: "06-frontend-agent-contract/production-integration-contracts.json",
   frontendContract: "06-frontend-agent-contract",
   dsag: "03-experience-architecture/dsag.json",
   readiness: "00-manifest/implementation-readiness.json"
@@ -66,6 +67,11 @@ export function buildRevisionArtifacts(input: {
       { from: "actionContracts", to: "frontendContract", reason: "Frontend build needs action preconditions and results." },
       { from: "formContracts", to: "frontendContract", reason: "Frontend build needs form validation behavior." },
       { from: "frontendContract", to: "verificationContracts", reason: "Verification contracts prove the frontend contract was implemented." },
+      { from: "dataOperationContracts", to: "productionIntegrationContracts", reason: "Production integration maps generated operations to backend adapter contracts." },
+      { from: "actionContracts", to: "productionIntegrationContracts", reason: "Production integration maps actions to auth and permission guards." },
+      { from: "formContracts", to: "productionIntegrationContracts", reason: "Production integration maps forms to production validation alignment." },
+      { from: "verificationContracts", to: "productionIntegrationContracts", reason: "Production integration declares target-stack proof work from verification contracts." },
+      { from: "productionIntegrationContracts", to: "readiness", reason: "Readiness reports require explicit production confirmation gates." },
       { from: "verificationContracts", to: "readiness", reason: "Readiness depends on implementation proof coverage." },
       { from: "frontendContract", to: "dsag", reason: "DSAG validates implementation graph coherence." },
       { from: "dsag", to: "readiness", reason: "Readiness depends on graph integrity." }
@@ -91,7 +97,7 @@ export function buildRevisionArtifacts(input: {
       },
       {
         trigger: "screen_spec_changed",
-        invalidates: ["componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "dataOperationContracts", "actionContracts", "formContracts", "frontendContract", "verificationContracts", "dsag", "readiness"],
+        invalidates: ["componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "dataOperationContracts", "actionContracts", "formContracts", "frontendContract", "verificationContracts", "productionIntegrationContracts", "dsag", "readiness"],
         reason: "Screen composition determines system and contract requirements."
       },
       {
@@ -111,8 +117,13 @@ export function buildRevisionArtifacts(input: {
       },
       {
         trigger: "data_contract_changed",
-        invalidates: ["screenSpecs", "dataOperationContracts", "actionContracts", "formContracts", "frontendContract", "verificationContracts", "dsag", "readiness"],
+        invalidates: ["screenSpecs", "dataOperationContracts", "actionContracts", "formContracts", "frontendContract", "verificationContracts", "productionIntegrationContracts", "dsag", "readiness"],
         reason: "Data shape changes affect UI states, fixtures, and build expectations."
+      },
+      {
+        trigger: "production_integration_changed",
+        invalidates: ["dataOperationContracts", "actionContracts", "formContracts", "verificationContracts", "frontendContract", "readiness"],
+        reason: "Backend, auth, copy, validation, or target-stack changes alter integration contracts and proof obligations."
       },
       {
         trigger: "accessibility_rule_changed",
@@ -159,7 +170,13 @@ export function buildRevisionArtifacts(input: {
       {
         id: "gate_frontend_contract",
         label: "Frontend Contract Approval",
-        required_artifacts: [ARTIFACTS.frontendContract, ARTIFACTS.dataContracts, ARTIFACTS.dataOperationContracts, ARTIFACTS.actionContracts, ARTIFACTS.formContracts, ARTIFACTS.verificationContracts],
+        required_artifacts: [ARTIFACTS.frontendContract, ARTIFACTS.dataContracts, ARTIFACTS.dataOperationContracts, ARTIFACTS.actionContracts, ARTIFACTS.formContracts, ARTIFACTS.verificationContracts, ARTIFACTS.productionIntegrationContracts],
+        approval_state: "pending_human_review"
+      },
+      {
+        id: "gate_production_integration",
+        label: "Production Integration Approval",
+        required_artifacts: [ARTIFACTS.productionIntegrationContracts, ARTIFACTS.readiness],
         approval_state: "pending_human_review"
       },
       {

@@ -58,6 +58,15 @@ export function buildFrontendBuildSimulationArtifacts(input: {
   const actionContracts = input.frontendContract.actionContracts as { actions?: Array<{ screen_id?: string; route_target_declared?: boolean }>; blockers?: string[] };
   const formContracts = input.frontendContract.formContracts as { forms?: Array<{ screen_id?: string; fields?: unknown[] }>; blockers?: string[] };
   const verificationContracts = input.frontendContract.verificationContracts as { test_suites?: Array<{ suite_id?: string; tests?: unknown[] }>; coverage?: { test_count?: number }; blockers?: string[] };
+  const productionIntegrationContracts = input.frontendContract.productionIntegrationContracts as {
+    backend_api?: { endpoint_mappings?: unknown[] };
+    authentication_authorization?: { route_guards?: Array<{ screen_id?: string }>; action_guards?: unknown[] };
+    content_brand?: { copy_surfaces?: Array<{ screen_id?: string }> };
+    human_review?: { review_gates?: unknown[] };
+    target_stack_execution?: { required_commands?: unknown[]; proof_artifacts?: unknown[] };
+    blockers?: string[];
+    warnings?: string[];
+  };
   const entityNames = new Set(Object.keys(dataContracts.entities ?? {}));
   const buildManifest = input.frontendContract.buildManifest as { build_order?: string[]; entry_routes?: string[] };
   const componentUsageMap = input.frontendContract.componentUsageMap as Record<string, {
@@ -227,12 +236,18 @@ export function buildFrontendBuildSimulationArtifacts(input: {
   if ((buildManifest.entry_routes ?? []).length === 0) blockers.push("Build manifest has no entry routes.");
   if (Object.keys(tokenContracts.layers ?? {}).length < 4) blockers.push("Token contracts are missing required layers.");
   if (Object.keys(typographySystem.type_roles ?? {}).length < 6) blockers.push("Typography system is missing required roles.");
+  if ((productionIntegrationContracts.backend_api?.endpoint_mappings?.length ?? 0) < ((dataOperationContracts.queries?.length ?? 0) + (dataOperationContracts.mutations?.length ?? 0))) blockers.push("Production integration contracts do not map every data operation.");
+  if ((productionIntegrationContracts.authentication_authorization?.route_guards?.length ?? 0) !== input.experience.routeMap.routes.length) blockers.push("Production integration contracts do not cover every route guard.");
+  if ((productionIntegrationContracts.content_brand?.copy_surfaces?.length ?? 0) !== input.experience.screenSpecs.length) blockers.push("Production integration contracts do not cover every copy surface.");
+  if ((productionIntegrationContracts.human_review?.review_gates?.length ?? 0) < 5) blockers.push("Production integration contracts are missing required review gates.");
+  if ((productionIntegrationContracts.target_stack_execution?.required_commands?.length ?? 0) === 0) blockers.push("Production integration contracts are missing target-stack execution commands.");
   blockers.push(...((tokenContracts.blockers ?? []).map((blocker) => `Token contracts: ${blocker}`)));
   blockers.push(...((typographySystem.blockers ?? []).map((blocker) => `Typography system: ${blocker}`)));
   blockers.push(...((dataOperationContracts.blockers ?? []).map((blocker) => `Data operations: ${blocker}`)));
   blockers.push(...((actionContracts.blockers ?? []).map((blocker) => `Action contracts: ${blocker}`)));
   blockers.push(...((formContracts.blockers ?? []).map((blocker) => `Form contracts: ${blocker}`)));
   blockers.push(...((verificationContracts.blockers ?? []).map((blocker) => `Verification contracts: ${blocker}`)));
+  blockers.push(...((productionIntegrationContracts.blockers ?? []).map((blocker) => `Production integration contracts: ${blocker}`)));
   if ((verificationContracts.coverage?.test_count ?? 0) === 0) blockers.push("Verification contracts contain no tests.");
   if (warnings.length === 0 && blockers.length === 0) {
     warnings.push("Simulation used generated contracts and fixture assumptions; it does not compile a real frontend app yet.");
@@ -257,6 +272,14 @@ export function buildFrontendBuildSimulationArtifacts(input: {
       operation_mutation_count: dataOperationContracts.mutations?.length ?? 0,
       action_contract_count: actionContracts.actions?.length ?? 0,
       form_contract_count: formContracts.forms?.length ?? 0,
+      production_integration: {
+        endpoint_mappings: productionIntegrationContracts.backend_api?.endpoint_mappings?.length ?? 0,
+        route_guards: productionIntegrationContracts.authentication_authorization?.route_guards?.length ?? 0,
+        action_guards: productionIntegrationContracts.authentication_authorization?.action_guards?.length ?? 0,
+        copy_surfaces: productionIntegrationContracts.content_brand?.copy_surfaces?.length ?? 0,
+        review_gates: productionIntegrationContracts.human_review?.review_gates?.length ?? 0,
+        target_execution_commands: productionIntegrationContracts.target_stack_execution?.required_commands?.length ?? 0
+      },
       screens: dataResults,
       forms: formResults
     },
@@ -266,7 +289,8 @@ export function buildFrontendBuildSimulationArtifacts(input: {
         suite_id: suite.suite_id,
         tests: Array.isArray(suite.tests) ? suite.tests.length : 0
       })) ?? [],
-      verification_test_count: verificationContracts.coverage?.test_count ?? 0
+      verification_test_count: verificationContracts.coverage?.test_count ?? 0,
+      production_review_gates: productionIntegrationContracts.human_review?.review_gates?.length ?? 0
     },
     simulationReport: [
       "# Frontend Build Simulation Report",

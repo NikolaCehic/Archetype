@@ -77,6 +77,8 @@ const bundle = {
   actionContracts: readJson("06-frontend-agent-contract/action-contracts.json"),
   formContracts: readJson("06-frontend-agent-contract/form-contracts.json"),
   verificationContracts: readJson("06-frontend-agent-contract/verification-contracts.json"),
+  productionIntegrationContracts: readJson("06-frontend-agent-contract/production-integration-contracts.json"),
+  productionIntegrationPlan: readText("06-frontend-agent-contract/production-integration-plan.md"),
   acceptanceCriteria: readJson("06-frontend-agent-contract/acceptance-criteria.json"),
   buildSimulation: {
     buildPlan: readJson("11-build-simulation/build-plan.json"),

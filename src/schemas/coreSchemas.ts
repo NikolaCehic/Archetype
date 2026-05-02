@@ -113,6 +113,11 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Verification Contracts",
       ["contract_version", "test_suites", "coverage", "blockers", "warnings", "evidence_refs"]
     ),
+    "production-integration-contracts.schema.json": objectSchema(
+      "production-integration-contracts.schema.json",
+      "Production Integration Contracts",
+      ["contract_version", "status", "backend_api", "authentication_authorization", "content_brand", "human_review", "target_stack_execution", "form_validation_alignment", "blockers", "warnings", "evidence_refs"]
+    ),
     "token-contracts.schema.json": objectSchema(
       "token-contracts.schema.json",
       "Token Contracts",
@@ -167,6 +172,7 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "06-frontend-agent-contract/action-contracts.json", schema_file: "action-contracts.schema.json", description: "Screen action precondition, permission, and result contracts." },
       { artifact: "06-frontend-agent-contract/form-contracts.json", schema_file: "form-contracts.schema.json", description: "Form field, validation, and submission contracts." },
       { artifact: "06-frontend-agent-contract/verification-contracts.json", schema_file: "verification-contracts.schema.json", description: "Deterministic acceptance and implementation proof contract." },
+      { artifact: "06-frontend-agent-contract/production-integration-contracts.json", schema_file: "production-integration-contracts.schema.json", description: "Backend, auth, copy, review, and target-stack confirmation contract." },
       { artifact: "04-design-system/tokens/token-contracts.json", schema_file: "token-contracts.schema.json", description: "Deterministic token layer and usage contract." },
       { artifact: "04-design-system/tokens/typography-system.json", schema_file: "typography-system.schema.json", description: "Typography roles, scale, and CSS contract." },
       { artifact: "08-quality/spec-coverage-audit.json", schema_file: "spec-coverage-audit.schema.json", description: "Spec promise coverage and remaining gap audit." },
