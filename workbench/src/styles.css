@@ -280,6 +280,13 @@ h3 {
   background: oklch(0.968 0.028 29);
 }
 
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
 .grid {
   display: grid;
   gap: 14px;

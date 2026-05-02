@@ -75,6 +75,9 @@ interface WorkspaceEntry {
   readyForFrontendAgent: boolean;
   artifactCount: number;
   warningCount: number;
+  tags?: string[];
+  notes?: string;
+  updatedAt?: string;
   archivedAt?: string;
 }
 
@@ -286,6 +289,8 @@ const state: {
   workspaceSortDirection: WorkspaceSortDirection;
   workspaceInspectId: string;
   workspaceInspectBundle: Bundle | null;
+  workspaceTagDraft: string;
+  workspaceNoteDraft: string;
   workspaceMessage: string;
   workspaceCompareBaseId: string;
   workspaceCompareTargetId: string;
@@ -328,6 +333,8 @@ const state: {
   workspaceSortDirection: "desc",
   workspaceInspectId: "",
   workspaceInspectBundle: null,
+  workspaceTagDraft: "",
+  workspaceNoteDraft: "",
   workspaceMessage: "",
   workspaceCompareBaseId: "",
   workspaceCompareTargetId: "",
@@ -469,10 +476,19 @@ function workspaceEntryMatchesFilters(entry: WorkspaceEntry): boolean {
     entry.packageId,
     entry.sourceHash,
     entry.id,
+    entry.notes ?? "",
+    ...(entry.tags ?? []),
     String(entry.readinessScore),
     entry.readyForFrontendAgent ? "ready" : "hold"
   ];
   return searchable.some((value) => value.toLowerCase().includes(query));
+}
+
+function normalizeWorkspaceTags(value: string): string[] {
+  const tags = value.split(",")
+    .map((tag) => tag.trim().toLowerCase())
+    .filter(Boolean);
+  return [...new Set(tags)].slice(0, 12);
 }
 
 function workspaceSortValue(entry: WorkspaceEntry, key: WorkspaceSortKey): string | number {
@@ -506,10 +522,22 @@ function renderWorkspacePackageActions(entry: WorkspaceEntry): string {
     : `<div class="control-row compact"><button class="button small" data-workspace-inspect="${esc(entry.id)}" type="button">Inspect</button><button class="button small" data-workspace-load="${esc(entry.id)}" type="button">Load</button><button class="button small" data-workspace-archive="${esc(entry.id)}" type="button">Archive</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`;
 }
 
+function renderWorkspaceEntryIdentity(entry: WorkspaceEntry): string {
+  const tags = (entry.tags ?? []).slice(0, 4).map((tag) => badge(tag)).join("");
+  return `
+    <div>
+      <strong>${esc(entry.name)}</strong>
+      <div class="muted">${esc(entry.projectSlug)} · ${esc(entry.sourceHash.slice(0, 8) || entry.packageId.slice(0, 8))}</div>
+      ${tags ? `<div class="tag-row">${tags}</div>` : ""}
+      ${entry.notes ? `<div class="muted">${esc(entry.notes.slice(0, 96))}${entry.notes.length > 96 ? "..." : ""}</div>` : ""}
+    </div>
+  `;
+}
+
 function renderWorkspacePackageTable(entries: WorkspaceEntry[], emptyText: string): string {
   if (!entries.length) return `<div class="empty">${esc(emptyText)}</div>`;
   return table(["Package", "Status", "Score", "Artifacts", "Saved", "Actions"], entries.map((entry) => [
-    `<div><strong>${esc(entry.name)}</strong><div class="muted">${esc(entry.projectSlug)} · ${esc(entry.sourceHash.slice(0, 8) || entry.packageId.slice(0, 8))}</div></div>`,
+    renderWorkspaceEntryIdentity(entry),
     badge(entry.archivedAt ? "archived" : "active", entry.archivedAt ? "warning" : "success"),
     badge(String(entry.readinessScore), entry.readyForFrontendAgent ? "success" : "danger"),
     esc(entry.artifactCount),
@@ -537,8 +565,10 @@ function renderWorkspaceInspection(entry: WorkspaceEntry | undefined, bundle: Bu
     <div class="form-grid" style="margin-top:10px">
       ${code({
         savedAt: entry.savedAt,
+        updatedAt: entry.updatedAt ?? null,
         generatedAt: entry.generatedAt,
         sourceHash: entry.sourceHash,
+        tags: entry.tags ?? [],
         readyForFrontendAgent: bundle.readiness.readyForFrontendAgent,
         blockers: bundle.readiness.blockers.length,
         humanReview: bundle.readiness.requiredHumanReview.length
@@ -552,6 +582,10 @@ function renderWorkspaceInspection(entry: WorkspaceEntry | undefined, bundle: Bu
         schemaStatus: bundle.schemaValidation.status
       })}
     </div>
+    <div class="form-grid" style="margin-top:10px">
+      ${inputField("workspace-tags", state.workspaceTagDraft, "Tags")}
+      ${textArea("workspace-notes", state.workspaceNoteDraft, "Notes", "textarea short")}
+    </div>
     <div class="grid cols-2" style="margin-top:10px">
       <div>
         <h3>Warnings</h3>
@@ -563,7 +597,8 @@ function renderWorkspaceInspection(entry: WorkspaceEntry | undefined, bundle: Bu
       </div>
     </div>
     <div class="control-row">
-      <button class="button primary" data-workspace-load="${esc(entry.id)}" type="button">Load package</button>
+      <button class="button primary" id="save-workspace-metadata" type="button">Save notes</button>
+      <button class="button" data-workspace-load="${esc(entry.id)}" type="button">Load package</button>
       <button class="button" data-workspace-compare-select="${esc(entry.id)}" data-workspace-compare-role="base" type="button">Use as base</button>
       <button class="button" data-workspace-compare-select="${esc(entry.id)}" data-workspace-compare-role="target" type="button">Use as target</button>
       <button class="button" id="clear-workspace-inspection" type="button">Clear details</button>
@@ -890,6 +925,26 @@ async function importWorkspaceRecords(records: Array<{ entry: WorkspaceEntry; bu
   }
 }
 
+async function updateWorkspaceBundleMetadata(id: string, tags: string[], notes: string): Promise<WorkspaceEntry | null> {
+  const record = await loadWorkspaceBundle(id);
+  if (!record) return null;
+  const db = await openWorkspaceDb();
+  const entry: WorkspaceEntry = {
+    ...record.entry,
+    tags,
+    notes,
+    updatedAt: new Date().toISOString()
+  };
+  try {
+    const transaction = db.transaction(WORKSPACE_STORE, "readwrite");
+    transaction.objectStore(WORKSPACE_STORE).put({ entry, bundle: record.bundle });
+    await transactionDone(transaction);
+    return entry;
+  } finally {
+    db.close();
+  }
+}
+
 async function compareWorkspacePackages(baseId: string, targetId: string): Promise<SavedPackageComparison | null> {
   const base = await loadWorkspaceBundle(baseId);
   const target = await loadWorkspaceBundle(targetId);
@@ -1011,6 +1066,8 @@ async function refreshWorkspaceEntries(): Promise<void> {
     if (state.workspaceInspectId && !state.workspaceEntries.some((entry) => entry.id === state.workspaceInspectId)) {
       state.workspaceInspectId = "";
       state.workspaceInspectBundle = null;
+      state.workspaceTagDraft = "";
+      state.workspaceNoteDraft = "";
     }
   } catch (error) {
     state.workspaceMessage = error instanceof Error ? error.message : "Workspace storage unavailable.";
@@ -2715,15 +2772,41 @@ function bindEvents(): void {
       if (!record) {
         state.workspaceInspectId = "";
         state.workspaceInspectBundle = null;
+        state.workspaceTagDraft = "";
+        state.workspaceNoteDraft = "";
         state.workspaceMessage = "Saved package not found.";
         render();
         return;
       }
       state.workspaceInspectId = record.entry.id;
       state.workspaceInspectBundle = record.bundle;
+      state.workspaceTagDraft = (record.entry.tags ?? []).join(", ");
+      state.workspaceNoteDraft = record.entry.notes ?? "";
       state.workspaceMessage = `Inspecting ${record.entry.name}.`;
       render();
     });
+  });
+  document.querySelector<HTMLInputElement>("#workspace-tags")?.addEventListener("input", (event) => {
+    state.workspaceTagDraft = (event.target as HTMLInputElement).value;
+  });
+  document.querySelector<HTMLTextAreaElement>("#workspace-notes")?.addEventListener("input", (event) => {
+    state.workspaceNoteDraft = (event.target as HTMLTextAreaElement).value;
+  });
+  document.querySelector<HTMLButtonElement>("#save-workspace-metadata")?.addEventListener("click", async () => {
+    if (!state.workspaceInspectId) return;
+    const tags = normalizeWorkspaceTags(state.workspaceTagDraft);
+    const notes = state.workspaceNoteDraft.trim();
+    const entry = await updateWorkspaceBundleMetadata(state.workspaceInspectId, tags, notes);
+    if (!entry) {
+      state.workspaceMessage = "Saved package not found.";
+      render();
+      return;
+    }
+    state.workspaceTagDraft = tags.join(", ");
+    state.workspaceNoteDraft = notes;
+    await refreshWorkspaceEntries();
+    state.workspaceMessage = `Saved notes for ${entry.name}.`;
+    render();
   });
   document.querySelectorAll<HTMLButtonElement>("[data-workspace-compare-select]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -2743,6 +2826,8 @@ function bindEvents(): void {
   document.querySelector<HTMLButtonElement>("#clear-workspace-inspection")?.addEventListener("click", () => {
     state.workspaceInspectId = "";
     state.workspaceInspectBundle = null;
+    state.workspaceTagDraft = "";
+    state.workspaceNoteDraft = "";
     state.workspaceMessage = "Package details cleared.";
     render();
   });
@@ -2794,6 +2879,8 @@ function bindEvents(): void {
       if (state.workspaceInspectId === id) {
         state.workspaceInspectId = "";
         state.workspaceInspectBundle = null;
+        state.workspaceTagDraft = "";
+        state.workspaceNoteDraft = "";
       }
       await refreshWorkspaceEntries();
       state.workspaceMessage = "Saved package deleted.";
