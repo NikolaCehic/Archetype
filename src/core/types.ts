@@ -505,6 +505,8 @@ export interface QualityArtifacts {
   implementationReadinessReport: string;
   unresolvedDecisions: string;
   exportReadinessChecklist: string;
+  specCoverageAudit: Record<string, unknown>;
+  specCoverageReport: string;
 }
 
 export interface Manifest {

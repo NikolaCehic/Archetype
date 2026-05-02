@@ -216,6 +216,8 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeText(outDir, "08-quality/dsag-integrity-report.md", pkg.quality.dsagIntegrityReport);
   writeText(outDir, "08-quality/screen-coverage-report.md", pkg.quality.screenCoverageReport);
   writeText(outDir, "08-quality/component-coverage-report.md", pkg.quality.componentCoverageReport);
+  writeJson(outDir, "08-quality/spec-coverage-audit.json", pkg.quality.specCoverageAudit);
+  writeText(outDir, "08-quality/spec-coverage-audit.md", pkg.quality.specCoverageReport);
   writeText(outDir, "08-quality/implementation-readiness-report.md", pkg.quality.implementationReadinessReport);
   writeText(outDir, "08-quality/unresolved-decisions.md", pkg.quality.unresolvedDecisions);
   writeText(outDir, "08-quality/export-readiness-checklist.md", pkg.quality.exportReadinessChecklist);

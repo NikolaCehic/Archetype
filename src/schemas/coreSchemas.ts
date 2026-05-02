@@ -123,6 +123,11 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Typography System",
       ["system_version", "font_families", "type_roles", "responsive_rules", "accessibility_rules", "css_variables", "blockers", "warnings", "evidence_refs"]
     ),
+    "spec-coverage-audit.schema.json": objectSchema(
+      "spec-coverage-audit.schema.json",
+      "Spec Coverage Audit",
+      ["audit_version", "coverage", "summary", "remaining_gaps", "blockers", "warnings", "evidence_refs"]
+    ),
     "frontend-build-manifest.schema.json": objectSchema(
       "frontend-build-manifest.schema.json",
       "Frontend Build Manifest",
@@ -164,6 +169,7 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "06-frontend-agent-contract/verification-contracts.json", schema_file: "verification-contracts.schema.json", description: "Deterministic acceptance and implementation proof contract." },
       { artifact: "04-design-system/tokens/token-contracts.json", schema_file: "token-contracts.schema.json", description: "Deterministic token layer and usage contract." },
       { artifact: "04-design-system/tokens/typography-system.json", schema_file: "typography-system.schema.json", description: "Typography roles, scale, and CSS contract." },
+      { artifact: "08-quality/spec-coverage-audit.json", schema_file: "spec-coverage-audit.schema.json", description: "Spec promise coverage and remaining gap audit." },
       { artifact: "06-frontend-agent-contract/build-manifest.json", schema_file: "frontend-build-manifest.schema.json", description: "Frontend build manifest schema." },
       { artifact: "03-experience-architecture/dsag.json", schema_file: "dsag.schema.json", description: "DSAG graph schema." },
       { artifact: "00-manifest/implementation-readiness.json", schema_file: "readiness-report.schema.json", description: "Readiness report schema." }

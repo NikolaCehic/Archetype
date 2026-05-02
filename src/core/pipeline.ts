@@ -128,6 +128,8 @@ const ARTIFACT_INDEX = [
   "08-quality/dsag-integrity-report.md",
   "08-quality/screen-coverage-report.md",
   "08-quality/component-coverage-report.md",
+  "08-quality/spec-coverage-audit.json",
+  "08-quality/spec-coverage-audit.md",
   "08-quality/implementation-readiness-report.md",
   "08-quality/unresolved-decisions.md",
   "08-quality/export-readiness-checklist.md",
@@ -151,6 +153,7 @@ const ARTIFACT_INDEX = [
   "09-schemas/verification-contracts.schema.json",
   "09-schemas/token-contracts.schema.json",
   "09-schemas/typography-system.schema.json",
+  "09-schemas/spec-coverage-audit.schema.json",
   "09-schemas/frontend-build-manifest.schema.json",
   "09-schemas/dsag.schema.json",
   "09-schemas/readiness-report.schema.json"

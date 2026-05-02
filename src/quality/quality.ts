@@ -61,6 +61,88 @@ function validateRequiredFields(
   }
 }
 
+function coverageItem(id: string, label: string, condition: boolean, artifacts: string[], details: string, warning = false): Record<string, unknown> {
+  return {
+    id,
+    label,
+    status: condition ? "pass" : warning ? "warning" : "fail",
+    artifacts,
+    details
+  };
+}
+
+function buildSpecCoverageAudit(input: QualityInput, readiness: ReadinessReport): Record<string, unknown> {
+  const componentContracts = input.designSystem.componentContracts as { contracts?: unknown[]; blockers?: string[] };
+  const patternContracts = input.designSystem.patternContracts as { contracts?: unknown[]; blockers?: string[] };
+  const tokenContracts = input.designSystem.tokenContracts as { layers?: Record<string, unknown>; blockers?: string[] };
+  const typographySystem = input.designSystem.typographySystem as { type_roles?: Record<string, unknown>; blockers?: string[] };
+  const dataOperationContracts = input.frontendContract.dataOperationContracts as { queries?: unknown[]; blockers?: string[] };
+  const actionContracts = input.frontendContract.actionContracts as { actions?: unknown[]; blockers?: string[] };
+  const formContracts = input.frontendContract.formContracts as { forms?: unknown[]; blockers?: string[] };
+  const verificationContracts = input.frontendContract.verificationContracts as { coverage?: { test_count?: number }; blockers?: string[] };
+  const coverage = [
+    coverageItem("evidence", "Evidence and source normalization", input.evidence.sources.length > 0 && input.ingestion.normalizedSources.length > 0, ["01-evidence/evidence-ledger.json", "01-evidence/source-analysis-report.json"], "Evidence Ledger and normalized source analysis exist."),
+    coverageItem("visual_evidence", "Visual evidence extraction", input.ingestion.visualEvidence.source_count > 0 || input.ingestion.normalizedSources.every((source) => !["image_reference", "screenshot", "design_file"].includes(source.source_type)), ["01-evidence/visual-evidence-extraction.json"], "Visual sources are converted into abstract design signals when present."),
+    coverageItem("product_model", "Product, roles, permissions, entities", Object.keys(input.product.productModel).length > 0 && Object.keys(input.product.permissionMatrix).length > 0, ["02-product-model/product-model.json", "02-product-model/permission-matrix.json", "02-product-model/entity-model.json"], "Product model artifacts exist."),
+    coverageItem("ux_architecture", "UX architecture, routes, flows, screens", input.experience.routeMap.routes.length > 0 && input.experience.screenSpecs.length > 0 && input.experience.uxFlowStateCompleteness.blockers.length === 0, ["03-experience-architecture/route-map.json", "03-experience-architecture/flow-specs.json", "03-experience-architecture/ux-flow-state-completeness.json", "05-screen-specs/*.yaml"], "Routes, flows, screens, states, transitions, and screen specs are generated."),
+    coverageItem("components", "Reusable component contracts", (componentContracts.contracts?.length ?? 0) > 0 && (componentContracts.blockers ?? []).length === 0, ["04-design-system/components/component-contracts.json", "04-design-system/components/component-registry.json"], "Component APIs, states, slots, tokens, and accessibility contracts are generated."),
+    coverageItem("patterns", "Product-specific pattern contracts", (patternContracts.contracts?.length ?? 0) > 0 && (patternContracts.blockers ?? []).length === 0, ["04-design-system/patterns/pattern-contracts.json", "04-design-system/patterns/pattern-registry.json"], "Product-specific patterns map to workflows, screens, components, states, and data."),
+    coverageItem("tokens_typography", "Tokens and typography", Object.keys(tokenContracts.layers ?? {}).length >= 4 && Object.keys(typographySystem.type_roles ?? {}).length > 0, ["04-design-system/tokens/token-contracts.json", "04-design-system/tokens/typography-system.json"], "Token layers and typography roles are deterministic."),
+    coverageItem("frontend_contract", "Frontend build contract", Object.keys(input.frontendContract.buildManifest).length > 0 && (dataOperationContracts.queries?.length ?? 0) > 0 && (actionContracts.actions?.length ?? 0) > 0 && (formContracts.forms?.length ?? 0) > 0, ["06-frontend-agent-contract/build-manifest.json", "06-frontend-agent-contract/data-operation-contracts.json", "06-frontend-agent-contract/action-contracts.json", "06-frontend-agent-contract/form-contracts.json"], "Frontend-agent contract includes build order, data operations, actions, forms, routing, and acceptance criteria."),
+    coverageItem("verification", "Implementation verification", (verificationContracts.coverage?.test_count ?? 0) > 0 && (verificationContracts.blockers ?? []).length === 0, ["06-frontend-agent-contract/verification-contracts.json"], "Verification suites define downstream proof obligations."),
+    coverageItem("traceability", "DSAG traceability", input.dsag.integrity.status !== "fail", ["03-experience-architecture/dsag.json", "08-quality/dsag-integrity-report.md"], "DSAG connects evidence, product, UX, design system, contracts, and quality gates."),
+    coverageItem("workbench", "Workbench review and handoff", input.referenceSurfaces.dashboard.length > 0 && input.revision.revisionProtocol.length > 0, ["07-reference-surfaces/*.md", "10-revision/revision-protocol.md"], "Workbench package includes review surfaces, governance, revision, simulation, and handoff artifacts."),
+    coverageItem("production_backend", "Production backend/API confirmation", false, ["06-frontend-agent-contract/data-contracts.json"], "Backend API, auth, and production validation rules still require project-specific confirmation.", true),
+    coverageItem("human_review", "Human accessibility, compliance, and brand review", false, ["08-quality/accessibility-report.md", "00-manifest/implementation-readiness.json"], "Human review remains required for accessibility, compliance, exact copy, and brand judgment.", true)
+  ];
+  const pass = coverage.filter((item) => item.status === "pass").length;
+  const warn = coverage.filter((item) => item.status === "warning").length;
+  const fail = coverage.filter((item) => item.status === "fail").length;
+  return {
+    audit_version: "1.0",
+    coverage,
+    summary: {
+      total: coverage.length,
+      pass,
+      warning: warn,
+      fail,
+      ready_for_frontend_agent: readiness.readyForFrontendAgent,
+      readiness_score: readiness.score
+    },
+    remaining_gaps: [
+      "Confirm production backend API and data schema.",
+      "Confirm authentication and authorization integration.",
+      "Confirm exact production copy and brand-specific content.",
+      "Run human accessibility and compliance review.",
+      "Execute generated frontend source code in the target stack."
+    ],
+    blockers: coverage.filter((item) => item.status === "fail").map((item) => `${item.id}: ${item.details}`),
+    warnings: coverage.filter((item) => item.status === "warning").map((item) => `${item.id}: ${item.details}`),
+    evidence_refs: ["decision_compiler_order"]
+  };
+}
+
+function specCoverageMarkdown(audit: Record<string, unknown>): string {
+  const coverage = (audit.coverage as Array<Record<string, unknown>> | undefined) ?? [];
+  const summary = audit.summary as Record<string, unknown>;
+  const remaining = (audit.remaining_gaps as string[] | undefined) ?? [];
+  return [
+    "# Spec Coverage Audit",
+    "",
+    `Ready for frontend agent: ${summary.ready_for_frontend_agent}`,
+    `Readiness score: ${summary.readiness_score}`,
+    `Coverage: ${summary.pass} pass, ${summary.warning} warning, ${summary.fail} fail`,
+    "",
+    "## Coverage",
+    "",
+    ...coverage.map((item) => `- [${item.status}] ${item.label}: ${item.details}`),
+    "",
+    "## Remaining Gaps",
+    "",
+    ...remaining.map((gap) => `- ${gap}`)
+  ].join("\n");
+}
+
 export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   const checks: ValidationReport["checks"] = [];
   const blockers: string[] = [];
@@ -339,6 +421,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
       ...input.evidence.risks.map((risk) => `Review risk: ${risk.claim}`)
     ]
   };
+  const specCoverageAudit = buildSpecCoverageAudit(input, readiness);
 
   return {
     validation,
@@ -439,7 +522,9 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
       ...checks.map((item) => `- [${item.status === "pass" ? "x" : " "}] ${item.id}: ${item.details}`),
       "",
       `Ready for frontend agent: ${readiness.readyForFrontendAgent}`
-    ].join("\n")
+    ].join("\n"),
+    specCoverageAudit,
+    specCoverageReport: specCoverageMarkdown(specCoverageAudit)
   };
 }
 
