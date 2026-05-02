@@ -160,6 +160,12 @@ interface CoverageOverride {
   updatedAt: string;
 }
 
+interface DesignReviewOverride {
+  state: "unreviewed" | "approved" | "needs_changes" | "blocked";
+  note: string;
+  updatedAt: string;
+}
+
 const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => number | string }> = [
   { id: "overview", label: "Overview", count: (bundle) => bundle.readiness.score },
   { id: "workspace", label: "Workspace", count: () => state.workspaceEntries.length },
@@ -188,6 +194,8 @@ const state: {
   activeGateNote: string;
   coverageOverrides: Record<string, CoverageOverride>;
   activeCoverageNote: string;
+  designReviewOverrides: Record<string, DesignReviewOverride>;
+  activeDesignReviewNote: string;
   baselineSnapshot: PackageSnapshot | null;
   baselineName: string;
   impactMessage: string;
@@ -210,6 +218,8 @@ const state: {
   activeGateNote: "",
   coverageOverrides: {},
   activeCoverageNote: "",
+  designReviewOverrides: {},
+  activeDesignReviewNote: "",
   baselineSnapshot: null,
   baselineName: "",
   impactMessage: "",
@@ -762,6 +772,25 @@ function coverageTone(value: CoverageOverride["state"]): "success" | "warning" |
   return "neutral";
 }
 
+function designReviewKey(kind: "component" | "pattern" | "token", id: string): string {
+  return `${kind}:${id}`;
+}
+
+function designReviewState(key: string): DesignReviewOverride["state"] {
+  return state.designReviewOverrides[key]?.state ?? "unreviewed";
+}
+
+function designReviewTone(value: DesignReviewOverride["state"]): "success" | "warning" | "danger" | "neutral" {
+  if (value === "approved") return "success";
+  if (value === "blocked") return "danger";
+  if (value === "needs_changes") return "warning";
+  return "neutral";
+}
+
+function tokenGroupNames(bundle: Bundle): string[] {
+  return Object.keys(bundle.semanticTokens ?? {}).sort();
+}
+
 function handoffPrompt(bundle: Bundle): string {
   const required = requiredHandoffArtifacts(bundle).filter((artifact) => artifact.present).map((artifact) => `- ${artifact.path}`).join("\n");
   return [
@@ -810,6 +839,11 @@ function handoffMarkdown(bundle: Bundle): string {
       ? Object.entries(state.coverageOverrides).map(([screenId, coverage]) => `- ${screenId}: ${coverage.state}${coverage.note ? `, ${coverage.note}` : ""}`)
       : ["- None"]),
     "",
+    "## Design System Review",
+    ...(Object.keys(state.designReviewOverrides).length
+      ? Object.entries(state.designReviewOverrides).map(([itemId, review]) => `- ${itemId}: ${review.state}${review.note ? `, ${review.note}` : ""}`)
+      : ["- None"]),
+    "",
     "## Required Handoff Artifacts",
     ...required.map((artifact) => `- ${artifact.present ? "present" : "missing"}: ${artifact.path}`),
     "",
@@ -837,6 +871,7 @@ function handoffJson(bundle: Bundle): Record<string, unknown> {
     })),
     requiredArtifacts: requiredHandoffArtifacts(bundle),
     screenCoverage: state.coverageOverrides,
+    designSystemReview: state.designReviewOverrides,
     artifactDigests: bundle.artifacts ?? [],
     commands: handoffCommands(),
     frontendAgentPrompt: handoffPrompt(bundle)
@@ -1120,7 +1155,7 @@ function renderGeneration(bundle: Bundle): string {
 
 function renderEvidence(bundle: Bundle): string {
   return `
-    <div class="grid cols-2">
+    <div class="grid cols-2" style="margin-top:14px">
       ${panel("Sources", table(["Source", "Type", "Confidence"], (bundle.evidence.sources ?? []).map((source: any) => [
         esc(source.source_label),
         esc(source.source_type),
@@ -1149,7 +1184,7 @@ function renderArchitecture(bundle: Bundle): string {
       ${metric("Needs changes", needsChanges, needsChanges > 0 ? "warning" : "success")}
       ${metric("Blocked", blocked, blocked > 0 ? "danger" : "success")}
     </div>
-    <div class="grid cols-2">
+    <div class="grid cols-2" style="margin-top:14px">
       ${panel("Routes", table(["Route", "Screen", "Layout", "Priority"], bundle.routeMap.routes.map((route) => [
         `<code>${esc(route.route)}</code>`,
         esc(route.screen_id),
@@ -1234,18 +1269,58 @@ function renderScreens(bundle: Bundle): string {
 }
 
 function renderDesign(bundle: Bundle): string {
+  const reviewItems = [
+    ...bundle.componentRegistry.components.map((component) => designReviewKey("component", String(component.name))),
+    ...bundle.patternRegistry.patterns.map((pattern) => designReviewKey("pattern", String(pattern.name))),
+    ...tokenGroupNames(bundle).map((token) => designReviewKey("token", token))
+  ];
+  const approved = reviewItems.filter((key) => designReviewState(key) === "approved").length;
+  const needsChanges = reviewItems.filter((key) => designReviewState(key) === "needs_changes").length;
+  const blocked = reviewItems.filter((key) => designReviewState(key) === "blocked").length;
   return `
-    <div class="grid cols-2">
-      ${panel("Components", table(["Component", "Category", "Screens"], bundle.componentRegistry.components.map((component) => [
-        esc(component.name),
-        esc(component.category),
-        esc((component.used_on_screens ?? []).join(", ") || "none")
-      ])))}
-      ${panel("Patterns", table(["Pattern", "Screens", "Data"], bundle.patternRegistry.patterns.map((pattern) => [
-        esc(pattern.name),
-        esc((pattern.used_on_screens ?? []).join(", ") || "none"),
-        esc((pattern.data_requirements ?? []).join(", "))
-      ])))}
+    <div class="grid cols-3">
+      ${metric("Approved items", `${approved}/${reviewItems.length}`, approved === reviewItems.length ? "success" : "warning")}
+      ${metric("Needs changes", needsChanges, needsChanges > 0 ? "warning" : "success")}
+      ${metric("Blocked", blocked, blocked > 0 ? "danger" : "success")}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Components", table(["Component", "Category", "State", "Actions"], bundle.componentRegistry.components.map((component) => {
+        const key = designReviewKey("component", String(component.name));
+        const reviewState = designReviewState(key);
+        return [
+          `<div><strong>${esc(component.name)}</strong><div class="muted">${esc((component.used_on_screens ?? []).join(", ") || "none")}</div></div>`,
+          esc(component.category),
+          badge(reviewState, designReviewTone(reviewState)),
+          `<div class="control-row compact"><button class="button small" data-design-review="${esc(key)}" data-design-state="approved" type="button">Approve</button><button class="button small" data-design-review="${esc(key)}" data-design-state="needs_changes" type="button">Needs changes</button><button class="button small" data-design-review="${esc(key)}" data-design-state="blocked" type="button">Block</button></div>`
+        ];
+      })))}
+      ${panel("Patterns", table(["Pattern", "Data", "State", "Actions"], bundle.patternRegistry.patterns.map((pattern) => {
+        const key = designReviewKey("pattern", String(pattern.name));
+        const reviewState = designReviewState(key);
+        return [
+          `<div><strong>${esc(pattern.name)}</strong><div class="muted">${esc((pattern.used_on_screens ?? []).join(", ") || "none")}</div></div>`,
+          esc((pattern.data_requirements ?? []).join(", ")),
+          badge(reviewState, designReviewTone(reviewState)),
+          `<div class="control-row compact"><button class="button small" data-design-review="${esc(key)}" data-design-state="approved" type="button">Approve</button><button class="button small" data-design-review="${esc(key)}" data-design-state="needs_changes" type="button">Needs changes</button><button class="button small" data-design-review="${esc(key)}" data-design-state="blocked" type="button">Block</button></div>`
+        ];
+      })))}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Token Groups", table(["Group", "State", "Actions"], tokenGroupNames(bundle).map((token) => {
+        const key = designReviewKey("token", token);
+        const reviewState = designReviewState(key);
+        return [
+          esc(token),
+          badge(reviewState, designReviewTone(reviewState)),
+          `<div class="control-row compact"><button class="button small" data-design-review="${esc(key)}" data-design-state="approved" type="button">Approve</button><button class="button small" data-design-review="${esc(key)}" data-design-state="needs_changes" type="button">Needs changes</button><button class="button small" data-design-review="${esc(key)}" data-design-state="blocked" type="button">Block</button></div>`
+        ];
+      })))}
+      ${panel("Design Review Note", `
+        ${textArea("design-review-note", state.activeDesignReviewNote, "Design note for the next review action", "textarea short")}
+        <div class="control-row">
+          <button class="button" id="reset-design-review" type="button">Reset design review</button>
+        </div>
+      `)}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Semantic Tokens", code(bundle.semanticTokens))}
@@ -1605,6 +1680,29 @@ function bindEvents(): void {
     saveCoverageOverrides();
     render();
   });
+  document.querySelector<HTMLTextAreaElement>("#design-review-note")?.addEventListener("input", (event) => {
+    state.activeDesignReviewNote = (event.target as HTMLTextAreaElement).value;
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-design-review]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const itemId = button.dataset.designReview;
+      const reviewState = button.dataset.designState as DesignReviewOverride["state"] | undefined;
+      if (!itemId || !reviewState) return;
+      state.designReviewOverrides[itemId] = {
+        state: reviewState,
+        note: state.activeDesignReviewNote.trim(),
+        updatedAt: new Date().toISOString()
+      };
+      saveDesignReviewOverrides();
+      render();
+    });
+  });
+  document.querySelector<HTMLButtonElement>("#reset-design-review")?.addEventListener("click", () => {
+    state.designReviewOverrides = {};
+    state.activeDesignReviewNote = "";
+    saveDesignReviewOverrides();
+    render();
+  });
   document.querySelector<HTMLButtonElement>("#save-workspace-package")?.addEventListener("click", async () => {
     if (!state.bundle) return;
     const entry = await saveWorkspaceBundle(state.bundle, state.packageName);
@@ -1635,6 +1733,7 @@ function bindEvents(): void {
       state.generationMessage = "";
       state.activeGateNote = "";
       state.activeCoverageNote = "";
+      state.activeDesignReviewNote = "";
       state.handoffMessage = "";
       state.intakeForm = null;
       state.sourceMaterials = [];
@@ -1642,6 +1741,7 @@ function bindEvents(): void {
       state.sourceMessage = "";
       loadApprovalOverrides();
       loadCoverageOverrides();
+      loadDesignReviewOverrides();
       loadBaselineSnapshot();
       await refreshWorkspaceEntries();
       render();
@@ -1913,6 +2013,7 @@ function bindEvents(): void {
       state.generationMessage = "";
       state.activeGateNote = "";
       state.activeCoverageNote = "";
+      state.activeDesignReviewNote = "";
       state.handoffMessage = "";
       state.intakeForm = null;
       state.sourceMaterials = [];
@@ -1920,6 +2021,7 @@ function bindEvents(): void {
       state.sourceMessage = "";
       loadApprovalOverrides();
       loadCoverageOverrides();
+      loadDesignReviewOverrides();
       loadBaselineSnapshot();
       await refreshWorkspaceEntries();
       render();
@@ -1937,6 +2039,7 @@ async function loadSample(): Promise<void> {
   state.generationMessage = "";
   state.activeGateNote = "";
   state.activeCoverageNote = "";
+  state.activeDesignReviewNote = "";
   state.handoffMessage = "";
   state.intakeForm = null;
   state.sourceMaterials = [];
@@ -1944,6 +2047,7 @@ async function loadSample(): Promise<void> {
   state.sourceMessage = "";
   loadBaselineSnapshot();
   loadCoverageOverrides();
+  loadDesignReviewOverrides();
   await refreshWorkspaceEntries();
   render();
 }
@@ -1980,6 +2084,23 @@ function loadCoverageOverrides(): void {
 
 function saveCoverageOverrides(): void {
   localStorage.setItem(coverageStorageKey(), JSON.stringify(state.coverageOverrides));
+}
+
+function designReviewStorageKey(): string {
+  const slug = state.bundle?.manifest.project_slug ?? state.packageName;
+  return `archetype:design-review:${slug}`;
+}
+
+function loadDesignReviewOverrides(): void {
+  try {
+    state.designReviewOverrides = JSON.parse(localStorage.getItem(designReviewStorageKey()) ?? "{}");
+  } catch {
+    state.designReviewOverrides = {};
+  }
+}
+
+function saveDesignReviewOverrides(): void {
+  localStorage.setItem(designReviewStorageKey(), JSON.stringify(state.designReviewOverrides));
 }
 
 function baselineStorageKey(): string {

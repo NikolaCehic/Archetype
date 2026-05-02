@@ -486,3 +486,32 @@ Verification:
 Next phase:
 
 - Design-system token and component review controls.
+
+## Completed Phase: Design-System Review Controls
+
+Status: complete
+
+Implemented:
+
+- Local design-system review states.
+- Component review actions.
+- Pattern review actions.
+- Semantic token group review actions.
+- Design review notes.
+- Design review reset action.
+- Package-specific design review persistence.
+- Design-system review metrics.
+- Design review state included in handoff markdown and JSON.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Frontend contract gap reporting controls.
