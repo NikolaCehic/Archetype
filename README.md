@@ -19,6 +19,7 @@ Implemented:
 - Acceptance-test and implementation verification contracts.
 - Production integration contracts for backend/API mapping, auth guards, copy confirmation, human review, and target-stack execution proof.
 - Deterministic target frontend source manifests, route/component maps, adapter interfaces, and codegen tasks.
+- Deterministic target frontend source writer CLI command.
 - Workbench deterministic contract inspection.
 - Spec coverage and remaining-gap audit.
 - Product Model.
@@ -102,6 +103,12 @@ Simulate whether the exported frontend contract is buildable:
 npm run simulate
 ```
 
+Write the deterministic target frontend scaffold:
+
+```bash
+npm run write-target
+```
+
 Run golden examples:
 
 ```bash
@@ -149,6 +156,7 @@ node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archety
 - `src/quality/quality.ts`: Validation and readiness scoring.
 - `src/quality/validatePackage.ts`: CI-friendly exported package validator.
 - `src/quality/simulatePackage.ts`: CI-friendly frontend build simulation validator.
+- `src/output/writeTargetFrontend.ts`: Deterministic target frontend source writer.
 - `src/output/exportPackage.ts`: Package writer.
 - `examples/fintech-intake.json`: Smoke-test intake.
 - `workbench/`: Browser workbench for reviewing generated packages.

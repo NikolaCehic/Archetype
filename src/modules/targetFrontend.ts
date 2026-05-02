@@ -98,11 +98,46 @@ export function buildTargetFrontendArtifacts(input: {
 
   const supportFiles = [
     {
+      path: "package.json",
+      kind: "project_config",
+      exports: ["scripts", "dependencies"],
+      reads: ["06-frontend-agent-contract/build-manifest.json"],
+      forbidden_behavior: ["Do not add unapproved UI libraries as design substitutes."]
+    },
+    {
+      path: "tsconfig.json",
+      kind: "project_config",
+      exports: ["compilerOptions"],
+      reads: ["06-frontend-agent-contract/build-manifest.json"],
+      forbidden_behavior: ["Do not disable strict TypeScript checks to hide contract gaps."]
+    },
+    {
+      path: "next-env.d.ts",
+      kind: "project_config",
+      exports: ["next_types"],
+      reads: ["06-frontend-agent-contract/build-manifest.json"],
+      forbidden_behavior: ["Do not edit generated framework type references by hand."]
+    },
+    {
       path: "src/app/layout.tsx",
       kind: "app_shell",
       exports: ["default"],
       reads: ["06-frontend-agent-contract/layout-rules.json", "03-experience-architecture/navigation-model.json"],
       forbidden_behavior: ["Do not create navigation items outside route-map.json."]
+    },
+    {
+      path: "src/app/globals.css",
+      kind: "style",
+      exports: ["global_css_imports"],
+      reads: ["04-design-system/tokens/css-variables.css", "04-design-system/tokens/typography.css"],
+      forbidden_behavior: ["Do not add global visual styles outside generated tokens."]
+    },
+    {
+      path: "src/lib/archetype/adapter-interfaces.ts",
+      kind: "adapter",
+      exports: ["ArchetypeDataAdapter", "ArchetypeAuthAdapter"],
+      reads: ["12-target-frontend/adapter-interfaces.ts"],
+      forbidden_behavior: ["Do not change adapter signatures without revising data, auth, and production integration contracts."]
     },
     {
       path: "src/lib/archetype/data-adapter.ts",
@@ -182,7 +217,7 @@ export function buildTargetFrontendArtifacts(input: {
       {
         task_id: "install_target_stack",
         order: 1,
-        writes: [],
+        writes: supportFiles.filter((file) => file.kind === "project_config").map((file) => file.path),
         reads: ["00-manifest/manifest.json", "06-frontend-agent-contract/build-manifest.json"],
         acceptance: "Target repo uses the declared framework, language, styling, and routing contract."
       },
@@ -230,7 +265,7 @@ export function buildTargetFrontendArtifacts(input: {
       }
     ],
     blockers: files.length > 0 ? [] : ["No source files were generated for the target manifest."],
-    warnings: ["This manifest is deterministic source-generation guidance; the compiler does not write the target frontend repository in this phase."]
+    warnings: ["This manifest is deterministic source-generation guidance; use the write-target command to materialize it and then run target stack checks."]
   };
 
   const sourceFileManifest = {
@@ -250,7 +285,7 @@ export function buildTargetFrontendArtifacts(input: {
     },
     forbidden_behavior: buildManifest.forbidden_behavior ?? [],
     blockers: [],
-    warnings: ["Generated source files must still be created and executed in the target frontend repository."]
+    warnings: ["Generated source files must still be materialized with write-target and executed in the target frontend repository."]
   };
 
   const adapterInterfaceSource = [

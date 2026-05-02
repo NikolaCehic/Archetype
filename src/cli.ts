@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { runArchetypeCompiler } from "./core/pipeline";
 import { exportPackage } from "./output/exportPackage";
+import { writeTargetFrontendSource } from "./output/writeTargetFrontend";
 import { validateExportedPackage } from "./quality/validatePackage";
 import { simulateExportedPackage } from "./quality/simulatePackage";
 import type { ArchetypeInput } from "./core/types";
@@ -11,6 +12,7 @@ function usage(): never {
   console.log("  archetype generate --input <intake.json> --out <output-dir>");
   console.log("  archetype validate --out <output-dir>");
   console.log("  archetype simulate --out <output-dir>");
+  console.log("  archetype write-target --out <output-dir> --target <target-dir> [--force]");
   process.exit(1);
 }
 
@@ -22,7 +24,7 @@ function getArg(name: string): string | undefined {
 
 async function main(): Promise<void> {
   const command = process.argv[2];
-  if (command !== "generate" && command !== "validate" && command !== "simulate") usage();
+  if (command !== "generate" && command !== "validate" && command !== "simulate" && command !== "write-target") usage();
 
   if (command === "validate") {
     const outDir = getArg("--out");
@@ -37,6 +39,18 @@ async function main(): Promise<void> {
     const outDir = getArg("--out");
     if (!outDir) usage();
     const result = simulateExportedPackage(path.resolve(outDir));
+    console.log(JSON.stringify(result, null, 2));
+    if (result.status === "fail") process.exit(1);
+    return;
+  }
+
+  if (command === "write-target") {
+    const outDir = getArg("--out");
+    const targetDir = getArg("--target");
+    if (!outDir || !targetDir) usage();
+    const result = writeTargetFrontendSource(path.resolve(outDir), path.resolve(targetDir), {
+      force: process.argv.includes("--force")
+    });
     console.log(JSON.stringify(result, null, 2));
     if (result.status === "fail") process.exit(1);
     return;

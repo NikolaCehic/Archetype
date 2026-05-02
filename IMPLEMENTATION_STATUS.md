@@ -1590,3 +1590,35 @@ Verification:
 Next phase:
 
 - Decide whether to write generated frontend source files to a target repository or build a backend/auth adapter import workflow.
+
+## Completed Phase: Target Frontend Source Writer
+
+Status: complete
+
+Implemented:
+
+- Added `node dist/cli.js write-target --out <output-dir> --target <target-dir> [--force]`.
+- Added `npm run write-target`.
+- Added `src/output/writeTargetFrontend.ts`.
+- The writer reads `12-target-frontend/source-file-manifest.json`, `route-component-map.json`, and `adapter-interfaces.ts`.
+- The writer materializes a deterministic Next/React/TypeScript scaffold.
+- Generated source includes package config, TypeScript config, app layout, global CSS, token CSS, data adapter, auth adapter, copy contract, adapter interfaces, route files, component files, pattern files, and verification test skeletons.
+- Route files preserve `data-archetype-screen`, `data-state`, and `data-route` selectors from the contract.
+- Components and patterns preserve deterministic `data-archetype-component` and `data-archetype-pattern` selectors.
+- `npm run check` now includes target source writing.
+
+Verification:
+
+- `npm run check` passes.
+- `npm run write-target` passes.
+- Generated frontend files written: 59.
+- Package validation blockers: 0.
+- Manifest-listed files checked by validator: 158.
+- Smoke package readiness: 89.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench production build passes.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Add target frontend source execution/typecheck with installed dependencies, or build backend/auth adapter import workflow.
