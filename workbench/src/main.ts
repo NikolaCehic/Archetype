@@ -16,6 +16,8 @@ type ViewId =
   | "governance"
   | "revision";
 
+type WorkspaceReadinessFilter = "all" | "ready" | "hold";
+
 interface ArtifactDigest {
   path: string;
   hash: string;
@@ -274,6 +276,8 @@ const state: {
   impactMessage: string;
   handoffMessage: string;
   workspaceEntries: WorkspaceEntry[];
+  workspaceSearch: string;
+  workspaceReadinessFilter: WorkspaceReadinessFilter;
   workspaceMessage: string;
   workspaceCompareBaseId: string;
   workspaceCompareTargetId: string;
@@ -309,6 +313,8 @@ const state: {
   impactMessage: "",
   handoffMessage: "",
   workspaceEntries: [],
+  workspaceSearch: "",
+  workspaceReadinessFilter: "all",
   workspaceMessage: "",
   workspaceCompareBaseId: "",
   workspaceCompareTargetId: "",
@@ -439,19 +445,37 @@ function renderOverview(bundle: Bundle): string {
   `;
 }
 
+function workspaceEntryMatchesFilters(entry: WorkspaceEntry): boolean {
+  if (state.workspaceReadinessFilter === "ready" && !entry.readyForFrontendAgent) return false;
+  if (state.workspaceReadinessFilter === "hold" && entry.readyForFrontendAgent) return false;
+  const query = state.workspaceSearch.trim().toLowerCase();
+  if (!query) return true;
+  const searchable = [
+    entry.name,
+    entry.projectSlug,
+    entry.packageId,
+    entry.sourceHash,
+    entry.id,
+    String(entry.readinessScore),
+    entry.readyForFrontendAgent ? "ready" : "hold"
+  ];
+  return searchable.some((value) => value.toLowerCase().includes(query));
+}
+
 function renderWorkspace(bundle: Bundle): string {
-  const activeId = workspaceIdForBundle(bundle);
   const activeEntries = state.workspaceEntries.filter((entry) => !entry.archivedAt);
   const archivedEntries = state.workspaceEntries.filter((entry) => entry.archivedAt);
-  const activeSaved = activeEntries.some((entry) => entry.id === activeId);
+  const filteredActiveEntries = activeEntries.filter(workspaceEntryMatchesFilters);
+  const filteredArchivedEntries = archivedEntries.filter(workspaceEntryMatchesFilters);
+  const workspaceFiltersActive = !!state.workspaceSearch.trim() || state.workspaceReadinessFilter !== "all";
   const compareOptions = (selectedId: string) => state.workspaceEntries.map((entry) => `<option value="${esc(entry.id)}" ${entry.id === selectedId ? "selected" : ""}>${esc(`${entry.name} · ${entry.projectSlug} · score ${entry.readinessScore}`)}</option>`).join("");
   const comparison = state.workspaceComparison;
   const changedDiffs = comparison?.diffs.filter((diff) => diff.status !== "unchanged") ?? [];
   return `
     <div class="grid cols-3">
-      ${metric("Saved packages", activeEntries.length)}
+      ${metric("Saved packages", workspaceFiltersActive ? `${filteredActiveEntries.length}/${activeEntries.length}` : activeEntries.length)}
       ${metric("Active score", bundle.readiness.score, bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
-      ${metric("Archived", archivedEntries.length, archivedEntries.length ? "warning" : "success")}
+      ${metric("Archived", workspaceFiltersActive ? `${filteredArchivedEntries.length}/${archivedEntries.length}` : archivedEntries.length, archivedEntries.length ? "warning" : "success")}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Active Package", `
@@ -487,6 +511,25 @@ function renderWorkspace(bundle: Bundle): string {
         </div>
       `)}
     </div>
+    <div style="margin-top:14px">
+      ${panel("Package Filters", `
+        <div class="form-grid">
+          ${inputField("workspace-search", state.workspaceSearch, "Search packages")}
+          <label class="field">
+            <span>Readiness</span>
+            <select id="workspace-readiness-filter" class="input">
+              <option value="all" ${state.workspaceReadinessFilter === "all" ? "selected" : ""}>all packages</option>
+              <option value="ready" ${state.workspaceReadinessFilter === "ready" ? "selected" : ""}>ready only</option>
+              <option value="hold" ${state.workspaceReadinessFilter === "hold" ? "selected" : ""}>hold only</option>
+            </select>
+          </label>
+        </div>
+        <div class="control-row">
+          <button class="button" id="clear-workspace-filters" type="button" ${workspaceFiltersActive ? "" : "disabled"}>Clear filters</button>
+        </div>
+        <div class="muted" style="margin-top:10px">${esc(workspaceFiltersActive ? `Showing ${filteredActiveEntries.length} active and ${filteredArchivedEntries.length} archived packages.` : `Showing all ${activeEntries.length} active and ${archivedEntries.length} archived packages.`)}</div>
+      `)}
+    </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Active Snapshot", code({
         packageName: state.packageName,
@@ -510,21 +553,21 @@ function renderWorkspace(bundle: Bundle): string {
       }))}
     </div>
     <div style="margin-top:14px">
-      ${panel("Saved Packages", activeEntries.length ? table(["Package", "Score", "Artifacts", "Saved", "Actions"], activeEntries.map((entry) => [
+      ${panel("Saved Packages", filteredActiveEntries.length ? table(["Package", "Score", "Artifacts", "Saved", "Actions"], filteredActiveEntries.map((entry) => [
         `<div><strong>${esc(entry.name)}</strong><div class="muted">${esc(entry.projectSlug)} · ${esc(entry.sourceHash.slice(0, 8) || entry.packageId.slice(0, 8))}</div></div>`,
         badge(String(entry.readinessScore), entry.readyForFrontendAgent ? "success" : "danger"),
         esc(entry.artifactCount),
         esc(new Date(entry.savedAt).toLocaleString()),
         `<div class="control-row compact"><button class="button small" data-workspace-load="${esc(entry.id)}" type="button">Load</button><button class="button small" data-workspace-archive="${esc(entry.id)}" type="button">Archive</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
-      ])) : `<div class="empty">No saved packages.</div>`)}
+      ])) : `<div class="empty">${workspaceFiltersActive && activeEntries.length ? "No saved packages match the current filters." : "No saved packages."}</div>`)}
     </div>
     <div style="margin-top:14px">
-      ${panel("Archived Packages", archivedEntries.length ? table(["Package", "Score", "Archived", "Actions"], archivedEntries.map((entry) => [
+      ${panel("Archived Packages", filteredArchivedEntries.length ? table(["Package", "Score", "Archived", "Actions"], filteredArchivedEntries.map((entry) => [
         `<div><strong>${esc(entry.name)}</strong><div class="muted">${esc(entry.projectSlug)} · ${esc(entry.sourceHash.slice(0, 8) || entry.packageId.slice(0, 8))}</div></div>`,
         badge(String(entry.readinessScore), entry.readyForFrontendAgent ? "success" : "danger"),
         esc(entry.archivedAt ? new Date(entry.archivedAt).toLocaleString() : ""),
         `<div class="control-row compact"><button class="button small" data-workspace-restore="${esc(entry.id)}" type="button">Restore</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
-      ])) : `<div class="empty">No archived packages.</div>`)}
+      ])) : `<div class="empty">${workspaceFiltersActive && archivedEntries.length ? "No archived packages match the current filters." : "No archived packages."}</div>`)}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Compare Saved Packages", `
@@ -2366,6 +2409,25 @@ function bindEvents(): void {
     state.simulationTriageOverrides = {};
     state.activeSimulationTriageNote = "";
     saveSimulationTriageOverrides();
+    render();
+  });
+  document.querySelector<HTMLInputElement>("#workspace-search")?.addEventListener("input", (event) => {
+    const input = event.target as HTMLInputElement;
+    const cursor = input.selectionStart ?? input.value.length;
+    state.workspaceSearch = input.value;
+    render();
+    const restoredInput = document.querySelector<HTMLInputElement>("#workspace-search");
+    restoredInput?.focus();
+    restoredInput?.setSelectionRange(cursor, cursor);
+  });
+  document.querySelector<HTMLSelectElement>("#workspace-readiness-filter")?.addEventListener("input", (event) => {
+    const value = (event.target as HTMLSelectElement).value;
+    state.workspaceReadinessFilter = value === "ready" || value === "hold" ? value : "all";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#clear-workspace-filters")?.addEventListener("click", () => {
+    state.workspaceSearch = "";
+    state.workspaceReadinessFilter = "all";
     render();
   });
   document.querySelector<HTMLButtonElement>("#save-workspace-package")?.addEventListener("click", async () => {
