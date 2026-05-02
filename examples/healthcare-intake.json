@@ -1,0 +1,28 @@
+{
+  "projectName": "CareBoard",
+  "context": "I am building a healthcare workflow product for clinics. Providers need to review patient summaries, manage appointments, review medications, and update care plans.",
+  "goals": [
+    "Help providers find patient context quickly.",
+    "Make clinical alerts visible and reviewable.",
+    "Support appointment and medication workflows with accessible states."
+  ],
+  "businessGoals": [
+    "Reduce clinical workflow friction.",
+    "Improve clarity for provider teams."
+  ],
+  "users": ["Provider", "Clinic administrator"],
+  "referenceImages": [
+    {
+      "id": "uploaded_clinical_reference",
+      "label": "clinical workflow reference",
+      "type": "healthcare dashboard screenshot",
+      "notes": "Clinical list-detail workflow with patient cards, alerts, medication list, and appointment statuses."
+    }
+  ],
+  "brand": {
+    "attributes": ["calm", "clear", "high-contrast"],
+    "primaryColor": "#0369A1",
+    "tone": "Careful, explicit, and low-ambiguity."
+  },
+  "operatingMode": "full_architecture"
+}

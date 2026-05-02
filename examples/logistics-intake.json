@@ -1,0 +1,28 @@
+{
+  "projectName": "FleetPulse",
+  "context": "I am building a logistics operations platform for dispatch teams. Operators need to track shipments, monitor fleet health, resolve delivery exceptions, and understand route progress quickly.",
+  "goals": [
+    "Help operators identify delivery exceptions immediately.",
+    "Help dispatch managers assign vehicles and monitor route progress.",
+    "Make shipment status visible without relying on color alone."
+  ],
+  "businessGoals": [
+    "Reduce time to resolve delivery exceptions.",
+    "Improve operational visibility for dispatch teams."
+  ],
+  "users": ["Dispatch operator", "Operations manager"],
+  "referenceImages": [
+    {
+      "id": "uploaded_logistics_dashboard",
+      "label": "logistics dashboard reference",
+      "type": "operations dashboard screenshot",
+      "notes": "Dense operational dashboard with map area, exception list, and status table."
+    }
+  ],
+  "brand": {
+    "attributes": ["operational", "clear", "reliable"],
+    "primaryColor": "#0F766E",
+    "tone": "Direct, calm, and action-oriented."
+  },
+  "operatingMode": "full_architecture"
+}

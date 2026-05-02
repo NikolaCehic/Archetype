@@ -1,0 +1,19 @@
+{
+  "name": "archetype-design-architect",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Archetype Design Architecture Compiler",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "generate": "node dist/cli.js generate",
+    "validate": "node dist/cli.js validate --out tmp/archetype-output",
+    "smoke": "npm run build && node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archetype-output",
+    "golden": "npm run build && node scripts/run-golden.mjs",
+    "clean": "rm -rf dist tmp/archetype-output"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.9.3"
+  }
+}

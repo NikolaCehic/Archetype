@@ -1,0 +1,45 @@
+{
+  "projectName": "CashPilot",
+  "context": "I am building a fintech dashboard for small businesses. Users need to track cash flow, unpaid invoices, expenses, monthly financial health, and payment risk. The interface should feel trustworthy, modern, calm, precise, and implementation-ready for a frontend agent.",
+  "goals": [
+    "Help owners understand cash position within 10 seconds.",
+    "Help bookkeepers track unpaid and overdue invoices.",
+    "Make monthly reports easy to export.",
+    "Make financial risk visible without relying on color alone."
+  ],
+  "businessGoals": [
+    "Increase user trust in financial visibility.",
+    "Reduce time spent manually checking invoice status.",
+    "Create a polished product UI that can be built by a frontend agent."
+  ],
+  "users": [
+    "Small business owner",
+    "Bookkeeper"
+  ],
+  "referenceImages": [
+    {
+      "id": "uploaded_image_01",
+      "label": "dashboard reference",
+      "type": "dashboard screenshot",
+      "notes": "Desktop dashboard with left sidebar, stat cards, chart panel, and compact table."
+    },
+    {
+      "id": "uploaded_image_02",
+      "label": "invoice table reference",
+      "type": "table screenshot",
+      "notes": "Dense invoice table with status badges and row actions."
+    }
+  ],
+  "brand": {
+    "attributes": ["calm", "precise", "trustworthy"],
+    "primaryColor": "#2563EB",
+    "tone": "Clear, direct, reassuring, and low-hype."
+  },
+  "stack": {
+    "framework": "React",
+    "language": "TypeScript",
+    "styling": "Tailwind CSS + CSS variables",
+    "routing": "Next.js App Router"
+  },
+  "operatingMode": "full_architecture"
+}

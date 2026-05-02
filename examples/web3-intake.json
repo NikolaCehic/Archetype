@@ -1,0 +1,28 @@
+{
+  "projectName": "WalletScope",
+  "context": "I am building a Web3 wallet analytics app for active traders. Users need to connect wallets, review token balances, inspect transactions across chains, compare network activity, and estimate gas fees.",
+  "goals": [
+    "Help users understand wallet performance across networks.",
+    "Make transaction status and gas fee risk explicit.",
+    "Help users inspect transaction hashes without losing context."
+  ],
+  "businessGoals": [
+    "Increase trust in wallet analytics.",
+    "Make complex blockchain data easier to scan."
+  ],
+  "users": ["Active trader", "Portfolio analyst"],
+  "referenceImages": [
+    {
+      "id": "uploaded_wallet_reference",
+      "label": "wallet analytics reference",
+      "type": "analytics dashboard screenshot",
+      "notes": "Technical dashboard with wallet connection state, token cards, network badges, and transaction table."
+    }
+  ],
+  "brand": {
+    "attributes": ["technical", "trustworthy", "high-signal"],
+    "primaryColor": "#4F46E5",
+    "tone": "Precise, transparent, and confidence-building."
+  },
+  "operatingMode": "full_architecture"
+}
