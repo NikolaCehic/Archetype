@@ -70,6 +70,7 @@ interface WorkspaceEntry {
   readyForFrontendAgent: boolean;
   artifactCount: number;
   warningCount: number;
+  archivedAt?: string;
 }
 
 interface IntakeFormState {
@@ -440,15 +441,17 @@ function renderOverview(bundle: Bundle): string {
 
 function renderWorkspace(bundle: Bundle): string {
   const activeId = workspaceIdForBundle(bundle);
-  const activeSaved = state.workspaceEntries.some((entry) => entry.id === activeId);
+  const activeEntries = state.workspaceEntries.filter((entry) => !entry.archivedAt);
+  const archivedEntries = state.workspaceEntries.filter((entry) => entry.archivedAt);
+  const activeSaved = activeEntries.some((entry) => entry.id === activeId);
   const compareOptions = (selectedId: string) => state.workspaceEntries.map((entry) => `<option value="${esc(entry.id)}" ${entry.id === selectedId ? "selected" : ""}>${esc(`${entry.name} · ${entry.projectSlug} · score ${entry.readinessScore}`)}</option>`).join("");
   const comparison = state.workspaceComparison;
   const changedDiffs = comparison?.diffs.filter((diff) => diff.status !== "unchanged") ?? [];
   return `
     <div class="grid cols-3">
-      ${metric("Saved packages", state.workspaceEntries.length)}
+      ${metric("Saved packages", activeEntries.length)}
       ${metric("Active score", bundle.readiness.score, bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
-      ${metric("Active saved", activeSaved ? "yes" : "no", activeSaved ? "success" : "warning")}
+      ${metric("Archived", archivedEntries.length, archivedEntries.length ? "warning" : "success")}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Active Package", `
@@ -464,6 +467,7 @@ function renderWorkspace(bundle: Bundle): string {
           <button class="button" id="refresh-workspace" type="button">Refresh workspace</button>
           <button class="button" id="export-workspace" type="button" ${state.workspaceEntries.length ? "" : "disabled"}>Export workspace</button>
           <button class="button" id="import-workspace" type="button">Import workspace</button>
+          <button class="button" id="purge-archived-packages" type="button" ${archivedEntries.length ? "" : "disabled"}>Purge archived</button>
           <input id="workspace-import-input" type="file" accept="application/json,.json" hidden />
         </div>
         ${state.workspaceMessage ? `<div class="notice" role="status">${esc(state.workspaceMessage)}</div>` : ""}
@@ -506,13 +510,21 @@ function renderWorkspace(bundle: Bundle): string {
       }))}
     </div>
     <div style="margin-top:14px">
-      ${panel("Saved Packages", state.workspaceEntries.length ? table(["Package", "Score", "Artifacts", "Saved", "Actions"], state.workspaceEntries.map((entry) => [
+      ${panel("Saved Packages", activeEntries.length ? table(["Package", "Score", "Artifacts", "Saved", "Actions"], activeEntries.map((entry) => [
         `<div><strong>${esc(entry.name)}</strong><div class="muted">${esc(entry.projectSlug)} · ${esc(entry.sourceHash.slice(0, 8) || entry.packageId.slice(0, 8))}</div></div>`,
         badge(String(entry.readinessScore), entry.readyForFrontendAgent ? "success" : "danger"),
         esc(entry.artifactCount),
         esc(new Date(entry.savedAt).toLocaleString()),
-        `<div class="control-row compact"><button class="button small" data-workspace-load="${esc(entry.id)}" type="button">Load</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
+        `<div class="control-row compact"><button class="button small" data-workspace-load="${esc(entry.id)}" type="button">Load</button><button class="button small" data-workspace-archive="${esc(entry.id)}" type="button">Archive</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
       ])) : `<div class="empty">No saved packages.</div>`)}
+    </div>
+    <div style="margin-top:14px">
+      ${panel("Archived Packages", archivedEntries.length ? table(["Package", "Score", "Archived", "Actions"], archivedEntries.map((entry) => [
+        `<div><strong>${esc(entry.name)}</strong><div class="muted">${esc(entry.projectSlug)} · ${esc(entry.sourceHash.slice(0, 8) || entry.packageId.slice(0, 8))}</div></div>`,
+        badge(String(entry.readinessScore), entry.readyForFrontendAgent ? "success" : "danger"),
+        esc(entry.archivedAt ? new Date(entry.archivedAt).toLocaleString() : ""),
+        `<div class="control-row compact"><button class="button small" data-workspace-restore="${esc(entry.id)}" type="button">Restore</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
+      ])) : `<div class="empty">No archived packages.</div>`)}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Compare Saved Packages", `
@@ -730,6 +742,41 @@ async function deleteWorkspaceBundle(id: string): Promise<void> {
     const transaction = db.transaction(WORKSPACE_STORE, "readwrite");
     transaction.objectStore(WORKSPACE_STORE).delete(id);
     await transactionDone(transaction);
+  } finally {
+    db.close();
+  }
+}
+
+async function archiveWorkspaceBundle(id: string, archived: boolean): Promise<void> {
+  const record = await loadWorkspaceBundle(id);
+  if (!record) return;
+  const db = await openWorkspaceDb();
+  try {
+    const transaction = db.transaction(WORKSPACE_STORE, "readwrite");
+    transaction.objectStore(WORKSPACE_STORE).put({
+      ...record,
+      entry: {
+        ...record.entry,
+        archivedAt: archived ? new Date().toISOString() : undefined
+      }
+    });
+    await transactionDone(transaction);
+  } finally {
+    db.close();
+  }
+}
+
+async function purgeArchivedWorkspaceBundles(): Promise<number> {
+  const records = await listWorkspaceRecords();
+  const archived = records.filter((record) => record.entry.archivedAt);
+  const db = await openWorkspaceDb();
+  try {
+    const transaction = db.transaction(WORKSPACE_STORE, "readwrite");
+    for (const record of archived) {
+      transaction.objectStore(WORKSPACE_STORE).delete(record.entry.id);
+    }
+    await transactionDone(transaction);
+    return archived.length;
   } finally {
     db.close();
   }
@@ -2363,6 +2410,12 @@ function bindEvents(): void {
       render();
     }
   });
+  document.querySelector<HTMLButtonElement>("#purge-archived-packages")?.addEventListener("click", async () => {
+    const purged = await purgeArchivedWorkspaceBundles();
+    await refreshWorkspaceEntries();
+    state.workspaceMessage = `Purged ${purged} archived packages.`;
+    render();
+  });
   document.querySelector<HTMLButtonElement>("#export-workbench-state")?.addEventListener("click", () => {
     if (!state.bundle) return;
     const slug = String(state.bundle.manifest.project_slug ?? "archetype-package");
@@ -2473,6 +2526,26 @@ function bindEvents(): void {
       await deleteWorkspaceBundle(id);
       await refreshWorkspaceEntries();
       state.workspaceMessage = "Saved package deleted.";
+      render();
+    });
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-workspace-archive]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.workspaceArchive;
+      if (!id) return;
+      await archiveWorkspaceBundle(id, true);
+      await refreshWorkspaceEntries();
+      state.workspaceMessage = "Package archived.";
+      render();
+    });
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-workspace-restore]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.workspaceRestore;
+      if (!id) return;
+      await archiveWorkspaceBundle(id, false);
+      await refreshWorkspaceEntries();
+      state.workspaceMessage = "Package restored.";
       render();
     });
   });

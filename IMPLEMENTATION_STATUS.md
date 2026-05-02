@@ -742,3 +742,31 @@ Verification:
 Next phase:
 
 - Workbench package archive and cleanup controls.
+
+## Completed Phase: Workbench Package Archive and Cleanup Controls
+
+Status: complete
+
+Implemented:
+
+- Archived package metadata.
+- Archive action for saved packages.
+- Restore action for archived packages.
+- Archived package table.
+- Purge archived packages action.
+- Active saved package list excludes archived packages.
+- Workspace export preserves archived package state.
+- Workspace metrics distinguish saved and archived packages.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench package search and filtering.
