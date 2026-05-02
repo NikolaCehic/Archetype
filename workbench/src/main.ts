@@ -233,6 +233,14 @@ interface WorkspaceExport {
   packages: Array<{ entry: WorkspaceEntry; bundle: Bundle }>;
 }
 
+interface WorkspaceActivityEntry {
+  id: string;
+  action: string;
+  details: string;
+  packageId?: string;
+  createdAt: string;
+}
+
 interface SavedPackageComparison {
   baseName: string;
   targetName: string;
@@ -301,6 +309,7 @@ const state: {
   workspaceBulkPriority: WorkspacePriority;
   workspaceImportPreview: WorkspaceExport | null;
   workspaceImportFileName: string;
+  workspaceActivity: WorkspaceActivityEntry[];
   workspaceMessage: string;
   workspaceCompareBaseId: string;
   workspaceCompareTargetId: string;
@@ -350,6 +359,7 @@ const state: {
   workspaceBulkPriority: "medium",
   workspaceImportPreview: null,
   workspaceImportFileName: "",
+  workspaceActivity: [],
   workspaceMessage: "",
   workspaceCompareBaseId: "",
   workspaceCompareTargetId: "",
@@ -653,6 +663,27 @@ function renderWorkspaceImportReview(preview: WorkspaceExport | null): string {
   `;
 }
 
+function renderWorkspaceActivity(): string {
+  const rows = state.workspaceActivity.slice(0, 20);
+  return `
+    <div style="margin-top:14px">
+      ${panel("Activity Log", rows.length ? `
+        ${table(["Time", "Action", "Details"], rows.map((entry) => [
+          esc(new Date(entry.createdAt).toLocaleString()),
+          badge(entry.action),
+          `<div>${esc(entry.details)}${entry.packageId ? `<div class="muted">${esc(entry.packageId)}</div>` : ""}</div>`
+        ]))}
+        <div class="control-row">
+          <button class="button" id="export-workspace-activity" type="button">Export activity</button>
+          <button class="button" id="clear-workspace-activity" type="button">Clear activity</button>
+        </div>
+      ` : `
+        <div class="empty">No workspace activity yet.</div>
+      `)}
+    </div>
+  `;
+}
+
 function renderWorkspacePackageActions(entry: WorkspaceEntry): string {
   return entry.archivedAt
     ? `<div class="control-row compact"><button class="button small" data-workspace-inspect="${esc(entry.id)}" type="button">Inspect</button><button class="button small" data-workspace-pin="${esc(entry.id)}" data-workspace-pinned="${entry.pinned ? "false" : "true"}" type="button">${entry.pinned ? "Unpin" : "Pin"}</button><button class="button small" data-workspace-duplicate="${esc(entry.id)}" type="button">Duplicate</button><button class="button small" data-workspace-restore="${esc(entry.id)}" type="button">Restore</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
@@ -907,6 +938,7 @@ function renderWorkspace(bundle: Bundle): string {
     <div style="margin-top:14px">
       ${panel("Package Details", renderWorkspaceInspection(inspectedEntry, state.workspaceInspectBundle))}
     </div>
+    ${renderWorkspaceActivity()}
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Compare Saved Packages", `
         <div class="form-grid">
@@ -1286,6 +1318,7 @@ async function restoreWorkbenchState(payload: WorkbenchStateExport): Promise<voi
   saveBaselineSnapshot();
   await saveWorkspaceBundle(payload.bundle, state.packageName);
   await refreshWorkspaceEntries();
+  recordWorkspaceActivity("restore", `Restored ${state.packageName}.`, workspaceIdForBundle(payload.bundle));
   state.workspaceMessage = `Restored ${state.packageName}.`;
 }
 
@@ -2896,13 +2929,30 @@ function bindEvents(): void {
       collection: workspaceCollectionDescriptor(),
       packages
     })}\n`, "application/json");
+    recordWorkspaceActivity("export", `Prepared collection JSON with ${packages.length} packages.`);
     state.workspaceMessage = `Workspace collection export prepared with ${packages.length} packages.`;
     render();
   });
   document.querySelector<HTMLButtonElement>("#export-workspace-collection-report")?.addEventListener("click", () => {
     const entries = currentWorkspaceEntries();
     downloadText("archetype-workspace-collection.md", workspaceCollectionReport(entries), "text/markdown");
+    recordWorkspaceActivity("export", `Prepared collection report with ${entries.length} packages.`);
     state.workspaceMessage = `Workspace collection report prepared with ${entries.length} packages.`;
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#export-workspace-activity")?.addEventListener("click", () => {
+    downloadText("archetype-workspace-activity.json", `${pretty({
+      exportVersion: 1,
+      exportedAt: new Date().toISOString(),
+      activity: state.workspaceActivity
+    })}\n`, "application/json");
+    state.workspaceMessage = `Workspace activity export prepared with ${state.workspaceActivity.length} entries.`;
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#clear-workspace-activity")?.addEventListener("click", () => {
+    state.workspaceActivity = [];
+    saveWorkspaceActivity();
+    state.workspaceMessage = "Workspace activity cleared.";
     render();
   });
   document.querySelector<HTMLButtonElement>("#bulk-workspace-priority")?.addEventListener("click", async () => {
@@ -2914,6 +2964,7 @@ function bindEvents(): void {
     }
     await refreshWorkspaceEntries();
     syncInspectedWorkspaceEntry();
+    recordWorkspaceActivity("bulk", `Applied ${state.workspaceBulkPriority} priority to ${updated} visible packages.`);
     state.workspaceMessage = `Applied ${state.workspaceBulkPriority} priority to ${updated} visible packages.`;
     render();
   });
@@ -2926,6 +2977,7 @@ function bindEvents(): void {
     }
     await refreshWorkspaceEntries();
     syncInspectedWorkspaceEntry();
+    recordWorkspaceActivity("bulk", `Pinned ${updated} visible packages.`);
     state.workspaceMessage = `Pinned ${updated} visible packages.`;
     render();
   });
@@ -2939,6 +2991,7 @@ function bindEvents(): void {
     }
     await refreshWorkspaceEntries();
     syncInspectedWorkspaceEntry();
+    recordWorkspaceActivity("bulk", `Unpinned ${updated} visible packages.`);
     state.workspaceMessage = `Unpinned ${updated} visible packages.`;
     render();
   });
@@ -2949,6 +3002,7 @@ function bindEvents(): void {
     }
     await refreshWorkspaceEntries();
     syncInspectedWorkspaceEntry();
+    recordWorkspaceActivity("bulk", `Archived ${entries.length} visible packages.`);
     state.workspaceMessage = `Archived ${entries.length} visible packages.`;
     render();
   });
@@ -2959,6 +3013,7 @@ function bindEvents(): void {
     }
     await refreshWorkspaceEntries();
     syncInspectedWorkspaceEntry();
+    recordWorkspaceActivity("bulk", `Restored ${entries.length} visible packages.`);
     state.workspaceMessage = `Restored ${entries.length} visible packages.`;
     render();
   });
@@ -2966,6 +3021,7 @@ function bindEvents(): void {
     if (!state.bundle) return;
     const entry = await saveWorkspaceBundle(state.bundle, state.packageName);
     await refreshWorkspaceEntries();
+    recordWorkspaceActivity("save", `Saved ${entry.name}.`, entry.id);
     state.workspaceMessage = `Saved ${entry.name}.`;
     render();
   });
@@ -2977,6 +3033,7 @@ function bindEvents(): void {
   document.querySelector<HTMLButtonElement>("#export-workspace")?.addEventListener("click", async () => {
     const packages = await listWorkspaceRecords();
     downloadText("archetype-workspace.json", `${pretty({ exportVersion: 1, exportedAt: new Date().toISOString(), packages } satisfies WorkspaceExport)}\n`, "application/json");
+    recordWorkspaceActivity("export", `Prepared workspace export with ${packages.length} packages.`);
     state.workspaceMessage = `Workspace export prepared with ${packages.length} packages.`;
     render();
   });
@@ -3012,6 +3069,7 @@ function bindEvents(): void {
     state.workspaceImportPreview = null;
     state.workspaceImportFileName = "";
     await refreshWorkspaceEntries();
+    recordWorkspaceActivity("import", `Imported ${imported} reviewed workspace packages.`);
     state.workspaceMessage = `Imported ${imported} reviewed workspace packages.`;
     render();
   });
@@ -3024,6 +3082,7 @@ function bindEvents(): void {
   document.querySelector<HTMLButtonElement>("#purge-archived-packages")?.addEventListener("click", async () => {
     const purged = await purgeArchivedWorkspaceBundles();
     await refreshWorkspaceEntries();
+    recordWorkspaceActivity("purge", `Purged ${purged} archived packages.`);
     state.workspaceMessage = `Purged ${purged} archived packages.`;
     render();
   });
@@ -3135,6 +3194,7 @@ function bindEvents(): void {
       state.workspaceTagDraft = (entry.tags ?? []).join(", ");
       state.workspaceNoteDraft = entry.notes ?? "";
       state.workspacePackageView = "active";
+      recordWorkspaceActivity("duplicate", `Duplicated ${entry.name}.`, entry.id);
       state.workspaceMessage = `Duplicated ${entry.name}.`;
       render();
     });
@@ -3157,6 +3217,7 @@ function bindEvents(): void {
         state.workspaceTagDraft = (entry.tags ?? []).join(", ");
         state.workspaceNoteDraft = entry.notes ?? "";
       }
+      recordWorkspaceActivity(entry.pinned ? "pin" : "unpin", `${entry.pinned ? "Pinned" : "Unpinned"} ${entry.name}.`, entry.id);
       state.workspaceMessage = `${entry.pinned ? "Pinned" : "Unpinned"} ${entry.name}.`;
       render();
     });
@@ -3198,6 +3259,7 @@ function bindEvents(): void {
       state.packageName = name;
     }
     await refreshWorkspaceEntries();
+    recordWorkspaceActivity("details", `Saved details for ${entry.name}.`, entry.id);
     state.workspaceMessage = `Saved details for ${entry.name}.`;
     render();
   });
@@ -3270,6 +3332,7 @@ function bindEvents(): void {
     button.addEventListener("click", async () => {
       const id = button.dataset.workspaceDelete;
       if (!id) return;
+      const name = state.workspaceEntries.find((entry) => entry.id === id)?.name ?? "Saved package";
       await deleteWorkspaceBundle(id);
       if (state.workspaceInspectId === id) {
         state.workspaceInspectId = "";
@@ -3280,6 +3343,7 @@ function bindEvents(): void {
         state.workspaceNoteDraft = "";
       }
       await refreshWorkspaceEntries();
+      recordWorkspaceActivity("delete", `Deleted ${name}.`, id);
       state.workspaceMessage = "Saved package deleted.";
       render();
     });
@@ -3290,6 +3354,7 @@ function bindEvents(): void {
       if (!id) return;
       await archiveWorkspaceBundle(id, true);
       await refreshWorkspaceEntries();
+      recordWorkspaceActivity("archive", "Package archived.", id);
       state.workspaceMessage = "Package archived.";
       render();
     });
@@ -3300,6 +3365,7 @@ function bindEvents(): void {
       if (!id) return;
       await archiveWorkspaceBundle(id, false);
       await refreshWorkspaceEntries();
+      recordWorkspaceActivity("restore", "Package restored.", id);
       state.workspaceMessage = "Package restored.";
       render();
     });
@@ -3802,6 +3868,31 @@ function saveBaselineSnapshot(): void {
   localStorage.setItem(baselineStorageKey(), JSON.stringify(state.baselineSnapshot));
 }
 
+const WORKSPACE_ACTIVITY_KEY = "archetype:workspace-activity";
+
+function loadWorkspaceActivity(): void {
+  try {
+    state.workspaceActivity = JSON.parse(localStorage.getItem(WORKSPACE_ACTIVITY_KEY) ?? "[]");
+  } catch {
+    state.workspaceActivity = [];
+  }
+}
+
+function saveWorkspaceActivity(): void {
+  localStorage.setItem(WORKSPACE_ACTIVITY_KEY, JSON.stringify(state.workspaceActivity.slice(0, 120)));
+}
+
+function recordWorkspaceActivity(action: string, details: string, packageId?: string): void {
+  state.workspaceActivity = [{
+    id: `activity_${Date.now().toString(36)}`,
+    action,
+    details,
+    packageId,
+    createdAt: new Date().toISOString()
+  }, ...state.workspaceActivity].slice(0, 120);
+  saveWorkspaceActivity();
+}
+
 async function readFile(file: File): Promise<string> {
   return file.text();
 }
@@ -3897,6 +3988,7 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
   };
 }
 
+loadWorkspaceActivity();
 loadSample().catch((error) => {
   app.innerHTML = `<main class="main"><div class="empty">${esc(error instanceof Error ? error.message : error)}</div></main>`;
 });
