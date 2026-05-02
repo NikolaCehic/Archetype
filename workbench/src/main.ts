@@ -516,6 +516,71 @@ function sortWorkspaceEntries(entries: WorkspaceEntry[]): WorkspaceEntry[] {
   });
 }
 
+function currentWorkspaceEntries(): WorkspaceEntry[] {
+  return sortWorkspaceEntries(state.workspaceEntries.filter((entry) => {
+    if (!workspaceEntryMatchesFilters(entry)) return false;
+    if (state.workspacePackageView === "active") return !entry.archivedAt;
+    if (state.workspacePackageView === "archived") return !!entry.archivedAt;
+    return true;
+  }));
+}
+
+function workspaceCollectionDescriptor(): Record<string, unknown> {
+  return {
+    view: state.workspacePackageView,
+    search: state.workspaceSearch.trim(),
+    readinessFilter: state.workspaceReadinessFilter,
+    sortKey: state.workspaceSortKey,
+    sortDirection: state.workspaceSortDirection
+  };
+}
+
+function workspaceCollectionReport(entries: WorkspaceEntry[]): string {
+  const readyCount = entries.filter((entry) => entry.readyForFrontendAgent).length;
+  const archivedCount = entries.filter((entry) => entry.archivedAt).length;
+  const lines = [
+    "# Archetype Workspace Collection",
+    "",
+    `Exported: ${new Date().toISOString()}`,
+    `View: ${state.workspacePackageView}`,
+    `Search: ${state.workspaceSearch.trim() || "none"}`,
+    `Readiness filter: ${state.workspaceReadinessFilter}`,
+    `Sort: ${state.workspaceSortKey} ${state.workspaceSortDirection}`,
+    "",
+    "## Summary",
+    "",
+    `- Packages: ${entries.length}`,
+    `- Ready: ${readyCount}`,
+    `- Hold: ${entries.length - readyCount}`,
+    `- Archived: ${archivedCount}`,
+    "",
+    "## Packages",
+    ""
+  ];
+  for (const [index, entry] of entries.entries()) {
+    lines.push(
+      `### ${index + 1}. ${entry.name}`,
+      "",
+      `- Status: ${entry.archivedAt ? "archived" : "active"}`,
+      `- Project: ${entry.projectSlug}`,
+      `- Package id: ${entry.packageId || entry.id}`,
+      `- Readiness: ${entry.readinessScore} (${entry.readyForFrontendAgent ? "ready" : "hold"})`,
+      `- Artifacts: ${entry.artifactCount}`,
+      `- Warnings: ${entry.warningCount}`,
+      `- Tags: ${(entry.tags ?? []).join(", ") || "none"}`,
+      `- Notes: ${entry.notes || "none"}`,
+      `- Saved: ${entry.savedAt}`,
+      ""
+    );
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+async function workspaceRecordsForEntries(entries: WorkspaceEntry[]): Promise<Array<{ entry: WorkspaceEntry; bundle: Bundle }>> {
+  const records = await Promise.all(entries.map((entry) => loadWorkspaceBundle(entry.id)));
+  return records.filter((record): record is { entry: WorkspaceEntry; bundle: Bundle } => !!record);
+}
+
 function renderWorkspacePackageActions(entry: WorkspaceEntry): string {
   return entry.archivedAt
     ? `<div class="control-row compact"><button class="button small" data-workspace-inspect="${esc(entry.id)}" type="button">Inspect</button><button class="button small" data-workspace-restore="${esc(entry.id)}" type="button">Restore</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
@@ -613,12 +678,7 @@ function renderWorkspace(bundle: Bundle): string {
   const matchingArchivedEntries = archivedEntries.filter(workspaceEntryMatchesFilters);
   const workspaceFiltersActive = !!state.workspaceSearch.trim() || state.workspaceReadinessFilter !== "all";
   const workspaceBrowserChanged = workspaceFiltersActive || state.workspacePackageView !== "active" || state.workspaceSortKey !== "savedAt" || state.workspaceSortDirection !== "desc";
-  const visibleWorkspaceEntries = sortWorkspaceEntries(state.workspaceEntries.filter((entry) => {
-    if (!workspaceEntryMatchesFilters(entry)) return false;
-    if (state.workspacePackageView === "active") return !entry.archivedAt;
-    if (state.workspacePackageView === "archived") return !!entry.archivedAt;
-    return true;
-  }));
+  const visibleWorkspaceEntries = currentWorkspaceEntries();
   const visibleWorkspaceTitle = state.workspacePackageView === "active"
     ? "Active Saved Packages"
     : state.workspacePackageView === "archived"
@@ -710,6 +770,8 @@ function renderWorkspace(bundle: Bundle): string {
           <button class="button ${state.workspacePackageView === "all" ? "primary" : ""}" data-workspace-package-view="all" type="button">All</button>
           <button class="button" id="clear-workspace-filters" type="button" ${workspaceFiltersActive ? "" : "disabled"}>Clear filters</button>
           <button class="button" id="reset-workspace-browser" type="button" ${workspaceBrowserChanged ? "" : "disabled"}>Reset browser</button>
+          <button class="button" id="export-workspace-collection" type="button" ${visibleWorkspaceEntries.length ? "" : "disabled"}>Export collection</button>
+          <button class="button" id="export-workspace-collection-report" type="button" ${visibleWorkspaceEntries.length ? "" : "disabled"}>Export report</button>
         </div>
         <div class="muted" style="margin-top:10px">${esc(`Showing ${visibleWorkspaceEntries.length} of ${state.workspaceEntries.length} workspace packages.`)}</div>
       `)}
@@ -2651,6 +2713,24 @@ function bindEvents(): void {
     state.workspacePackageView = "active";
     state.workspaceSortKey = "savedAt";
     state.workspaceSortDirection = "desc";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#export-workspace-collection")?.addEventListener("click", async () => {
+    const entries = currentWorkspaceEntries();
+    const packages = await workspaceRecordsForEntries(entries);
+    downloadText("archetype-workspace-collection.json", `${pretty({
+      exportVersion: 1,
+      exportedAt: new Date().toISOString(),
+      collection: workspaceCollectionDescriptor(),
+      packages
+    })}\n`, "application/json");
+    state.workspaceMessage = `Workspace collection export prepared with ${packages.length} packages.`;
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#export-workspace-collection-report")?.addEventListener("click", () => {
+    const entries = currentWorkspaceEntries();
+    downloadText("archetype-workspace-collection.md", workspaceCollectionReport(entries), "text/markdown");
+    state.workspaceMessage = `Workspace collection report prepared with ${entries.length} packages.`;
     render();
   });
   document.querySelector<HTMLButtonElement>("#save-workspace-package")?.addEventListener("click", async () => {

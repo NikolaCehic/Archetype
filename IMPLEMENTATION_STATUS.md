@@ -883,3 +883,31 @@ Verification:
 Next phase:
 
 - Workbench package collection exports.
+
+## Completed Phase: Workbench Package Collection Exports
+
+Status: complete
+
+Implemented:
+
+- Current workspace browser view used as collection boundary.
+- Collection descriptor for view, search query, readiness filter, sort key, and sort direction.
+- Importable JSON export for the visible workspace package collection.
+- Markdown report export for the visible workspace package collection.
+- Collection summary with package, ready, hold, and archived counts.
+- Per-package report rows with status, project, package id, readiness, artifacts, warnings, tags, notes, and saved timestamp.
+- Collection export actions disabled for empty views.
+- Collection export status feedback.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench package collection import review.
