@@ -213,6 +213,12 @@ interface WorkbenchStateExport {
   };
 }
 
+interface WorkspaceExport {
+  exportVersion: 1;
+  exportedAt: string;
+  packages: Array<{ entry: WorkspaceEntry; bundle: Bundle }>;
+}
+
 const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => number | string }> = [
   { id: "overview", label: "Overview", count: (bundle) => bundle.readiness.score },
   { id: "workspace", label: "Workspace", count: () => state.workspaceEntries.length },
@@ -437,6 +443,9 @@ function renderWorkspace(bundle: Bundle): string {
         <div class="control-row">
           <button class="button primary" id="save-workspace-package" type="button">Save active</button>
           <button class="button" id="refresh-workspace" type="button">Refresh workspace</button>
+          <button class="button" id="export-workspace" type="button" ${state.workspaceEntries.length ? "" : "disabled"}>Export workspace</button>
+          <button class="button" id="import-workspace" type="button">Import workspace</button>
+          <input id="workspace-import-input" type="file" accept="application/json,.json" hidden />
         </div>
         ${state.workspaceMessage ? `<div class="notice" role="status">${esc(state.workspaceMessage)}</div>` : ""}
       `)}
@@ -574,12 +583,28 @@ function isWorkbenchStateExport(value: unknown): value is WorkbenchStateExport {
   return !!candidate && candidate.exportVersion === 1 && !!candidate.bundle && !!candidate.bundle.manifest && !!candidate.localState;
 }
 
+function isWorkspaceExport(value: unknown): value is WorkspaceExport {
+  const candidate = value as WorkspaceExport;
+  return !!candidate && candidate.exportVersion === 1 && Array.isArray(candidate.packages);
+}
+
 async function listWorkspaceEntries(): Promise<WorkspaceEntry[]> {
   const db = await openWorkspaceDb();
   try {
     const transaction = db.transaction(WORKSPACE_STORE, "readonly");
     const values = await requestResult<Array<{ entry: WorkspaceEntry }>>(transaction.objectStore(WORKSPACE_STORE).getAll());
     return values.map((value) => value.entry).sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+  } finally {
+    db.close();
+  }
+}
+
+async function listWorkspaceRecords(): Promise<Array<{ entry: WorkspaceEntry; bundle: Bundle }>> {
+  const db = await openWorkspaceDb();
+  try {
+    const transaction = db.transaction(WORKSPACE_STORE, "readonly");
+    const values = await requestResult<Array<{ entry: WorkspaceEntry; bundle: Bundle }>>(transaction.objectStore(WORKSPACE_STORE).getAll());
+    return values.sort((a, b) => b.entry.savedAt.localeCompare(a.entry.savedAt));
   } finally {
     db.close();
   }
@@ -593,6 +618,20 @@ async function saveWorkspaceBundle(bundle: Bundle, name: string): Promise<Worksp
     transaction.objectStore(WORKSPACE_STORE).put({ entry, bundle });
     await transactionDone(transaction);
     return entry;
+  } finally {
+    db.close();
+  }
+}
+
+async function importWorkspaceRecords(records: Array<{ entry: WorkspaceEntry; bundle: Bundle }>): Promise<number> {
+  const db = await openWorkspaceDb();
+  try {
+    const transaction = db.transaction(WORKSPACE_STORE, "readwrite");
+    for (const record of records) {
+      transaction.objectStore(WORKSPACE_STORE).put(record);
+    }
+    await transactionDone(transaction);
+    return records.length;
   } finally {
     db.close();
   }
@@ -2216,6 +2255,36 @@ function bindEvents(): void {
     await refreshWorkspaceEntries();
     state.workspaceMessage = "Workspace refreshed.";
     render();
+  });
+  document.querySelector<HTMLButtonElement>("#export-workspace")?.addEventListener("click", async () => {
+    const packages = await listWorkspaceRecords();
+    downloadText("archetype-workspace.json", `${pretty({ exportVersion: 1, exportedAt: new Date().toISOString(), packages } satisfies WorkspaceExport)}\n`, "application/json");
+    state.workspaceMessage = `Workspace export prepared with ${packages.length} packages.`;
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#import-workspace")?.addEventListener("click", () => {
+    document.querySelector<HTMLInputElement>("#workspace-import-input")?.click();
+  });
+  document.querySelector<HTMLInputElement>("#workspace-import-input")?.addEventListener("change", async (event) => {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (!isWorkspaceExport(parsed)) {
+        state.workspaceMessage = "Workspace file is not a valid Archetype workspace export.";
+        render();
+        return;
+      }
+      const imported = await importWorkspaceRecords(parsed.packages);
+      await refreshWorkspaceEntries();
+      state.workspaceMessage = `Imported ${imported} workspace packages.`;
+      input.value = "";
+      render();
+    } catch (error) {
+      state.workspaceMessage = error instanceof Error ? error.message : "Could not import workspace.";
+      render();
+    }
   });
   document.querySelector<HTMLButtonElement>("#export-workbench-state")?.addEventListener("click", () => {
     if (!state.bundle) return;

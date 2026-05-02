@@ -40,6 +40,7 @@ Implemented:
 - Workbench governance summary dashboard.
 - Workbench accessibility hardening.
 - Workbench state export and restore.
+- Workbench multi-package workspace import/export.
 
 ## Run
 
@@ -91,7 +92,7 @@ Run the browser workbench:
 npm run workbench:dev
 ```
 
-The workbench can review generated packages, import an exported package folder, save packages into a local browser workspace, export and restore an active workbench session, prepare an intake JSON draft from structured form controls, collect source materials with a safety preview, copy a matching CLI command, track route and screen coverage, review design-system components and tokens, report frontend contract gaps, triage build simulation and acceptance coverage, compose revision change requests, track local approval gate decisions, compare package baselines for revision impact, summarize governance actions, and generate handoff artifacts for downstream frontend work.
+The workbench can review generated packages, import an exported package folder, save packages into a local browser workspace, export and restore an active workbench session, import and export multi-package workspaces, prepare an intake JSON draft from structured form controls, collect source materials with a safety preview, copy a matching CLI command, track route and screen coverage, review design-system components and tokens, report frontend contract gaps, triage build simulation and acceptance coverage, compose revision change requests, track local approval gate decisions, compare package baselines for revision impact, summarize governance actions, and generate handoff artifacts for downstream frontend work.
 
 Run all checks:
 
@@ -127,4 +128,4 @@ node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archety
 
 ## Next Implementation Target
 
-The next pass should add workspace import/export for multiple packages.
+The next pass should add package comparison across saved workspace packages.
