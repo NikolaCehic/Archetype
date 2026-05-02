@@ -798,3 +798,31 @@ Verification:
 Next phase:
 
 - Workbench package sorting and saved package views.
+
+## Completed Phase: Workbench Package Sorting and Saved Package Views
+
+Status: complete
+
+Implemented:
+
+- Workspace package view state for active, archived, and all packages.
+- View-mode controls in the workspace package browser.
+- Sort state for saved date, generated date, package name, readiness score, artifact count, and warning count.
+- Ascending and descending sort controls.
+- Filtered sorting across active, archived, and all package views.
+- Unified workspace package table with active and archived status badges.
+- Archive, restore, load, and delete actions preserved in the unified package table.
+- Reset browser action for filters, view mode, and sorting.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench saved package detail inspection.

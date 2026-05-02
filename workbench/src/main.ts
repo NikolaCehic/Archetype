@@ -17,6 +17,9 @@ type ViewId =
   | "revision";
 
 type WorkspaceReadinessFilter = "all" | "ready" | "hold";
+type WorkspacePackageView = "active" | "archived" | "all";
+type WorkspaceSortKey = "savedAt" | "generatedAt" | "name" | "readinessScore" | "artifactCount" | "warningCount";
+type WorkspaceSortDirection = "asc" | "desc";
 
 interface ArtifactDigest {
   path: string;
@@ -278,6 +281,9 @@ const state: {
   workspaceEntries: WorkspaceEntry[];
   workspaceSearch: string;
   workspaceReadinessFilter: WorkspaceReadinessFilter;
+  workspacePackageView: WorkspacePackageView;
+  workspaceSortKey: WorkspaceSortKey;
+  workspaceSortDirection: WorkspaceSortDirection;
   workspaceMessage: string;
   workspaceCompareBaseId: string;
   workspaceCompareTargetId: string;
@@ -315,6 +321,9 @@ const state: {
   workspaceEntries: [],
   workspaceSearch: "",
   workspaceReadinessFilter: "all",
+  workspacePackageView: "active",
+  workspaceSortKey: "savedAt",
+  workspaceSortDirection: "desc",
   workspaceMessage: "",
   workspaceCompareBaseId: "",
   workspaceCompareTargetId: "",
@@ -462,20 +471,80 @@ function workspaceEntryMatchesFilters(entry: WorkspaceEntry): boolean {
   return searchable.some((value) => value.toLowerCase().includes(query));
 }
 
+function workspaceSortValue(entry: WorkspaceEntry, key: WorkspaceSortKey): string | number {
+  if (key === "savedAt") return Date.parse(entry.savedAt) || 0;
+  if (key === "generatedAt") return Date.parse(entry.generatedAt) || 0;
+  if (key === "name") return entry.name.toLowerCase();
+  return entry[key];
+}
+
+function workspaceSortKeyFromValue(value: string): WorkspaceSortKey {
+  if (value === "generatedAt" || value === "name" || value === "readinessScore" || value === "artifactCount" || value === "warningCount") return value;
+  return "savedAt";
+}
+
+function sortWorkspaceEntries(entries: WorkspaceEntry[]): WorkspaceEntry[] {
+  const direction = state.workspaceSortDirection === "asc" ? 1 : -1;
+  return [...entries].sort((a, b) => {
+    const aValue = workspaceSortValue(a, state.workspaceSortKey);
+    const bValue = workspaceSortValue(b, state.workspaceSortKey);
+    const primary = typeof aValue === "string" && typeof bValue === "string"
+      ? aValue.localeCompare(bValue)
+      : Number(aValue) - Number(bValue);
+    if (primary !== 0) return primary * direction;
+    return b.savedAt.localeCompare(a.savedAt);
+  });
+}
+
+function renderWorkspacePackageActions(entry: WorkspaceEntry): string {
+  return entry.archivedAt
+    ? `<div class="control-row compact"><button class="button small" data-workspace-restore="${esc(entry.id)}" type="button">Restore</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
+    : `<div class="control-row compact"><button class="button small" data-workspace-load="${esc(entry.id)}" type="button">Load</button><button class="button small" data-workspace-archive="${esc(entry.id)}" type="button">Archive</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`;
+}
+
+function renderWorkspacePackageTable(entries: WorkspaceEntry[], emptyText: string): string {
+  if (!entries.length) return `<div class="empty">${esc(emptyText)}</div>`;
+  return table(["Package", "Status", "Score", "Artifacts", "Saved", "Actions"], entries.map((entry) => [
+    `<div><strong>${esc(entry.name)}</strong><div class="muted">${esc(entry.projectSlug)} · ${esc(entry.sourceHash.slice(0, 8) || entry.packageId.slice(0, 8))}</div></div>`,
+    badge(entry.archivedAt ? "archived" : "active", entry.archivedAt ? "warning" : "success"),
+    badge(String(entry.readinessScore), entry.readyForFrontendAgent ? "success" : "danger"),
+    esc(entry.artifactCount),
+    esc(new Date(entry.savedAt).toLocaleString()),
+    renderWorkspacePackageActions(entry)
+  ]));
+}
+
 function renderWorkspace(bundle: Bundle): string {
   const activeEntries = state.workspaceEntries.filter((entry) => !entry.archivedAt);
   const archivedEntries = state.workspaceEntries.filter((entry) => entry.archivedAt);
-  const filteredActiveEntries = activeEntries.filter(workspaceEntryMatchesFilters);
-  const filteredArchivedEntries = archivedEntries.filter(workspaceEntryMatchesFilters);
+  const matchingActiveEntries = activeEntries.filter(workspaceEntryMatchesFilters);
+  const matchingArchivedEntries = archivedEntries.filter(workspaceEntryMatchesFilters);
   const workspaceFiltersActive = !!state.workspaceSearch.trim() || state.workspaceReadinessFilter !== "all";
+  const workspaceBrowserChanged = workspaceFiltersActive || state.workspacePackageView !== "active" || state.workspaceSortKey !== "savedAt" || state.workspaceSortDirection !== "desc";
+  const visibleWorkspaceEntries = sortWorkspaceEntries(state.workspaceEntries.filter((entry) => {
+    if (!workspaceEntryMatchesFilters(entry)) return false;
+    if (state.workspacePackageView === "active") return !entry.archivedAt;
+    if (state.workspacePackageView === "archived") return !!entry.archivedAt;
+    return true;
+  }));
+  const visibleWorkspaceTitle = state.workspacePackageView === "active"
+    ? "Active Saved Packages"
+    : state.workspacePackageView === "archived"
+      ? "Archived Packages"
+      : "All Workspace Packages";
+  const visibleWorkspaceEmpty = state.workspacePackageView === "active"
+    ? (workspaceFiltersActive && activeEntries.length ? "No active packages match the current filters." : "No active packages.")
+    : state.workspacePackageView === "archived"
+      ? (workspaceFiltersActive && archivedEntries.length ? "No archived packages match the current filters." : "No archived packages.")
+      : (workspaceFiltersActive && state.workspaceEntries.length ? "No workspace packages match the current filters." : "No workspace packages.");
   const compareOptions = (selectedId: string) => state.workspaceEntries.map((entry) => `<option value="${esc(entry.id)}" ${entry.id === selectedId ? "selected" : ""}>${esc(`${entry.name} · ${entry.projectSlug} · score ${entry.readinessScore}`)}</option>`).join("");
   const comparison = state.workspaceComparison;
   const changedDiffs = comparison?.diffs.filter((diff) => diff.status !== "unchanged") ?? [];
   return `
     <div class="grid cols-3">
-      ${metric("Saved packages", workspaceFiltersActive ? `${filteredActiveEntries.length}/${activeEntries.length}` : activeEntries.length)}
+      ${metric("Saved packages", workspaceFiltersActive ? `${matchingActiveEntries.length}/${activeEntries.length}` : activeEntries.length)}
       ${metric("Active score", bundle.readiness.score, bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
-      ${metric("Archived", workspaceFiltersActive ? `${filteredArchivedEntries.length}/${archivedEntries.length}` : archivedEntries.length, archivedEntries.length ? "warning" : "success")}
+      ${metric("Archived", workspaceFiltersActive ? `${matchingArchivedEntries.length}/${archivedEntries.length}` : archivedEntries.length, archivedEntries.length ? "warning" : "success")}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Active Package", `
@@ -512,7 +581,7 @@ function renderWorkspace(bundle: Bundle): string {
       `)}
     </div>
     <div style="margin-top:14px">
-      ${panel("Package Filters", `
+      ${panel("Package Browser", `
         <div class="form-grid">
           ${inputField("workspace-search", state.workspaceSearch, "Search packages")}
           <label class="field">
@@ -523,11 +592,33 @@ function renderWorkspace(bundle: Bundle): string {
               <option value="hold" ${state.workspaceReadinessFilter === "hold" ? "selected" : ""}>hold only</option>
             </select>
           </label>
+          <label class="field">
+            <span>Sort by</span>
+            <select id="workspace-sort-key" class="input">
+              <option value="savedAt" ${state.workspaceSortKey === "savedAt" ? "selected" : ""}>saved date</option>
+              <option value="generatedAt" ${state.workspaceSortKey === "generatedAt" ? "selected" : ""}>generated date</option>
+              <option value="name" ${state.workspaceSortKey === "name" ? "selected" : ""}>package name</option>
+              <option value="readinessScore" ${state.workspaceSortKey === "readinessScore" ? "selected" : ""}>readiness score</option>
+              <option value="artifactCount" ${state.workspaceSortKey === "artifactCount" ? "selected" : ""}>artifact count</option>
+              <option value="warningCount" ${state.workspaceSortKey === "warningCount" ? "selected" : ""}>warning count</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Direction</span>
+            <select id="workspace-sort-direction" class="input">
+              <option value="desc" ${state.workspaceSortDirection === "desc" ? "selected" : ""}>descending</option>
+              <option value="asc" ${state.workspaceSortDirection === "asc" ? "selected" : ""}>ascending</option>
+            </select>
+          </label>
         </div>
         <div class="control-row">
+          <button class="button ${state.workspacePackageView === "active" ? "primary" : ""}" data-workspace-package-view="active" type="button">Active</button>
+          <button class="button ${state.workspacePackageView === "archived" ? "primary" : ""}" data-workspace-package-view="archived" type="button">Archived</button>
+          <button class="button ${state.workspacePackageView === "all" ? "primary" : ""}" data-workspace-package-view="all" type="button">All</button>
           <button class="button" id="clear-workspace-filters" type="button" ${workspaceFiltersActive ? "" : "disabled"}>Clear filters</button>
+          <button class="button" id="reset-workspace-browser" type="button" ${workspaceBrowserChanged ? "" : "disabled"}>Reset browser</button>
         </div>
-        <div class="muted" style="margin-top:10px">${esc(workspaceFiltersActive ? `Showing ${filteredActiveEntries.length} active and ${filteredArchivedEntries.length} archived packages.` : `Showing all ${activeEntries.length} active and ${archivedEntries.length} archived packages.`)}</div>
+        <div class="muted" style="margin-top:10px">${esc(`Showing ${visibleWorkspaceEntries.length} of ${state.workspaceEntries.length} workspace packages.`)}</div>
       `)}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
@@ -553,21 +644,7 @@ function renderWorkspace(bundle: Bundle): string {
       }))}
     </div>
     <div style="margin-top:14px">
-      ${panel("Saved Packages", filteredActiveEntries.length ? table(["Package", "Score", "Artifacts", "Saved", "Actions"], filteredActiveEntries.map((entry) => [
-        `<div><strong>${esc(entry.name)}</strong><div class="muted">${esc(entry.projectSlug)} · ${esc(entry.sourceHash.slice(0, 8) || entry.packageId.slice(0, 8))}</div></div>`,
-        badge(String(entry.readinessScore), entry.readyForFrontendAgent ? "success" : "danger"),
-        esc(entry.artifactCount),
-        esc(new Date(entry.savedAt).toLocaleString()),
-        `<div class="control-row compact"><button class="button small" data-workspace-load="${esc(entry.id)}" type="button">Load</button><button class="button small" data-workspace-archive="${esc(entry.id)}" type="button">Archive</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
-      ])) : `<div class="empty">${workspaceFiltersActive && activeEntries.length ? "No saved packages match the current filters." : "No saved packages."}</div>`)}
-    </div>
-    <div style="margin-top:14px">
-      ${panel("Archived Packages", filteredArchivedEntries.length ? table(["Package", "Score", "Archived", "Actions"], filteredArchivedEntries.map((entry) => [
-        `<div><strong>${esc(entry.name)}</strong><div class="muted">${esc(entry.projectSlug)} · ${esc(entry.sourceHash.slice(0, 8) || entry.packageId.slice(0, 8))}</div></div>`,
-        badge(String(entry.readinessScore), entry.readyForFrontendAgent ? "success" : "danger"),
-        esc(entry.archivedAt ? new Date(entry.archivedAt).toLocaleString() : ""),
-        `<div class="control-row compact"><button class="button small" data-workspace-restore="${esc(entry.id)}" type="button">Restore</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
-      ])) : `<div class="empty">${workspaceFiltersActive && archivedEntries.length ? "No archived packages match the current filters." : "No archived packages."}</div>`)}
+      ${panel(visibleWorkspaceTitle, renderWorkspacePackageTable(visibleWorkspaceEntries, visibleWorkspaceEmpty))}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Compare Saved Packages", `
@@ -2425,9 +2502,33 @@ function bindEvents(): void {
     state.workspaceReadinessFilter = value === "ready" || value === "hold" ? value : "all";
     render();
   });
+  document.querySelector<HTMLSelectElement>("#workspace-sort-key")?.addEventListener("input", (event) => {
+    state.workspaceSortKey = workspaceSortKeyFromValue((event.target as HTMLSelectElement).value);
+    render();
+  });
+  document.querySelector<HTMLSelectElement>("#workspace-sort-direction")?.addEventListener("input", (event) => {
+    const value = (event.target as HTMLSelectElement).value;
+    state.workspaceSortDirection = value === "asc" ? "asc" : "desc";
+    render();
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-workspace-package-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const view = button.dataset.workspacePackageView;
+      state.workspacePackageView = view === "archived" || view === "all" ? view : "active";
+      render();
+    });
+  });
   document.querySelector<HTMLButtonElement>("#clear-workspace-filters")?.addEventListener("click", () => {
     state.workspaceSearch = "";
     state.workspaceReadinessFilter = "all";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#reset-workspace-browser")?.addEventListener("click", () => {
+    state.workspaceSearch = "";
+    state.workspaceReadinessFilter = "all";
+    state.workspacePackageView = "active";
+    state.workspaceSortKey = "savedAt";
+    state.workspaceSortDirection = "desc";
     render();
   });
   document.querySelector<HTMLButtonElement>("#save-workspace-package")?.addEventListener("click", async () => {
