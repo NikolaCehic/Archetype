@@ -194,6 +194,25 @@ interface RevisionRequest {
   updatedAt: string;
 }
 
+interface WorkbenchStateExport {
+  exportVersion: 1;
+  exportedAt: string;
+  packageName: string;
+  bundle: Bundle;
+  localState: {
+    generationDraft: string;
+    intakeForm: IntakeFormState | null;
+    sourceMaterials: SourceMaterialDraft[];
+    approvalOverrides: Record<string, ApprovalOverride>;
+    coverageOverrides: Record<string, CoverageOverride>;
+    designReviewOverrides: Record<string, DesignReviewOverride>;
+    contractGaps: ContractGap[];
+    simulationTriageOverrides: Record<string, SimulationTriageOverride>;
+    revisionRequests: RevisionRequest[];
+    baselineSnapshot: PackageSnapshot | null;
+  };
+}
+
 const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => number | string }> = [
   { id: "overview", label: "Overview", count: (bundle) => bundle.readiness.score },
   { id: "workspace", label: "Workspace", count: () => state.workspaceEntries.length },
@@ -421,6 +440,22 @@ function renderWorkspace(bundle: Bundle): string {
         </div>
         ${state.workspaceMessage ? `<div class="notice" role="status">${esc(state.workspaceMessage)}</div>` : ""}
       `)}
+      ${panel("State Portability", `
+        <div class="snapshot-line">
+          <div>
+            <h3>Session State</h3>
+            <div class="muted">${esc(`${Object.keys(state.approvalOverrides).length + Object.keys(state.coverageOverrides).length + Object.keys(state.designReviewOverrides).length + Object.keys(state.simulationTriageOverrides).length} review records · ${state.contractGaps.length} gaps · ${state.revisionRequests.length} revision requests`)}</div>
+          </div>
+          ${badge(state.baselineSnapshot ? "baseline" : "state", "neutral")}
+        </div>
+        <div class="control-row">
+          <button class="button" id="export-workbench-state" type="button">Export state</button>
+          <button class="button" id="restore-workbench-state" type="button">Restore state</button>
+          <input id="state-import-input" type="file" accept="application/json,.json" hidden />
+        </div>
+      `)}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
       ${panel("Active Snapshot", code({
         packageName: state.packageName,
         projectSlug: bundle.manifest.project_slug,
@@ -430,6 +465,16 @@ function renderWorkspace(bundle: Bundle): string {
         readinessScore: bundle.readiness.score,
         artifactCount: bundle.manifest.artifact_index?.length ?? 0,
         digestCount: bundle.artifacts?.length ?? 0
+      }))}
+      ${panel("Local State Summary", code({
+        approvals: Object.keys(state.approvalOverrides).length,
+        coverage: Object.keys(state.coverageOverrides).length,
+        designReview: Object.keys(state.designReviewOverrides).length,
+        contractGaps: state.contractGaps.length,
+        simulationTriage: Object.keys(state.simulationTriageOverrides).length,
+        revisionRequests: state.revisionRequests.length,
+        baseline: state.baselineSnapshot?.name ?? null,
+        sourceMaterials: state.sourceMaterials.length
       }))}
     </div>
     <div style="margin-top:14px">
@@ -503,6 +548,32 @@ function workspaceEntryFromBundle(bundle: Bundle, name: string): WorkspaceEntry 
   };
 }
 
+function workbenchStateExport(bundle: Bundle): WorkbenchStateExport {
+  return {
+    exportVersion: 1,
+    exportedAt: new Date().toISOString(),
+    packageName: state.packageName,
+    bundle,
+    localState: {
+      generationDraft: state.generationDraft,
+      intakeForm: state.intakeForm,
+      sourceMaterials: state.sourceMaterials,
+      approvalOverrides: state.approvalOverrides,
+      coverageOverrides: state.coverageOverrides,
+      designReviewOverrides: state.designReviewOverrides,
+      contractGaps: state.contractGaps,
+      simulationTriageOverrides: state.simulationTriageOverrides,
+      revisionRequests: state.revisionRequests,
+      baselineSnapshot: state.baselineSnapshot
+    }
+  };
+}
+
+function isWorkbenchStateExport(value: unknown): value is WorkbenchStateExport {
+  const candidate = value as WorkbenchStateExport;
+  return !!candidate && candidate.exportVersion === 1 && !!candidate.bundle && !!candidate.bundle.manifest && !!candidate.localState;
+}
+
 async function listWorkspaceEntries(): Promise<WorkspaceEntry[]> {
   const db = await openWorkspaceDb();
   try {
@@ -546,6 +617,48 @@ async function deleteWorkspaceBundle(id: string): Promise<void> {
   } finally {
     db.close();
   }
+}
+
+async function restoreWorkbenchState(payload: WorkbenchStateExport): Promise<void> {
+  state.bundle = payload.bundle;
+  state.packageName = payload.packageName || "restored-package";
+  state.view = "workspace";
+  state.selectedScreen = null;
+  state.screenFilter = "";
+  state.generationDraft = payload.localState.generationDraft ?? "";
+  state.generationMessage = "";
+  state.approvalOverrides = payload.localState.approvalOverrides ?? {};
+  state.activeGateNote = "";
+  state.coverageOverrides = payload.localState.coverageOverrides ?? {};
+  state.activeCoverageNote = "";
+  state.designReviewOverrides = payload.localState.designReviewOverrides ?? {};
+  state.activeDesignReviewNote = "";
+  state.contractGaps = payload.localState.contractGaps ?? [];
+  state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
+  state.contractMessage = "";
+  state.simulationTriageOverrides = payload.localState.simulationTriageOverrides ?? {};
+  state.activeSimulationTriageNote = "";
+  state.revisionRequests = payload.localState.revisionRequests ?? [];
+  state.revisionDraft = { priority: "medium", changeType: "screen_spec_changed", summary: "", affectedArtifacts: "", requestedChanges: "" };
+  state.revisionMessage = "";
+  state.baselineSnapshot = payload.localState.baselineSnapshot ?? null;
+  state.baselineName = state.baselineSnapshot?.name ?? "";
+  state.impactMessage = "";
+  state.handoffMessage = "";
+  state.intakeForm = payload.localState.intakeForm ?? null;
+  state.sourceMaterials = payload.localState.sourceMaterials ?? [];
+  state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
+  state.sourceMessage = "";
+  saveApprovalOverrides();
+  saveCoverageOverrides();
+  saveDesignReviewOverrides();
+  saveContractGaps();
+  saveSimulationTriageOverrides();
+  saveRevisionRequests();
+  saveBaselineSnapshot();
+  await saveWorkspaceBundle(payload.bundle, state.packageName);
+  await refreshWorkspaceEntries();
+  state.workspaceMessage = `Restored ${state.packageName}.`;
 }
 
 async function refreshWorkspaceEntries(): Promise<void> {
@@ -2103,6 +2216,35 @@ function bindEvents(): void {
     await refreshWorkspaceEntries();
     state.workspaceMessage = "Workspace refreshed.";
     render();
+  });
+  document.querySelector<HTMLButtonElement>("#export-workbench-state")?.addEventListener("click", () => {
+    if (!state.bundle) return;
+    const slug = String(state.bundle.manifest.project_slug ?? "archetype-package");
+    downloadText(`${slug}-workbench-state.json`, `${pretty(workbenchStateExport(state.bundle))}\n`, "application/json");
+    state.workspaceMessage = "Workbench state export prepared.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#restore-workbench-state")?.addEventListener("click", () => {
+    document.querySelector<HTMLInputElement>("#state-import-input")?.click();
+  });
+  document.querySelector<HTMLInputElement>("#state-import-input")?.addEventListener("change", async (event) => {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (!isWorkbenchStateExport(parsed)) {
+        state.workspaceMessage = "State file is not a valid Archetype workbench export.";
+        render();
+        return;
+      }
+      await restoreWorkbenchState(parsed);
+      input.value = "";
+      render();
+    } catch (error) {
+      state.workspaceMessage = error instanceof Error ? error.message : "Could not restore state.";
+      render();
+    }
   });
   document.querySelectorAll<HTMLButtonElement>("[data-workspace-load]").forEach((button) => {
     button.addEventListener("click", async () => {
