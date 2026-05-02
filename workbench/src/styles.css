@@ -437,6 +437,31 @@ td {
   gap: 10px;
 }
 
+.mini-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mini-metrics > div {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: oklch(0.976 0.006 247);
+  padding: 9px 10px;
+  display: grid;
+  gap: 3px;
+}
+
+.mini-metrics strong {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mini-metrics span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .control-row {
   display: flex;
   flex-wrap: wrap;
@@ -525,7 +550,8 @@ td {
   .grid.cols-2,
   .grid.cols-3,
   .split,
-  .form-grid {
+  .form-grid,
+  .mini-metrics {
     grid-template-columns: 1fr;
   }
 

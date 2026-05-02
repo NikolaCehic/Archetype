@@ -83,6 +83,21 @@ interface IntakeFormState {
   operatingMode: string;
 }
 
+interface SourceMaterialDraft {
+  id: string;
+  label: string;
+  type: "document" | "code" | "design_file" | "screenshot" | "brand" | "other";
+  content: string;
+  notes: string;
+  path: string;
+}
+
+interface SourceFinding {
+  severity: "blocker" | "major" | "minor";
+  category: string;
+  finding: string;
+}
+
 interface Bundle {
   generatedAt: string;
   artifacts?: ArtifactDigest[];
@@ -172,6 +187,9 @@ const state: {
   workspaceEntries: WorkspaceEntry[];
   workspaceMessage: string;
   intakeForm: IntakeFormState | null;
+  sourceMaterials: SourceMaterialDraft[];
+  sourceDraft: SourceMaterialDraft;
+  sourceMessage: string;
 } = {
   bundle: null,
   view: "overview",
@@ -188,7 +206,10 @@ const state: {
   handoffMessage: "",
   workspaceEntries: [],
   workspaceMessage: "",
-  intakeForm: null
+  intakeForm: null,
+  sourceMaterials: [],
+  sourceDraft: { id: "", label: "", type: "document", content: "", notes: "", path: "" },
+  sourceMessage: ""
 };
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -847,7 +868,7 @@ function lines(value: string): string[] {
 }
 
 function intakeFromForm(form: IntakeFormState): Record<string, unknown> {
-  return {
+  const intake: Record<string, unknown> = {
     projectName: form.projectName.trim() || "Archetype Project",
     context: form.context.trim(),
     goals: lines(form.goals),
@@ -860,6 +881,16 @@ function intakeFromForm(form: IntakeFormState): Record<string, unknown> {
     },
     operatingMode: form.operatingMode
   };
+  const materials = state.sourceMaterials.map((material, index) => ({
+    id: material.id || `source_material_${index + 1}`,
+    label: material.label,
+    type: material.type,
+    content: material.content,
+    notes: material.notes,
+    path: material.path
+  })).filter((material) => material.label || material.content || material.notes || material.path);
+  if (materials.length > 0) intake.materials = materials;
+  return intake;
 }
 
 function ensureGenerationDraft(bundle: Bundle): string {
@@ -867,6 +898,58 @@ function ensureGenerationDraft(bundle: Bundle): string {
     state.generationDraft = pretty(defaultIntakeFromBundle(bundle));
   }
   return state.generationDraft;
+}
+
+function findingsForMaterial(material: SourceMaterialDraft): SourceFinding[] {
+  const content = [material.label, material.content, material.notes, material.path].join("\n");
+  const rules: Array<SourceFinding & { pattern: RegExp }> = [
+    {
+      severity: "blocker",
+      category: "secret",
+      finding: "Potential API key, GitHub token, or cloud credential.",
+      pattern: /\b(sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16})\b/
+    },
+    {
+      severity: "major",
+      category: "secret",
+      finding: "Potential named secret or credential assignment.",
+      pattern: /\b(password|api[_-]?key|secret|token)\s*[:=]\s*['"]?[^'"\s]{8,}/i
+    },
+    {
+      severity: "major",
+      category: "prompt injection",
+      finding: "Embedded instruction attempts to override system behavior.",
+      pattern: /\b(ignore|disregard|override)\b.{0,60}\b(previous|system|developer|instruction|prompt)\b/i
+    },
+    {
+      severity: "minor",
+      category: "PII",
+      finding: "Potential email address.",
+      pattern: /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i
+    },
+    {
+      severity: "major",
+      category: "regulated data",
+      finding: "Potential regulated-domain data.",
+      pattern: /\b(patient|diagnosis|medication|clinical|claim number|credit score|card number)\b/i
+    }
+  ];
+  return rules.filter((rule) => rule.pattern.test(content)).map(({ severity, category, finding }) => ({ severity, category, finding }));
+}
+
+function sourceTone(findings: SourceFinding[]): "success" | "warning" | "danger" {
+  if (findings.some((finding) => finding.severity === "blocker")) return "danger";
+  if (findings.length > 0) return "warning";
+  return "success";
+}
+
+function sourceTypeForFile(fileName: string): SourceMaterialDraft["type"] {
+  if (/\.(ts|tsx|js|jsx|css|html|py|rb|go|rs)$/i.test(fileName)) return "code";
+  if (/\.(fig|sketch|tokens\.json)$/i.test(fileName)) return "design_file";
+  if (/\.(png|jpe?g|webp|gif)$/i.test(fileName)) return "screenshot";
+  if (/brand|voice|tone|style/i.test(fileName)) return "brand";
+  if (/\.(md|txt|doc|docx|pdf)$/i.test(fileName)) return "document";
+  return "other";
 }
 
 function intakeFileName(value: Record<string, unknown>): string {
@@ -904,6 +987,45 @@ async function copyTextToClipboard(value: string): Promise<void> {
   text.select();
   document.execCommand("copy");
   text.remove();
+}
+
+function renderSourceMaterials(): string {
+  const findings = state.sourceMaterials.flatMap(findingsForMaterial);
+  return panel("Source Materials", `
+    <div class="form-grid">
+      ${inputField("source-label", state.sourceDraft.label, "Source label")}
+      ${selectField("source-type", state.sourceDraft.type, "Source type", ["document", "code", "design_file", "screenshot", "brand", "other"])}
+      ${inputField("source-path", state.sourceDraft.path, "Path or URL")}
+      ${inputField("source-notes", state.sourceDraft.notes, "Notes")}
+    </div>
+    <div style="height:10px"></div>
+    ${textArea("source-content", state.sourceDraft.content, "Content excerpt", "textarea short")}
+    <div class="control-row">
+      <button class="button primary" id="add-source-material" type="button">Add source</button>
+      <button class="button" id="import-source-files" type="button">Import files</button>
+      <button class="button" id="clear-source-materials" type="button" ${state.sourceMaterials.length ? "" : "disabled"}>Clear sources</button>
+      <input id="source-file-input" type="file" multiple hidden />
+    </div>
+    ${state.sourceMessage ? `<div class="notice">${esc(state.sourceMessage)}</div>` : ""}
+    <div style="height:10px"></div>
+    <div class="mini-metrics">
+      <div><strong>${esc(state.sourceMaterials.length)}</strong><span>Sources</span></div>
+      <div><strong>${esc(findings.length)}</strong><span>Safety findings</span></div>
+      <div><strong>${esc(findings.filter((finding) => finding.severity === "blocker").length)}</strong><span>Blockers</span></div>
+    </div>
+    <div style="margin-top:10px">
+      ${state.sourceMaterials.length ? table(["Safety", "Type", "Label", "Findings", "Actions"], state.sourceMaterials.map((material) => {
+        const materialFindings = findingsForMaterial(material);
+        return [
+          badge(materialFindings.length ? `${materialFindings.length} findings` : "clear", sourceTone(materialFindings)),
+          esc(material.type),
+          esc(material.label || material.path || "Untitled source"),
+          esc(materialFindings.map((finding) => `${finding.severity}: ${finding.finding}`).join("; ") || "None"),
+          `<button class="button small" data-source-remove="${esc(material.id)}" type="button">Remove</button>`
+        ];
+      })) : `<div class="empty">No source materials added.</div>`}
+    </div>
+  `);
 }
 
 function renderGeneration(bundle: Bundle): string {
@@ -959,6 +1081,9 @@ function renderGeneration(bundle: Bundle): string {
         recommended: ["projectName", "goals", "businessGoals", "users", "brand", "operatingMode"],
         supportedModes: ["fast_architecture", "full_architecture", "existing_product_audit", "contract_repair"]
       }))}
+    </div>
+    <div style="margin-top:14px">
+      ${renderSourceMaterials()}
     </div>
     <div style="margin-top:14px">
       ${panel("Current Package Seed", code(defaultIntakeFromBundle(bundle)))}
@@ -1432,6 +1557,9 @@ function bindEvents(): void {
       state.activeGateNote = "";
       state.handoffMessage = "";
       state.intakeForm = null;
+      state.sourceMaterials = [];
+      state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
+      state.sourceMessage = "";
       loadApprovalOverrides();
       loadBaselineSnapshot();
       await refreshWorkspaceEntries();
@@ -1481,6 +1609,14 @@ function bindEvents(): void {
       return;
     }
     state.intakeForm = formFromIntake(parsed.value, state.bundle);
+    state.sourceMaterials = Array.isArray(parsed.value.materials) ? parsed.value.materials.map((material: any, index) => ({
+      id: String(material.id ?? `source_material_${index + 1}`),
+      label: String(material.label ?? ""),
+      type: ["document", "code", "design_file", "screenshot", "brand", "other"].includes(material.type) ? material.type : "other",
+      content: String(material.content ?? ""),
+      notes: String(material.notes ?? ""),
+      path: String(material.path ?? "")
+    })) : state.sourceMaterials;
     state.generationMessage = "Intake form loaded from the draft.";
     render();
   });
@@ -1497,6 +1633,67 @@ function bindEvents(): void {
     }, state.bundle);
     state.generationMessage = "Intake form cleared.";
     render();
+  });
+  const sourceBindings: Array<[keyof SourceMaterialDraft, string]> = [
+    ["label", "#source-label"],
+    ["type", "#source-type"],
+    ["path", "#source-path"],
+    ["notes", "#source-notes"],
+    ["content", "#source-content"]
+  ];
+  sourceBindings.forEach(([field, selector]) => {
+    document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(selector)?.addEventListener("input", (event) => {
+      state.sourceDraft[field] = (event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).value as never;
+    });
+  });
+  document.querySelector<HTMLButtonElement>("#add-source-material")?.addEventListener("click", () => {
+    const material = {
+      ...state.sourceDraft,
+      id: state.sourceDraft.id || `source_${Date.now().toString(36)}`
+    };
+    if (!material.label.trim() && !material.content.trim() && !material.path.trim()) {
+      state.sourceMessage = "Source requires a label, path, or content excerpt.";
+      render();
+      return;
+    }
+    state.sourceMaterials = [...state.sourceMaterials, material];
+    state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
+    state.sourceMessage = "Source added to the intake draft.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#import-source-files")?.addEventListener("click", () => {
+    document.querySelector<HTMLInputElement>("#source-file-input")?.click();
+  });
+  document.querySelector<HTMLInputElement>("#source-file-input")?.addEventListener("change", async (event) => {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const imported = await Promise.all([...input.files].map(async (file) => ({
+      id: `source_${Date.now().toString(36)}_${file.name.replace(/[^a-z0-9]+/gi, "_")}`,
+      label: file.name,
+      type: sourceTypeForFile(file.name),
+      content: file.size <= 120000 ? await file.text() : "",
+      notes: file.size > 120000 ? `File omitted from inline content because it is ${formatBytes(file.size)}.` : "",
+      path: file.name
+    } satisfies SourceMaterialDraft)));
+    state.sourceMaterials = [...state.sourceMaterials, ...imported];
+    state.sourceMessage = `Imported ${imported.length} source files.`;
+    input.value = "";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#clear-source-materials")?.addEventListener("click", () => {
+    state.sourceMaterials = [];
+    state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
+    state.sourceMessage = "Source materials cleared.";
+    render();
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-source-remove]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.sourceRemove;
+      if (!id) return;
+      state.sourceMaterials = state.sourceMaterials.filter((material) => material.id !== id);
+      state.sourceMessage = "Source removed.";
+      render();
+    });
   });
   document.querySelector<HTMLTextAreaElement>("#generation-draft")?.addEventListener("input", (event) => {
     state.generationDraft = (event.target as HTMLTextAreaElement).value;
@@ -1636,6 +1833,9 @@ function bindEvents(): void {
       state.activeGateNote = "";
       state.handoffMessage = "";
       state.intakeForm = null;
+      state.sourceMaterials = [];
+      state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
+      state.sourceMessage = "";
       loadApprovalOverrides();
       loadBaselineSnapshot();
       await refreshWorkspaceEntries();
@@ -1655,6 +1855,9 @@ async function loadSample(): Promise<void> {
   state.activeGateNote = "";
   state.handoffMessage = "";
   state.intakeForm = null;
+  state.sourceMaterials = [];
+  state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
+  state.sourceMessage = "";
   loadBaselineSnapshot();
   await refreshWorkspaceEntries();
   render();

@@ -31,6 +31,7 @@ Implemented:
 - Workbench export center and handoff artifacts.
 - Workbench local workspace persistence.
 - Workbench structured intake form builder.
+- Workbench source-material intake and safety preview.
 
 ## Run
 
@@ -82,7 +83,7 @@ Run the browser workbench:
 npm run workbench:dev
 ```
 
-The workbench can review generated packages, import an exported package folder, save packages into a local browser workspace, prepare an intake JSON draft from structured form controls, copy a matching CLI command, track local approval gate decisions, compare package baselines for revision impact, and generate handoff artifacts for downstream frontend work.
+The workbench can review generated packages, import an exported package folder, save packages into a local browser workspace, prepare an intake JSON draft from structured form controls, collect source materials with a safety preview, copy a matching CLI command, track local approval gate decisions, compare package baselines for revision impact, and generate handoff artifacts for downstream frontend work.
 
 Run all checks:
 
@@ -118,4 +119,4 @@ node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archety
 
 ## Next Implementation Target
 
-The next pass should add rich source-material intake and safety preview in the workbench.
+The next pass should add workbench route and screen coverage editing.

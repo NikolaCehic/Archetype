@@ -428,3 +428,32 @@ Verification:
 Next phase:
 
 - Rich source-material intake and safety preview in the workbench.
+
+## Completed Phase: Workbench Source-Material Intake and Safety Preview
+
+Status: complete
+
+Implemented:
+
+- Source-material intake surface in the Generate view.
+- Manual source label, type, path, notes, and content controls.
+- Multi-file source import.
+- Source type inference from file names.
+- Client-side safety preview for likely secrets, prompt-injection instructions, PII, and regulated data.
+- Source safety summary metrics.
+- Source remove and clear actions.
+- Source materials included in generated intake JSON under `materials`.
+- Draft-to-form loading for existing `materials` arrays.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench route and screen coverage editing.
