@@ -457,3 +457,32 @@ Verification:
 Next phase:
 
 - Workbench route and screen coverage editing.
+
+## Completed Phase: Workbench Route and Screen Coverage Editing
+
+Status: complete
+
+Implemented:
+
+- Local screen coverage review states.
+- Coverage review notes.
+- Reviewed, needs-changes, and blocked screen actions.
+- Coverage reset action.
+- Package-specific coverage persistence.
+- Architecture view coverage metrics.
+- Coverage review table mapped to routes and screens.
+- Coverage state included in handoff markdown and JSON.
+- Coverage state reset when switching packages.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Design-system token and component review controls.

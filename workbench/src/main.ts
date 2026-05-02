@@ -154,6 +154,12 @@ interface ApprovalOverride {
   updatedAt: string;
 }
 
+interface CoverageOverride {
+  state: "unreviewed" | "reviewed" | "needs_changes" | "blocked";
+  note: string;
+  updatedAt: string;
+}
+
 const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => number | string }> = [
   { id: "overview", label: "Overview", count: (bundle) => bundle.readiness.score },
   { id: "workspace", label: "Workspace", count: () => state.workspaceEntries.length },
@@ -180,6 +186,8 @@ const state: {
   generationMessage: string;
   approvalOverrides: Record<string, ApprovalOverride>;
   activeGateNote: string;
+  coverageOverrides: Record<string, CoverageOverride>;
+  activeCoverageNote: string;
   baselineSnapshot: PackageSnapshot | null;
   baselineName: string;
   impactMessage: string;
@@ -200,6 +208,8 @@ const state: {
   generationMessage: "",
   approvalOverrides: {},
   activeGateNote: "",
+  coverageOverrides: {},
+  activeCoverageNote: "",
   baselineSnapshot: null,
   baselineName: "",
   impactMessage: "",
@@ -741,6 +751,17 @@ function approvalStateForGate(gate: any): string {
   return state.approvalOverrides[gate.id]?.state ?? gate.approval_state ?? "pending_human_review";
 }
 
+function coverageStateForScreen(screenId: string): CoverageOverride["state"] {
+  return state.coverageOverrides[screenId]?.state ?? "unreviewed";
+}
+
+function coverageTone(value: CoverageOverride["state"]): "success" | "warning" | "danger" | "neutral" {
+  if (value === "reviewed") return "success";
+  if (value === "blocked") return "danger";
+  if (value === "needs_changes") return "warning";
+  return "neutral";
+}
+
 function handoffPrompt(bundle: Bundle): string {
   const required = requiredHandoffArtifacts(bundle).filter((artifact) => artifact.present).map((artifact) => `- ${artifact.path}`).join("\n");
   return [
@@ -784,6 +805,11 @@ function handoffMarkdown(bundle: Bundle): string {
     "## Approval Gates",
     ...gates.map((gate: any) => `- ${gate.label}: ${approvalStateForGate(gate)}`),
     "",
+    "## Screen Coverage Review",
+    ...(Object.keys(state.coverageOverrides).length
+      ? Object.entries(state.coverageOverrides).map(([screenId, coverage]) => `- ${screenId}: ${coverage.state}${coverage.note ? `, ${coverage.note}` : ""}`)
+      : ["- None"]),
+    "",
     "## Required Handoff Artifacts",
     ...required.map((artifact) => `- ${artifact.present ? "present" : "missing"}: ${artifact.path}`),
     "",
@@ -810,6 +836,7 @@ function handoffJson(bundle: Bundle): Record<string, unknown> {
       note: state.approvalOverrides[gate.id]?.note ?? ""
     })),
     requiredArtifacts: requiredHandoffArtifacts(bundle),
+    screenCoverage: state.coverageOverrides,
     artifactDigests: bundle.artifacts ?? [],
     commands: handoffCommands(),
     frontendAgentPrompt: handoffPrompt(bundle)
@@ -1035,7 +1062,7 @@ function renderGeneration(bundle: Bundle): string {
   const fileName = parsed.ok ? intakeFileName(parsed.value) : "custom-project-intake.json";
   const command = `node dist/cli.js generate --input examples/${fileName} --out tmp/${fileName.replace("-intake.json", "-output")}`;
   return `
-    <div class="grid cols-2">
+    <div class="grid cols-2" style="margin-top:14px">
       ${panel("Intake Builder", `
         <div class="form-grid">
           ${inputField("intake-project-name", form.projectName, "Project name")}
@@ -1113,7 +1140,15 @@ function renderEvidence(bundle: Bundle): string {
 }
 
 function renderArchitecture(bundle: Bundle): string {
+  const reviewed = bundle.screenInventory.screens.filter((screen) => coverageStateForScreen(String(screen.screen_id)) === "reviewed").length;
+  const needsChanges = bundle.screenInventory.screens.filter((screen) => coverageStateForScreen(String(screen.screen_id)) === "needs_changes").length;
+  const blocked = bundle.screenInventory.screens.filter((screen) => coverageStateForScreen(String(screen.screen_id)) === "blocked").length;
   return `
+    <div class="grid cols-3">
+      ${metric("Reviewed screens", `${reviewed}/${bundle.screenInventory.screens.length}`, reviewed === bundle.screenInventory.screens.length ? "success" : "warning")}
+      ${metric("Needs changes", needsChanges, needsChanges > 0 ? "warning" : "success")}
+      ${metric("Blocked", blocked, blocked > 0 ? "danger" : "success")}
+    </div>
     <div class="grid cols-2">
       ${panel("Routes", table(["Route", "Screen", "Layout", "Priority"], bundle.routeMap.routes.map((route) => [
         `<code>${esc(route.route)}</code>`,
@@ -1126,6 +1161,27 @@ function renderArchitecture(bundle: Bundle): string {
         badge(screen.priority, screen.priority === "P0" ? "success" : "neutral"),
         esc((screen.required_patterns ?? []).join(", "))
       ])))}
+    </div>
+    <div style="margin-top:14px">
+      ${panel("Coverage Review", `
+        ${table(["Screen", "Route", "State", "Notes", "Actions"], bundle.screenInventory.screens.map((screen) => {
+          const route = bundle.routeMap.routes.find((item) => item.screen_id === screen.screen_id);
+          const coverage = coverageStateForScreen(String(screen.screen_id));
+          const note = state.coverageOverrides[String(screen.screen_id)]?.note ?? "";
+          return [
+            esc(screen.screen_id),
+            `<code>${esc(route?.route ?? "")}</code>`,
+            badge(coverage, coverageTone(coverage)),
+            esc(note || "None"),
+            `<div class="control-row compact"><button class="button small" data-coverage-screen="${esc(screen.screen_id)}" data-coverage-state="reviewed" type="button">Reviewed</button><button class="button small" data-coverage-screen="${esc(screen.screen_id)}" data-coverage-state="needs_changes" type="button">Needs changes</button><button class="button small" data-coverage-screen="${esc(screen.screen_id)}" data-coverage-state="blocked" type="button">Block</button></div>`
+          ];
+        }))}
+        <div style="height:10px"></div>
+        ${textArea("coverage-note", state.activeCoverageNote, "Coverage note for the next screen action", "textarea short")}
+        <div class="control-row">
+          <button class="button" id="reset-coverage" type="button">Reset coverage states</button>
+        </div>
+      `)}
     </div>
     <div style="margin-top:14px">
       ${panel("Information Shape", code({ userModel: bundle.userModel, acceptanceCriteria: bundle.acceptanceCriteria.criteria.length }))}
@@ -1526,6 +1582,29 @@ function bindEvents(): void {
     state.selectedScreen = null;
     render();
   });
+  document.querySelector<HTMLTextAreaElement>("#coverage-note")?.addEventListener("input", (event) => {
+    state.activeCoverageNote = (event.target as HTMLTextAreaElement).value;
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-coverage-screen]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const screenId = button.dataset.coverageScreen;
+      const coverageState = button.dataset.coverageState as CoverageOverride["state"] | undefined;
+      if (!screenId || !coverageState) return;
+      state.coverageOverrides[screenId] = {
+        state: coverageState,
+        note: state.activeCoverageNote.trim(),
+        updatedAt: new Date().toISOString()
+      };
+      saveCoverageOverrides();
+      render();
+    });
+  });
+  document.querySelector<HTMLButtonElement>("#reset-coverage")?.addEventListener("click", () => {
+    state.coverageOverrides = {};
+    state.activeCoverageNote = "";
+    saveCoverageOverrides();
+    render();
+  });
   document.querySelector<HTMLButtonElement>("#save-workspace-package")?.addEventListener("click", async () => {
     if (!state.bundle) return;
     const entry = await saveWorkspaceBundle(state.bundle, state.packageName);
@@ -1555,12 +1634,14 @@ function bindEvents(): void {
       state.generationDraft = "";
       state.generationMessage = "";
       state.activeGateNote = "";
+      state.activeCoverageNote = "";
       state.handoffMessage = "";
       state.intakeForm = null;
       state.sourceMaterials = [];
       state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
       state.sourceMessage = "";
       loadApprovalOverrides();
+      loadCoverageOverrides();
       loadBaselineSnapshot();
       await refreshWorkspaceEntries();
       render();
@@ -1831,12 +1912,14 @@ function bindEvents(): void {
       state.generationDraft = "";
       state.generationMessage = "";
       state.activeGateNote = "";
+      state.activeCoverageNote = "";
       state.handoffMessage = "";
       state.intakeForm = null;
       state.sourceMaterials = [];
       state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
       state.sourceMessage = "";
       loadApprovalOverrides();
+      loadCoverageOverrides();
       loadBaselineSnapshot();
       await refreshWorkspaceEntries();
       render();
@@ -1853,12 +1936,14 @@ async function loadSample(): Promise<void> {
   state.generationDraft = "";
   state.generationMessage = "";
   state.activeGateNote = "";
+  state.activeCoverageNote = "";
   state.handoffMessage = "";
   state.intakeForm = null;
   state.sourceMaterials = [];
   state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
   state.sourceMessage = "";
   loadBaselineSnapshot();
+  loadCoverageOverrides();
   await refreshWorkspaceEntries();
   render();
 }
@@ -1878,6 +1963,23 @@ function loadApprovalOverrides(): void {
 
 function saveApprovalOverrides(): void {
   localStorage.setItem(approvalStorageKey(), JSON.stringify(state.approvalOverrides));
+}
+
+function coverageStorageKey(): string {
+  const slug = state.bundle?.manifest.project_slug ?? state.packageName;
+  return `archetype:coverage:${slug}`;
+}
+
+function loadCoverageOverrides(): void {
+  try {
+    state.coverageOverrides = JSON.parse(localStorage.getItem(coverageStorageKey()) ?? "{}");
+  } catch {
+    state.coverageOverrides = {};
+  }
+}
+
+function saveCoverageOverrides(): void {
+  localStorage.setItem(coverageStorageKey(), JSON.stringify(state.coverageOverrides));
 }
 
 function baselineStorageKey(): string {
