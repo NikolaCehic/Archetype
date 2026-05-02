@@ -1290,3 +1290,39 @@ Verification:
 Next phase:
 
 - Deterministic pattern contract expansion.
+
+## Completed Phase: Deterministic Pattern Contract Expansion
+
+Status: complete
+
+Implemented:
+
+- Added deterministic pattern contract generation for every product-specific pattern.
+- Added pattern workflow refs, screen usage, component composition, component contract refs, variant contracts, state contracts, interaction contracts, data contracts, responsive behavior, accessibility rules, acceptance rules, and forbidden usage.
+- Added `04-design-system/patterns/pattern-contracts.json`.
+- Added `04-design-system/patterns/pattern-contracts.md`.
+- Added `09-schemas/pattern-contracts.schema.json`.
+- Pattern registry entries now reference their strict pattern contracts.
+- Frontend-agent instructions and component usage maps now point to pattern contract refs.
+- Build simulation now fails if required patterns lack complete contracts.
+- Quality checks now validate pattern screen usage, workflow refs, component composition, states, data entities, and accessibility behavior.
+- Revision dependency graph and approval gates now include component and pattern contract artifacts.
+- Utility settings screens no longer inherit unrelated product-specific workflow patterns.
+- Workbench sample bundle now includes the pattern contracts artifact.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Manifest-listed files checked by validator: 130.
+- Pattern contracts generated: 7.
+- Pattern contract blockers: 0.
+- Pattern contract coverage: screen usage 7/7, workflow refs 7/7, components 7/7, states 7/7, data 7/7.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Deterministic data, action, and form contract hardening.

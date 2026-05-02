@@ -86,6 +86,21 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     warnings?: string[];
   };
   const patternRegistry = input.designSystem.patternRegistry as { patterns?: unknown[] };
+  const patternContracts = input.designSystem.patternContracts as {
+    pattern_count?: number;
+    contracts?: Array<{
+      name?: string;
+      used_on_screens?: unknown[];
+      workflow_refs?: unknown[];
+      component_refs?: unknown[];
+      variant_contract?: unknown[];
+      state_contract?: unknown[];
+      data_contract?: { entity_refs?: unknown[] };
+      accessibility_contract?: unknown[];
+    }>;
+    blockers?: string[];
+    warnings?: string[];
+  };
   const dataContracts = input.frontendContract.dataContracts as { entities?: Record<string, unknown> };
   const evidenceIds = new Set([
     ...input.evidence.known_facts.map((item) => item.id),
@@ -118,6 +133,14 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   checks.push(check("components.contracts.tokens", (componentContracts.contracts ?? []).every((contract) => Array.isArray(contract.token_contract?.required_tokens) && (contract.token_contract?.required_tokens ?? []).length > 0), "Every component contract declares token dependencies."));
   checks.push(check("components.contracts.accessibility", (componentContracts.contracts ?? []).every((contract) => Array.isArray(contract.accessibility_contract) && contract.accessibility_contract.length > 0), "Every component contract declares accessibility behavior."));
   checks.push(check("patterns.registry.present", Array.isArray(patternRegistry.patterns) && patternRegistry.patterns.length > 0, "Pattern registry exists."));
+  checks.push(check("patterns.contracts.present", Array.isArray(patternContracts.contracts) && patternContracts.contracts.length === (patternRegistry.patterns?.length ?? -1), "Every registry pattern has a deterministic pattern contract."));
+  checks.push(check("patterns.contracts.no_blockers", (patternContracts.blockers ?? []).length === 0, "Pattern contracts have no blockers."));
+  checks.push(check("patterns.contracts.screens", (patternContracts.contracts ?? []).every((contract) => Array.isArray(contract.used_on_screens) && contract.used_on_screens.length > 0), "Every pattern contract maps to screens."));
+  checks.push(check("patterns.contracts.workflows", (patternContracts.contracts ?? []).every((contract) => Array.isArray(contract.workflow_refs) && contract.workflow_refs.length > 0), "Every pattern contract maps to workflows."));
+  checks.push(check("patterns.contracts.components", (patternContracts.contracts ?? []).every((contract) => Array.isArray(contract.component_refs) && contract.component_refs.length > 0), "Every pattern contract declares component composition."));
+  checks.push(check("patterns.contracts.states", (patternContracts.contracts ?? []).every((contract) => Array.isArray(contract.state_contract) && contract.state_contract.length > 0), "Every pattern contract declares states."));
+  checks.push(check("patterns.contracts.data", (patternContracts.contracts ?? []).every((contract) => Array.isArray(contract.data_contract?.entity_refs) && (contract.data_contract?.entity_refs ?? []).length > 0), "Every pattern contract declares data entities."));
+  checks.push(check("patterns.contracts.accessibility", (patternContracts.contracts ?? []).every((contract) => Array.isArray(contract.accessibility_contract) && contract.accessibility_contract.length > 0), "Every pattern contract declares accessibility behavior."));
   checks.push(check("data.contracts.present", !!dataContracts.entities && Object.keys(dataContracts.entities).length > 0, "Data contracts exist."));
   checks.push(check("accessibility.rules.present", Object.keys(input.designSystem.accessibilityRules).length > 0, "Accessibility rules exist."));
   checks.push(check("frontend.contract.instructions.present", input.frontendContract.frontendAgentInstructions.length > 0, "Frontend-agent instructions exist."));
@@ -148,6 +171,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   validateRequiredFields(checks, "ux-flow-state-completeness.schema.json", input.schemas.schemas["ux-flow-state-completeness.schema.json"], input.experience.uxFlowStateCompleteness as unknown as Record<string, unknown>, "ux-flow-state-completeness");
   validateRequiredFields(checks, "component-contracts.schema.json", input.schemas.schemas["component-contracts.schema.json"], input.designSystem.componentContracts, "component-contracts");
   validateRequiredFields(checks, "component-registry.schema.json", input.schemas.schemas["component-registry.schema.json"], input.designSystem.componentRegistry, "component-registry");
+  validateRequiredFields(checks, "pattern-contracts.schema.json", input.schemas.schemas["pattern-contracts.schema.json"], input.designSystem.patternContracts, "pattern-contracts");
   validateRequiredFields(checks, "pattern-registry.schema.json", input.schemas.schemas["pattern-registry.schema.json"], input.designSystem.patternRegistry, "pattern-registry");
   validateRequiredFields(checks, "data-contracts.schema.json", input.schemas.schemas["data-contracts.schema.json"], input.frontendContract.dataContracts, "data-contracts");
   validateRequiredFields(checks, "frontend-build-manifest.schema.json", input.schemas.schemas["frontend-build-manifest.schema.json"], input.frontendContract.buildManifest, "frontend-build-manifest");
@@ -190,6 +214,10 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
       const hasContract = (componentContracts.contracts ?? []).some((contract) => contract.name === component);
       checks.push(check(`screen.${screen.screen_id}.component.${component}.contract`, hasContract, `${screen.screen_id} required component ${component} has a component contract.`));
     }
+    for (const pattern of screen.required_patterns) {
+      const hasContract = (patternContracts.contracts ?? []).some((contract) => contract.name === pattern);
+      checks.push(check(`screen.${screen.screen_id}.pattern.${pattern}.contract`, hasContract, `${screen.screen_id} required pattern ${pattern} has a pattern contract.`));
+    }
     for (const [state, definition] of Object.entries(screen.states)) {
       const typed = definition as Record<string, unknown>;
       checks.push(check(`screen.${screen.screen_id}.state.${state}.trigger`, typeof typed.trigger === "string" && typed.trigger.length > 0, `${screen.screen_id} ${state} state includes a trigger.`));
@@ -213,6 +241,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   }
   warnings.push(...input.experience.uxFlowStateCompleteness.warnings.map((warning) => `UX flow/state completeness: ${warning}`));
   warnings.push(...((componentContracts.warnings ?? []).map((warning) => `Component contracts: ${warning}`)));
+  warnings.push(...((patternContracts.warnings ?? []).map((warning) => `Pattern contracts: ${warning}`)));
   warnings.push(...input.ingestion.safetyFindings.filter((finding) => finding.severity !== "blocker").map((finding) => `Safety ${finding.severity}: ${finding.finding} (${finding.source_id})`));
   warnings.push(...input.dsag.integrity.warnings.map((item) => `DSAG warning: ${item}`));
   warnings.push(...input.buildSimulation.warnings.map((warning) => `Build simulation: ${warning}`));
@@ -228,7 +257,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     product_understanding: input.product.productModel ? 15 : 0,
     ux_architecture: routeCount > 0 && screenCount > 0 ? 15 : 0,
     screen_spec_completeness: input.experience.screenSpecs.every((screen) => requiredStates.every((state) => Object.prototype.hasOwnProperty.call(screen.states, state))) && input.experience.uxFlowStateCompleteness.summary.incomplete_screens === 0 ? 15 : 8,
-    design_system_coherence: Array.isArray(componentRegistry.components) && Array.isArray(patternRegistry.patterns) && (componentContracts.blockers ?? []).length === 0 && input.dsag.integrity.status !== "fail" ? 15 : 0,
+    design_system_coherence: Array.isArray(componentRegistry.components) && Array.isArray(patternRegistry.patterns) && (componentContracts.blockers ?? []).length === 0 && (patternContracts.blockers ?? []).length === 0 && input.dsag.integrity.status !== "fail" ? 15 : 0,
     accessibility_coverage: Object.keys(input.designSystem.accessibilityRules).length > 0 ? 15 : 0,
     frontend_contract_quality: input.frontendContract.frontendAgentInstructions.length > 0 && !!dataContracts.entities && input.buildSimulation.status !== "fail" ? 15 : 0,
     evidence_traceability: input.evidence.decisions.length > 0 ? 10 : 0
@@ -286,6 +315,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
       `Component registry entries: ${componentRegistry.components?.length ?? 0}`,
       `Component contracts: ${componentContracts.contracts?.length ?? 0}`,
       `Pattern registry entries: ${patternRegistry.patterns?.length ?? 0}`,
+      `Pattern contracts: ${patternContracts.contracts?.length ?? 0}`,
       `DSAG nodes: ${input.dsag.nodes.length}`,
       `DSAG edges: ${input.dsag.edges.length}`,
       `Schema files: ${Object.keys(input.schemas.schemas).length}`,

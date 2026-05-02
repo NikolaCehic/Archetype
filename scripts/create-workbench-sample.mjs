@@ -64,6 +64,7 @@ const bundle = {
   dsag: readJson("03-experience-architecture/dsag.json"),
   componentContracts: readJson("04-design-system/components/component-contracts.json"),
   componentRegistry: readJson("04-design-system/components/component-registry.json"),
+  patternContracts: readJson("04-design-system/patterns/pattern-contracts.json"),
   patternRegistry: readJson("04-design-system/patterns/pattern-registry.json"),
   primitiveTokens: readJson("04-design-system/tokens/primitive-tokens.json"),
   semanticTokens: readJson("04-design-system/tokens/semantic-tokens.json"),

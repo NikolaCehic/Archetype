@@ -387,6 +387,222 @@ function componentContractsMarkdown(componentContracts: Record<string, unknown>)
   ].join("\n\n");
 }
 
+interface PatternContract {
+  name: string;
+  category: "product-specific";
+  purpose: string;
+  used_on_screens: string[];
+  workflow_refs: string[];
+  component_refs: string[];
+  component_contract_refs: Record<string, string>;
+  variant_contract: Array<{
+    variant: string;
+    use_when: string;
+    component_states: string[];
+  }>;
+  state_contract: Array<{
+    state: string;
+    trigger: string;
+    required_components: string[];
+    behavior: string;
+    recovery_action?: string;
+  }>;
+  interaction_contract: Array<{
+    interaction: string;
+    trigger: string;
+    result: string;
+    allowed_when: string;
+  }>;
+  data_contract: {
+    entity_refs: string[];
+    required_fields: string[];
+    empty_behavior: string;
+  };
+  responsive_contract: Record<string, string>;
+  accessibility_contract: string[];
+  acceptance_contract: string[];
+  forbidden_usage: string[];
+  evidence_refs: string[];
+}
+
+function patternComponents(pattern: string): string[] {
+  if (pattern.includes("Table") || pattern.includes("Row")) return ["DataTable", "Badge", "Button"];
+  if (pattern.includes("Filter")) return ["Select", "Button"];
+  if (pattern.includes("Status") || pattern.includes("Badge")) return ["Badge", "Tooltip"];
+  if (pattern.includes("Alert") || pattern.includes("Exception")) return ["Alert", "Button"];
+  if (pattern.includes("Chart") || pattern.includes("Map")) return ["Card", "MetricGrid", "Button"];
+  if (pattern.includes("Prompt")) return ["Modal", "Button", "Alert"];
+  return ["Card", "Badge", "Button"];
+}
+
+function patternVariants(pattern: string): string[] {
+  if (pattern.includes("Status") || pattern.includes("Badge") || pattern.includes("Alert") || pattern.includes("Risk") || pattern.includes("Exception")) {
+    return ["neutral", "success", "warning", "danger"];
+  }
+  if (pattern.includes("Filter")) return ["default", "compact"];
+  if (pattern.includes("Chart") || pattern.includes("Map")) return ["default", "empty", "loading"];
+  return ["default", "dense", "summary"];
+}
+
+function patternEntities(pattern: string, profile: DomainProfile, screenIds: string[], experience: ExperienceArtifacts): string[] {
+  const lower = pattern.toLowerCase();
+  const direct = profile.entities.filter((entity) => lower.includes(entity.toLowerCase().replace(/s$/, "")));
+  if (direct.length > 0) return direct;
+  const fromScreens = experience.screenSpecs
+    .filter((screen) => screenIds.includes(screen.screen_id))
+    .flatMap((screen) => screen.data_needs);
+  return [...new Set(fromScreens.length > 0 ? fromScreens : profile.entities.slice(0, 2))];
+}
+
+function workflowsForPattern(pattern: string, screenIds: string[], profile: DomainProfile, experience: ExperienceArtifacts): string[] {
+  const lower = pattern.toLowerCase();
+  const direct = profile.workflows.filter((workflow) => workflow.split(/[_-]/).some((token) => token.length > 2 && lower.includes(token.replace(/s$/, ""))));
+  if (direct.length > 0) return direct;
+  const flows = ((experience.flowSpecs as { flows?: Array<{ flow_id?: string; screen_refs?: string[] }> }).flows ?? []);
+  return [...new Set(flows.filter((flow) => (flow.screen_refs ?? []).some((screenId) => screenIds.includes(screenId))).map((flow) => flow.flow_id ?? "workflow"))];
+}
+
+function buildPatternContract(pattern: string, profile: DomainProfile, experience: ExperienceArtifacts): PatternContract {
+  const usedOnScreens = experience.screenSpecs
+    .filter((screen) => screen.required_patterns.includes(pattern))
+    .map((screen) => screen.screen_id);
+  const components = patternComponents(pattern);
+  const entityRefs = patternEntities(pattern, profile, usedOnScreens, experience);
+  const workflowRefs = workflowsForPattern(pattern, usedOnScreens, profile, experience);
+  return {
+    name: pattern,
+    category: "product-specific",
+    purpose: `${pattern} implements a recurring ${profile.category} workflow need and must be reused instead of rebuilt per screen.`,
+    used_on_screens: usedOnScreens,
+    workflow_refs: workflowRefs,
+    component_refs: components,
+    component_contract_refs: Object.fromEntries(components.map((component) => [component, `04-design-system/components/component-contracts.json#${component}`])),
+    variant_contract: patternVariants(pattern).map((variant) => ({
+      variant,
+      use_when: variant === "default" ? "Use for the normal product workflow state." : `Use only when data, screen state, or domain status calls for ${variant}.`,
+      component_states: variant === "loading" ? ["loading"] : variant === "empty" ? ["empty"] : ["default", "focus"]
+    })),
+    state_contract: [
+      {
+        state: "default",
+        trigger: "required data is available",
+        required_components: components,
+        behavior: "Render declared data and interactions using only component contracts."
+      },
+      {
+        state: "loading",
+        trigger: "pattern data or parent screen data is pending",
+        required_components: components.includes("DataTable") ? ["Skeleton", "DataTable"] : ["Skeleton", ...components.filter((component) => component !== "Button")],
+        behavior: "Preserve layout stability and avoid fabricated content."
+      },
+      {
+        state: "empty",
+        trigger: "pattern data resolves with no relevant records",
+        required_components: ["EmptyState", ...components.filter((component) => component === "Button")],
+        behavior: "Explain what is missing and surface the next approved action.",
+        recovery_action: "Use the state contract recovery action from the parent screen."
+      },
+      {
+        state: "error",
+        trigger: "pattern data or interaction fails",
+        required_components: ["Alert", "Button"],
+        behavior: "Show recovery-oriented error feedback without hiding safe surrounding content.",
+        recovery_action: "Retry or follow the parent screen recovery action."
+      }
+    ],
+    interaction_contract: [
+      { interaction: "view_detail", trigger: "user selects a row, card, or status item", result: "navigate only to routes in route-map.json", allowed_when: "route exists and user has permission" },
+      { interaction: "filter", trigger: "user changes filter criteria", result: "update visible records and support filtered_empty state", allowed_when: "pattern exposes filter controls" },
+      { interaction: "retry", trigger: "user activates recovery action", result: "retry the failed pattern or parent screen data request", allowed_when: "pattern is in error, partial_data, stale_data, or offline state" }
+    ],
+    data_contract: {
+      entity_refs: entityRefs,
+      required_fields: ["id", "label", "status", "updatedAt"],
+      empty_behavior: "Render empty or filtered_empty state. Do not invent rows, metrics, statuses, or chart points."
+    },
+    responsive_contract: {
+      desktop: "Use the full declared composition with compact scanning density.",
+      tablet: "Preserve hierarchy and stack secondary controls below primary content.",
+      mobile: "Use single-column pattern layout and expose table/card fallback where dense data would overflow."
+    },
+    accessibility_contract: [
+      "Pattern must preserve keyboard access to every interaction.",
+      "Status and risk must include text labels.",
+      "Errors and recovery actions must be announced or focused according to parent screen state.",
+      "Chart, map, and metric patterns require text or table fallback."
+    ],
+    acceptance_contract: [
+      "Pattern appears only on screens listed in used_on_screens.",
+      "Pattern uses only component_refs and their component contracts.",
+      "Pattern renders default, loading, empty, and error states.",
+      "Pattern data maps to data_contract entity refs or reports a gap."
+    ],
+    forbidden_usage: [
+      "Do not create a pattern variant outside variant_contract.",
+      "Do not add new components outside component_refs without revising component contracts.",
+      "Do not use pattern visuals as permission to invent backend data.",
+      "Do not copy reference screenshots beyond abstract structure."
+    ],
+    evidence_refs: ["inference_domain_profile"]
+  };
+}
+
+function buildPatternContracts(profile: DomainProfile, experience: ExperienceArtifacts): Record<string, unknown> {
+  const contracts = profile.patterns.map((pattern) => buildPatternContract(pattern, profile, experience));
+  const blockers = contracts
+    .filter((contract) =>
+      contract.component_refs.length === 0 ||
+      contract.used_on_screens.length === 0 ||
+      contract.workflow_refs.length === 0 ||
+      contract.state_contract.length === 0 ||
+      contract.variant_contract.length === 0
+    )
+    .map((contract) => `${contract.name}: missing screen usage, workflow refs, components, variants, or states.`);
+
+  return {
+    contract_version: "1.0",
+    pattern_count: contracts.length,
+    contracts,
+    coverage: {
+      patterns_with_screen_usage: contracts.filter((contract) => contract.used_on_screens.length > 0).length,
+      patterns_with_workflow_refs: contracts.filter((contract) => contract.workflow_refs.length > 0).length,
+      patterns_with_components: contracts.filter((contract) => contract.component_refs.length > 0).length,
+      patterns_with_states: contracts.filter((contract) => contract.state_contract.length > 0).length,
+      patterns_with_data: contracts.filter((contract) => contract.data_contract.entity_refs.length > 0).length
+    },
+    blockers,
+    warnings: ["Pattern contracts are generated from inferred workflows and should be reviewed for domain-specific edge behavior."],
+    evidence_refs: ["inference_domain_profile", "decision_compiler_order"]
+  };
+}
+
+function patternContractsMarkdown(patternContracts: Record<string, unknown>): string {
+  const contracts = (patternContracts.contracts as PatternContract[] | undefined) ?? [];
+  return [
+    "# Pattern Contracts",
+    "",
+    `Patterns: ${contracts.length}`,
+    "",
+    ...contracts.map((contract) => [
+      `## ${contract.name}`,
+      "",
+      `Purpose: ${contract.purpose}`,
+      `Used on screens: ${contract.used_on_screens.join(", ") || "none"}`,
+      `Workflows: ${contract.workflow_refs.join(", ") || "none"}`,
+      `Components: ${contract.component_refs.join(", ")}`,
+      `Variants: ${contract.variant_contract.map((variant) => variant.variant).join(", ")}`,
+      `States: ${contract.state_contract.map((state) => state.state).join(", ")}`,
+      "",
+      "Acceptance:",
+      contract.acceptance_contract.map((item) => `- ${item}`).join("\n")
+    ].join("\n")),
+    "",
+    "## Blockers",
+    "",
+    ((patternContracts.blockers as string[] | undefined) ?? []).length > 0 ? ((patternContracts.blockers as string[]) ?? []).map((blocker) => `- ${blocker}`).join("\n") : "None."
+  ].join("\n\n");
+}
+
 export function buildDesignSystemArtifacts(
   input: ArchetypeInput,
   profile: DomainProfile,
@@ -461,21 +677,32 @@ export function buildDesignSystemArtifacts(
     })
   };
 
+  const patternContracts = buildPatternContracts(profile, experience);
+  const contractByPattern = new Map(((patternContracts.contracts as PatternContract[] | undefined) ?? []).map((contract) => [contract.name, contract]));
   const patternRegistry = {
-    patterns: profile.patterns.map((pattern) => ({
-      name: pattern,
-      category: "product-specific",
-      purpose: `${pattern} exists because ${profile.productType} workflows need a reusable product-level UI pattern.`,
-      composed_of: pattern.includes("Table") || pattern.includes("Row") ? ["DataTable", "Badge", "Button"] : ["Card", "Badge", "Button"],
-      variants: ["neutral", "positive", "warning", "danger"],
-      data_requirements: ["label", "value", "status", "timestamp"],
-      interactions: ["view_detail", "filter", "retry"],
-      accessibility_rules: ["Status must include text labels.", "Trend and risk cannot rely on color alone."],
-      used_on_screens: experience.screenSpecs
-        .filter((screen) => screen.required_patterns.includes(pattern))
-        .map((screen) => screen.screen_id),
-      evidence_refs: ["inference_domain_profile"]
-    }))
+    patterns: profile.patterns.map((pattern) => {
+      const contract = contractByPattern.get(pattern);
+      return {
+        name: pattern,
+        category: "product-specific",
+        purpose: `${pattern} exists because ${profile.productType} workflows need a reusable product-level UI pattern.`,
+        determinism_level: "strict",
+        contract_ref: `04-design-system/patterns/pattern-contracts.json#${pattern}`,
+        composed_of: contract?.component_refs ?? patternComponents(pattern),
+        component_contract_refs: contract?.component_contract_refs ?? {},
+        variants: contract?.variant_contract.map((variant) => variant.variant) ?? patternVariants(pattern),
+        states: contract?.state_contract.map((state) => state.state) ?? ["default", "loading", "empty", "error"],
+        data_requirements: contract?.data_contract.required_fields ?? ["label", "value", "status", "timestamp"],
+        entity_refs: contract?.data_contract.entity_refs ?? [],
+        interactions: contract?.interaction_contract.map((interaction) => interaction.interaction) ?? ["view_detail", "filter", "retry"],
+        accessibility_rules: contract?.accessibility_contract ?? ["Status must include text labels.", "Trend and risk cannot rely on color alone."],
+        used_on_screens: contract?.used_on_screens ?? experience.screenSpecs
+          .filter((screen) => screen.required_patterns.includes(pattern))
+          .map((screen) => screen.screen_id),
+        workflow_refs: contract?.workflow_refs ?? [],
+        evidence_refs: ["inference_domain_profile"]
+      };
+    })
   };
 
   const primitiveTokens = {
@@ -669,17 +896,29 @@ export function buildDesignSystemArtifacts(
       "- Product-specific business behavior belongs in patterns, not primitives.",
       "- Missing contract requirements are build blockers, not permission to invent APIs."
     ].join("\n"),
+    patternContracts,
+    patternContractsReport: patternContractsMarkdown(patternContracts),
     patternRegistry,
     patternSpecs: [
       "# Pattern Specs",
       "",
-      ...profile.patterns.map((pattern) => `## ${pattern}\n\nPurpose: Product-specific pattern for ${profile.productType}. Must define data requirements, states, and accessible status labels.`)
+      ...((patternContracts.contracts as PatternContract[] | undefined) ?? []).map((contract) => [
+        `## ${contract.name}`,
+        "",
+        `Purpose: ${contract.purpose}`,
+        `Screens: ${contract.used_on_screens.join(", ")}`,
+        `Workflows: ${contract.workflow_refs.join(", ")}`,
+        `Components: ${contract.component_refs.join(", ")}`,
+        `States: ${contract.state_contract.map((state) => state.state).join(", ")}`,
+        `Data entities: ${contract.data_contract.entity_refs.join(", ")}`
+      ].join("\n"))
     ].join("\n\n"),
     patternLifecycle: [
       "# Pattern Lifecycle",
       "",
       "- Create a pattern when a workflow or P0 screen needs reusable product-specific UI.",
       "- Keep pattern evidence refs linked to screens and jobs.",
+      "- Implement patterns from `pattern-contracts.json` before screen-specific composition.",
       "- Deprecate patterns only with migration notes and replacement guidance."
     ].join("\n"),
     accessibilityRules: {

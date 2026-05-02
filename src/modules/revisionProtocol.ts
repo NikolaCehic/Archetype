@@ -16,7 +16,9 @@ const ARTIFACTS = {
   screenInventory: "03-experience-architecture/screen-inventory.json",
   screenSpecs: "05-screen-specs/*.yaml",
   designSystem: "04-design-system",
+  componentContracts: "04-design-system/components/component-contracts.json",
   componentRegistry: "04-design-system/components/component-registry.json",
+  patternContracts: "04-design-system/patterns/pattern-contracts.json",
   patternRegistry: "04-design-system/patterns/pattern-registry.json",
   dataContracts: "06-frontend-agent-contract/data-contracts.json",
   frontendContract: "06-frontend-agent-contract",
@@ -41,12 +43,14 @@ export function buildRevisionArtifacts(input: {
       { from: "productModel", to: "entityModel", reason: "Entities derive from product domain." },
       { from: "routeMap", to: "screenInventory", reason: "Screen inventory mirrors route architecture." },
       { from: "screenInventory", to: "screenSpecs", reason: "Screen specs implement screen inventory." },
-      { from: "screenSpecs", to: "componentRegistry", reason: "Components must cover required screen composition." },
-      { from: "screenSpecs", to: "patternRegistry", reason: "Patterns must cover product-specific screen needs." },
+      { from: "screenSpecs", to: "componentContracts", reason: "Component contracts must cover required screen composition." },
+      { from: "componentContracts", to: "componentRegistry", reason: "Registry entries summarize deterministic component contracts." },
+      { from: "screenSpecs", to: "patternContracts", reason: "Pattern contracts must cover product-specific screen needs." },
+      { from: "patternContracts", to: "patternRegistry", reason: "Registry entries summarize deterministic pattern contracts." },
       { from: "entityModel", to: "dataContracts", reason: "Data contracts expose product entities." },
       { from: "screenSpecs", to: "frontendContract", reason: "Frontend contract must build declared screens." },
-      { from: "componentRegistry", to: "frontendContract", reason: "Frontend contract constrains component usage." },
-      { from: "patternRegistry", to: "frontendContract", reason: "Frontend contract constrains pattern usage." },
+      { from: "componentContracts", to: "frontendContract", reason: "Frontend contract constrains component APIs and usage." },
+      { from: "patternContracts", to: "frontendContract", reason: "Frontend contract constrains pattern composition and usage." },
       { from: "dataContracts", to: "frontendContract", reason: "Frontend build needs data shapes." },
       { from: "frontendContract", to: "dsag", reason: "DSAG validates implementation graph coherence." },
       { from: "dsag", to: "readiness", reason: "Readiness depends on graph integrity." }
@@ -72,7 +76,7 @@ export function buildRevisionArtifacts(input: {
       },
       {
         trigger: "screen_spec_changed",
-        invalidates: ["componentRegistry", "patternRegistry", "frontendContract", "dsag", "readiness"],
+        invalidates: ["componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "frontendContract", "dsag", "readiness"],
         reason: "Screen composition determines system and contract requirements."
       },
       {
@@ -81,13 +85,18 @@ export function buildRevisionArtifacts(input: {
         reason: "Contract and graph must reflect component availability."
       },
       {
+        trigger: "pattern_contract_changed",
+        invalidates: ["patternRegistry", "frontendContract", "dsag", "readiness"],
+        reason: "Pattern contract changes alter reusable product-specific composition."
+      },
+      {
         trigger: "data_contract_changed",
         invalidates: ["screenSpecs", "frontendContract", "dsag", "readiness"],
         reason: "Data shape changes affect UI states, fixtures, and build expectations."
       },
       {
         trigger: "accessibility_rule_changed",
-        invalidates: ["screenSpecs", "componentRegistry", "patternRegistry", "frontendContract", "readiness"],
+        invalidates: ["screenSpecs", "componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "frontendContract", "readiness"],
         reason: "Accessibility rules constrain screens, components, and export readiness."
       }
     ]
@@ -124,7 +133,7 @@ export function buildRevisionArtifacts(input: {
       {
         id: "gate_design_system",
         label: "Design System Direction Approval",
-        required_artifacts: [ARTIFACTS.componentRegistry, ARTIFACTS.patternRegistry],
+        required_artifacts: [ARTIFACTS.componentContracts, ARTIFACTS.componentRegistry, ARTIFACTS.patternContracts, ARTIFACTS.patternRegistry],
         approval_state: "pending_human_review"
       },
       {

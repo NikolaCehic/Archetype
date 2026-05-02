@@ -78,6 +78,11 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Component Registry",
       ["components"]
     ),
+    "pattern-contracts.schema.json": objectSchema(
+      "pattern-contracts.schema.json",
+      "Pattern Contracts",
+      ["contract_version", "pattern_count", "contracts", "coverage", "blockers", "warnings", "evidence_refs"]
+    ),
     "pattern-registry.schema.json": objectSchema(
       "pattern-registry.schema.json",
       "Pattern Registry",
@@ -120,6 +125,7 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "05-screen-specs/*.yaml", schema_file: "screen-spec.schema.json", description: "Screen specification contract." },
       { artifact: "04-design-system/components/component-contracts.json", schema_file: "component-contracts.schema.json", description: "Deterministic component API, state, token, and accessibility contracts." },
       { artifact: "04-design-system/components/component-registry.json", schema_file: "component-registry.schema.json", description: "Component registry contract." },
+      { artifact: "04-design-system/patterns/pattern-contracts.json", schema_file: "pattern-contracts.schema.json", description: "Deterministic product-specific pattern contracts." },
       { artifact: "04-design-system/patterns/pattern-registry.json", schema_file: "pattern-registry.schema.json", description: "Pattern registry contract." },
       { artifact: "06-frontend-agent-contract/data-contracts.json", schema_file: "data-contracts.schema.json", description: "Data contract package schema." },
       { artifact: "06-frontend-agent-contract/build-manifest.json", schema_file: "frontend-build-manifest.schema.json", description: "Frontend build manifest schema." },

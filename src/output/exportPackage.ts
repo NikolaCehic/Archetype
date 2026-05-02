@@ -137,6 +137,8 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeJson(outDir, "04-design-system/components/component-registry.json", pkg.designSystem.componentRegistry);
   writeText(outDir, "04-design-system/components/component-specs.md", pkg.designSystem.componentSpecs);
   writeText(outDir, "04-design-system/components/component-api-contract.md", pkg.designSystem.componentApiContract);
+  writeJson(outDir, "04-design-system/patterns/pattern-contracts.json", pkg.designSystem.patternContracts);
+  writeText(outDir, "04-design-system/patterns/pattern-contracts.md", pkg.designSystem.patternContractsReport);
   writeJson(outDir, "04-design-system/patterns/pattern-registry.json", pkg.designSystem.patternRegistry);
   writeText(outDir, "04-design-system/patterns/pattern-specs.md", pkg.designSystem.patternSpecs);
   writeText(outDir, "04-design-system/patterns/pattern-lifecycle.md", pkg.designSystem.patternLifecycle);

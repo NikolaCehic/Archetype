@@ -312,6 +312,8 @@ export interface DesignSystemArtifacts {
   componentRegistry: Record<string, unknown>;
   componentSpecs: string;
   componentApiContract: string;
+  patternContracts: Record<string, unknown>;
+  patternContractsReport: string;
   patternRegistry: Record<string, unknown>;
   patternSpecs: string;
   patternLifecycle: string;

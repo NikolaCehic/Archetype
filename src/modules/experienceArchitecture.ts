@@ -214,6 +214,7 @@ function buildScreenStates(route: RouteSpec, subject: string, screenName: string
 }
 
 function inferPrimaryPattern(screenId: string, profile: DomainProfile): string[] {
+  if (screenId.includes("settings")) return [];
   if (profile.domain === "healthcare" && screenId.includes("patients")) return profile.patterns;
   if (screenId.includes("report")) return ["ReportSummaryPanel", "DateRangeFilter"].filter((pattern) => profile.patterns.includes(pattern));
   if (screenId.includes("dashboard") || screenId.includes("overview")) {

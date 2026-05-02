@@ -22,6 +22,16 @@ interface PatternRegistryEntry {
   name: string;
 }
 
+interface PatternContractEntry {
+  name: string;
+  used_on_screens?: unknown[];
+  workflow_refs?: unknown[];
+  component_refs?: unknown[];
+  variant_contract?: unknown[];
+  state_contract?: unknown[];
+  data_contract?: { entity_refs?: unknown[] };
+}
+
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
@@ -36,9 +46,11 @@ export function buildFrontendBuildSimulationArtifacts(input: {
   const componentRegistry = input.designSystem.componentRegistry as { components?: ComponentRegistryEntry[] };
   const componentContracts = input.designSystem.componentContracts as { contracts?: ComponentContractEntry[]; blockers?: string[] };
   const patternRegistry = input.designSystem.patternRegistry as { patterns?: PatternRegistryEntry[] };
+  const patternContracts = input.designSystem.patternContracts as { contracts?: PatternContractEntry[]; blockers?: string[] };
   const componentNames = new Set((componentRegistry.components ?? []).map((component) => component.name));
   const contractByName = new Map((componentContracts.contracts ?? []).map((contract) => [contract.name, contract]));
   const patternNames = new Set((patternRegistry.patterns ?? []).map((pattern) => pattern.name));
+  const patternContractByName = new Map((patternContracts.contracts ?? []).map((contract) => [contract.name, contract]));
   const dataContracts = input.frontendContract.dataContracts as { entities?: Record<string, unknown>; queries?: unknown[]; mutations?: unknown[] };
   const entityNames = new Set(Object.keys(dataContracts.entities ?? {}));
   const buildManifest = input.frontendContract.buildManifest as { build_order?: string[]; entry_routes?: string[] };
@@ -112,12 +124,33 @@ export function buildFrontendBuildSimulationArtifacts(input: {
 
   const patternResults = input.experience.screenSpecs.map((screen) => {
     const missing = screen.required_patterns.filter((pattern) => !patternNames.has(pattern));
+    const missingContracts = screen.required_patterns.filter((pattern) => !patternContractByName.has(pattern));
+    const incompleteContracts = screen.required_patterns.filter((pattern) => {
+      const contract = patternContractByName.get(pattern);
+      if (!contract) return false;
+      return !Array.isArray(contract.used_on_screens) ||
+        contract.used_on_screens.length === 0 ||
+        !Array.isArray(contract.workflow_refs) ||
+        contract.workflow_refs.length === 0 ||
+        !Array.isArray(contract.component_refs) ||
+        contract.component_refs.length === 0 ||
+        !Array.isArray(contract.variant_contract) ||
+        contract.variant_contract.length === 0 ||
+        !Array.isArray(contract.state_contract) ||
+        contract.state_contract.length === 0 ||
+        !Array.isArray(contract.data_contract?.entity_refs) ||
+        contract.data_contract.entity_refs.length === 0;
+    });
     if (missing.length > 0) blockers.push(`${screen.screen_id}: missing patterns ${missing.join(", ")}`);
+    if (missingContracts.length > 0) blockers.push(`${screen.screen_id}: missing pattern contracts ${missingContracts.join(", ")}`);
+    if (incompleteContracts.length > 0) blockers.push(`${screen.screen_id}: incomplete pattern contracts ${incompleteContracts.join(", ")}`);
     return {
       screen_id: screen.screen_id,
       required_patterns: screen.required_patterns,
       missing_patterns: missing,
-      status: missing.length > 0 ? "fail" : "pass"
+      missing_pattern_contracts: missingContracts,
+      incomplete_pattern_contracts: incompleteContracts,
+      status: missing.length > 0 || missingContracts.length > 0 || incompleteContracts.length > 0 ? "fail" : "pass"
     };
   });
 
