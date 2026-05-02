@@ -149,13 +149,21 @@ interface Bundle {
       checks: Array<{ id: string; status: string; details: string }>;
     };
   };
+  componentContracts: Record<string, any>;
   componentRegistry: { components: Array<Record<string, any>> };
+  patternContracts: Record<string, any>;
   patternRegistry: { patterns: Array<Record<string, any>> };
   primitiveTokens: Record<string, any>;
   semanticTokens: Record<string, any>;
+  tokenContracts: Record<string, any>;
+  typographySystem: Record<string, any>;
   buildManifest: Record<string, any>;
   componentUsageMap: Record<string, any>;
   dataContracts: Record<string, any>;
+  dataOperationContracts: Record<string, any>;
+  actionContracts: Record<string, any>;
+  formContracts: Record<string, any>;
+  verificationContracts: Record<string, any>;
   acceptanceCriteria: { criteria: Array<Record<string, any>> };
   buildSimulation: Record<string, any>;
   revision: Record<string, any>;
@@ -2372,6 +2380,9 @@ function renderScreens(bundle: Bundle): string {
 }
 
 function renderDesign(bundle: Bundle): string {
+  const componentContracts = bundle.componentContracts.contracts ?? [];
+  const patternContracts = bundle.patternContracts.contracts ?? [];
+  const typeRoles = Object.keys(bundle.typographySystem.type_roles ?? {});
   const reviewItems = [
     ...bundle.componentRegistry.components.map((component) => designReviewKey("component", String(component.name))),
     ...bundle.patternRegistry.patterns.map((pattern) => designReviewKey("pattern", String(pattern.name))),
@@ -2385,6 +2396,11 @@ function renderDesign(bundle: Bundle): string {
       ${metric("Approved items", `${approved}/${reviewItems.length}`, approved === reviewItems.length ? "success" : "warning")}
       ${metric("Needs changes", needsChanges, needsChanges > 0 ? "warning" : "success")}
       ${metric("Blocked", blocked, blocked > 0 ? "danger" : "success")}
+    </div>
+    <div class="grid cols-3" style="margin-top:14px">
+      ${metric("Component contracts", componentContracts.length, componentContracts.length === bundle.componentRegistry.components.length ? "success" : "warning")}
+      ${metric("Pattern contracts", patternContracts.length, patternContracts.length === bundle.patternRegistry.patterns.length ? "success" : "warning")}
+      ${metric("Type roles", typeRoles.length, typeRoles.length ? "success" : "warning")}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Components", table(["Component", "Category", "State", "Actions"], bundle.componentRegistry.components.map((component) => {
@@ -2429,6 +2445,22 @@ function renderDesign(bundle: Bundle): string {
       ${panel("Semantic Tokens", code(bundle.semanticTokens))}
       ${panel("Primitive Tokens", code(bundle.primitiveTokens))}
     </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Component Contracts", table(["Component", "Props", "States", "Screens"], componentContracts.slice(0, 12).map((contract: any) => [
+        esc(contract.name),
+        String(contract.prop_contract?.length ?? 0),
+        String(contract.state_contract?.length ?? 0),
+        esc((contract.used_on_screens ?? []).join(", ") || "none")
+      ])))}
+      ${panel("Pattern Contracts", table(["Pattern", "Components", "States", "Workflows"], patternContracts.slice(0, 12).map((contract: any) => [
+        esc(contract.name),
+        esc((contract.component_refs ?? []).join(", ")),
+        String(contract.state_contract?.length ?? 0),
+        esc((contract.workflow_refs ?? []).join(", ") || "none")
+      ])))}
+      ${panel("Token Contract", code(bundle.tokenContracts))}
+      ${panel("Typography System", code(bundle.typographySystem))}
+    </div>
   `;
 }
 
@@ -2436,11 +2468,20 @@ function renderContract(bundle: Bundle): string {
   const openGaps = state.contractGaps.filter((gap) => gap.status === "open");
   const blockerGaps = state.contractGaps.filter((gap) => gap.status !== "resolved" && gap.severity === "blocker");
   const resolvedGaps = state.contractGaps.filter((gap) => gap.status === "resolved");
+  const operationQueries = bundle.dataOperationContracts.queries ?? [];
+  const actionContracts = bundle.actionContracts.actions ?? [];
+  const formContracts = bundle.formContracts.forms ?? [];
+  const verificationSuites = bundle.verificationContracts.test_suites ?? [];
   return `
     <div class="grid cols-3">
       ${metric("Open gaps", openGaps.length, openGaps.length ? "warning" : "success")}
       ${metric("Blockers", blockerGaps.length, blockerGaps.length ? "danger" : "success")}
       ${metric("Resolved", resolvedGaps.length, resolvedGaps.length ? "success" : "neutral")}
+    </div>
+    <div class="grid cols-3" style="margin-top:14px">
+      ${metric("Queries", operationQueries.length, operationQueries.length ? "success" : "warning")}
+      ${metric("Actions", actionContracts.length, actionContracts.length ? "success" : "warning")}
+      ${metric("Verification tests", bundle.verificationContracts.coverage?.test_count ?? 0, (bundle.verificationContracts.coverage?.test_count ?? 0) ? "success" : "warning")}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Build Manifest", code(bundle.buildManifest))}
@@ -2449,6 +2490,30 @@ function renderContract(bundle: Bundle): string {
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Component Usage", code(bundle.componentUsageMap))}
       ${panel("Acceptance Criteria", code(bundle.acceptanceCriteria))}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Data Operations", table(["Query", "Screen", "Entities", "States"], operationQueries.map((query: any) => [
+        esc(query.query_id),
+        esc(query.screen_id),
+        esc((query.entity_refs ?? []).join(", ")),
+        esc(Object.values(query.state_mapping ?? {}).join(", "))
+      ])))}
+      ${panel("Action Contracts", table(["Action", "Type", "Target", "Permission"], actionContracts.slice(0, 18).map((action: any) => [
+        esc(action.action_id),
+        esc(action.action_type),
+        esc(action.action_target),
+        esc(action.permission)
+      ])))}
+      ${panel("Form Contracts", table(["Form", "Screen", "Entity", "Fields"], formContracts.map((form: any) => [
+        esc(form.form_id),
+        esc(form.screen_id),
+        esc(form.entity_ref),
+        String(form.fields?.length ?? 0)
+      ])))}
+      ${panel("Verification Suites", table(["Suite", "Tests"], verificationSuites.map((suite: any) => [
+        esc(suite.suite_id),
+        String(suite.tests?.length ?? 0)
+      ])))}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Gap Reporter", `
@@ -2503,6 +2568,7 @@ function renderSimulation(bundle: Bundle): string {
       ${panel("Route Simulation", code(bundle.buildSimulation.routeSimulation))}
       ${panel("Component Resolution", code(bundle.buildSimulation.componentResolution))}
       ${panel("Data Coverage", code(bundle.buildSimulation.dataContractCoverage))}
+      ${panel("Verification Coverage", code(bundle.buildSimulation.acceptanceSimulation?.verification_suites ?? []))}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Route Triage", table(["Route", "Screen", "Simulation", "Triage", "Actions"], routeItems.map((route: any) => {
@@ -4156,13 +4222,21 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
     routeMap: await getJson("03-experience-architecture/route-map.json"),
     screenInventory: await getJson("03-experience-architecture/screen-inventory.json"),
     dsag: await getJson("03-experience-architecture/dsag.json"),
+    componentContracts: await getJson("04-design-system/components/component-contracts.json"),
     componentRegistry: await getJson("04-design-system/components/component-registry.json"),
+    patternContracts: await getJson("04-design-system/patterns/pattern-contracts.json"),
     patternRegistry: await getJson("04-design-system/patterns/pattern-registry.json"),
     primitiveTokens: await getJson("04-design-system/tokens/primitive-tokens.json"),
     semanticTokens: await getJson("04-design-system/tokens/semantic-tokens.json"),
+    tokenContracts: await getJson("04-design-system/tokens/token-contracts.json"),
+    typographySystem: await getJson("04-design-system/tokens/typography-system.json"),
     buildManifest: await getJson("06-frontend-agent-contract/build-manifest.json"),
     componentUsageMap: await getJson("06-frontend-agent-contract/component-usage-map.json"),
     dataContracts: await getJson("06-frontend-agent-contract/data-contracts.json"),
+    dataOperationContracts: await getJson("06-frontend-agent-contract/data-operation-contracts.json"),
+    actionContracts: await getJson("06-frontend-agent-contract/action-contracts.json"),
+    formContracts: await getJson("06-frontend-agent-contract/form-contracts.json"),
+    verificationContracts: await getJson("06-frontend-agent-contract/verification-contracts.json"),
     acceptanceCriteria: await getJson("06-frontend-agent-contract/acceptance-criteria.json"),
     buildSimulation: {
       buildPlan: await getJson("11-build-simulation/build-plan.json"),
