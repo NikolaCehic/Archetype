@@ -21,6 +21,7 @@ type WorkspacePackageView = "active" | "archived" | "all";
 type WorkspacePriority = "low" | "medium" | "high";
 type WorkspaceSortKey = "savedAt" | "generatedAt" | "name" | "readinessScore" | "artifactCount" | "warningCount" | "priority";
 type WorkspaceSortDirection = "asc" | "desc";
+type WorkspaceHealthFilter = "all" | "hold" | "high" | "pinned" | "untagged" | "no_notes";
 
 interface ArtifactDigest {
   path: string;
@@ -331,6 +332,7 @@ const state: {
   workspaceTagDraft: string;
   workspaceNoteDraft: string;
   workspaceBulkPriority: WorkspacePriority;
+  workspaceHealthFilter: WorkspaceHealthFilter;
   workspaceImportPreview: WorkspaceExport | null;
   workspaceImportFileName: string;
   workspaceActivity: WorkspaceActivityEntry[];
@@ -381,6 +383,7 @@ const state: {
   workspaceTagDraft: "",
   workspaceNoteDraft: "",
   workspaceBulkPriority: "medium",
+  workspaceHealthFilter: "all",
   workspaceImportPreview: null,
   workspaceImportFileName: "",
   workspaceActivity: [],
@@ -787,9 +790,21 @@ function workspaceHealthMarkdown(snapshot: WorkspaceHealthSnapshot): string {
   return `${lines.join("\n")}\n`;
 }
 
+function workspaceHealthFilterFromValue(value: string): WorkspaceHealthFilter {
+  if (value === "hold" || value === "high" || value === "pinned" || value === "untagged" || value === "no_notes") return value;
+  return "all";
+}
+
+function workspaceHealthEntryMatchesFilter(entry: WorkspaceHealthSnapshot["reviewQueue"][number]): boolean {
+  if (state.workspaceHealthFilter === "all") return true;
+  const signal = state.workspaceHealthFilter === "no_notes" ? "no notes" : state.workspaceHealthFilter;
+  return entry.signals.includes(signal);
+}
+
 function renderWorkspaceHealth(entries: WorkspaceEntry[]): string {
   if (!entries.length) return `<div class="empty">No workspace packages to summarize.</div>`;
   const health = workspaceHealthSnapshot(entries);
+  const filteredReviewQueue = health.reviewQueue.filter(workspaceHealthEntryMatchesFilter);
   return `
     <div class="mini-metrics">
       <div><strong>${esc(health.readyCount)}</strong><span>ready</span></div>
@@ -800,15 +815,27 @@ function renderWorkspaceHealth(entries: WorkspaceEntry[]): string {
       <div><strong>${esc(health.missingNotesCount)}</strong><span>missing notes</span></div>
     </div>
     <div style="margin-top:10px">
-      ${health.reviewQueue.length ? table(["Package", "Signals"], health.reviewQueue.slice(0, 10).map((entry) => [
+      ${filteredReviewQueue.length ? table(["Package", "Signals"], filteredReviewQueue.slice(0, 10).map((entry) => [
         `<div><strong>${esc(entry.name)}</strong><div class="muted">${esc(entry.projectSlug)}</div></div>`,
         entry.signals.map((signal) => badge(signal, signal === "hold" || signal === "high" ? "danger" : signal === "pinned" ? "success" : "warning")).join(" ")
-      ])) : `<div class="empty">Workspace package metadata is complete.</div>`}
+      ])) : `<div class="empty">${health.reviewQueue.length ? "No packages match this health filter." : "Workspace package metadata is complete."}</div>`}
     </div>
     <div class="control-row">
+      <label class="field" style="min-width:180px">
+        <span>Health filter</span>
+        <select id="workspace-health-filter" class="input">
+          <option value="all" ${state.workspaceHealthFilter === "all" ? "selected" : ""}>all signals</option>
+          <option value="hold" ${state.workspaceHealthFilter === "hold" ? "selected" : ""}>hold</option>
+          <option value="high" ${state.workspaceHealthFilter === "high" ? "selected" : ""}>high priority</option>
+          <option value="pinned" ${state.workspaceHealthFilter === "pinned" ? "selected" : ""}>pinned</option>
+          <option value="untagged" ${state.workspaceHealthFilter === "untagged" ? "selected" : ""}>untagged</option>
+          <option value="no_notes" ${state.workspaceHealthFilter === "no_notes" ? "selected" : ""}>missing notes</option>
+        </select>
+      </label>
       <button class="button" id="export-workspace-health-json" type="button">Export health JSON</button>
       <button class="button" id="export-workspace-health-report" type="button">Export health report</button>
     </div>
+    <div class="muted" style="margin-top:10px">${esc(`Showing ${filteredReviewQueue.length} of ${health.reviewQueue.length} health queue packages.`)}</div>
   `;
 }
 
@@ -3084,6 +3111,10 @@ function bindEvents(): void {
     state.workspaceActivity = [];
     saveWorkspaceActivity();
     state.workspaceMessage = "Workspace activity cleared.";
+    render();
+  });
+  document.querySelector<HTMLSelectElement>("#workspace-health-filter")?.addEventListener("input", (event) => {
+    state.workspaceHealthFilter = workspaceHealthFilterFromValue((event.target as HTMLSelectElement).value);
     render();
   });
   document.querySelector<HTMLButtonElement>("#export-workspace-health-json")?.addEventListener("click", () => {

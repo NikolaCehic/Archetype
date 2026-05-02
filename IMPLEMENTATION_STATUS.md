@@ -1136,3 +1136,29 @@ Verification:
 Next phase:
 
 - Workbench workspace health filtering.
+
+## Completed Phase: Workbench Workspace Health Filtering
+
+Status: complete
+
+Implemented:
+
+- Workspace health filter state.
+- Health review queue filter control.
+- Health filters for all signals, hold, high priority, pinned, untagged, and missing notes.
+- Filtered health queue empty state.
+- Filtered health queue count summary.
+- Health summary metrics remain stable while filtering the review queue.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench workspace health actions.
