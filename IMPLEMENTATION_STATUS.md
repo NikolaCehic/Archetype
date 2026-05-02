@@ -940,3 +940,31 @@ Verification:
 Next phase:
 
 - Workbench package duplication controls.
+
+## Completed Phase: Workbench Package Duplication Controls
+
+Status: complete
+
+Implemented:
+
+- Workspace package duplicate metadata.
+- Duplicate action for active packages.
+- Duplicate action for archived packages.
+- Duplicate action from the package details panel.
+- Duplicates get unique workspace ids and active archive state.
+- Duplicates preserve tags, notes, package metadata, and bundle contents.
+- Duplicates track original copied-from package id.
+- Duplicated packages open immediately in the inspection panel.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench package rename controls.

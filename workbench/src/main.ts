@@ -78,6 +78,7 @@ interface WorkspaceEntry {
   tags?: string[];
   notes?: string;
   updatedAt?: string;
+  copiedFromId?: string;
   archivedAt?: string;
 }
 
@@ -481,6 +482,7 @@ function workspaceEntryMatchesFilters(entry: WorkspaceEntry): boolean {
     entry.packageId,
     entry.sourceHash,
     entry.id,
+    entry.copiedFromId ?? "",
     entry.notes ?? "",
     ...(entry.tags ?? []),
     String(entry.readinessScore),
@@ -621,8 +623,8 @@ function renderWorkspaceImportReview(preview: WorkspaceExport | null): string {
 
 function renderWorkspacePackageActions(entry: WorkspaceEntry): string {
   return entry.archivedAt
-    ? `<div class="control-row compact"><button class="button small" data-workspace-inspect="${esc(entry.id)}" type="button">Inspect</button><button class="button small" data-workspace-restore="${esc(entry.id)}" type="button">Restore</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
-    : `<div class="control-row compact"><button class="button small" data-workspace-inspect="${esc(entry.id)}" type="button">Inspect</button><button class="button small" data-workspace-load="${esc(entry.id)}" type="button">Load</button><button class="button small" data-workspace-archive="${esc(entry.id)}" type="button">Archive</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`;
+    ? `<div class="control-row compact"><button class="button small" data-workspace-inspect="${esc(entry.id)}" type="button">Inspect</button><button class="button small" data-workspace-duplicate="${esc(entry.id)}" type="button">Duplicate</button><button class="button small" data-workspace-restore="${esc(entry.id)}" type="button">Restore</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
+    : `<div class="control-row compact"><button class="button small" data-workspace-inspect="${esc(entry.id)}" type="button">Inspect</button><button class="button small" data-workspace-load="${esc(entry.id)}" type="button">Load</button><button class="button small" data-workspace-duplicate="${esc(entry.id)}" type="button">Duplicate</button><button class="button small" data-workspace-archive="${esc(entry.id)}" type="button">Archive</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`;
 }
 
 function renderWorkspaceEntryIdentity(entry: WorkspaceEntry): string {
@@ -671,6 +673,7 @@ function renderWorkspaceInspection(entry: WorkspaceEntry | undefined, bundle: Bu
         updatedAt: entry.updatedAt ?? null,
         generatedAt: entry.generatedAt,
         sourceHash: entry.sourceHash,
+        copiedFromId: entry.copiedFromId ?? null,
         tags: entry.tags ?? [],
         readyForFrontendAgent: bundle.readiness.readyForFrontendAgent,
         blockers: bundle.readiness.blockers.length,
@@ -702,6 +705,7 @@ function renderWorkspaceInspection(entry: WorkspaceEntry | undefined, bundle: Bu
     <div class="control-row">
       <button class="button primary" id="save-workspace-metadata" type="button">Save notes</button>
       <button class="button" data-workspace-load="${esc(entry.id)}" type="button">Load package</button>
+      <button class="button" data-workspace-duplicate="${esc(entry.id)}" type="button">Duplicate</button>
       <button class="button" data-workspace-compare-select="${esc(entry.id)}" data-workspace-compare-role="base" type="button">Use as base</button>
       <button class="button" data-workspace-compare-select="${esc(entry.id)}" data-workspace-compare-role="target" type="button">Use as target</button>
       <button class="button" id="clear-workspace-inspection" type="button">Clear details</button>
@@ -1035,6 +1039,30 @@ async function updateWorkspaceBundleMetadata(id: string, tags: string[], notes: 
     tags,
     notes,
     updatedAt: new Date().toISOString()
+  };
+  try {
+    const transaction = db.transaction(WORKSPACE_STORE, "readwrite");
+    transaction.objectStore(WORKSPACE_STORE).put({ entry, bundle: record.bundle });
+    await transactionDone(transaction);
+    return entry;
+  } finally {
+    db.close();
+  }
+}
+
+async function duplicateWorkspaceBundle(id: string): Promise<WorkspaceEntry | null> {
+  const record = await loadWorkspaceBundle(id);
+  if (!record) return null;
+  const db = await openWorkspaceDb();
+  const now = new Date().toISOString();
+  const entry: WorkspaceEntry = {
+    ...record.entry,
+    id: `${record.entry.id}:copy:${Date.now().toString(36)}`,
+    name: `${record.entry.name} Copy`,
+    savedAt: now,
+    updatedAt: now,
+    copiedFromId: record.entry.copiedFromId ?? record.entry.id,
+    archivedAt: undefined
   };
   try {
     const transaction = db.transaction(WORKSPACE_STORE, "readwrite");
@@ -2919,6 +2947,27 @@ function bindEvents(): void {
       state.workspaceTagDraft = (record.entry.tags ?? []).join(", ");
       state.workspaceNoteDraft = record.entry.notes ?? "";
       state.workspaceMessage = `Inspecting ${record.entry.name}.`;
+      render();
+    });
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-workspace-duplicate]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.workspaceDuplicate;
+      if (!id) return;
+      const entry = await duplicateWorkspaceBundle(id);
+      if (!entry) {
+        state.workspaceMessage = "Saved package not found.";
+        render();
+        return;
+      }
+      await refreshWorkspaceEntries();
+      state.workspaceInspectId = entry.id;
+      const record = await loadWorkspaceBundle(entry.id);
+      state.workspaceInspectBundle = record?.bundle ?? null;
+      state.workspaceTagDraft = (entry.tags ?? []).join(", ");
+      state.workspaceNoteDraft = entry.notes ?? "";
+      state.workspacePackageView = "active";
+      state.workspaceMessage = `Duplicated ${entry.name}.`;
       render();
     });
   });
