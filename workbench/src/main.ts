@@ -419,7 +419,7 @@ function renderWorkspace(bundle: Bundle): string {
           <button class="button primary" id="save-workspace-package" type="button">Save active</button>
           <button class="button" id="refresh-workspace" type="button">Refresh workspace</button>
         </div>
-        ${state.workspaceMessage ? `<div class="notice">${esc(state.workspaceMessage)}</div>` : ""}
+        ${state.workspaceMessage ? `<div class="notice" role="status">${esc(state.workspaceMessage)}</div>` : ""}
       `)}
       ${panel("Active Snapshot", code({
         packageName: state.packageName,
@@ -1230,7 +1230,7 @@ function renderSourceMaterials(): string {
       <button class="button" id="clear-source-materials" type="button" ${state.sourceMaterials.length ? "" : "disabled"}>Clear sources</button>
       <input id="source-file-input" type="file" multiple hidden />
     </div>
-    ${state.sourceMessage ? `<div class="notice">${esc(state.sourceMessage)}</div>` : ""}
+    ${state.sourceMessage ? `<div class="notice" role="status">${esc(state.sourceMessage)}</div>` : ""}
     <div style="height:10px"></div>
     <div class="mini-metrics">
       <div><strong>${esc(state.sourceMaterials.length)}</strong><span>Sources</span></div>
@@ -1288,7 +1288,7 @@ function renderGeneration(bundle: Bundle): string {
           <button class="button" id="reset-draft" type="button">Use current package</button>
           <button class="button" id="download-draft" type="button">Download intake</button>
         </div>
-        ${state.generationMessage ? `<div class="notice">${esc(state.generationMessage)}</div>` : ""}
+        ${state.generationMessage ? `<div class="notice" role="status">${esc(state.generationMessage)}</div>` : ""}
       `)}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
@@ -1418,7 +1418,7 @@ function renderScreens(bundle: Bundle): string {
           <input class="search" id="screen-filter" value="${esc(state.screenFilter)}" placeholder="Filter screens" />
           <div class="list" style="margin-top:10px">
             ${filtered.map((screen) => `
-              <button class="list-button ${selected?.name === screen.name ? "active" : ""}" data-screen="${esc(screen.name)}">
+              <button class="list-button ${selected?.name === screen.name ? "active" : ""}" data-screen="${esc(screen.name)}" type="button" ${selected?.name === screen.name ? "aria-current=\"true\"" : ""}>
                 ${esc(screen.name)}
               </button>
             `).join("")}
@@ -1522,7 +1522,7 @@ function renderContract(bundle: Bundle): string {
           <button class="button primary" id="add-contract-gap" type="button">Add gap</button>
           <button class="button" id="clear-resolved-gaps" type="button" ${resolvedGaps.length ? "" : "disabled"}>Clear resolved</button>
         </div>
-        ${state.contractMessage ? `<div class="notice">${esc(state.contractMessage)}</div>` : ""}
+        ${state.contractMessage ? `<div class="notice" role="status">${esc(state.contractMessage)}</div>` : ""}
       `)}
       ${panel("Contract Gaps", state.contractGaps.length ? table(["Status", "Severity", "Category", "Artifact", "Description", "Actions"], state.contractGaps.map((gap) => [
         badge(gap.status, gapTone(gap)),
@@ -1638,7 +1638,7 @@ function renderImpact(bundle: Bundle): string {
           <button class="button" id="clear-baseline" type="button" ${baseline ? "" : "disabled"}>Clear baseline</button>
           <input id="baseline-input" type="file" webkitdirectory multiple hidden />
         </div>
-        ${state.impactMessage ? `<div class="notice">${esc(state.impactMessage)}</div>` : ""}
+        ${state.impactMessage ? `<div class="notice" role="status">${esc(state.impactMessage)}</div>` : ""}
       `)}
       ${panel("Package Delta", baseline ? code({
         baseline: {
@@ -1725,7 +1725,7 @@ function renderExport(bundle: Bundle): string {
           <button class="button" id="copy-handoff-prompt" type="button">Copy agent prompt</button>
           <button class="button" id="copy-validate-command" type="button">Copy validation command</button>
         </div>
-        ${state.handoffMessage ? `<div class="notice">${esc(state.handoffMessage)}</div>` : ""}
+        ${state.handoffMessage ? `<div class="notice" role="status">${esc(state.handoffMessage)}</div>` : ""}
       `)}
       ${panel("Handoff Commands", table(["Command", "Run"], commands.map((item) => [
         esc(item.label),
@@ -1850,7 +1850,7 @@ function renderRevision(bundle: Bundle): string {
           <button class="button" id="suggest-revision-request" type="button">Use open findings</button>
           <button class="button" id="download-revision-requests" type="button" ${state.revisionRequests.length ? "" : "disabled"}>Download requests</button>
         </div>
-        ${state.revisionMessage ? `<div class="notice">${esc(state.revisionMessage)}</div>` : ""}
+        ${state.revisionMessage ? `<div class="notice" role="status">${esc(state.revisionMessage)}</div>` : ""}
       `)}
       ${panel("Revision Requests", state.revisionRequests.length ? table(["Status", "Priority", "Type", "Summary", "Actions"], state.revisionRequests.map((request) => [
         badge(request.status, request.status === "sent" ? "success" : request.status === "ready" ? "warning" : "neutral"),
@@ -1899,11 +1899,12 @@ function renderContent(bundle: Bundle): string {
 function render(): void {
   const bundle = state.bundle;
   if (!bundle) {
-    app.innerHTML = `<main class="main"><div class="empty">Package unavailable.</div></main>`;
+    app.innerHTML = `<main class="main" id="main-content"><div class="empty">Package unavailable.</div></main>`;
     return;
   }
   const viewLabel = views.find((view) => view.id === state.view)?.label ?? "Overview";
   app.innerHTML = `
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <div class="shell">
       <aside class="sidebar">
         <div class="brand">
@@ -1920,7 +1921,7 @@ function render(): void {
         </div>
         <nav class="nav" aria-label="Workbench views">
           ${views.map((view) => `
-            <button class="nav-item ${state.view === view.id ? "active" : ""}" data-view="${view.id}" type="button">
+            <button class="nav-item ${state.view === view.id ? "active" : ""}" data-view="${view.id}" type="button" ${state.view === view.id ? "aria-current=\"page\"" : ""}>
               <span>${esc(view.label)}</span>
               <span class="nav-count">${esc(view.count(bundle))}</span>
             </button>
@@ -1928,14 +1929,14 @@ function render(): void {
         </nav>
         <div class="footer-note">${esc(state.packageName)} · ${esc(bundle.manifest.project_slug ?? "package")}</div>
       </aside>
-      <main class="main">
+      <main class="main" id="main-content" tabindex="-1">
         <div class="topbar">
           <div>
             <div class="eyebrow">${esc(viewLabel)}</div>
             <h1>${esc(bundle.productModel.product_name ?? "Archetype Package")}</h1>
             <div class="meta-line">${esc(bundle.productModel.product_type ?? "")} · ${esc(bundle.manifest.operating_mode ?? "")}</div>
           </div>
-          <div class="status-strip">
+          <div class="status-strip" aria-label="Package status">
             ${badge(`score ${bundle.readiness.score}`, bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
             ${badge(bundle.readiness.readyForFrontendAgent ? "ready" : "blocked", bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
             ${badge(`DSAG ${bundle.dsag.integrity.status}`, statusTone(bundle.dsag.integrity.status))}

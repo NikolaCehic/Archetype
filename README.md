@@ -38,6 +38,7 @@ Implemented:
 - Workbench build simulation triage controls.
 - Workbench revision change-request composer.
 - Workbench governance summary dashboard.
+- Workbench accessibility hardening.
 
 ## Run
 
@@ -125,4 +126,4 @@ node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archety
 
 ## Next Implementation Target
 
-The next pass should harden the workbench UI and accessibility details.
+The next pass should add workbench state export and restore.

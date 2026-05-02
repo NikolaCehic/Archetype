@@ -630,3 +630,31 @@ Verification:
 Next phase:
 
 - Workbench UI polish and accessibility hardening.
+
+## Completed Phase: Workbench UI Polish and Accessibility Hardening
+
+Status: complete
+
+Implemented:
+
+- Skip link for keyboard navigation.
+- Main content landmark target.
+- Active navigation `aria-current` semantics.
+- Active screen list item semantics.
+- Explicit button types for screen selection.
+- Status strip accessible label.
+- Live status roles for workbench notices.
+- Focus behavior for main content.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench state export and restore.
