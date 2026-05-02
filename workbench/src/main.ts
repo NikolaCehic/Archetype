@@ -13,6 +13,7 @@ type ViewId =
   | "simulation"
   | "impact"
   | "export"
+  | "governance"
   | "revision";
 
 interface ArtifactDigest {
@@ -206,6 +207,7 @@ const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => numbe
   { id: "simulation", label: "Simulation", count: (bundle) => bundle.buildSimulation.routeSimulation?.routes?.length ?? 0 },
   { id: "impact", label: "Impact", count: () => state.baselineSnapshot ? "diff" : "base" },
   { id: "export", label: "Export", count: (bundle) => bundle.readiness.readyForFrontendAgent ? "ready" : "hold" },
+  { id: "governance", label: "Governance", count: () => governanceActionQueue().length },
   { id: "revision", label: "Revision", count: (bundle) => bundle.revision.approvalGates?.gates?.length ?? 0 }
 ];
 
@@ -888,6 +890,49 @@ function suggestedRevisionDraft(): Omit<RevisionRequest, "id" | "status" | "upda
       ...blockedDesign.map(([itemId, value]) => `${itemId}: ${value.note || value.state}`)
     ].join("\n")
   };
+}
+
+function governanceActionQueue(): Array<{ source: string; item: string; severity: "blocker" | "major" | "minor"; status: string; note: string }> {
+  return [
+    ...state.contractGaps.filter((gap) => gap.status !== "resolved").map((gap) => ({
+      source: "Contract gap",
+      item: gap.artifact,
+      severity: gap.severity,
+      status: gap.status,
+      note: gap.description
+    })),
+    ...Object.entries(state.coverageOverrides).filter(([, value]) => value.state === "blocked" || value.state === "needs_changes").map(([screenId, value]) => ({
+      source: "Screen coverage",
+      item: screenId,
+      severity: value.state === "blocked" ? "blocker" as const : "major" as const,
+      status: value.state,
+      note: value.note
+    })),
+    ...Object.entries(state.designReviewOverrides).filter(([, value]) => value.state === "blocked" || value.state === "needs_changes").map(([itemId, value]) => ({
+      source: "Design review",
+      item: itemId,
+      severity: value.state === "blocked" ? "blocker" as const : "major" as const,
+      status: value.state,
+      note: value.note
+    })),
+    ...Object.entries(state.simulationTriageOverrides).filter(([, value]) => value.state === "blocked" || value.state === "needs_work").map(([itemId, value]) => ({
+      source: "Simulation triage",
+      item: itemId,
+      severity: value.state === "blocked" ? "blocker" as const : "major" as const,
+      status: value.state,
+      note: value.note
+    })),
+    ...state.revisionRequests.filter((request) => request.status !== "sent").map((request) => ({
+      source: "Revision request",
+      item: request.changeType,
+      severity: request.priority === "high" ? "blocker" as const : request.priority === "medium" ? "major" as const : "minor" as const,
+      status: request.status,
+      note: request.summary
+    }))
+  ].sort((a, b) => {
+    const order = { blocker: 0, major: 1, minor: 2 };
+    return order[a.severity] - order[b.severity] || a.source.localeCompare(b.source);
+  });
 }
 
 function handoffPrompt(bundle: Bundle): string {
@@ -1709,6 +1754,47 @@ function renderExport(bundle: Bundle): string {
   `;
 }
 
+function renderGovernance(bundle: Bundle): string {
+  const queue = governanceActionQueue();
+  const approvalGates = bundle.revision.approvalGates?.gates ?? [];
+  const approvedGates = approvalGates.filter((gate: any) => approvalStateForGate(gate) === "approved").length;
+  const blockers = queue.filter((item) => item.severity === "blocker").length;
+  const reviewSignals = {
+    approvalGates: `${approvedGates}/${approvalGates.length}`,
+    coverageOverrides: Object.keys(state.coverageOverrides).length,
+    designReviews: Object.keys(state.designReviewOverrides).length,
+    contractGaps: state.contractGaps.length,
+    simulationTriage: Object.keys(state.simulationTriageOverrides).length,
+    revisionRequests: state.revisionRequests.length
+  };
+  return `
+    <div class="grid cols-3">
+      ${metric("Action queue", queue.length, queue.length ? "warning" : "success")}
+      ${metric("Blockers", blockers, blockers ? "danger" : "success")}
+      ${metric("Approval gates", `${approvedGates}/${approvalGates.length}`, approvedGates === approvalGates.length ? "success" : "warning")}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Governance Signals", code(reviewSignals))}
+      ${panel("Readiness Summary", code({
+        score: bundle.readiness.score,
+        readyForFrontendAgent: bundle.readiness.readyForFrontendAgent,
+        blockers: bundle.readiness.blockers,
+        warnings: bundle.readiness.warnings,
+        humanReview: bundle.readiness.requiredHumanReview
+      }))}
+    </div>
+    <div style="margin-top:14px">
+      ${panel("Action Queue", queue.length ? table(["Severity", "Source", "Item", "Status", "Note"], queue.map((item) => [
+        badge(item.severity, item.severity === "blocker" ? "danger" : item.severity === "major" ? "warning" : "neutral"),
+        esc(item.source),
+        esc(item.item),
+        esc(item.status),
+        esc(item.note || "None")
+      ])) : `<div class="empty">No local governance actions.</div>`)}
+    </div>
+  `;
+}
+
 function renderRevision(bundle: Bundle): string {
   const gates = bundle.revision.approvalGates?.gates ?? [];
   return `
@@ -1803,6 +1889,8 @@ function renderContent(bundle: Bundle): string {
       return renderImpact(bundle);
     case "export":
       return renderExport(bundle);
+    case "governance":
+      return renderGovernance(bundle);
     case "revision":
       return renderRevision(bundle);
   }
