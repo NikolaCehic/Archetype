@@ -166,6 +166,16 @@ interface DesignReviewOverride {
   updatedAt: string;
 }
 
+interface ContractGap {
+  id: string;
+  category: "route" | "screen_state" | "component" | "data_contract" | "accessibility" | "copy" | "other";
+  severity: "blocker" | "major" | "minor";
+  artifact: string;
+  description: string;
+  status: "open" | "deferred" | "resolved";
+  updatedAt: string;
+}
+
 const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => number | string }> = [
   { id: "overview", label: "Overview", count: (bundle) => bundle.readiness.score },
   { id: "workspace", label: "Workspace", count: () => state.workspaceEntries.length },
@@ -196,6 +206,9 @@ const state: {
   activeCoverageNote: string;
   designReviewOverrides: Record<string, DesignReviewOverride>;
   activeDesignReviewNote: string;
+  contractGaps: ContractGap[];
+  contractGapDraft: Omit<ContractGap, "id" | "status" | "updatedAt">;
+  contractMessage: string;
   baselineSnapshot: PackageSnapshot | null;
   baselineName: string;
   impactMessage: string;
@@ -220,6 +233,9 @@ const state: {
   activeCoverageNote: "",
   designReviewOverrides: {},
   activeDesignReviewNote: "",
+  contractGaps: [],
+  contractGapDraft: { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" },
+  contractMessage: "",
   baselineSnapshot: null,
   baselineName: "",
   impactMessage: "",
@@ -791,6 +807,13 @@ function tokenGroupNames(bundle: Bundle): string[] {
   return Object.keys(bundle.semanticTokens ?? {}).sort();
 }
 
+function gapTone(gap: ContractGap): "success" | "warning" | "danger" | "neutral" {
+  if (gap.status === "resolved") return "success";
+  if (gap.severity === "blocker") return "danger";
+  if (gap.severity === "major") return "warning";
+  return "neutral";
+}
+
 function handoffPrompt(bundle: Bundle): string {
   const required = requiredHandoffArtifacts(bundle).filter((artifact) => artifact.present).map((artifact) => `- ${artifact.path}`).join("\n");
   return [
@@ -844,6 +867,11 @@ function handoffMarkdown(bundle: Bundle): string {
       ? Object.entries(state.designReviewOverrides).map(([itemId, review]) => `- ${itemId}: ${review.state}${review.note ? `, ${review.note}` : ""}`)
       : ["- None"]),
     "",
+    "## Frontend Contract Gaps",
+    ...(state.contractGaps.length
+      ? state.contractGaps.map((gap) => `- [${gap.status}] ${gap.severity} ${gap.category} in ${gap.artifact}: ${gap.description}`)
+      : ["- None"]),
+    "",
     "## Required Handoff Artifacts",
     ...required.map((artifact) => `- ${artifact.present ? "present" : "missing"}: ${artifact.path}`),
     "",
@@ -872,6 +900,7 @@ function handoffJson(bundle: Bundle): Record<string, unknown> {
     requiredArtifacts: requiredHandoffArtifacts(bundle),
     screenCoverage: state.coverageOverrides,
     designSystemReview: state.designReviewOverrides,
+    contractGaps: state.contractGaps,
     artifactDigests: bundle.artifacts ?? [],
     commands: handoffCommands(),
     frontendAgentPrompt: handoffPrompt(bundle)
@@ -1330,14 +1359,46 @@ function renderDesign(bundle: Bundle): string {
 }
 
 function renderContract(bundle: Bundle): string {
+  const openGaps = state.contractGaps.filter((gap) => gap.status === "open");
+  const blockerGaps = state.contractGaps.filter((gap) => gap.status !== "resolved" && gap.severity === "blocker");
+  const resolvedGaps = state.contractGaps.filter((gap) => gap.status === "resolved");
   return `
-    <div class="grid cols-2">
+    <div class="grid cols-3">
+      ${metric("Open gaps", openGaps.length, openGaps.length ? "warning" : "success")}
+      ${metric("Blockers", blockerGaps.length, blockerGaps.length ? "danger" : "success")}
+      ${metric("Resolved", resolvedGaps.length, resolvedGaps.length ? "success" : "neutral")}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
       ${panel("Build Manifest", code(bundle.buildManifest))}
       ${panel("Data Contracts", code(bundle.dataContracts))}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("Component Usage", code(bundle.componentUsageMap))}
       ${panel("Acceptance Criteria", code(bundle.acceptanceCriteria))}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Gap Reporter", `
+        <div class="form-grid">
+          ${selectField("gap-category", state.contractGapDraft.category, "Category", ["route", "screen_state", "component", "data_contract", "accessibility", "copy", "other"])}
+          ${selectField("gap-severity", state.contractGapDraft.severity, "Severity", ["blocker", "major", "minor"])}
+          ${inputField("gap-artifact", state.contractGapDraft.artifact, "Artifact")}
+        </div>
+        <div style="height:10px"></div>
+        ${textArea("gap-description", state.contractGapDraft.description, "Gap description", "textarea short")}
+        <div class="control-row">
+          <button class="button primary" id="add-contract-gap" type="button">Add gap</button>
+          <button class="button" id="clear-resolved-gaps" type="button" ${resolvedGaps.length ? "" : "disabled"}>Clear resolved</button>
+        </div>
+        ${state.contractMessage ? `<div class="notice">${esc(state.contractMessage)}</div>` : ""}
+      `)}
+      ${panel("Contract Gaps", state.contractGaps.length ? table(["Status", "Severity", "Category", "Artifact", "Description", "Actions"], state.contractGaps.map((gap) => [
+        badge(gap.status, gapTone(gap)),
+        badge(gap.severity, gap.severity === "blocker" ? "danger" : gap.severity === "major" ? "warning" : "neutral"),
+        esc(gap.category),
+        `<code>${esc(gap.artifact)}</code>`,
+        esc(gap.description),
+        `<div class="control-row compact"><button class="button small" data-gap="${esc(gap.id)}" data-gap-status="resolved" type="button">Resolve</button><button class="button small" data-gap="${esc(gap.id)}" data-gap-status="deferred" type="button">Defer</button><button class="button small" data-gap="${esc(gap.id)}" data-gap-status="open" type="button">Reopen</button><button class="button small" data-gap-delete="${esc(gap.id)}" type="button">Delete</button></div>`
+      ])) : `<div class="empty">No frontend contract gaps.</div>`)}
     </div>
   `;
 }
@@ -1703,6 +1764,61 @@ function bindEvents(): void {
     saveDesignReviewOverrides();
     render();
   });
+  const gapBindings: Array<[keyof typeof state.contractGapDraft, string]> = [
+    ["category", "#gap-category"],
+    ["severity", "#gap-severity"],
+    ["artifact", "#gap-artifact"],
+    ["description", "#gap-description"]
+  ];
+  gapBindings.forEach(([field, selector]) => {
+    document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(selector)?.addEventListener("input", (event) => {
+      state.contractGapDraft[field] = (event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).value as never;
+    });
+  });
+  document.querySelector<HTMLButtonElement>("#add-contract-gap")?.addEventListener("click", () => {
+    if (!state.contractGapDraft.description.trim()) {
+      state.contractMessage = "Gap description is required.";
+      render();
+      return;
+    }
+    state.contractGaps = [...state.contractGaps, {
+      ...state.contractGapDraft,
+      id: `gap_${Date.now().toString(36)}`,
+      status: "open",
+      updatedAt: new Date().toISOString()
+    }];
+    state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
+    state.contractMessage = "Frontend contract gap added.";
+    saveContractGaps();
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#clear-resolved-gaps")?.addEventListener("click", () => {
+    state.contractGaps = state.contractGaps.filter((gap) => gap.status !== "resolved");
+    state.contractMessage = "Resolved gaps cleared.";
+    saveContractGaps();
+    render();
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-gap]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const gapId = button.dataset.gap;
+      const status = button.dataset.gapStatus as ContractGap["status"] | undefined;
+      if (!gapId || !status) return;
+      state.contractGaps = state.contractGaps.map((gap) => gap.id === gapId ? { ...gap, status, updatedAt: new Date().toISOString() } : gap);
+      state.contractMessage = "Gap status updated.";
+      saveContractGaps();
+      render();
+    });
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-gap-delete]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const gapId = button.dataset.gapDelete;
+      if (!gapId) return;
+      state.contractGaps = state.contractGaps.filter((gap) => gap.id !== gapId);
+      state.contractMessage = "Gap deleted.";
+      saveContractGaps();
+      render();
+    });
+  });
   document.querySelector<HTMLButtonElement>("#save-workspace-package")?.addEventListener("click", async () => {
     if (!state.bundle) return;
     const entry = await saveWorkspaceBundle(state.bundle, state.packageName);
@@ -1735,6 +1851,8 @@ function bindEvents(): void {
       state.activeCoverageNote = "";
       state.activeDesignReviewNote = "";
       state.handoffMessage = "";
+      state.contractMessage = "";
+      state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
       state.intakeForm = null;
       state.sourceMaterials = [];
       state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
@@ -1742,6 +1860,7 @@ function bindEvents(): void {
       loadApprovalOverrides();
       loadCoverageOverrides();
       loadDesignReviewOverrides();
+      loadContractGaps();
       loadBaselineSnapshot();
       await refreshWorkspaceEntries();
       render();
@@ -2015,6 +2134,8 @@ function bindEvents(): void {
       state.activeCoverageNote = "";
       state.activeDesignReviewNote = "";
       state.handoffMessage = "";
+      state.contractMessage = "";
+      state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
       state.intakeForm = null;
       state.sourceMaterials = [];
       state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
@@ -2022,6 +2143,7 @@ function bindEvents(): void {
       loadApprovalOverrides();
       loadCoverageOverrides();
       loadDesignReviewOverrides();
+      loadContractGaps();
       loadBaselineSnapshot();
       await refreshWorkspaceEntries();
       render();
@@ -2041,6 +2163,8 @@ async function loadSample(): Promise<void> {
   state.activeCoverageNote = "";
   state.activeDesignReviewNote = "";
   state.handoffMessage = "";
+  state.contractMessage = "";
+  state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
   state.intakeForm = null;
   state.sourceMaterials = [];
   state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
@@ -2048,6 +2172,7 @@ async function loadSample(): Promise<void> {
   loadBaselineSnapshot();
   loadCoverageOverrides();
   loadDesignReviewOverrides();
+  loadContractGaps();
   await refreshWorkspaceEntries();
   render();
 }
@@ -2101,6 +2226,23 @@ function loadDesignReviewOverrides(): void {
 
 function saveDesignReviewOverrides(): void {
   localStorage.setItem(designReviewStorageKey(), JSON.stringify(state.designReviewOverrides));
+}
+
+function contractGapsStorageKey(): string {
+  const slug = state.bundle?.manifest.project_slug ?? state.packageName;
+  return `archetype:contract-gaps:${slug}`;
+}
+
+function loadContractGaps(): void {
+  try {
+    state.contractGaps = JSON.parse(localStorage.getItem(contractGapsStorageKey()) ?? "[]");
+  } catch {
+    state.contractGaps = [];
+  }
+}
+
+function saveContractGaps(): void {
+  localStorage.setItem(contractGapsStorageKey(), JSON.stringify(state.contractGaps));
 }
 
 function baselineStorageKey(): string {
