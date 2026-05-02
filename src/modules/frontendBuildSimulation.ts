@@ -9,6 +9,15 @@ interface ComponentRegistryEntry {
   name: string;
 }
 
+interface ComponentContractEntry {
+  name: string;
+  prop_contract?: unknown[];
+  slot_contract?: unknown[];
+  variant_contract?: unknown[];
+  state_contract?: unknown[];
+  token_contract?: { required_tokens?: unknown[] };
+}
+
 interface PatternRegistryEntry {
   name: string;
 }
@@ -25,8 +34,10 @@ export function buildFrontendBuildSimulationArtifacts(input: {
   const blockers: string[] = [];
   const warnings: string[] = [];
   const componentRegistry = input.designSystem.componentRegistry as { components?: ComponentRegistryEntry[] };
+  const componentContracts = input.designSystem.componentContracts as { contracts?: ComponentContractEntry[]; blockers?: string[] };
   const patternRegistry = input.designSystem.patternRegistry as { patterns?: PatternRegistryEntry[] };
   const componentNames = new Set((componentRegistry.components ?? []).map((component) => component.name));
+  const contractByName = new Map((componentContracts.contracts ?? []).map((contract) => [contract.name, contract]));
   const patternNames = new Set((patternRegistry.patterns ?? []).map((pattern) => pattern.name));
   const dataContracts = input.frontendContract.dataContracts as { entities?: Record<string, unknown>; queries?: unknown[]; mutations?: unknown[] };
   const entityNames = new Set(Object.keys(dataContracts.entities ?? {}));
@@ -70,13 +81,32 @@ export function buildFrontendBuildSimulationArtifacts(input: {
 
   const componentResults = input.experience.screenSpecs.map((screen) => {
     const missing = screen.required_components.filter((component) => !componentNames.has(component));
+    const missingContracts = screen.required_components.filter((component) => !contractByName.has(component));
+    const incompleteContracts = screen.required_components.filter((component) => {
+      const contract = contractByName.get(component);
+      if (!contract) return false;
+      return !Array.isArray(contract.prop_contract) ||
+        contract.prop_contract.length === 0 ||
+        !Array.isArray(contract.slot_contract) ||
+        contract.slot_contract.length === 0 ||
+        !Array.isArray(contract.variant_contract) ||
+        contract.variant_contract.length === 0 ||
+        !Array.isArray(contract.state_contract) ||
+        contract.state_contract.length === 0 ||
+        !Array.isArray(contract.token_contract?.required_tokens) ||
+        contract.token_contract.required_tokens.length === 0;
+    });
     if (missing.length > 0) blockers.push(`${screen.screen_id}: missing components ${missing.join(", ")}`);
+    if (missingContracts.length > 0) blockers.push(`${screen.screen_id}: missing component contracts ${missingContracts.join(", ")}`);
+    if (incompleteContracts.length > 0) blockers.push(`${screen.screen_id}: incomplete component contracts ${incompleteContracts.join(", ")}`);
     return {
       screen_id: screen.screen_id,
       required_components: screen.required_components,
       missing_components: missing,
+      missing_component_contracts: missingContracts,
+      incomplete_component_contracts: incompleteContracts,
       allowed_new_components: componentUsageMap[screen.screen_id]?.allowed_new_components ?? false,
-      status: missing.length > 0 ? "fail" : "pass"
+      status: missing.length > 0 || missingContracts.length > 0 || incompleteContracts.length > 0 ? "fail" : "pass"
     };
   });
 

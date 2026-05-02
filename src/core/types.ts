@@ -307,6 +307,8 @@ export interface DesignSystemArtifacts {
   themeLight: Record<string, unknown>;
   cssVariables: string;
   tailwindConfig: string;
+  componentContracts: Record<string, unknown>;
+  componentContractsReport: string;
   componentRegistry: Record<string, unknown>;
   componentSpecs: string;
   componentApiContract: string;

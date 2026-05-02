@@ -68,6 +68,11 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Screen Specification",
       ["screen_id", "route", "name", "priority", "purpose", "primary_user_goal", "business_goal", "evidence_refs", "layout", "sections", "required_components", "required_patterns", "data_needs", "actions", "states", "interactions", "responsive_behavior", "accessibility", "content_rules", "acceptance_criteria", "forbidden_inventions"]
     ),
+    "component-contracts.schema.json": objectSchema(
+      "component-contracts.schema.json",
+      "Component Contracts",
+      ["contract_version", "component_count", "contracts", "coverage", "blockers", "warnings", "evidence_refs"]
+    ),
     "component-registry.schema.json": objectSchema(
       "component-registry.schema.json",
       "Component Registry",
@@ -113,6 +118,7 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "03-experience-architecture/screen-inventory.json", schema_file: "screen-inventory.schema.json", description: "Screen inventory contract." },
       { artifact: "03-experience-architecture/ux-flow-state-completeness.json", schema_file: "ux-flow-state-completeness.schema.json", description: "UX flow and state completeness contract." },
       { artifact: "05-screen-specs/*.yaml", schema_file: "screen-spec.schema.json", description: "Screen specification contract." },
+      { artifact: "04-design-system/components/component-contracts.json", schema_file: "component-contracts.schema.json", description: "Deterministic component API, state, token, and accessibility contracts." },
       { artifact: "04-design-system/components/component-registry.json", schema_file: "component-registry.schema.json", description: "Component registry contract." },
       { artifact: "04-design-system/patterns/pattern-registry.json", schema_file: "pattern-registry.schema.json", description: "Pattern registry contract." },
       { artifact: "06-frontend-agent-contract/data-contracts.json", schema_file: "data-contracts.schema.json", description: "Data contract package schema." },

@@ -132,6 +132,8 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeJson(outDir, "04-design-system/tokens/theme-light.json", pkg.designSystem.themeLight);
   writeText(outDir, "04-design-system/tokens/css-variables.css", pkg.designSystem.cssVariables);
   writeText(outDir, "04-design-system/tokens/tailwind.config.ts", pkg.designSystem.tailwindConfig);
+  writeJson(outDir, "04-design-system/components/component-contracts.json", pkg.designSystem.componentContracts);
+  writeText(outDir, "04-design-system/components/component-contracts.md", pkg.designSystem.componentContractsReport);
   writeJson(outDir, "04-design-system/components/component-registry.json", pkg.designSystem.componentRegistry);
   writeText(outDir, "04-design-system/components/component-specs.md", pkg.designSystem.componentSpecs);
   writeText(outDir, "04-design-system/components/component-api-contract.md", pkg.designSystem.componentApiContract);

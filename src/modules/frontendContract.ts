@@ -58,6 +58,7 @@ export function buildFrontendContractArtifacts(
       {
         route: screen.route,
         required_components: screen.required_components,
+        component_contract_refs: Object.fromEntries(screen.required_components.map((component) => [component, `04-design-system/components/component-contracts.json#${component}`])),
         required_patterns: screen.required_patterns,
         forbidden_components: [],
         allowed_new_components: false,
@@ -184,10 +185,11 @@ export function buildFrontendContractArtifacts(
       "3. 03-experience-architecture/route-map.json",
       "4. 05-screen-specs/screen-spec-index.json",
       "5. 03-experience-architecture/ux-flow-state-completeness.json",
-      "6. 04-design-system/components/component-registry.json",
-      "7. 04-design-system/patterns/pattern-registry.json",
-      "8. 06-frontend-agent-contract/data-contracts.json",
-      "9. 06-frontend-agent-contract/acceptance-criteria.json"
+      "6. 04-design-system/components/component-contracts.json",
+      "7. 04-design-system/components/component-registry.json",
+      "8. 04-design-system/patterns/pattern-registry.json",
+      "9. 06-frontend-agent-contract/data-contracts.json",
+      "10. 06-frontend-agent-contract/acceptance-criteria.json"
     ].join("\n")
   };
 }

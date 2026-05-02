@@ -62,6 +62,7 @@ const bundle = {
   routeMap: readJson("03-experience-architecture/route-map.json"),
   screenInventory: readJson("03-experience-architecture/screen-inventory.json"),
   dsag: readJson("03-experience-architecture/dsag.json"),
+  componentContracts: readJson("04-design-system/components/component-contracts.json"),
   componentRegistry: readJson("04-design-system/components/component-registry.json"),
   patternRegistry: readJson("04-design-system/patterns/pattern-registry.json"),
   primitiveTokens: readJson("04-design-system/tokens/primitive-tokens.json"),
