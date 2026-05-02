@@ -62,6 +62,24 @@ Run golden examples:
 npm run golden
 ```
 
+Build the browser workbench:
+
+```bash
+npm run workbench:build
+```
+
+Run the browser workbench:
+
+```bash
+npm run workbench:dev
+```
+
+Run all checks:
+
+```bash
+npm run check
+```
+
 Output:
 
 ```txt
@@ -85,6 +103,8 @@ node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archety
 - `src/quality/simulatePackage.ts`: CI-friendly frontend build simulation validator.
 - `src/output/exportPackage.ts`: Package writer.
 - `examples/fintech-intake.json`: Smoke-test intake.
+- `workbench/`: Browser workbench for reviewing generated packages.
+- `scripts/create-workbench-sample.mjs`: Creates the sample workbench package bundle.
 
 ## Next Implementation Target
 
