@@ -684,6 +684,43 @@ function renderWorkspaceActivity(): string {
   `;
 }
 
+function renderWorkspaceHealth(entries: WorkspaceEntry[]): string {
+  if (!entries.length) return `<div class="empty">No workspace packages to summarize.</div>`;
+  const readyCount = entries.filter((entry) => entry.readyForFrontendAgent).length;
+  const highPriorityCount = entries.filter((entry) => entry.priority === "high").length;
+  const pinnedCount = entries.filter((entry) => entry.pinned).length;
+  const untaggedCount = entries.filter((entry) => !(entry.tags ?? []).length).length;
+  const missingNotesCount = entries.filter((entry) => !entry.notes?.trim()).length;
+  const reviewQueue = entries.filter((entry) => (
+    !entry.readyForFrontendAgent ||
+    entry.priority === "high" ||
+    !(entry.tags ?? []).length ||
+    !entry.notes?.trim()
+  )).slice(0, 10);
+  return `
+    <div class="mini-metrics">
+      <div><strong>${esc(readyCount)}</strong><span>ready</span></div>
+      <div><strong>${esc(entries.length - readyCount)}</strong><span>hold</span></div>
+      <div><strong>${esc(highPriorityCount)}</strong><span>high priority</span></div>
+      <div><strong>${esc(pinnedCount)}</strong><span>pinned</span></div>
+      <div><strong>${esc(untaggedCount)}</strong><span>untagged</span></div>
+      <div><strong>${esc(missingNotesCount)}</strong><span>missing notes</span></div>
+    </div>
+    <div style="margin-top:10px">
+      ${reviewQueue.length ? table(["Package", "Signals"], reviewQueue.map((entry) => [
+        `<div><strong>${esc(entry.name)}</strong><div class="muted">${esc(entry.projectSlug)}</div></div>`,
+        [
+          !entry.readyForFrontendAgent ? badge("hold", "danger") : "",
+          entry.priority === "high" ? badge("high", "danger") : "",
+          entry.pinned ? badge("pinned", "success") : "",
+          !(entry.tags ?? []).length ? badge("untagged", "warning") : "",
+          !entry.notes?.trim() ? badge("no notes", "warning") : ""
+        ].filter(Boolean).join(" ")
+      ])) : `<div class="empty">Workspace package metadata is complete.</div>`}
+    </div>
+  `;
+}
+
 function renderWorkspacePackageActions(entry: WorkspaceEntry): string {
   return entry.archivedAt
     ? `<div class="control-row compact"><button class="button small" data-workspace-inspect="${esc(entry.id)}" type="button">Inspect</button><button class="button small" data-workspace-pin="${esc(entry.id)}" data-workspace-pinned="${entry.pinned ? "false" : "true"}" type="button">${entry.pinned ? "Unpin" : "Pin"}</button><button class="button small" data-workspace-duplicate="${esc(entry.id)}" type="button">Duplicate</button><button class="button small" data-workspace-restore="${esc(entry.id)}" type="button">Restore</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
@@ -908,6 +945,9 @@ function renderWorkspace(bundle: Bundle): string {
         </div>
         <div class="muted" style="margin-top:10px">${esc(`Showing ${visibleWorkspaceEntries.length} of ${state.workspaceEntries.length} workspace packages.`)}</div>
       `)}
+    </div>
+    <div style="margin-top:14px">
+      ${panel("Workspace Health", renderWorkspaceHealth(state.workspaceEntries))}
     </div>
     ${renderWorkspaceImportReview(state.workspaceImportPreview)}
     <div class="grid cols-2" style="margin-top:14px">
