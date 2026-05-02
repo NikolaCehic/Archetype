@@ -182,6 +182,17 @@ interface SimulationTriageOverride {
   updatedAt: string;
 }
 
+interface RevisionRequest {
+  id: string;
+  priority: "low" | "medium" | "high";
+  changeType: "evidence_changed" | "product_model_changed" | "route_map_changed" | "screen_spec_changed" | "component_registry_changed" | "data_contract_changed" | "accessibility_rule_changed";
+  summary: string;
+  affectedArtifacts: string;
+  requestedChanges: string;
+  status: "draft" | "ready" | "sent";
+  updatedAt: string;
+}
+
 const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => number | string }> = [
   { id: "overview", label: "Overview", count: (bundle) => bundle.readiness.score },
   { id: "workspace", label: "Workspace", count: () => state.workspaceEntries.length },
@@ -217,6 +228,9 @@ const state: {
   contractMessage: string;
   simulationTriageOverrides: Record<string, SimulationTriageOverride>;
   activeSimulationTriageNote: string;
+  revisionRequests: RevisionRequest[];
+  revisionDraft: Omit<RevisionRequest, "id" | "status" | "updatedAt">;
+  revisionMessage: string;
   baselineSnapshot: PackageSnapshot | null;
   baselineName: string;
   impactMessage: string;
@@ -246,6 +260,9 @@ const state: {
   contractMessage: "",
   simulationTriageOverrides: {},
   activeSimulationTriageNote: "",
+  revisionRequests: [],
+  revisionDraft: { priority: "medium", changeType: "screen_spec_changed", summary: "", affectedArtifacts: "", requestedChanges: "" },
+  revisionMessage: "",
   baselineSnapshot: null,
   baselineName: "",
   impactMessage: "",
@@ -839,6 +856,40 @@ function simulationTriageTone(value: SimulationTriageOverride["state"]): "succes
   return "neutral";
 }
 
+function revisionRequestPayload(request: RevisionRequest): Record<string, unknown> {
+  return {
+    request_id: request.id,
+    priority: request.priority,
+    change_type: request.changeType,
+    summary: request.summary,
+    affected_artifacts: lines(request.affectedArtifacts),
+    requested_changes: lines(request.requestedChanges),
+    status: request.status,
+    updated_at: request.updatedAt
+  };
+}
+
+function suggestedRevisionDraft(): Omit<RevisionRequest, "id" | "status" | "updatedAt"> {
+  const openGaps = state.contractGaps.filter((gap) => gap.status !== "resolved");
+  const blockedScreens = Object.entries(state.coverageOverrides).filter(([, value]) => value.state === "blocked" || value.state === "needs_changes");
+  const blockedDesign = Object.entries(state.designReviewOverrides).filter(([, value]) => value.state === "blocked" || value.state === "needs_changes");
+  return {
+    priority: openGaps.some((gap) => gap.severity === "blocker") || blockedScreens.some(([, value]) => value.state === "blocked") ? "high" : "medium",
+    changeType: openGaps.some((gap) => gap.category === "data_contract") ? "data_contract_changed" : blockedDesign.length ? "component_registry_changed" : "screen_spec_changed",
+    summary: "Resolve open workbench review findings.",
+    affectedArtifacts: [
+      ...openGaps.map((gap) => gap.artifact),
+      ...blockedScreens.map(([screenId]) => `05-screen-specs/${screenId}.yaml`),
+      ...blockedDesign.map(([itemId]) => itemId)
+    ].join("\n"),
+    requestedChanges: [
+      ...openGaps.map((gap) => `${gap.category}: ${gap.description}`),
+      ...blockedScreens.map(([screenId, value]) => `${screenId}: ${value.note || value.state}`),
+      ...blockedDesign.map(([itemId, value]) => `${itemId}: ${value.note || value.state}`)
+    ].join("\n")
+  };
+}
+
 function handoffPrompt(bundle: Bundle): string {
   const required = requiredHandoffArtifacts(bundle).filter((artifact) => artifact.present).map((artifact) => `- ${artifact.path}`).join("\n");
   return [
@@ -902,6 +953,11 @@ function handoffMarkdown(bundle: Bundle): string {
       ? Object.entries(state.simulationTriageOverrides).map(([itemId, triage]) => `- ${itemId}: ${triage.state}${triage.note ? `, ${triage.note}` : ""}`)
       : ["- None"]),
     "",
+    "## Revision Requests",
+    ...(state.revisionRequests.length
+      ? state.revisionRequests.map((request) => `- [${request.status}] ${request.priority} ${request.changeType}: ${request.summary}`)
+      : ["- None"]),
+    "",
     "## Required Handoff Artifacts",
     ...required.map((artifact) => `- ${artifact.present ? "present" : "missing"}: ${artifact.path}`),
     "",
@@ -932,6 +988,7 @@ function handoffJson(bundle: Bundle): Record<string, unknown> {
     designSystemReview: state.designReviewOverrides,
     contractGaps: state.contractGaps,
     buildSimulationTriage: state.simulationTriageOverrides,
+    revisionRequests: state.revisionRequests,
     artifactDigests: bundle.artifacts ?? [],
     commands: handoffCommands(),
     frontendAgentPrompt: handoffPrompt(bundle)
@@ -1690,6 +1747,33 @@ function renderRevision(bundle: Bundle): string {
       ${panel("Invalidation Rules", code(bundle.revision.invalidationRules))}
       ${panel("Revision Protocol", code(bundle.revision.protocol))}
     </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Change Request Composer", `
+        <div class="form-grid">
+          ${selectField("revision-priority", state.revisionDraft.priority, "Priority", ["low", "medium", "high"])}
+          ${selectField("revision-change-type", state.revisionDraft.changeType, "Change type", ["evidence_changed", "product_model_changed", "route_map_changed", "screen_spec_changed", "component_registry_changed", "data_contract_changed", "accessibility_rule_changed"])}
+        </div>
+        <div style="height:10px"></div>
+        ${inputField("revision-summary", state.revisionDraft.summary, "Summary")}
+        <div class="form-grid" style="margin-top:10px">
+          ${textArea("revision-artifacts", state.revisionDraft.affectedArtifacts, "Affected artifacts", "textarea short")}
+          ${textArea("revision-changes", state.revisionDraft.requestedChanges, "Requested changes", "textarea short")}
+        </div>
+        <div class="control-row">
+          <button class="button primary" id="add-revision-request" type="button">Add request</button>
+          <button class="button" id="suggest-revision-request" type="button">Use open findings</button>
+          <button class="button" id="download-revision-requests" type="button" ${state.revisionRequests.length ? "" : "disabled"}>Download requests</button>
+        </div>
+        ${state.revisionMessage ? `<div class="notice">${esc(state.revisionMessage)}</div>` : ""}
+      `)}
+      ${panel("Revision Requests", state.revisionRequests.length ? table(["Status", "Priority", "Type", "Summary", "Actions"], state.revisionRequests.map((request) => [
+        badge(request.status, request.status === "sent" ? "success" : request.status === "ready" ? "warning" : "neutral"),
+        badge(request.priority, request.priority === "high" ? "danger" : request.priority === "medium" ? "warning" : "neutral"),
+        esc(request.changeType),
+        esc(request.summary),
+        `<div class="control-row compact"><button class="button small" data-revision-request="${esc(request.id)}" data-revision-status="ready" type="button">Ready</button><button class="button small" data-revision-request="${esc(request.id)}" data-revision-status="sent" type="button">Sent</button><button class="button small" data-revision-delete="${esc(request.id)}" type="button">Delete</button></div>`
+      ])) : `<div class="empty">No revision requests.</div>`)}
+    </div>
   `;
 }
 
@@ -1953,7 +2037,9 @@ function bindEvents(): void {
       state.handoffMessage = "";
       state.contractMessage = "";
       state.activeSimulationTriageNote = "";
+      state.revisionMessage = "";
       state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
+      state.revisionDraft = { priority: "medium", changeType: "screen_spec_changed", summary: "", affectedArtifacts: "", requestedChanges: "" };
       state.intakeForm = null;
       state.sourceMaterials = [];
       state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
@@ -1963,6 +2049,7 @@ function bindEvents(): void {
       loadDesignReviewOverrides();
       loadContractGaps();
       loadSimulationTriageOverrides();
+      loadRevisionRequests();
       loadBaselineSnapshot();
       await refreshWorkspaceEntries();
       render();
@@ -2163,6 +2250,67 @@ function bindEvents(): void {
     saveApprovalOverrides();
     render();
   });
+  const revisionBindings: Array<[keyof typeof state.revisionDraft, string]> = [
+    ["priority", "#revision-priority"],
+    ["changeType", "#revision-change-type"],
+    ["summary", "#revision-summary"],
+    ["affectedArtifacts", "#revision-artifacts"],
+    ["requestedChanges", "#revision-changes"]
+  ];
+  revisionBindings.forEach(([field, selector]) => {
+    document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(selector)?.addEventListener("input", (event) => {
+      state.revisionDraft[field] = (event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).value as never;
+    });
+  });
+  document.querySelector<HTMLButtonElement>("#suggest-revision-request")?.addEventListener("click", () => {
+    state.revisionDraft = suggestedRevisionDraft();
+    state.revisionMessage = "Revision request seeded from open findings.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#add-revision-request")?.addEventListener("click", () => {
+    if (!state.revisionDraft.summary.trim() || !state.revisionDraft.requestedChanges.trim()) {
+      state.revisionMessage = "Summary and requested changes are required.";
+      render();
+      return;
+    }
+    state.revisionRequests = [...state.revisionRequests, {
+      ...state.revisionDraft,
+      id: `revision_${Date.now().toString(36)}`,
+      status: "draft",
+      updatedAt: new Date().toISOString()
+    }];
+    state.revisionDraft = { priority: "medium", changeType: "screen_spec_changed", summary: "", affectedArtifacts: "", requestedChanges: "" };
+    state.revisionMessage = "Revision request added.";
+    saveRevisionRequests();
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#download-revision-requests")?.addEventListener("click", () => {
+    const slug = state.bundle?.manifest.project_slug ?? "archetype-package";
+    downloadText(`${slug}-revision-requests.json`, `${pretty(state.revisionRequests.map(revisionRequestPayload))}\n`, "application/json");
+    state.revisionMessage = "Revision request export prepared.";
+    render();
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-revision-request]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const requestId = button.dataset.revisionRequest;
+      const status = button.dataset.revisionStatus as RevisionRequest["status"] | undefined;
+      if (!requestId || !status) return;
+      state.revisionRequests = state.revisionRequests.map((request) => request.id === requestId ? { ...request, status, updatedAt: new Date().toISOString() } : request);
+      state.revisionMessage = "Revision request status updated.";
+      saveRevisionRequests();
+      render();
+    });
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-revision-delete]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const requestId = button.dataset.revisionDelete;
+      if (!requestId) return;
+      state.revisionRequests = state.revisionRequests.filter((request) => request.id !== requestId);
+      state.revisionMessage = "Revision request deleted.";
+      saveRevisionRequests();
+      render();
+    });
+  });
   document.querySelector<HTMLButtonElement>("#capture-baseline")?.addEventListener("click", () => {
     if (!state.bundle) return;
     state.baselineSnapshot = currentSnapshot(state.bundle);
@@ -2238,7 +2386,9 @@ function bindEvents(): void {
       state.handoffMessage = "";
       state.contractMessage = "";
       state.activeSimulationTriageNote = "";
+      state.revisionMessage = "";
       state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
+      state.revisionDraft = { priority: "medium", changeType: "screen_spec_changed", summary: "", affectedArtifacts: "", requestedChanges: "" };
       state.intakeForm = null;
       state.sourceMaterials = [];
       state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
@@ -2248,6 +2398,7 @@ function bindEvents(): void {
       loadDesignReviewOverrides();
       loadContractGaps();
       loadSimulationTriageOverrides();
+      loadRevisionRequests();
       loadBaselineSnapshot();
       await refreshWorkspaceEntries();
       render();
@@ -2269,7 +2420,9 @@ async function loadSample(): Promise<void> {
   state.handoffMessage = "";
   state.contractMessage = "";
   state.activeSimulationTriageNote = "";
+  state.revisionMessage = "";
   state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
+  state.revisionDraft = { priority: "medium", changeType: "screen_spec_changed", summary: "", affectedArtifacts: "", requestedChanges: "" };
   state.intakeForm = null;
   state.sourceMaterials = [];
   state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
@@ -2279,6 +2432,7 @@ async function loadSample(): Promise<void> {
   loadDesignReviewOverrides();
   loadContractGaps();
   loadSimulationTriageOverrides();
+  loadRevisionRequests();
   await refreshWorkspaceEntries();
   render();
 }
@@ -2366,6 +2520,23 @@ function loadSimulationTriageOverrides(): void {
 
 function saveSimulationTriageOverrides(): void {
   localStorage.setItem(simulationTriageStorageKey(), JSON.stringify(state.simulationTriageOverrides));
+}
+
+function revisionRequestsStorageKey(): string {
+  const slug = state.bundle?.manifest.project_slug ?? state.packageName;
+  return `archetype:revision-requests:${slug}`;
+}
+
+function loadRevisionRequests(): void {
+  try {
+    state.revisionRequests = JSON.parse(localStorage.getItem(revisionRequestsStorageKey()) ?? "[]");
+  } catch {
+    state.revisionRequests = [];
+  }
+}
+
+function saveRevisionRequests(): void {
+  localStorage.setItem(revisionRequestsStorageKey(), JSON.stringify(state.revisionRequests));
 }
 
 function baselineStorageKey(): string {

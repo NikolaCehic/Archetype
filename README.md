@@ -36,6 +36,7 @@ Implemented:
 - Workbench design-system review controls.
 - Workbench frontend contract gap reporting.
 - Workbench build simulation triage controls.
+- Workbench revision change-request composer.
 
 ## Run
 
@@ -87,7 +88,7 @@ Run the browser workbench:
 npm run workbench:dev
 ```
 
-The workbench can review generated packages, import an exported package folder, save packages into a local browser workspace, prepare an intake JSON draft from structured form controls, collect source materials with a safety preview, copy a matching CLI command, track route and screen coverage, review design-system components and tokens, report frontend contract gaps, triage build simulation and acceptance coverage, track local approval gate decisions, compare package baselines for revision impact, and generate handoff artifacts for downstream frontend work.
+The workbench can review generated packages, import an exported package folder, save packages into a local browser workspace, prepare an intake JSON draft from structured form controls, collect source materials with a safety preview, copy a matching CLI command, track route and screen coverage, review design-system components and tokens, report frontend contract gaps, triage build simulation and acceptance coverage, compose revision change requests, track local approval gate decisions, compare package baselines for revision impact, and generate handoff artifacts for downstream frontend work.
 
 Run all checks:
 
@@ -123,4 +124,4 @@ node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archety
 
 ## Next Implementation Target
 
-The next pass should add a workbench revision change-request composer.
+The next pass should add a workbench governance summary dashboard.

@@ -573,3 +573,33 @@ Verification:
 Next phase:
 
 - Workbench revision change-request composer.
+
+## Completed Phase: Workbench Revision Change-Request Composer
+
+Status: complete
+
+Implemented:
+
+- Revision change-request composer.
+- Revision request priority controls.
+- Revision change-type controls.
+- Affected artifact and requested-change fields.
+- Suggested request generation from open findings.
+- Revision request status actions.
+- Revision request delete action.
+- Revision request JSON download.
+- Package-specific revision request persistence.
+- Revision requests included in handoff markdown and JSON.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench governance summary dashboard.
