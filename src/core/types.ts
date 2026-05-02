@@ -304,8 +304,11 @@ export interface DesignSystemArtifacts {
   primitiveTokens: Record<string, unknown>;
   semanticTokens: Record<string, unknown>;
   componentTokens: Record<string, unknown>;
+  tokenContracts: Record<string, unknown>;
+  typographySystem: Record<string, unknown>;
   themeLight: Record<string, unknown>;
   cssVariables: string;
+  typographyCss: string;
   tailwindConfig: string;
   componentContracts: Record<string, unknown>;
   componentContractsReport: string;

@@ -424,11 +424,13 @@ export function buildFrontendContractArtifacts(
       "7. 04-design-system/components/component-registry.json",
       "8. 04-design-system/patterns/pattern-contracts.json",
       "9. 04-design-system/patterns/pattern-registry.json",
-      "10. 06-frontend-agent-contract/data-contracts.json",
-      "11. 06-frontend-agent-contract/data-operation-contracts.json",
-      "12. 06-frontend-agent-contract/action-contracts.json",
-      "13. 06-frontend-agent-contract/form-contracts.json",
-      "14. 06-frontend-agent-contract/acceptance-criteria.json"
+      "10. 04-design-system/tokens/token-contracts.json",
+      "11. 04-design-system/tokens/typography-system.json",
+      "12. 06-frontend-agent-contract/data-contracts.json",
+      "13. 06-frontend-agent-contract/data-operation-contracts.json",
+      "14. 06-frontend-agent-contract/action-contracts.json",
+      "15. 06-frontend-agent-contract/form-contracts.json",
+      "16. 06-frontend-agent-contract/acceptance-criteria.json"
     ].join("\n")
   };
 }

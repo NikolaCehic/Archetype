@@ -16,6 +16,8 @@ const ARTIFACTS = {
   screenInventory: "03-experience-architecture/screen-inventory.json",
   screenSpecs: "05-screen-specs/*.yaml",
   designSystem: "04-design-system",
+  tokenContracts: "04-design-system/tokens/token-contracts.json",
+  typographySystem: "04-design-system/tokens/typography-system.json",
   componentContracts: "04-design-system/components/component-contracts.json",
   componentRegistry: "04-design-system/components/component-registry.json",
   patternContracts: "04-design-system/patterns/pattern-contracts.json",
@@ -47,6 +49,8 @@ export function buildRevisionArtifacts(input: {
       { from: "routeMap", to: "screenInventory", reason: "Screen inventory mirrors route architecture." },
       { from: "screenInventory", to: "screenSpecs", reason: "Screen specs implement screen inventory." },
       { from: "screenSpecs", to: "componentContracts", reason: "Component contracts must cover required screen composition." },
+      { from: "tokenContracts", to: "componentContracts", reason: "Component contracts depend on token availability." },
+      { from: "typographySystem", to: "componentContracts", reason: "Components consume typography roles." },
       { from: "componentContracts", to: "componentRegistry", reason: "Registry entries summarize deterministic component contracts." },
       { from: "screenSpecs", to: "patternContracts", reason: "Pattern contracts must cover product-specific screen needs." },
       { from: "patternContracts", to: "patternRegistry", reason: "Registry entries summarize deterministic pattern contracts." },
@@ -91,6 +95,11 @@ export function buildRevisionArtifacts(input: {
         trigger: "component_registry_changed",
         invalidates: ["frontendContract", "dsag", "readiness"],
         reason: "Contract and graph must reflect component availability."
+      },
+      {
+        trigger: "token_contract_changed",
+        invalidates: ["componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "frontendContract", "dsag", "readiness"],
+        reason: "Token changes alter component, pattern, and frontend style contracts."
       },
       {
         trigger: "pattern_contract_changed",
@@ -141,7 +150,7 @@ export function buildRevisionArtifacts(input: {
       {
         id: "gate_design_system",
         label: "Design System Direction Approval",
-        required_artifacts: [ARTIFACTS.componentContracts, ARTIFACTS.componentRegistry, ARTIFACTS.patternContracts, ARTIFACTS.patternRegistry],
+        required_artifacts: [ARTIFACTS.tokenContracts, ARTIFACTS.typographySystem, ARTIFACTS.componentContracts, ARTIFACTS.componentRegistry, ARTIFACTS.patternContracts, ARTIFACTS.patternRegistry],
         approval_state: "pending_human_review"
       },
       {

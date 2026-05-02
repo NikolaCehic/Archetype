@@ -47,6 +47,8 @@ export function buildFrontendBuildSimulationArtifacts(input: {
   const componentContracts = input.designSystem.componentContracts as { contracts?: ComponentContractEntry[]; blockers?: string[] };
   const patternRegistry = input.designSystem.patternRegistry as { patterns?: PatternRegistryEntry[] };
   const patternContracts = input.designSystem.patternContracts as { contracts?: PatternContractEntry[]; blockers?: string[] };
+  const tokenContracts = input.designSystem.tokenContracts as { layers?: Record<string, unknown>; blockers?: string[] };
+  const typographySystem = input.designSystem.typographySystem as { type_roles?: Record<string, unknown>; blockers?: string[] };
   const componentNames = new Set((componentRegistry.components ?? []).map((component) => component.name));
   const contractByName = new Map((componentContracts.contracts ?? []).map((contract) => [contract.name, contract]));
   const patternNames = new Set((patternRegistry.patterns ?? []).map((pattern) => pattern.name));
@@ -222,6 +224,10 @@ export function buildFrontendBuildSimulationArtifacts(input: {
 
   if ((buildManifest.build_order ?? []).length === 0) blockers.push("Build manifest has no build order.");
   if ((buildManifest.entry_routes ?? []).length === 0) blockers.push("Build manifest has no entry routes.");
+  if (Object.keys(tokenContracts.layers ?? {}).length < 4) blockers.push("Token contracts are missing required layers.");
+  if (Object.keys(typographySystem.type_roles ?? {}).length < 6) blockers.push("Typography system is missing required roles.");
+  blockers.push(...((tokenContracts.blockers ?? []).map((blocker) => `Token contracts: ${blocker}`)));
+  blockers.push(...((typographySystem.blockers ?? []).map((blocker) => `Typography system: ${blocker}`)));
   blockers.push(...((dataOperationContracts.blockers ?? []).map((blocker) => `Data operations: ${blocker}`)));
   blockers.push(...((actionContracts.blockers ?? []).map((blocker) => `Action contracts: ${blocker}`)));
   blockers.push(...((formContracts.blockers ?? []).map((blocker) => `Form contracts: ${blocker}`)));

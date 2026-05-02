@@ -5,6 +5,115 @@ function jsonToken(value: string): Record<string, string> {
   return { value };
 }
 
+function buildTypographySystem(): Record<string, unknown> {
+  const typeRoles = {
+    "display.sm": { font_size: "1.5rem", line_height: "2rem", font_weight: 700, letter_spacing: "0", max_width: "42rem", usage: "Major product area headings only." },
+    "heading.lg": { font_size: "1.25rem", line_height: "1.75rem", font_weight: 700, letter_spacing: "0", max_width: "48rem", usage: "Primary screen titles and modal titles." },
+    "heading.md": { font_size: "1rem", line_height: "1.5rem", font_weight: 650, letter_spacing: "0", max_width: "52rem", usage: "Panel and section headings." },
+    "body.md": { font_size: "0.875rem", line_height: "1.375rem", font_weight: 400, letter_spacing: "0", max_width: "72ch", usage: "Default product body text." },
+    "body.sm": { font_size: "0.8125rem", line_height: "1.25rem", font_weight: 400, letter_spacing: "0", max_width: "68ch", usage: "Dense table and support copy." },
+    "label.sm": { font_size: "0.75rem", line_height: "1rem", font_weight: 650, letter_spacing: "0", max_width: "32ch", usage: "Field labels, badges, and compact metadata." },
+    "code.sm": { font_size: "0.8125rem", line_height: "1.25rem", font_weight: 500, letter_spacing: "0", max_width: "80ch", usage: "Artifact paths, code previews, IDs, and technical values." }
+  };
+
+  return {
+    system_version: "1.0",
+    font_families: {
+      sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      mono: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace"
+    },
+    type_roles: typeRoles,
+    responsive_rules: {
+      mobile: "Keep the same role mapping, reduce layout density before reducing font size.",
+      tablet: "Preserve heading/body contrast and keep line length below 72ch.",
+      desktop: "Use compact roles for dense review surfaces and avoid hero-scale type inside tools."
+    },
+    accessibility_rules: [
+      "Do not scale type with viewport width.",
+      "Letter spacing must remain 0 unless a reviewed brand exception is added.",
+      "Body copy line length must stay between 65ch and 75ch where prose appears.",
+      "Interactive labels must not truncate critical action meaning."
+    ],
+    css_variables: Object.fromEntries(Object.entries(typeRoles).flatMap(([role, values]) => {
+      const key = role.replace(/[.]/g, "-");
+      return [
+        [`--type-${key}-font-size`, values.font_size],
+        [`--type-${key}-line-height`, values.line_height],
+        [`--type-${key}-font-weight`, String(values.font_weight)],
+        [`--type-${key}-letter-spacing`, values.letter_spacing]
+      ];
+    })),
+    blockers: [],
+    warnings: ["Typography uses a deterministic system stack and should be reviewed if a brand typeface is provided."],
+    evidence_refs: ["decision_compiler_order"]
+  };
+}
+
+function buildTypographyCss(typographySystem: Record<string, unknown>): string {
+  const variables = typographySystem.css_variables as Record<string, string>;
+  const lines = [":root {"];
+  for (const [name, value] of Object.entries(variables)) {
+    lines.push(`  ${name}: ${value};`);
+  }
+  lines.push("}");
+  lines.push("");
+  lines.push(".type-display-sm { font-size: var(--type-display-sm-font-size); line-height: var(--type-display-sm-line-height); font-weight: var(--type-display-sm-font-weight); letter-spacing: var(--type-display-sm-letter-spacing); }");
+  lines.push(".type-heading-lg { font-size: var(--type-heading-lg-font-size); line-height: var(--type-heading-lg-line-height); font-weight: var(--type-heading-lg-font-weight); letter-spacing: var(--type-heading-lg-letter-spacing); }");
+  lines.push(".type-heading-md { font-size: var(--type-heading-md-font-size); line-height: var(--type-heading-md-line-height); font-weight: var(--type-heading-md-font-weight); letter-spacing: var(--type-heading-md-letter-spacing); }");
+  lines.push(".type-body-md { font-size: var(--type-body-md-font-size); line-height: var(--type-body-md-line-height); font-weight: var(--type-body-md-font-weight); letter-spacing: var(--type-body-md-letter-spacing); max-width: 72ch; }");
+  lines.push(".type-body-sm { font-size: var(--type-body-sm-font-size); line-height: var(--type-body-sm-line-height); font-weight: var(--type-body-sm-font-weight); letter-spacing: var(--type-body-sm-letter-spacing); max-width: 68ch; }");
+  lines.push(".type-label-sm { font-size: var(--type-label-sm-font-size); line-height: var(--type-label-sm-line-height); font-weight: var(--type-label-sm-font-weight); letter-spacing: var(--type-label-sm-letter-spacing); }");
+  lines.push(".type-code-sm { font-size: var(--type-code-sm-font-size); line-height: var(--type-code-sm-line-height); font-weight: var(--type-code-sm-font-weight); letter-spacing: var(--type-code-sm-letter-spacing); max-width: 80ch; }");
+  return lines.join("\n");
+}
+
+function buildTokenContracts(
+  primitiveTokens: Record<string, unknown>,
+  semanticTokens: Record<string, unknown>,
+  componentTokens: Record<string, unknown>,
+  typographySystem: Record<string, unknown>
+): Record<string, unknown> {
+  return {
+    contract_version: "1.0",
+    layers: {
+      primitive: {
+        source: "04-design-system/tokens/primitive-tokens.json",
+        required_groups: ["color", "spacing", "radius", "font", "fontSize", "lineHeight", "fontWeight"],
+        token_count: Object.values(primitiveTokens).reduce<number>((sum, group) => sum + Object.keys(group as Record<string, unknown>).length, 0)
+      },
+      semantic: {
+        source: "04-design-system/tokens/semantic-tokens.json",
+        required_groups: ["color", "spacing", "radius", "typography"],
+        token_count: Object.values(semanticTokens).reduce<number>((sum, group) => sum + Object.keys(group as Record<string, unknown>).length, 0)
+      },
+      component: {
+        source: "04-design-system/tokens/component-tokens.json",
+        token_count: Object.keys(componentTokens).length
+      },
+      typography: {
+        source: "04-design-system/tokens/typography-system.json",
+        role_count: Object.keys((typographySystem.type_roles as Record<string, unknown>) ?? {}).length
+      }
+    },
+    usage_map: {
+      screen_specs: "Use semantic tokens and typography roles only.",
+      component_contracts: "Component token refs must resolve to component or semantic token keys.",
+      pattern_contracts: "Patterns inherit component token behavior and must not introduce style literals.",
+      frontend_agent: "Report token gaps instead of hardcoding values."
+    },
+    constraints: [
+      "No hardcoded color, radius, spacing, font-size, or line-height values in generated frontend code.",
+      "Use CSS variables exported by css-variables.css and typography.css.",
+      "Use semantic tokens before primitive tokens.",
+      "Do not add new token groups without revising token-contracts.json.",
+      "Do not use negative letter spacing."
+    ],
+    blockers: [],
+    warnings: ["Token contracts are generated from the current design direction and should be reviewed when brand systems are supplied."],
+    evidence_refs: ["decision_compiler_order"]
+  };
+}
+
 interface ComponentPropContract {
   name: string;
   type: string;
@@ -729,6 +838,32 @@ export function buildDesignSystemArtifacts(
       "sm": jsonToken("0.25rem"),
       "md": jsonToken("0.375rem"),
       "lg": jsonToken("0.5rem")
+    },
+    font: {
+      "sans": jsonToken("system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"),
+      "mono": jsonToken("'SFMono-Regular', Consolas, 'Liberation Mono', monospace")
+    },
+    fontSize: {
+      "12": jsonToken("0.75rem"),
+      "13": jsonToken("0.8125rem"),
+      "14": jsonToken("0.875rem"),
+      "16": jsonToken("1rem"),
+      "20": jsonToken("1.25rem"),
+      "24": jsonToken("1.5rem")
+    },
+    lineHeight: {
+      "16": jsonToken("1rem"),
+      "20": jsonToken("1.25rem"),
+      "22": jsonToken("1.375rem"),
+      "24": jsonToken("1.5rem"),
+      "28": jsonToken("1.75rem"),
+      "32": jsonToken("2rem")
+    },
+    fontWeight: {
+      "regular": jsonToken("400"),
+      "medium": jsonToken("500"),
+      "semibold": jsonToken("650"),
+      "bold": jsonToken("700")
     }
   };
 
@@ -752,6 +887,15 @@ export function buildDesignSystemArtifacts(
     radius: {
       "control": "{radius.md}",
       "surface": "{radius.lg}"
+    },
+    typography: {
+      "display.sm": "{fontSize.24}/{lineHeight.32}/{fontWeight.bold}",
+      "heading.lg": "{fontSize.20}/{lineHeight.28}/{fontWeight.bold}",
+      "heading.md": "{fontSize.16}/{lineHeight.24}/{fontWeight.semibold}",
+      "body.md": "{fontSize.14}/{lineHeight.22}/{fontWeight.regular}",
+      "body.sm": "{fontSize.13}/{lineHeight.20}/{fontWeight.regular}",
+      "label.sm": "{fontSize.12}/{lineHeight.16}/{fontWeight.semibold}",
+      "code.sm": "{fontSize.13}/{lineHeight.20}/{fontWeight.medium}"
     }
   };
 
@@ -802,10 +946,13 @@ export function buildDesignSystemArtifacts(
     "warning.text": "{color.status.warning}",
     "danger.text": "{color.status.danger}"
   };
-  componentTokens.dashboardShell = {
-    ...(componentTokens.dashboardShell as Record<string, unknown>),
+  componentTokens[slugify("DashboardShell")] = {
+    ...(componentTokens[slugify("DashboardShell")] as Record<string, unknown>),
     "default.gap": "{spacing.layout.gap}"
   };
+  const typographySystem = buildTypographySystem();
+  const typographyCss = buildTypographyCss(typographySystem);
+  const tokenContracts = buildTokenContracts(primitiveTokens, semanticTokens, componentTokens, typographySystem);
 
   return {
     designPrinciples: [
@@ -829,13 +976,24 @@ export function buildDesignSystemArtifacts(
     primitiveTokens,
     semanticTokens,
     componentTokens,
+    tokenContracts,
+    typographySystem,
     themeLight: {
       name: "light",
       tokens: {
         background: "{color.surface.subtle}",
         surface: "{color.surface.default}",
         text: "{color.text.primary}",
-        accent: "{color.action.primary.background}"
+        accent: "{color.action.primary.background}",
+        typography: {
+          displaySm: "{typography.display.sm}",
+          headingLg: "{typography.heading.lg}",
+          headingMd: "{typography.heading.md}",
+          bodyMd: "{typography.body.md}",
+          bodySm: "{typography.body.sm}",
+          labelSm: "{typography.label.sm}",
+          codeSm: "{typography.code.sm}"
+        }
       }
     },
     cssVariables: [
@@ -848,8 +1006,11 @@ export function buildDesignSystemArtifacts(
       "  --color-border-default: #e5e7eb;",
       "  --radius-surface: 0.5rem;",
       "  --radius-control: 0.375rem;",
+      "  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;",
+      "  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;",
       "}"
     ].join("\n"),
+    typographyCss,
     tailwindConfig: [
       "import type { Config } from 'tailwindcss';",
       "",
@@ -860,6 +1021,15 @@ export function buildDesignSystemArtifacts(
       "        action: 'var(--color-action-primary-background)',",
       "        surface: 'var(--color-surface-default)',",
       "        subtle: 'var(--color-surface-subtle)'",
+      "      },",
+      "      fontFamily: {",
+      "        sans: 'var(--font-sans)',",
+      "        mono: 'var(--font-mono)'",
+      "      },",
+      "      fontSize: {",
+      "        'body-md': ['var(--type-body-md-font-size)', { lineHeight: 'var(--type-body-md-line-height)' }],",
+      "        'body-sm': ['var(--type-body-sm-font-size)', { lineHeight: 'var(--type-body-sm-line-height)' }],",
+      "        'heading-lg': ['var(--type-heading-lg-font-size)', { lineHeight: 'var(--type-heading-lg-line-height)' }]",
       "      }",
       "    }",
       "  }",

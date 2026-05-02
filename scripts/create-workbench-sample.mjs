@@ -68,6 +68,8 @@ const bundle = {
   patternRegistry: readJson("04-design-system/patterns/pattern-registry.json"),
   primitiveTokens: readJson("04-design-system/tokens/primitive-tokens.json"),
   semanticTokens: readJson("04-design-system/tokens/semantic-tokens.json"),
+  tokenContracts: readJson("04-design-system/tokens/token-contracts.json"),
+  typographySystem: readJson("04-design-system/tokens/typography-system.json"),
   buildManifest: readJson("06-frontend-agent-contract/build-manifest.json"),
   componentUsageMap: readJson("06-frontend-agent-contract/component-usage-map.json"),
   dataContracts: readJson("06-frontend-agent-contract/data-contracts.json"),
