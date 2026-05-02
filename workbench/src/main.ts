@@ -11,6 +11,7 @@ type ViewId =
   | "contract"
   | "simulation"
   | "impact"
+  | "export"
   | "revision";
 
 interface ArtifactDigest {
@@ -122,6 +123,7 @@ const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => numbe
   { id: "contract", label: "Frontend Contract", count: (bundle) => bundle.buildManifest.entry_routes?.length ?? 0 },
   { id: "simulation", label: "Simulation", count: (bundle) => bundle.buildSimulation.routeSimulation?.routes?.length ?? 0 },
   { id: "impact", label: "Impact", count: () => state.baselineSnapshot ? "diff" : "base" },
+  { id: "export", label: "Export", count: (bundle) => bundle.readiness.readyForFrontendAgent ? "ready" : "hold" },
   { id: "revision", label: "Revision", count: (bundle) => bundle.revision.approvalGates?.gates?.length ?? 0 }
 ];
 
@@ -138,6 +140,7 @@ const state: {
   baselineSnapshot: PackageSnapshot | null;
   baselineName: string;
   impactMessage: string;
+  handoffMessage: string;
 } = {
   bundle: null,
   view: "overview",
@@ -150,7 +153,8 @@ const state: {
   activeGateNote: "",
   baselineSnapshot: null,
   baselineName: "",
-  impactMessage: ""
+  impactMessage: "",
+  handoffMessage: ""
 };
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -466,6 +470,130 @@ function gatesForReview(bundle: Bundle, diffs: ArtifactDiff[], impactRecords: Im
   return (bundle.revision.approvalGates?.gates ?? []).filter((gate: any) =>
     (gate.required_artifacts ?? []).some((required: string) => reviewPaths.some((pathName) => pathMatchesRequirement(pathName, required)))
   );
+}
+
+function packageOutputPath(): string {
+  return state.packageName === "sample-package" ? "tmp/archetype-output" : "<path-to-archetype-output>";
+}
+
+function handoffCommands(): Array<{ label: string; command: string }> {
+  const outputPath = packageOutputPath();
+  return [
+    { label: "Validate package", command: `node dist/cli.js validate --out ${outputPath}` },
+    { label: "Simulate frontend contract", command: `node dist/cli.js simulate --out ${outputPath}` },
+    { label: "Regenerate sample package", command: "npm run smoke" },
+    { label: "Run full compiler checks", command: "npm run check" }
+  ];
+}
+
+function requiredHandoffArtifacts(bundle: Bundle): Array<{ path: string; label: string; present: boolean }> {
+  const index = new Set((bundle.manifest.artifact_index ?? []) as string[]);
+  const required = [
+    ["00-manifest/manifest.json", "Manifest"],
+    ["00-manifest/implementation-readiness.json", "Readiness report"],
+    ["00-manifest/package-summary.md", "Package summary"],
+    ["01-evidence/evidence-ledger.json", "Evidence ledger"],
+    ["02-product-model/product-model.json", "Product model"],
+    ["03-experience-architecture/route-map.json", "Route map"],
+    ["03-experience-architecture/screen-inventory.json", "Screen inventory"],
+    ["04-design-system/components/component-registry.json", "Component registry"],
+    ["04-design-system/patterns/pattern-registry.json", "Pattern registry"],
+    ["06-frontend-agent-contract/build-manifest.json", "Build manifest"],
+    ["06-frontend-agent-contract/data-contracts.json", "Data contracts"],
+    ["06-frontend-agent-contract/frontend-agent-instructions.md", "Frontend agent instructions"],
+    ["03-experience-architecture/dsag.json", "DSAG graph"],
+    ["08-quality/export-readiness-checklist.md", "Export readiness checklist"],
+    ["11-build-simulation/frontend-build-simulation-report.md", "Build simulation report"]
+  ];
+  return required.map(([path, label]) => ({ path, label, present: index.has(path) }));
+}
+
+function approvalStateForGate(gate: any): string {
+  return state.approvalOverrides[gate.id]?.state ?? gate.approval_state ?? "pending_human_review";
+}
+
+function handoffPrompt(bundle: Bundle): string {
+  const required = requiredHandoffArtifacts(bundle).filter((artifact) => artifact.present).map((artifact) => `- ${artifact.path}`).join("\n");
+  return [
+    `You are building from the Archetype package for ${bundle.productModel.product_name ?? bundle.manifest.project_slug}.`,
+    "",
+    "Use the package as the source of truth. Build only the routes, screens, components, patterns, tokens, data contracts, states, and acceptance criteria declared in the package.",
+    "",
+    "Required starting artifacts:",
+    required,
+    "",
+    "Do not invent new routes, visual styles, components, or backend behavior when the package is missing a required decision. Report a gap instead.",
+    "",
+    `Readiness score: ${bundle.readiness.score}`,
+    `Ready for frontend agent: ${bundle.readiness.readyForFrontendAgent}`,
+    `Source hash: ${bundle.manifest.source_hash ?? "unknown"}`,
+    "",
+    "Run validation before handoff:",
+    handoffCommands().slice(0, 2).map((item) => `- ${item.command}`).join("\n")
+  ].join("\n");
+}
+
+function handoffMarkdown(bundle: Bundle): string {
+  const gates = bundle.revision.approvalGates?.gates ?? [];
+  const required = requiredHandoffArtifacts(bundle);
+  return [
+    `# Archetype Handoff: ${bundle.productModel.product_name ?? bundle.manifest.project_slug}`,
+    "",
+    `Generated: ${bundle.manifest.generated_at ?? bundle.generatedAt}`,
+    `Package ID: ${bundle.manifest.package_id ?? "unknown"}`,
+    `Source hash: ${bundle.manifest.source_hash ?? "unknown"}`,
+    `Export target: ${bundle.manifest.export_target ?? "unknown"}`,
+    `Readiness score: ${bundle.readiness.score}`,
+    `Ready for frontend agent: ${bundle.readiness.readyForFrontendAgent}`,
+    "",
+    "## Blockers",
+    ...(bundle.readiness.blockers.length ? bundle.readiness.blockers.map((item) => `- ${item}`) : ["- None"]),
+    "",
+    "## Warnings",
+    ...(bundle.readiness.warnings.length ? bundle.readiness.warnings.map((item) => `- ${item}`) : ["- None"]),
+    "",
+    "## Approval Gates",
+    ...gates.map((gate: any) => `- ${gate.label}: ${approvalStateForGate(gate)}`),
+    "",
+    "## Required Handoff Artifacts",
+    ...required.map((artifact) => `- ${artifact.present ? "present" : "missing"}: ${artifact.path}`),
+    "",
+    "## Commands",
+    ...handoffCommands().map((item) => `- ${item.label}: ${item.command}`),
+    "",
+    "## Frontend Agent Prompt",
+    "",
+    handoffPrompt(bundle)
+  ].join("\n");
+}
+
+function handoffJson(bundle: Bundle): Record<string, unknown> {
+  return {
+    generatedAt: new Date().toISOString(),
+    packageName: state.packageName,
+    manifest: bundle.manifest,
+    readiness: bundle.readiness,
+    approvalGates: (bundle.revision.approvalGates?.gates ?? []).map((gate: any) => ({
+      id: gate.id,
+      label: gate.label,
+      state: approvalStateForGate(gate),
+      requiredArtifacts: gate.required_artifacts ?? [],
+      note: state.approvalOverrides[gate.id]?.note ?? ""
+    })),
+    requiredArtifacts: requiredHandoffArtifacts(bundle),
+    artifactDigests: bundle.artifacts ?? [],
+    commands: handoffCommands(),
+    frontendAgentPrompt: handoffPrompt(bundle)
+  };
+}
+
+function downloadText(fileName: string, content: string, type = "text/plain"): void {
+  const blob = new Blob([content], { type });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(link.href);
 }
 
 function defaultIntakeFromBundle(bundle: Bundle): Record<string, unknown> {
@@ -800,6 +928,62 @@ function renderImpact(bundle: Bundle): string {
   `;
 }
 
+function renderExport(bundle: Bundle): string {
+  const required = requiredHandoffArtifacts(bundle);
+  const present = required.filter((artifact) => artifact.present).length;
+  const gates = bundle.revision.approvalGates?.gates ?? [];
+  const approved = gates.filter((gate: any) => approvalStateForGate(gate) === "approved").length;
+  const commands = handoffCommands();
+  return `
+    <div class="grid cols-3">
+      ${metric("Readiness", bundle.readiness.score, bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
+      ${metric("Required files", `${present}/${required.length}`, present === required.length ? "success" : "danger")}
+      ${metric("Approved gates", `${approved}/${gates.length}`, approved === gates.length ? "success" : "warning")}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Handoff Actions", `
+        <div class="snapshot-line">
+          <div>
+            <h3>${esc(bundle.productModel.product_name ?? bundle.manifest.project_slug)}</h3>
+            <div class="muted">${esc(`${bundle.manifest.export_target ?? "export"} · ${bundle.manifest.artifact_index?.length ?? 0} artifacts · ${bundle.artifacts?.length ?? 0} digests`)}</div>
+          </div>
+          ${badge(bundle.readiness.readyForFrontendAgent ? "ready" : "hold", bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
+        </div>
+        <div class="control-row">
+          <button class="button primary" id="download-handoff-md" type="button">Download handoff</button>
+          <button class="button" id="download-handoff-json" type="button">Download handoff JSON</button>
+          <button class="button" id="copy-handoff-prompt" type="button">Copy agent prompt</button>
+          <button class="button" id="copy-validate-command" type="button">Copy validation command</button>
+        </div>
+        ${state.handoffMessage ? `<div class="notice">${esc(state.handoffMessage)}</div>` : ""}
+      `)}
+      ${panel("Handoff Commands", table(["Command", "Run"], commands.map((item) => [
+        esc(item.label),
+        `<code>${esc(item.command)}</code>`
+      ])))}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Required Files", table(["Status", "Artifact", "Label"], required.map((artifact) => [
+        badge(artifact.present ? "present" : "missing", artifact.present ? "success" : "danger"),
+        `<code>${esc(artifact.path)}</code>`,
+        esc(artifact.label)
+      ])))}
+      ${panel("Approval Summary", table(["Gate", "State", "Artifacts"], gates.map((gate: any) => {
+        const approvalState = approvalStateForGate(gate);
+        return [
+          esc(gate.label),
+          badge(approvalState, approvalState === "approved" ? "success" : approvalState === "blocked" ? "danger" : "warning"),
+          esc((gate.required_artifacts ?? []).join(", "))
+        ];
+      })))}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Frontend Agent Prompt", code(handoffPrompt(bundle)))}
+      ${panel("Readiness Report", code(bundle.reports.readiness))}
+    </div>
+  `;
+}
+
 function renderRevision(bundle: Bundle): string {
   const gates = bundle.revision.approvalGates?.gates ?? [];
   return `
@@ -863,6 +1047,8 @@ function renderContent(bundle: Bundle): string {
       return renderSimulation(bundle);
     case "impact":
       return renderImpact(bundle);
+    case "export":
+      return renderExport(bundle);
     case "revision":
       return renderRevision(bundle);
   }
@@ -1032,6 +1218,31 @@ function bindEvents(): void {
       render();
     }
   });
+  document.querySelector<HTMLButtonElement>("#download-handoff-md")?.addEventListener("click", () => {
+    if (!state.bundle) return;
+    const slug = String(state.bundle.manifest.project_slug ?? "archetype-package");
+    downloadText(`${slug}-handoff.md`, `${handoffMarkdown(state.bundle)}\n`, "text/markdown");
+    state.handoffMessage = "Handoff markdown prepared.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#download-handoff-json")?.addEventListener("click", () => {
+    if (!state.bundle) return;
+    const slug = String(state.bundle.manifest.project_slug ?? "archetype-package");
+    downloadText(`${slug}-handoff.json`, `${pretty(handoffJson(state.bundle))}\n`, "application/json");
+    state.handoffMessage = "Handoff JSON prepared.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#copy-handoff-prompt")?.addEventListener("click", async () => {
+    if (!state.bundle) return;
+    await copyTextToClipboard(handoffPrompt(state.bundle));
+    state.handoffMessage = "Frontend agent prompt copied.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#copy-validate-command")?.addEventListener("click", async () => {
+    await copyTextToClipboard(handoffCommands()[0].command);
+    state.handoffMessage = "Validation command copied.";
+    render();
+  });
   document.querySelector<HTMLButtonElement>("#load-sample")?.addEventListener("click", () => loadSample());
   document.querySelector<HTMLButtonElement>("#import-folder")?.addEventListener("click", () => {
     document.querySelector<HTMLInputElement>("#folder-input")?.click();
@@ -1046,6 +1257,7 @@ function bindEvents(): void {
       state.generationDraft = "";
       state.generationMessage = "";
       state.activeGateNote = "";
+      state.handoffMessage = "";
       loadApprovalOverrides();
       loadBaselineSnapshot();
       render();
@@ -1062,6 +1274,7 @@ async function loadSample(): Promise<void> {
   state.generationDraft = "";
   state.generationMessage = "";
   state.activeGateNote = "";
+  state.handoffMessage = "";
   loadBaselineSnapshot();
   render();
 }
