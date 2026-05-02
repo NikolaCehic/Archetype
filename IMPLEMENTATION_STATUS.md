@@ -400,3 +400,31 @@ Verification:
 Next phase:
 
 - Workbench intake form builder and structured project creation.
+
+## Completed Phase: Workbench Intake Form Builder
+
+Status: complete
+
+Implemented:
+
+- Structured project intake form in the Generate view.
+- Project name, context, goal, user, brand, and operating mode controls.
+- Form-to-intake JSON draft generation.
+- Draft-to-form loading.
+- Form clear action.
+- Current package seed synchronization.
+- Compact textarea and input styling for dense intake editing.
+- Package state reset for intake form data.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Rich source-material intake and safety preview in the workbench.

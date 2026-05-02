@@ -71,6 +71,18 @@ interface WorkspaceEntry {
   warningCount: number;
 }
 
+interface IntakeFormState {
+  projectName: string;
+  context: string;
+  goals: string;
+  businessGoals: string;
+  users: string;
+  brandAttributes: string;
+  primaryColor: string;
+  tone: string;
+  operatingMode: string;
+}
+
 interface Bundle {
   generatedAt: string;
   artifacts?: ArtifactDigest[];
@@ -159,6 +171,7 @@ const state: {
   handoffMessage: string;
   workspaceEntries: WorkspaceEntry[];
   workspaceMessage: string;
+  intakeForm: IntakeFormState | null;
 } = {
   bundle: null,
   view: "overview",
@@ -174,7 +187,8 @@ const state: {
   impactMessage: "",
   handoffMessage: "",
   workspaceEntries: [],
-  workspaceMessage: ""
+  workspaceMessage: "",
+  intakeForm: null
 };
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -232,11 +246,31 @@ function code(value: unknown): string {
   return `<pre class="code">${esc(typeof value === "string" ? value : pretty(value))}</pre>`;
 }
 
-function textArea(id: string, value: string, label: string): string {
+function textArea(id: string, value: string, label: string, className = "textarea"): string {
   return `
     <label class="field">
       <span>${esc(label)}</span>
-      <textarea id="${esc(id)}" class="textarea" spellcheck="false">${esc(value)}</textarea>
+      <textarea id="${esc(id)}" class="${esc(className)}" spellcheck="false">${esc(value)}</textarea>
+    </label>
+  `;
+}
+
+function inputField(id: string, value: string, label: string, type = "text"): string {
+  return `
+    <label class="field">
+      <span>${esc(label)}</span>
+      <input id="${esc(id)}" class="input" type="${esc(type)}" value="${esc(value)}" />
+    </label>
+  `;
+}
+
+function selectField(id: string, value: string, label: string, options: string[]): string {
+  return `
+    <label class="field">
+      <span>${esc(label)}</span>
+      <select id="${esc(id)}" class="input">
+        ${options.map((option) => `<option value="${esc(option)}" ${option === value ? "selected" : ""}>${esc(option)}</option>`).join("")}
+      </select>
     </label>
   `;
 }
@@ -786,6 +820,48 @@ function defaultIntakeFromBundle(bundle: Bundle): Record<string, unknown> {
   };
 }
 
+function formFromIntake(value: Record<string, unknown>, bundle: Bundle): IntakeFormState {
+  const brand = typeof value.brand === "object" && value.brand && !Array.isArray(value.brand) ? value.brand as Record<string, unknown> : {};
+  return {
+    projectName: String(value.projectName ?? bundle.productModel.product_name ?? ""),
+    context: String(value.context ?? ""),
+    goals: Array.isArray(value.goals) ? value.goals.map(String).join("\n") : "",
+    businessGoals: Array.isArray(value.businessGoals) ? value.businessGoals.map(String).join("\n") : "",
+    users: Array.isArray(value.users) ? value.users.map((user) => typeof user === "string" ? user : JSON.stringify(user)).join("\n") : "",
+    brandAttributes: Array.isArray(brand.attributes) ? brand.attributes.map(String).join(", ") : "clear, precise, trustworthy",
+    primaryColor: String(brand.primaryColor ?? "#2563EB"),
+    tone: String(brand.tone ?? "Clear, direct, and low-hype."),
+    operatingMode: String(value.operatingMode ?? bundle.manifest.operating_mode ?? "full_architecture")
+  };
+}
+
+function ensureIntakeForm(bundle: Bundle): IntakeFormState {
+  if (!state.intakeForm) {
+    state.intakeForm = formFromIntake(defaultIntakeFromBundle(bundle), bundle);
+  }
+  return state.intakeForm;
+}
+
+function lines(value: string): string[] {
+  return value.split("\n").map((item) => item.trim()).filter(Boolean);
+}
+
+function intakeFromForm(form: IntakeFormState): Record<string, unknown> {
+  return {
+    projectName: form.projectName.trim() || "Archetype Project",
+    context: form.context.trim(),
+    goals: lines(form.goals),
+    businessGoals: lines(form.businessGoals),
+    users: lines(form.users),
+    brand: {
+      attributes: form.brandAttributes.split(",").map((item) => item.trim()).filter(Boolean),
+      primaryColor: form.primaryColor.trim() || "#2563EB",
+      tone: form.tone.trim()
+    },
+    operatingMode: form.operatingMode
+  };
+}
+
 function ensureGenerationDraft(bundle: Bundle): string {
   if (!state.generationDraft) {
     state.generationDraft = pretty(defaultIntakeFromBundle(bundle));
@@ -832,11 +908,33 @@ async function copyTextToClipboard(value: string): Promise<void> {
 
 function renderGeneration(bundle: Bundle): string {
   const draft = ensureGenerationDraft(bundle);
+  const form = ensureIntakeForm(bundle);
   const parsed = parseGenerationDraft();
   const fileName = parsed.ok ? intakeFileName(parsed.value) : "custom-project-intake.json";
   const command = `node dist/cli.js generate --input examples/${fileName} --out tmp/${fileName.replace("-intake.json", "-output")}`;
   return `
     <div class="grid cols-2">
+      ${panel("Intake Builder", `
+        <div class="form-grid">
+          ${inputField("intake-project-name", form.projectName, "Project name")}
+          ${selectField("intake-mode", form.operatingMode, "Operating mode", ["fast_architecture", "full_architecture", "existing_product_audit", "contract_repair"])}
+          ${inputField("intake-primary-color", form.primaryColor, "Primary color", "color")}
+          ${inputField("intake-brand-attributes", form.brandAttributes, "Brand attributes")}
+        </div>
+        <div style="height:10px"></div>
+        ${textArea("intake-context", form.context, "Context", "textarea short")}
+        <div class="form-grid" style="margin-top:10px">
+          ${textArea("intake-goals", form.goals, "User goals", "textarea short")}
+          ${textArea("intake-business-goals", form.businessGoals, "Business goals", "textarea short")}
+          ${textArea("intake-users", form.users, "Users", "textarea short")}
+          ${textArea("intake-tone", form.tone, "Tone", "textarea short")}
+        </div>
+        <div class="control-row">
+          <button class="button primary" id="apply-intake-form" type="button">Create project draft</button>
+          <button class="button" id="load-form-from-draft" type="button">Load from draft</button>
+          <button class="button" id="clear-intake-form" type="button">Clear form</button>
+        </div>
+      `)}
       ${panel("Generation Draft", `
         ${textArea("generation-draft", draft, "Intake JSON")}
         <div class="control-row">
@@ -846,6 +944,8 @@ function renderGeneration(bundle: Bundle): string {
         </div>
         ${state.generationMessage ? `<div class="notice">${esc(state.generationMessage)}</div>` : ""}
       `)}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
       ${panel("Run Command", `
         ${parsed.ok ? badge("draft valid", "success") : badge("draft invalid", "danger")}
         <div style="height:10px"></div>
@@ -854,13 +954,13 @@ function renderGeneration(bundle: Bundle): string {
           <button class="button" id="copy-command" type="button" ${parsed.ok ? "" : "disabled"}>Copy command</button>
         </div>
       `)}
-    </div>
-    <div class="grid cols-2" style="margin-top:14px">
       ${panel("Generation Contract", code({
         required: ["context"],
         recommended: ["projectName", "goals", "businessGoals", "users", "brand", "operatingMode"],
         supportedModes: ["fast_architecture", "full_architecture", "existing_product_audit", "contract_repair"]
       }))}
+    </div>
+    <div style="margin-top:14px">
       ${panel("Current Package Seed", code(defaultIntakeFromBundle(bundle)))}
     </div>
   `;
@@ -1331,6 +1431,7 @@ function bindEvents(): void {
       state.generationMessage = "";
       state.activeGateNote = "";
       state.handoffMessage = "";
+      state.intakeForm = null;
       loadApprovalOverrides();
       loadBaselineSnapshot();
       await refreshWorkspaceEntries();
@@ -1347,6 +1448,56 @@ function bindEvents(): void {
       render();
     });
   });
+  const formBindings: Array<[keyof IntakeFormState, string]> = [
+    ["projectName", "#intake-project-name"],
+    ["context", "#intake-context"],
+    ["goals", "#intake-goals"],
+    ["businessGoals", "#intake-business-goals"],
+    ["users", "#intake-users"],
+    ["brandAttributes", "#intake-brand-attributes"],
+    ["primaryColor", "#intake-primary-color"],
+    ["tone", "#intake-tone"],
+    ["operatingMode", "#intake-mode"]
+  ];
+  formBindings.forEach(([field, selector]) => {
+    document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(selector)?.addEventListener("input", (event) => {
+      if (!state.bundle) return;
+      const form = ensureIntakeForm(state.bundle);
+      form[field] = (event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).value;
+    });
+  });
+  document.querySelector<HTMLButtonElement>("#apply-intake-form")?.addEventListener("click", () => {
+    if (!state.bundle) return;
+    state.generationDraft = pretty(intakeFromForm(ensureIntakeForm(state.bundle)));
+    state.generationMessage = "Project draft created from the intake form.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#load-form-from-draft")?.addEventListener("click", () => {
+    if (!state.bundle) return;
+    const parsed = parseGenerationDraft();
+    if (!parsed.ok) {
+      state.generationMessage = parsed.error;
+      render();
+      return;
+    }
+    state.intakeForm = formFromIntake(parsed.value, state.bundle);
+    state.generationMessage = "Intake form loaded from the draft.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#clear-intake-form")?.addEventListener("click", () => {
+    if (!state.bundle) return;
+    state.intakeForm = formFromIntake({
+      projectName: "",
+      context: "",
+      goals: [],
+      businessGoals: [],
+      users: [],
+      brand: { attributes: [], primaryColor: "#2563EB", tone: "" },
+      operatingMode: "full_architecture"
+    }, state.bundle);
+    state.generationMessage = "Intake form cleared.";
+    render();
+  });
   document.querySelector<HTMLTextAreaElement>("#generation-draft")?.addEventListener("input", (event) => {
     state.generationDraft = (event.target as HTMLTextAreaElement).value;
   });
@@ -1356,7 +1507,11 @@ function bindEvents(): void {
     render();
   });
   document.querySelector<HTMLButtonElement>("#reset-draft")?.addEventListener("click", () => {
-    if (state.bundle) state.generationDraft = pretty(defaultIntakeFromBundle(state.bundle));
+    if (state.bundle) {
+      const intake = defaultIntakeFromBundle(state.bundle);
+      state.generationDraft = pretty(intake);
+      state.intakeForm = formFromIntake(intake, state.bundle);
+    }
     state.generationMessage = "Draft reset from the current package.";
     render();
   });
@@ -1480,6 +1635,7 @@ function bindEvents(): void {
       state.generationMessage = "";
       state.activeGateNote = "";
       state.handoffMessage = "";
+      state.intakeForm = null;
       loadApprovalOverrides();
       loadBaselineSnapshot();
       await refreshWorkspaceEntries();
@@ -1498,6 +1654,7 @@ async function loadSample(): Promise<void> {
   state.generationMessage = "";
   state.activeGateNote = "";
   state.handoffMessage = "";
+  state.intakeForm = null;
   loadBaselineSnapshot();
   await refreshWorkspaceEntries();
   render();

@@ -30,12 +30,14 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
 
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
 textarea:focus-visible,
 .nav-item:focus-visible {
   outline: 2px solid var(--accent);
@@ -394,6 +396,16 @@ td {
   color: var(--ink);
 }
 
+.input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: var(--panel);
+  color: var(--ink);
+}
+
 .field {
   display: grid;
   gap: 7px;
@@ -412,6 +424,17 @@ td {
   background: var(--panel);
   color: var(--ink);
   font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.textarea.short {
+  min-height: 104px;
+  max-height: 190px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .control-row {
@@ -501,7 +524,8 @@ td {
   .topbar,
   .grid.cols-2,
   .grid.cols-3,
-  .split {
+  .split,
+  .form-grid {
     grid-template-columns: 1fr;
   }
 
