@@ -102,6 +102,9 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     warnings?: string[];
   };
   const dataContracts = input.frontendContract.dataContracts as { entities?: Record<string, unknown> };
+  const dataOperationContracts = input.frontendContract.dataOperationContracts as { queries?: unknown[]; mutations?: unknown[]; blockers?: string[]; warnings?: string[] };
+  const actionContracts = input.frontendContract.actionContracts as { actions?: Array<{ action_id?: string; route_target_declared?: boolean }>; blockers?: string[]; warnings?: string[] };
+  const formContracts = input.frontendContract.formContracts as { forms?: Array<{ form_id?: string; fields?: unknown[] }>; blockers?: string[]; warnings?: string[] };
   const evidenceIds = new Set([
     ...input.evidence.known_facts.map((item) => item.id),
     ...input.evidence.observations.map((item) => item.id),
@@ -142,6 +145,14 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   checks.push(check("patterns.contracts.data", (patternContracts.contracts ?? []).every((contract) => Array.isArray(contract.data_contract?.entity_refs) && (contract.data_contract?.entity_refs ?? []).length > 0), "Every pattern contract declares data entities."));
   checks.push(check("patterns.contracts.accessibility", (patternContracts.contracts ?? []).every((contract) => Array.isArray(contract.accessibility_contract) && contract.accessibility_contract.length > 0), "Every pattern contract declares accessibility behavior."));
   checks.push(check("data.contracts.present", !!dataContracts.entities && Object.keys(dataContracts.entities).length > 0, "Data contracts exist."));
+  checks.push(check("data.operations.present", Array.isArray(dataOperationContracts.queries) && dataOperationContracts.queries.length === screenCount, "Data operation contracts include a query for every screen."));
+  checks.push(check("data.operations.no_blockers", (dataOperationContracts.blockers ?? []).length === 0, "Data operation contracts have no blockers."));
+  checks.push(check("actions.contracts.present", Array.isArray(actionContracts.actions) && actionContracts.actions.length >= screenCount, "Action contracts include generated screen actions."));
+  checks.push(check("actions.contracts.no_blockers", (actionContracts.blockers ?? []).length === 0, "Action contracts have no blockers."));
+  checks.push(check("actions.contracts.route_targets", (actionContracts.actions ?? []).every((action) => action.route_target_declared !== false), "Action contracts do not target undeclared routes."));
+  checks.push(check("forms.contracts.present", Array.isArray(formContracts.forms) && formContracts.forms.length > 0, "Form contracts exist for create, update, or settings flows."));
+  checks.push(check("forms.contracts.no_blockers", (formContracts.blockers ?? []).length === 0, "Form contracts have no blockers."));
+  checks.push(check("forms.contracts.fields", (formContracts.forms ?? []).every((form) => Array.isArray(form.fields) && form.fields.length > 0), "Every form contract declares fields."));
   checks.push(check("accessibility.rules.present", Object.keys(input.designSystem.accessibilityRules).length > 0, "Accessibility rules exist."));
   checks.push(check("frontend.contract.instructions.present", input.frontendContract.frontendAgentInstructions.length > 0, "Frontend-agent instructions exist."));
   checks.push(check("dsag.graph.present", input.dsag.nodes.length > 0 && input.dsag.edges.length > 0, "DSAG graph has nodes and edges."));
@@ -174,6 +185,9 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   validateRequiredFields(checks, "pattern-contracts.schema.json", input.schemas.schemas["pattern-contracts.schema.json"], input.designSystem.patternContracts, "pattern-contracts");
   validateRequiredFields(checks, "pattern-registry.schema.json", input.schemas.schemas["pattern-registry.schema.json"], input.designSystem.patternRegistry, "pattern-registry");
   validateRequiredFields(checks, "data-contracts.schema.json", input.schemas.schemas["data-contracts.schema.json"], input.frontendContract.dataContracts, "data-contracts");
+  validateRequiredFields(checks, "data-operation-contracts.schema.json", input.schemas.schemas["data-operation-contracts.schema.json"], input.frontendContract.dataOperationContracts, "data-operation-contracts");
+  validateRequiredFields(checks, "action-contracts.schema.json", input.schemas.schemas["action-contracts.schema.json"], input.frontendContract.actionContracts, "action-contracts");
+  validateRequiredFields(checks, "form-contracts.schema.json", input.schemas.schemas["form-contracts.schema.json"], input.frontendContract.formContracts, "form-contracts");
   validateRequiredFields(checks, "frontend-build-manifest.schema.json", input.schemas.schemas["frontend-build-manifest.schema.json"], input.frontendContract.buildManifest, "frontend-build-manifest");
   validateRequiredFields(checks, "dsag.schema.json", input.schemas.schemas["dsag.schema.json"], input.dsag as unknown as Record<string, unknown>, "dsag");
   for (const screen of input.experience.screenSpecs) {
@@ -242,6 +256,9 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   warnings.push(...input.experience.uxFlowStateCompleteness.warnings.map((warning) => `UX flow/state completeness: ${warning}`));
   warnings.push(...((componentContracts.warnings ?? []).map((warning) => `Component contracts: ${warning}`)));
   warnings.push(...((patternContracts.warnings ?? []).map((warning) => `Pattern contracts: ${warning}`)));
+  warnings.push(...((dataOperationContracts.warnings ?? []).map((warning) => `Data operations: ${warning}`)));
+  warnings.push(...((actionContracts.warnings ?? []).map((warning) => `Action contracts: ${warning}`)));
+  warnings.push(...((formContracts.warnings ?? []).map((warning) => `Form contracts: ${warning}`)));
   warnings.push(...input.ingestion.safetyFindings.filter((finding) => finding.severity !== "blocker").map((finding) => `Safety ${finding.severity}: ${finding.finding} (${finding.source_id})`));
   warnings.push(...input.dsag.integrity.warnings.map((item) => `DSAG warning: ${item}`));
   warnings.push(...input.buildSimulation.warnings.map((warning) => `Build simulation: ${warning}`));
@@ -259,7 +276,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     screen_spec_completeness: input.experience.screenSpecs.every((screen) => requiredStates.every((state) => Object.prototype.hasOwnProperty.call(screen.states, state))) && input.experience.uxFlowStateCompleteness.summary.incomplete_screens === 0 ? 15 : 8,
     design_system_coherence: Array.isArray(componentRegistry.components) && Array.isArray(patternRegistry.patterns) && (componentContracts.blockers ?? []).length === 0 && (patternContracts.blockers ?? []).length === 0 && input.dsag.integrity.status !== "fail" ? 15 : 0,
     accessibility_coverage: Object.keys(input.designSystem.accessibilityRules).length > 0 ? 15 : 0,
-    frontend_contract_quality: input.frontendContract.frontendAgentInstructions.length > 0 && !!dataContracts.entities && input.buildSimulation.status !== "fail" ? 15 : 0,
+    frontend_contract_quality: input.frontendContract.frontendAgentInstructions.length > 0 && !!dataContracts.entities && (dataOperationContracts.blockers ?? []).length === 0 && (actionContracts.blockers ?? []).length === 0 && (formContracts.blockers ?? []).length === 0 && input.buildSimulation.status !== "fail" ? 15 : 0,
     evidence_traceability: input.evidence.decisions.length > 0 ? 10 : 0
   };
 
@@ -316,6 +333,9 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
       `Component contracts: ${componentContracts.contracts?.length ?? 0}`,
       `Pattern registry entries: ${patternRegistry.patterns?.length ?? 0}`,
       `Pattern contracts: ${patternContracts.contracts?.length ?? 0}`,
+      `Data operation queries: ${dataOperationContracts.queries?.length ?? 0}`,
+      `Action contracts: ${actionContracts.actions?.length ?? 0}`,
+      `Form contracts: ${formContracts.forms?.length ?? 0}`,
       `DSAG nodes: ${input.dsag.nodes.length}`,
       `DSAG edges: ${input.dsag.edges.length}`,
       `Schema files: ${Object.keys(input.schemas.schemas).length}`,

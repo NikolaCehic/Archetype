@@ -93,6 +93,21 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Data Contracts",
       ["entities", "queries", "mutations"]
     ),
+    "data-operation-contracts.schema.json": objectSchema(
+      "data-operation-contracts.schema.json",
+      "Data Operation Contracts",
+      ["contract_version", "queries", "mutations", "blockers", "warnings", "evidence_refs"]
+    ),
+    "action-contracts.schema.json": objectSchema(
+      "action-contracts.schema.json",
+      "Action Contracts",
+      ["contract_version", "actions", "blockers", "warnings", "evidence_refs"]
+    ),
+    "form-contracts.schema.json": objectSchema(
+      "form-contracts.schema.json",
+      "Form Contracts",
+      ["contract_version", "forms", "blockers", "warnings", "evidence_refs"]
+    ),
     "frontend-build-manifest.schema.json": objectSchema(
       "frontend-build-manifest.schema.json",
       "Frontend Build Manifest",
@@ -128,6 +143,9 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "04-design-system/patterns/pattern-contracts.json", schema_file: "pattern-contracts.schema.json", description: "Deterministic product-specific pattern contracts." },
       { artifact: "04-design-system/patterns/pattern-registry.json", schema_file: "pattern-registry.schema.json", description: "Pattern registry contract." },
       { artifact: "06-frontend-agent-contract/data-contracts.json", schema_file: "data-contracts.schema.json", description: "Data contract package schema." },
+      { artifact: "06-frontend-agent-contract/data-operation-contracts.json", schema_file: "data-operation-contracts.schema.json", description: "Query and mutation behavior contracts." },
+      { artifact: "06-frontend-agent-contract/action-contracts.json", schema_file: "action-contracts.schema.json", description: "Screen action precondition, permission, and result contracts." },
+      { artifact: "06-frontend-agent-contract/form-contracts.json", schema_file: "form-contracts.schema.json", description: "Form field, validation, and submission contracts." },
       { artifact: "06-frontend-agent-contract/build-manifest.json", schema_file: "frontend-build-manifest.schema.json", description: "Frontend build manifest schema." },
       { artifact: "03-experience-architecture/dsag.json", schema_file: "dsag.schema.json", description: "DSAG graph schema." },
       { artifact: "00-manifest/implementation-readiness.json", schema_file: "readiness-report.schema.json", description: "Readiness report schema." }

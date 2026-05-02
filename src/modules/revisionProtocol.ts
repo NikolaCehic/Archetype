@@ -21,6 +21,9 @@ const ARTIFACTS = {
   patternContracts: "04-design-system/patterns/pattern-contracts.json",
   patternRegistry: "04-design-system/patterns/pattern-registry.json",
   dataContracts: "06-frontend-agent-contract/data-contracts.json",
+  dataOperationContracts: "06-frontend-agent-contract/data-operation-contracts.json",
+  actionContracts: "06-frontend-agent-contract/action-contracts.json",
+  formContracts: "06-frontend-agent-contract/form-contracts.json",
   frontendContract: "06-frontend-agent-contract",
   dsag: "03-experience-architecture/dsag.json",
   readiness: "00-manifest/implementation-readiness.json"
@@ -48,10 +51,15 @@ export function buildRevisionArtifacts(input: {
       { from: "screenSpecs", to: "patternContracts", reason: "Pattern contracts must cover product-specific screen needs." },
       { from: "patternContracts", to: "patternRegistry", reason: "Registry entries summarize deterministic pattern contracts." },
       { from: "entityModel", to: "dataContracts", reason: "Data contracts expose product entities." },
+      { from: "dataContracts", to: "dataOperationContracts", reason: "Operations depend on declared entity data contracts." },
+      { from: "screenSpecs", to: "actionContracts", reason: "Actions depend on screen actions, states, and permissions." },
+      { from: "screenSpecs", to: "formContracts", reason: "Forms depend on screen workflow and entity requirements." },
       { from: "screenSpecs", to: "frontendContract", reason: "Frontend contract must build declared screens." },
       { from: "componentContracts", to: "frontendContract", reason: "Frontend contract constrains component APIs and usage." },
       { from: "patternContracts", to: "frontendContract", reason: "Frontend contract constrains pattern composition and usage." },
-      { from: "dataContracts", to: "frontendContract", reason: "Frontend build needs data shapes." },
+      { from: "dataOperationContracts", to: "frontendContract", reason: "Frontend build needs query and mutation behavior." },
+      { from: "actionContracts", to: "frontendContract", reason: "Frontend build needs action preconditions and results." },
+      { from: "formContracts", to: "frontendContract", reason: "Frontend build needs form validation behavior." },
       { from: "frontendContract", to: "dsag", reason: "DSAG validates implementation graph coherence." },
       { from: "dsag", to: "readiness", reason: "Readiness depends on graph integrity." }
     ]
@@ -76,7 +84,7 @@ export function buildRevisionArtifacts(input: {
       },
       {
         trigger: "screen_spec_changed",
-        invalidates: ["componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "frontendContract", "dsag", "readiness"],
+        invalidates: ["componentContracts", "componentRegistry", "patternContracts", "patternRegistry", "dataOperationContracts", "actionContracts", "formContracts", "frontendContract", "dsag", "readiness"],
         reason: "Screen composition determines system and contract requirements."
       },
       {
@@ -91,7 +99,7 @@ export function buildRevisionArtifacts(input: {
       },
       {
         trigger: "data_contract_changed",
-        invalidates: ["screenSpecs", "frontendContract", "dsag", "readiness"],
+        invalidates: ["screenSpecs", "dataOperationContracts", "actionContracts", "formContracts", "frontendContract", "dsag", "readiness"],
         reason: "Data shape changes affect UI states, fixtures, and build expectations."
       },
       {
@@ -139,7 +147,7 @@ export function buildRevisionArtifacts(input: {
       {
         id: "gate_frontend_contract",
         label: "Frontend Contract Approval",
-        required_artifacts: [ARTIFACTS.frontendContract, ARTIFACTS.dataContracts],
+        required_artifacts: [ARTIFACTS.frontendContract, ARTIFACTS.dataContracts, ARTIFACTS.dataOperationContracts, ARTIFACTS.actionContracts, ARTIFACTS.formContracts],
         approval_state: "pending_human_review"
       },
       {

@@ -231,13 +231,13 @@ function primaryActionFor(route: DomainProfile["routes"][number], profile: Domai
   }
   if (route.screen_id.includes("dashboard") || route.screen_id.includes("overview")) {
     const invoiceRoute = profile.routes.find((candidate) => candidate.screen_id === "invoices.list");
-    if (invoiceRoute) return { label: "Create invoice", action: "navigate:/invoices/new", type: "create" };
+    if (invoiceRoute) return { label: "Create invoice", action: "open_create_flow:Invoice", type: "create" };
   }
   if (route.route.includes(":")) {
     return { label: "Edit", action: "open_edit_flow", type: "update" };
   }
   const entity = profile.entities.find((candidate) => route.screen_id.toLowerCase().includes(candidate.toLowerCase().replace(/s$/, ""))) ?? profile.entities[0];
-  return { label: `Create ${entity.toLowerCase()}`, action: `navigate:${route.route}/new`, type: "create" };
+  return { label: `Create ${entity.toLowerCase()}`, action: `open_create_flow:${entity}`, type: "create" };
 }
 
 function buildScreenSpec(route: DomainProfile["routes"][number], input: ArchetypeInput, profile: DomainProfile): ScreenSpec {
@@ -333,9 +333,9 @@ function buildScreenSpec(route: DomainProfile["routes"][number], input: Archetyp
     required_patterns: patterns,
     data_needs: [entity, ...profile.entities.slice(0, 2)].filter((value, index, list) => list.indexOf(value) === index),
     actions: [
-      { id: "primary_action", type: primaryAction.type, label: primaryAction.label, permission: "can_manage_core_entities" },
-      { id: "filter", type: "filter", label: "Filter", permission: "can_view_dashboard" },
-      { id: "export", type: "export", label: "Export", permission: "can_export_reports" }
+      { id: "primary_action", type: primaryAction.type, label: primaryAction.label, action: primaryAction.action, permission: "can_manage_core_entities" },
+      { id: "filter", type: "filter", label: "Filter", action: "apply_filter", permission: "can_view_dashboard" },
+      { id: "export", type: "export", label: "Export", action: "export_current_view", permission: "can_export_reports" }
     ],
     states,
     interactions: [

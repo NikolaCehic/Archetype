@@ -52,6 +52,9 @@ export function buildFrontendBuildSimulationArtifacts(input: {
   const patternNames = new Set((patternRegistry.patterns ?? []).map((pattern) => pattern.name));
   const patternContractByName = new Map((patternContracts.contracts ?? []).map((contract) => [contract.name, contract]));
   const dataContracts = input.frontendContract.dataContracts as { entities?: Record<string, unknown>; queries?: unknown[]; mutations?: unknown[] };
+  const dataOperationContracts = input.frontendContract.dataOperationContracts as { queries?: Array<{ screen_id?: string }>; mutations?: unknown[]; blockers?: string[] };
+  const actionContracts = input.frontendContract.actionContracts as { actions?: Array<{ screen_id?: string; route_target_declared?: boolean }>; blockers?: string[] };
+  const formContracts = input.frontendContract.formContracts as { forms?: Array<{ screen_id?: string; fields?: unknown[] }>; blockers?: string[] };
   const entityNames = new Set(Object.keys(dataContracts.entities ?? {}));
   const buildManifest = input.frontendContract.buildManifest as { build_order?: string[]; entry_routes?: string[] };
   const componentUsageMap = input.frontendContract.componentUsageMap as Record<string, {
@@ -178,12 +181,30 @@ export function buildFrontendBuildSimulationArtifacts(input: {
 
   const dataResults = input.experience.screenSpecs.map((screen) => {
     const missing = screen.data_needs.filter((entity) => !entityNames.has(entity));
+    const hasOperationQuery = (dataOperationContracts.queries ?? []).some((query) => query.screen_id === screen.screen_id);
+    const screenActions = (actionContracts.actions ?? []).filter((action) => action.screen_id === screen.screen_id);
+    const hasBadActionRoute = screenActions.some((action) => action.route_target_declared === false);
     if (missing.length > 0) blockers.push(`${screen.screen_id}: missing data contracts ${missing.join(", ")}`);
+    if (!hasOperationQuery) blockers.push(`${screen.screen_id}: missing data operation query contract`);
+    if (hasBadActionRoute) blockers.push(`${screen.screen_id}: action contract targets an undeclared route`);
     return {
       screen_id: screen.screen_id,
       data_needs: screen.data_needs,
       missing_data_contracts: missing,
-      status: missing.length > 0 ? "fail" : "pass"
+      operation_query_found: hasOperationQuery,
+      action_contracts: screenActions.length,
+      invalid_action_routes: hasBadActionRoute,
+      status: missing.length > 0 || !hasOperationQuery || hasBadActionRoute ? "fail" : "pass"
+    };
+  });
+
+  const formResults = input.experience.screenSpecs.map((screen) => {
+    const forms = (formContracts.forms ?? []).filter((form) => form.screen_id === screen.screen_id);
+    return {
+      screen_id: screen.screen_id,
+      forms: forms.length,
+      fields: forms.reduce((sum, form) => sum + (Array.isArray(form.fields) ? form.fields.length : 0), 0),
+      status: forms.every((form) => Array.isArray(form.fields) && form.fields.length > 0) ? "pass" : "fail"
     };
   });
 
@@ -201,6 +222,9 @@ export function buildFrontendBuildSimulationArtifacts(input: {
 
   if ((buildManifest.build_order ?? []).length === 0) blockers.push("Build manifest has no build order.");
   if ((buildManifest.entry_routes ?? []).length === 0) blockers.push("Build manifest has no entry routes.");
+  blockers.push(...((dataOperationContracts.blockers ?? []).map((blocker) => `Data operations: ${blocker}`)));
+  blockers.push(...((actionContracts.blockers ?? []).map((blocker) => `Action contracts: ${blocker}`)));
+  blockers.push(...((formContracts.blockers ?? []).map((blocker) => `Form contracts: ${blocker}`)));
   if (warnings.length === 0 && blockers.length === 0) {
     warnings.push("Simulation used generated contracts and fixture assumptions; it does not compile a real frontend app yet.");
   }
@@ -220,7 +244,12 @@ export function buildFrontendBuildSimulationArtifacts(input: {
       entity_contracts: [...entityNames],
       query_count: asArray(dataContracts.queries).length,
       mutation_count: asArray(dataContracts.mutations).length,
-      screens: dataResults
+      operation_query_count: dataOperationContracts.queries?.length ?? 0,
+      operation_mutation_count: dataOperationContracts.mutations?.length ?? 0,
+      action_contract_count: actionContracts.actions?.length ?? 0,
+      form_contract_count: formContracts.forms?.length ?? 0,
+      screens: dataResults,
+      forms: formResults
     },
     acceptanceSimulation: { screens: acceptanceResults },
     simulationReport: [

@@ -333,6 +333,9 @@ export interface FrontendContractArtifacts {
   interactionRules: Record<string, unknown>;
   formRules: Record<string, unknown>;
   dataContracts: Record<string, unknown>;
+  dataOperationContracts: Record<string, unknown>;
+  actionContracts: Record<string, unknown>;
+  formContracts: Record<string, unknown>;
   routingContract: Record<string, unknown>;
   acceptanceCriteria: Record<string, unknown>;
   fixtureData: Record<string, unknown>;

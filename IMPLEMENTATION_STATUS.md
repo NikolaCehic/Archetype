@@ -1326,3 +1326,44 @@ Verification:
 Next phase:
 
 - Deterministic data, action, and form contract hardening.
+
+## Completed Phase: Deterministic Data, Action, and Form Contract Hardening
+
+Status: complete
+
+Implemented:
+
+- Added deterministic query and mutation operation contracts.
+- Added deterministic action contracts with preconditions, permissions, state transitions, mutation refs, route-target validation, result contracts, and forbidden behavior.
+- Added deterministic form contracts with fields, validation rules, validation timing, submission states, dirty-state behavior, and accessibility behavior.
+- Added `06-frontend-agent-contract/data-operation-contracts.json`.
+- Added `06-frontend-agent-contract/action-contracts.json`.
+- Added `06-frontend-agent-contract/form-contracts.json`.
+- Added schemas for data operation, action, and form contracts.
+- Frontend-agent instructions now include the new contract artifacts.
+- Build manifest now includes data operation, action, and form implementation steps.
+- Build simulation now validates operation queries, action contracts, invalid route targets, and form fields.
+- Quality checks now validate operation, action, and form contract coverage.
+- Revision dependency graph and approval gates now include data operation, action, and form contract artifacts.
+- Create actions now open declared create flows instead of pointing to undeclared `/new` routes.
+- Workbench sample bundle now includes the new contract artifacts.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Manifest-listed files checked by validator: 136.
+- Data operation queries: 6.
+- Data operation mutations: 12.
+- Action contracts: 18.
+- Invalid action route targets: 0.
+- Form contracts: 6.
+- Operation/action/form blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Token and typography contract hardening.
