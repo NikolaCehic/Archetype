@@ -306,3 +306,35 @@ Verification:
 Next phase:
 
 - Workbench artifact diffing and revision impact review.
+
+## Completed Phase: Workbench Artifact Diffing and Revision Impact Review
+
+Status: complete
+
+Implemented:
+
+- Workbench artifact digest generation for sample bundles.
+- Browser package import artifact hashing.
+- Impact view for baseline comparison.
+- Current package baseline capture.
+- Previous package folder baseline import.
+- Package-specific baseline persistence.
+- Artifact added, removed, changed, and unchanged detection.
+- Route, screen, and component delta summary.
+- Dependency-graph impact chain evaluation.
+- Invalidation-rule matching for changed artifact areas.
+- Revision review gate selection from changed and impacted artifacts.
+
+Verification:
+
+- `npm run check` passes.
+- Workbench production build passes.
+- Smoke package readiness: 89.
+- Package validation blockers: 0.
+- Golden examples ready: fintech, healthcare, logistics, Web3.
+- Sample workbench bundle includes 118 artifact digests.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Workbench export center and package handoff.

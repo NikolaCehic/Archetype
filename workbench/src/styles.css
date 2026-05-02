@@ -430,6 +430,17 @@ td {
   padding: 9px 10px;
 }
 
+.snapshot-line {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: oklch(0.976 0.006 247);
+  padding: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
 .gate-row {
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -494,6 +505,10 @@ td {
   }
 
   .gate-row {
+    grid-template-columns: 1fr;
+  }
+
+  .snapshot-line {
     grid-template-columns: 1fr;
   }
 

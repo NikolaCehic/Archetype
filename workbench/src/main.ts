@@ -10,10 +10,54 @@ type ViewId =
   | "design"
   | "contract"
   | "simulation"
+  | "impact"
   | "revision";
+
+interface ArtifactDigest {
+  path: string;
+  hash: string;
+  bytes: number;
+  kind: string;
+}
+
+interface PackageSnapshot {
+  name: string;
+  projectSlug: string;
+  sourceHash: string;
+  generatedAt: string;
+  readinessScore: number;
+  readyForFrontendAgent: boolean;
+  blockers: string[];
+  warnings: string[];
+  routes: string[];
+  screens: string[];
+  components: string[];
+  patterns: string[];
+  artifacts: ArtifactDigest[];
+}
+
+interface ArtifactDiff {
+  path: string;
+  status: "added" | "removed" | "changed" | "unchanged";
+  group: string;
+  nodeId: string | null;
+  beforeHash: string | null;
+  afterHash: string | null;
+  beforeBytes: number | null;
+  afterBytes: number | null;
+}
+
+interface ImpactRecord {
+  artifact: string;
+  source: string;
+  reason: string;
+  depth: number;
+  type: "changed" | "downstream" | "rule";
+}
 
 interface Bundle {
   generatedAt: string;
+  artifacts?: ArtifactDigest[];
   manifest: Record<string, any>;
   readiness: {
     score: number;
@@ -77,6 +121,7 @@ const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => numbe
   { id: "design", label: "Design System", count: (bundle) => bundle.componentRegistry.components.length },
   { id: "contract", label: "Frontend Contract", count: (bundle) => bundle.buildManifest.entry_routes?.length ?? 0 },
   { id: "simulation", label: "Simulation", count: (bundle) => bundle.buildSimulation.routeSimulation?.routes?.length ?? 0 },
+  { id: "impact", label: "Impact", count: () => state.baselineSnapshot ? "diff" : "base" },
   { id: "revision", label: "Revision", count: (bundle) => bundle.revision.approvalGates?.gates?.length ?? 0 }
 ];
 
@@ -90,6 +135,9 @@ const state: {
   generationMessage: string;
   approvalOverrides: Record<string, ApprovalOverride>;
   activeGateNote: string;
+  baselineSnapshot: PackageSnapshot | null;
+  baselineName: string;
+  impactMessage: string;
 } = {
   bundle: null,
   view: "overview",
@@ -99,7 +147,10 @@ const state: {
   generationDraft: "",
   generationMessage: "",
   approvalOverrides: {},
-  activeGateNote: ""
+  activeGateNote: "",
+  baselineSnapshot: null,
+  baselineName: "",
+  impactMessage: ""
 };
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -205,6 +256,216 @@ function renderOverview(bundle: Bundle): string {
 function list(items: unknown[]): string {
   if (!items || items.length === 0) return `<div class="empty">None.</div>`;
   return `<div class="list">${items.map((item) => `<div class="list-button">${esc(typeof item === "string" ? item : JSON.stringify(item))}</div>`).join("")}</div>`;
+}
+
+function artifactKind(filePath: string): string {
+  if (filePath.endsWith(".json")) return "json";
+  if (filePath.endsWith(".yaml") || filePath.endsWith(".yml")) return "yaml";
+  if (filePath.endsWith(".md")) return "markdown";
+  if (filePath.endsWith(".css")) return "css";
+  if (filePath.endsWith(".ts")) return "typescript";
+  return "text";
+}
+
+function artifactArea(filePath: string): { group: string; nodeId: string | null } {
+  if (filePath.startsWith("01-evidence/")) return { group: "Evidence", nodeId: "evidence" };
+  if (filePath === "02-product-model/product-model.json") return { group: "Product Model", nodeId: "productModel" };
+  if (filePath === "02-product-model/user-model.json" || filePath === "02-product-model/role-model.json" || filePath === "02-product-model/permission-matrix.json") {
+    return { group: "User Model", nodeId: "userModel" };
+  }
+  if (filePath === "02-product-model/entity-model.json" || filePath === "02-product-model/entity-lifecycle.json") {
+    return { group: "Entity Model", nodeId: "entityModel" };
+  }
+  if (filePath === "03-experience-architecture/route-map.json") return { group: "Route Map", nodeId: "routeMap" };
+  if (filePath === "03-experience-architecture/screen-inventory.json") return { group: "Screen Inventory", nodeId: "screenInventory" };
+  if (filePath === "03-experience-architecture/dsag.json") return { group: "DSAG", nodeId: "dsag" };
+  if (filePath.startsWith("03-experience-architecture/")) return { group: "Experience Architecture", nodeId: "routeMap" };
+  if (filePath.startsWith("05-screen-specs/")) return { group: "Screen Specs", nodeId: "screenSpecs" };
+  if (filePath === "04-design-system/components/component-registry.json") return { group: "Component Registry", nodeId: "componentRegistry" };
+  if (filePath === "04-design-system/patterns/pattern-registry.json") return { group: "Pattern Registry", nodeId: "patternRegistry" };
+  if (filePath.startsWith("04-design-system/")) return { group: "Design System", nodeId: "designSystem" };
+  if (filePath === "06-frontend-agent-contract/data-contracts.json") return { group: "Data Contracts", nodeId: "dataContracts" };
+  if (filePath.startsWith("06-frontend-agent-contract/")) return { group: "Frontend Contract", nodeId: "frontendContract" };
+  if (filePath === "00-manifest/implementation-readiness.json" || filePath.startsWith("08-quality/")) return { group: "Readiness", nodeId: "readiness" };
+  if (filePath.startsWith("10-revision/")) return { group: "Revision", nodeId: "revision" };
+  if (filePath.startsWith("11-build-simulation/")) return { group: "Build Simulation", nodeId: "frontendContract" };
+  if (filePath.startsWith("09-schemas/")) return { group: "Schemas", nodeId: null };
+  return { group: "Package", nodeId: null };
+}
+
+function snapshotFromBundle(bundle: Bundle, name: string): PackageSnapshot {
+  return {
+    name,
+    projectSlug: String(bundle.manifest.project_slug ?? "package"),
+    sourceHash: String(bundle.manifest.source_hash ?? ""),
+    generatedAt: String(bundle.manifest.generated_at ?? bundle.generatedAt),
+    readinessScore: bundle.readiness.score,
+    readyForFrontendAgent: bundle.readiness.readyForFrontendAgent,
+    blockers: bundle.readiness.blockers ?? [],
+    warnings: bundle.readiness.warnings ?? [],
+    routes: bundle.routeMap.routes.map((route) => String(route.route ?? "")),
+    screens: bundle.screens.map((screen) => screen.name),
+    components: bundle.componentRegistry.components.map((component) => String(component.name ?? "")),
+    patterns: bundle.patternRegistry.patterns.map((pattern) => String(pattern.name ?? "")),
+    artifacts: (bundle.artifacts ?? []).slice().sort((a, b) => a.path.localeCompare(b.path))
+  };
+}
+
+function currentSnapshot(bundle: Bundle): PackageSnapshot {
+  return snapshotFromBundle(bundle, state.packageName || "current-package");
+}
+
+function formatBytes(value: number | null): string {
+  if (value === null) return "";
+  if (value < 1024) return `${value} B`;
+  return `${(value / 1024).toFixed(1)} KB`;
+}
+
+function diffTone(status: ArtifactDiff["status"]): "success" | "warning" | "danger" | "neutral" {
+  if (status === "unchanged") return "success";
+  if (status === "added") return "success";
+  if (status === "removed") return "danger";
+  return "warning";
+}
+
+function compareStringSets(before: string[], after: string[]): { added: string[]; removed: string[] } {
+  const beforeSet = new Set(before);
+  const afterSet = new Set(after);
+  return {
+    added: after.filter((value) => !beforeSet.has(value)),
+    removed: before.filter((value) => !afterSet.has(value))
+  };
+}
+
+function computeArtifactDiffs(current: PackageSnapshot, baseline: PackageSnapshot | null): ArtifactDiff[] {
+  if (!baseline) return [];
+  const before = new Map(baseline.artifacts.map((artifact) => [artifact.path, artifact]));
+  const after = new Map(current.artifacts.map((artifact) => [artifact.path, artifact]));
+  const paths = [...new Set([...before.keys(), ...after.keys()])].sort();
+  const order: Record<ArtifactDiff["status"], number> = { changed: 0, added: 1, removed: 2, unchanged: 3 };
+  return paths.map((pathName) => {
+    const beforeArtifact = before.get(pathName);
+    const afterArtifact = after.get(pathName);
+    const area = artifactArea(pathName);
+    const status: ArtifactDiff["status"] = !beforeArtifact
+      ? "added"
+      : !afterArtifact
+        ? "removed"
+        : beforeArtifact.hash !== afterArtifact.hash || beforeArtifact.bytes !== afterArtifact.bytes
+          ? "changed"
+          : "unchanged";
+    return {
+      path: pathName,
+      status,
+      group: area.group,
+      nodeId: area.nodeId,
+      beforeHash: beforeArtifact?.hash ?? null,
+      afterHash: afterArtifact?.hash ?? null,
+      beforeBytes: beforeArtifact?.bytes ?? null,
+      afterBytes: afterArtifact?.bytes ?? null
+    };
+  }).sort((a, b) => order[a.status] - order[b.status] || a.group.localeCompare(b.group) || a.path.localeCompare(b.path));
+}
+
+function changedNodeIds(diffs: ArtifactDiff[]): string[] {
+  return [...new Set(diffs.filter((diff) => diff.status !== "unchanged").map((diff) => diff.nodeId).filter((value): value is string => Boolean(value) && value !== "revision"))];
+}
+
+function triggerForNode(nodeId: string): string | null {
+  const triggers: Record<string, string> = {
+    evidence: "evidence_changed",
+    productModel: "product_model_changed",
+    routeMap: "route_map_changed",
+    screenInventory: "route_map_changed",
+    screenSpecs: "screen_spec_changed",
+    componentRegistry: "component_registry_changed",
+    patternRegistry: "component_registry_changed",
+    dataContracts: "data_contract_changed",
+    designSystem: "accessibility_rule_changed"
+  };
+  return triggers[nodeId] ?? null;
+}
+
+function computeImpactRecords(bundle: Bundle, nodes: string[]): ImpactRecord[] {
+  const edges = bundle.revision.dependencyGraph?.edges ?? [];
+  const records = new Map<string, ImpactRecord>();
+  const queue = nodes.map((node) => ({ node, source: node, depth: 0, reason: "Changed artifact." }));
+  const seen = new Set<string>();
+  for (const node of nodes) {
+    records.set(`changed:${node}`, { artifact: node, source: node, reason: "Artifact content changed.", depth: 0, type: "changed" });
+  }
+  while (queue.length > 0) {
+    const item = queue.shift();
+    if (!item) break;
+    const visitKey = `${item.source}:${item.node}:${item.depth}`;
+    if (seen.has(visitKey)) continue;
+    seen.add(visitKey);
+    for (const edge of edges.filter((candidate: any) => candidate.from === item.node)) {
+      const depth = item.depth + 1;
+      const key = `edge:${item.source}:${edge.to}`;
+      const existing = records.get(key);
+      if (!existing || depth < existing.depth) {
+        records.set(key, {
+          artifact: edge.to,
+          source: item.source,
+          reason: edge.reason ?? "Downstream dependency.",
+          depth,
+          type: "downstream"
+        });
+      }
+      queue.push({ node: edge.to, source: item.source, depth, reason: edge.reason ?? "Downstream dependency." });
+    }
+  }
+  const rules = bundle.revision.invalidationRules?.rules ?? [];
+  for (const node of nodes) {
+    const trigger = triggerForNode(node);
+    if (!trigger) continue;
+    for (const rule of rules.filter((candidate: any) => candidate.trigger === trigger)) {
+      for (const artifact of rule.invalidates ?? []) {
+        records.set(`rule:${node}:${artifact}`, {
+          artifact,
+          source: node,
+          reason: rule.reason ?? trigger,
+          depth: 1,
+          type: "rule"
+        });
+      }
+    }
+  }
+  return [...records.values()].sort((a, b) => a.depth - b.depth || a.artifact.localeCompare(b.artifact));
+}
+
+function artifactRequirementsForNode(nodeId: string): string[] {
+  const requirements: Record<string, string[]> = {
+    evidence: ["01-evidence/evidence-ledger.json"],
+    productModel: ["02-product-model/product-model.json"],
+    userModel: ["02-product-model/user-model.json"],
+    entityModel: ["02-product-model/entity-model.json"],
+    routeMap: ["03-experience-architecture/route-map.json"],
+    screenInventory: ["03-experience-architecture/screen-inventory.json"],
+    screenSpecs: ["05-screen-specs/"],
+    componentRegistry: ["04-design-system/components/component-registry.json"],
+    patternRegistry: ["04-design-system/patterns/pattern-registry.json"],
+    designSystem: ["04-design-system/"],
+    dataContracts: ["06-frontend-agent-contract/data-contracts.json"],
+    frontendContract: ["06-frontend-agent-contract/"],
+    dsag: ["03-experience-architecture/dsag.json"],
+    readiness: ["00-manifest/implementation-readiness.json", "08-quality/"]
+  };
+  return requirements[nodeId] ?? [nodeId];
+}
+
+function pathMatchesRequirement(pathName: string, requirement: string): boolean {
+  return pathName === requirement || pathName.startsWith(requirement) || requirement.startsWith(pathName);
+}
+
+function gatesForReview(bundle: Bundle, diffs: ArtifactDiff[], impactRecords: ImpactRecord[]): Array<Record<string, any>> {
+  const changedPaths = diffs.filter((diff) => diff.status !== "unchanged").map((diff) => diff.path);
+  const impactedPaths = impactRecords.flatMap((record) => artifactRequirementsForNode(record.artifact));
+  const reviewPaths = [...changedPaths, ...impactedPaths];
+  return (bundle.revision.approvalGates?.gates ?? []).filter((gate: any) =>
+    (gate.required_artifacts ?? []).some((required: string) => reviewPaths.some((pathName) => pathMatchesRequirement(pathName, required)))
+  );
 }
 
 function defaultIntakeFromBundle(bundle: Bundle): Record<string, unknown> {
@@ -439,6 +700,106 @@ function renderSimulation(bundle: Bundle): string {
   `;
 }
 
+function renderImpact(bundle: Bundle): string {
+  const current = currentSnapshot(bundle);
+  const baseline = state.baselineSnapshot;
+  const diffs = computeArtifactDiffs(current, baseline);
+  const changedDiffs = diffs.filter((diff) => diff.status !== "unchanged");
+  const nodes = changedNodeIds(diffs);
+  const activeTriggers = new Set(nodes.map(triggerForNode).filter((value): value is string => Boolean(value)));
+  const impactRecords = baseline ? computeImpactRecords(bundle, nodes) : [];
+  const reviewGates = baseline ? gatesForReview(bundle, diffs, impactRecords) : [];
+  const addedRoutes = baseline ? compareStringSets(baseline.routes, current.routes).added : [];
+  const removedRoutes = baseline ? compareStringSets(baseline.routes, current.routes).removed : [];
+  const addedScreens = baseline ? compareStringSets(baseline.screens, current.screens).added : [];
+  const removedScreens = baseline ? compareStringSets(baseline.screens, current.screens).removed : [];
+  const addedComponents = baseline ? compareStringSets(baseline.components, current.components).added : [];
+  const removedComponents = baseline ? compareStringSets(baseline.components, current.components).removed : [];
+  const changed = diffs.filter((diff) => diff.status === "changed").length;
+  const added = diffs.filter((diff) => diff.status === "added").length;
+  const removed = diffs.filter((diff) => diff.status === "removed").length;
+  const unchanged = diffs.filter((diff) => diff.status === "unchanged").length;
+  return `
+    <div class="grid cols-3">
+      ${metric("Changed artifacts", changed + added + removed, changed + added + removed === 0 ? "success" : "warning")}
+      ${metric("Impacted artifacts", impactRecords.length, impactRecords.length === 0 ? "success" : "warning")}
+      ${metric("Review gates", reviewGates.length, reviewGates.length === 0 ? "success" : "warning")}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Baseline", `
+        <div class="snapshot-line">
+          <div>
+            <h3>${esc(baseline?.name ?? "No baseline captured")}</h3>
+            <div class="muted">${esc(baseline ? `${baseline.projectSlug} · score ${baseline.readinessScore} · ${baseline.artifacts.length} artifacts` : "Capture the active package or import a previous package folder.")}</div>
+          </div>
+          ${baseline ? badge(baseline.sourceHash.slice(0, 8) || "snapshot", "neutral") : badge("empty", "warning")}
+        </div>
+        <div class="control-row">
+          <button class="button primary" id="capture-baseline" type="button">Capture current</button>
+          <button class="button" id="import-baseline" type="button">Import baseline</button>
+          <button class="button" id="clear-baseline" type="button" ${baseline ? "" : "disabled"}>Clear baseline</button>
+          <input id="baseline-input" type="file" webkitdirectory multiple hidden />
+        </div>
+        ${state.impactMessage ? `<div class="notice">${esc(state.impactMessage)}</div>` : ""}
+      `)}
+      ${panel("Package Delta", baseline ? code({
+        baseline: {
+          name: baseline.name,
+          sourceHash: baseline.sourceHash,
+          readinessScore: baseline.readinessScore,
+          readyForFrontendAgent: baseline.readyForFrontendAgent,
+          warnings: baseline.warnings.length,
+          blockers: baseline.blockers.length
+        },
+        current: {
+          name: current.name,
+          sourceHash: current.sourceHash,
+          readinessScore: current.readinessScore,
+          readyForFrontendAgent: current.readyForFrontendAgent,
+          warnings: current.warnings.length,
+          blockers: current.blockers.length
+        },
+        routes: { added: addedRoutes, removed: removedRoutes },
+        screens: { added: addedScreens, removed: removedScreens },
+        components: { added: addedComponents, removed: removedComponents },
+        artifacts: { changed, added, removed, unchanged }
+      }) : `<div class="empty">No baseline selected.</div>`)}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Artifact Changes", baseline ? table(["Status", "Area", "Artifact", "Before", "After"], changedDiffs.slice(0, 120).map((diff) => [
+        badge(diff.status, diffTone(diff.status)),
+        esc(diff.group),
+        `<code>${esc(diff.path)}</code>`,
+        esc(formatBytes(diff.beforeBytes)),
+        esc(formatBytes(diff.afterBytes))
+      ])) : `<div class="empty">Capture or import a baseline to compare artifacts.</div>`)}
+      ${panel("Impact Chain", baseline ? table(["Type", "Source", "Artifact", "Depth"], impactRecords.slice(0, 120).map((record) => [
+        badge(record.type, record.type === "changed" ? "warning" : "neutral"),
+        esc(record.source),
+        esc(record.artifact),
+        esc(record.depth)
+      ])) : `<div class="empty">Impact analysis requires a baseline.</div>`)}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Revision Review Set", baseline ? table(["Gate", "State", "Required Artifacts"], reviewGates.map((gate: any) => {
+        const override = state.approvalOverrides[gate.id];
+        const approvalState = override?.state ?? gate.approval_state;
+        return [
+          esc(gate.label),
+          badge(approvalState, approvalState === "approved" ? "success" : approvalState === "blocked" ? "danger" : "warning"),
+          esc((gate.required_artifacts ?? []).join(", "))
+        ];
+      })) : `<div class="empty">No baseline selected.</div>`)}
+      ${panel("Invalidation Rules", baseline ? table(["Trigger", "Invalidates"], (bundle.revision.invalidationRules?.rules ?? [])
+        .filter((rule: any) => activeTriggers.has(rule.trigger))
+        .map((rule: any) => [
+          esc(rule.trigger),
+          esc((rule.invalidates ?? []).join(", "))
+        ])) : `<div class="empty">No invalidation rules evaluated.</div>`)}
+    </div>
+  `;
+}
+
 function renderRevision(bundle: Bundle): string {
   const gates = bundle.revision.approvalGates?.gates ?? [];
   return `
@@ -500,6 +861,8 @@ function renderContent(bundle: Bundle): string {
       return renderContract(bundle);
     case "simulation":
       return renderSimulation(bundle);
+    case "impact":
+      return renderImpact(bundle);
     case "revision":
       return renderRevision(bundle);
   }
@@ -638,6 +1001,37 @@ function bindEvents(): void {
     saveApprovalOverrides();
     render();
   });
+  document.querySelector<HTMLButtonElement>("#capture-baseline")?.addEventListener("click", () => {
+    if (!state.bundle) return;
+    state.baselineSnapshot = currentSnapshot(state.bundle);
+    state.baselineName = state.baselineSnapshot.name;
+    state.impactMessage = `Captured ${state.baselineSnapshot.artifacts.length} artifact digests.`;
+    saveBaselineSnapshot();
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#import-baseline")?.addEventListener("click", () => {
+    document.querySelector<HTMLInputElement>("#baseline-input")?.click();
+  });
+  document.querySelector<HTMLButtonElement>("#clear-baseline")?.addEventListener("click", () => {
+    state.baselineSnapshot = null;
+    state.baselineName = "";
+    state.impactMessage = "Baseline cleared.";
+    saveBaselineSnapshot();
+    render();
+  });
+  document.querySelector<HTMLInputElement>("#baseline-input")?.addEventListener("change", async (event) => {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const baselineBundle = await bundleFromFiles([...input.files]);
+      const packageName = input.files[0]?.webkitRelativePath?.split("/")[0] || "baseline-package";
+      state.baselineSnapshot = snapshotFromBundle(baselineBundle, packageName);
+      state.baselineName = packageName;
+      state.impactMessage = `Imported baseline with ${state.baselineSnapshot.artifacts.length} artifact digests.`;
+      saveBaselineSnapshot();
+      input.value = "";
+      render();
+    }
+  });
   document.querySelector<HTMLButtonElement>("#load-sample")?.addEventListener("click", () => loadSample());
   document.querySelector<HTMLButtonElement>("#import-folder")?.addEventListener("click", () => {
     document.querySelector<HTMLInputElement>("#folder-input")?.click();
@@ -653,6 +1047,7 @@ function bindEvents(): void {
       state.generationMessage = "";
       state.activeGateNote = "";
       loadApprovalOverrides();
+      loadBaselineSnapshot();
       render();
     }
   });
@@ -667,6 +1062,7 @@ async function loadSample(): Promise<void> {
   state.generationDraft = "";
   state.generationMessage = "";
   state.activeGateNote = "";
+  loadBaselineSnapshot();
   render();
 }
 
@@ -687,8 +1083,46 @@ function saveApprovalOverrides(): void {
   localStorage.setItem(approvalStorageKey(), JSON.stringify(state.approvalOverrides));
 }
 
+function baselineStorageKey(): string {
+  const slug = state.bundle?.manifest.project_slug ?? state.packageName;
+  return `archetype:baseline:${slug}`;
+}
+
+function loadBaselineSnapshot(): void {
+  try {
+    state.baselineSnapshot = JSON.parse(localStorage.getItem(baselineStorageKey()) ?? "null");
+    state.baselineName = state.baselineSnapshot?.name ?? "";
+    state.impactMessage = "";
+  } catch {
+    state.baselineSnapshot = null;
+    state.baselineName = "";
+  }
+}
+
+function saveBaselineSnapshot(): void {
+  if (!state.baselineSnapshot) {
+    localStorage.removeItem(baselineStorageKey());
+    return;
+  }
+  localStorage.setItem(baselineStorageKey(), JSON.stringify(state.baselineSnapshot));
+}
+
 async function readFile(file: File): Promise<string> {
   return file.text();
+}
+
+async function hashFile(file: File): Promise<string> {
+  if (!crypto.subtle) {
+    const text = await file.text();
+    let hash = 2166136261;
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return `fnv-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+  }
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function bundleFromFiles(files: File[]): Promise<Bundle> {
@@ -712,8 +1146,15 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
     name: path.split("/").pop()?.replace(".yaml", "") ?? path,
     content: await readFile(file)
   })));
+  const artifacts = await Promise.all([...byPath.entries()].map(async ([path, file]) => ({
+    path,
+    hash: await hashFile(file),
+    bytes: file.size,
+    kind: artifactKind(path)
+  })));
   return {
     generatedAt: new Date().toISOString(),
+    artifacts: artifacts.sort((a, b) => a.path.localeCompare(b.path)),
     manifest: await getJson("00-manifest/manifest.json"),
     readiness: await getJson("00-manifest/implementation-readiness.json"),
     schemaValidation: await getJson("00-manifest/schema-validation-report.json"),

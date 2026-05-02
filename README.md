@@ -27,6 +27,7 @@ Implemented:
 - Browser workbench for package review.
 - Workbench generation draft controls.
 - Workbench approval gate controls.
+- Workbench artifact diff and revision impact review.
 
 ## Run
 
@@ -78,7 +79,7 @@ Run the browser workbench:
 npm run workbench:dev
 ```
 
-The workbench can review generated packages, import an exported package folder, prepare an intake JSON draft, copy a matching CLI command, and track local approval gate decisions.
+The workbench can review generated packages, import an exported package folder, prepare an intake JSON draft, copy a matching CLI command, track local approval gate decisions, and compare package baselines for revision impact.
 
 Run all checks:
 
@@ -114,4 +115,4 @@ node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archety
 
 ## Next Implementation Target
 
-The next pass should add workbench artifact diffing and revision impact review.
+The next pass should add a workbench export center and package handoff flow.

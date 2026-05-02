@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -22,13 +23,34 @@ function walk(dir, base = dir) {
   return files.sort();
 }
 
+function artifactKind(filePath) {
+  if (filePath.endsWith(".json")) return "json";
+  if (filePath.endsWith(".yaml") || filePath.endsWith(".yml")) return "yaml";
+  if (filePath.endsWith(".md")) return "markdown";
+  if (filePath.endsWith(".css")) return "css";
+  if (filePath.endsWith(".ts")) return "typescript";
+  return "text";
+}
+
+function artifactDigest(filePath) {
+  const buffer = readFileSync(path.join(inputDir, filePath));
+  return {
+    path: filePath,
+    hash: createHash("sha256").update(buffer).digest("hex"),
+    bytes: buffer.byteLength,
+    kind: artifactKind(filePath)
+  };
+}
+
 if (!existsSync(inputDir)) {
   throw new Error(`Package output not found: ${inputDir}`);
 }
 
+const artifactFiles = walk(inputDir);
 const screenFiles = walk(path.join(inputDir, "05-screen-specs")).filter((file) => file.endsWith(".yaml"));
 const bundle = {
   generatedAt: new Date().toISOString(),
+  artifacts: artifactFiles.map(artifactDigest),
   manifest: readJson("00-manifest/manifest.json"),
   readiness: readJson("00-manifest/implementation-readiness.json"),
   schemaValidation: readJson("00-manifest/schema-validation-report.json"),
