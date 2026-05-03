@@ -148,6 +148,16 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Target Frontend Codegen Tasks",
       ["task_version", "tasks", "blockers", "warnings"]
     ),
+    "e2e-scenarios.schema.json": objectSchema(
+      "e2e-scenarios.schema.json",
+      "E2E Scenario Catalog",
+      ["catalog_version", "scenario_count", "scenarios", "coverage", "evidence_refs"]
+    ),
+    "e2e-results.schema.json": objectSchema(
+      "e2e-results.schema.json",
+      "E2E Scenario Results",
+      ["result_version", "summary", "results", "revealed_faults", "fix_plan"]
+    ),
     "frontend-build-manifest.schema.json": objectSchema(
       "frontend-build-manifest.schema.json",
       "Frontend Build Manifest",
@@ -194,6 +204,8 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "12-target-frontend/source-file-manifest.json", schema_file: "source-file-manifest.schema.json", description: "Deterministic target frontend source file manifest." },
       { artifact: "12-target-frontend/route-component-map.json", schema_file: "route-component-map.schema.json", description: "Target route, screen, component, pattern, data, action, and test selector map." },
       { artifact: "12-target-frontend/codegen-tasks.json", schema_file: "codegen-tasks.schema.json", description: "Ordered downstream frontend code-generation tasks." },
+      { artifact: "13-e2e/e2e-scenarios.json", schema_file: "e2e-scenarios.schema.json", description: "One hundred happy-path and edge-case E2E scenarios." },
+      { artifact: "13-e2e/e2e-results.json", schema_file: "e2e-results.schema.json", description: "E2E scenario results, revealed faults, and fix plan." },
       { artifact: "06-frontend-agent-contract/build-manifest.json", schema_file: "frontend-build-manifest.schema.json", description: "Frontend build manifest schema." },
       { artifact: "03-experience-architecture/dsag.json", schema_file: "dsag.schema.json", description: "DSAG graph schema." },
       { artifact: "00-manifest/implementation-readiness.json", schema_file: "readiness-report.schema.json", description: "Readiness report schema." }

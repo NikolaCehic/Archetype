@@ -84,6 +84,9 @@ const bundle = {
   codegenTasks: readJson("12-target-frontend/codegen-tasks.json"),
   adapterInterfaceSource: readText("12-target-frontend/adapter-interfaces.ts"),
   sourceGenerationRunbook: readText("12-target-frontend/source-generation-runbook.md"),
+  e2eScenarios: readJson("13-e2e/e2e-scenarios.json"),
+  e2eResults: readJson("13-e2e/e2e-results.json"),
+  e2eFindings: readText("13-e2e/e2e-findings.md"),
   acceptanceCriteria: readJson("06-frontend-agent-contract/acceptance-criteria.json"),
   buildSimulation: {
     buildPlan: readJson("11-build-simulation/build-plan.json"),

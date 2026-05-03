@@ -11,6 +11,7 @@ type ViewId =
   | "design"
   | "contract"
   | "simulation"
+  | "e2e"
   | "impact"
   | "export"
   | "governance"
@@ -171,6 +172,9 @@ interface Bundle {
   codegenTasks: Record<string, any>;
   adapterInterfaceSource: string;
   sourceGenerationRunbook: string;
+  e2eScenarios: Record<string, any>;
+  e2eResults: Record<string, any>;
+  e2eFindings: string;
   acceptanceCriteria: { criteria: Array<Record<string, any>> };
   buildSimulation: Record<string, any>;
   revision: Record<string, any>;
@@ -302,6 +306,7 @@ const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => numbe
   { id: "design", label: "Design System", count: (bundle) => bundle.componentRegistry.components.length },
   { id: "contract", label: "Frontend Contract", count: (bundle) => bundle.buildManifest.entry_routes?.length ?? 0 },
   { id: "simulation", label: "Simulation", count: (bundle) => bundle.buildSimulation.routeSimulation?.routes?.length ?? 0 },
+  { id: "e2e", label: "E2E", count: (bundle) => bundle.e2eResults.summary?.total ?? 0 },
   { id: "impact", label: "Impact", count: () => state.baselineSnapshot ? "diff" : "base" },
   { id: "export", label: "Export", count: (bundle) => bundle.readiness.readyForFrontendAgent ? "ready" : "hold" },
   { id: "governance", label: "Governance", count: () => governanceActionQueue().length },
@@ -1542,6 +1547,7 @@ function artifactArea(filePath: string): { group: string; nodeId: string | null 
   if (filePath.startsWith("06-frontend-agent-contract/production-integration")) return { group: "Production Integration", nodeId: "productionIntegrationContracts" };
   if (filePath.startsWith("06-frontend-agent-contract/")) return { group: "Frontend Contract", nodeId: "frontendContract" };
   if (filePath.startsWith("12-target-frontend/")) return { group: "Target Frontend", nodeId: "targetFrontend" };
+  if (filePath.startsWith("13-e2e/")) return { group: "E2E", nodeId: "e2e" };
   if (filePath === "00-manifest/implementation-readiness.json" || filePath.startsWith("08-quality/")) return { group: "Readiness", nodeId: "readiness" };
   if (filePath.startsWith("10-revision/")) return { group: "Revision", nodeId: "revision" };
   if (filePath.startsWith("11-build-simulation/")) return { group: "Build Simulation", nodeId: "frontendContract" };
@@ -1639,6 +1645,7 @@ function triggerForNode(nodeId: string): string | null {
     dataContracts: "data_contract_changed",
     productionIntegrationContracts: "production_integration_changed",
     targetFrontend: "production_integration_changed",
+    e2e: "production_integration_changed",
     designSystem: "accessibility_rule_changed"
   };
   return triggers[nodeId] ?? null;
@@ -1766,6 +1773,9 @@ function requiredHandoffArtifacts(bundle: Bundle): Array<{ path: string; label: 
     ["12-target-frontend/codegen-tasks.json", "Codegen tasks"],
     ["12-target-frontend/adapter-interfaces.ts", "Adapter interfaces"],
     ["12-target-frontend/source-generation-runbook.md", "Source generation runbook"],
+    ["13-e2e/e2e-scenarios.json", "E2E scenarios"],
+    ["13-e2e/e2e-results.json", "E2E results"],
+    ["13-e2e/e2e-findings.md", "E2E findings"],
     ["03-experience-architecture/dsag.json", "DSAG graph"],
     ["08-quality/export-readiness-checklist.md", "Export readiness checklist"],
     ["11-build-simulation/frontend-build-simulation-report.md", "Build simulation report"]
@@ -2012,6 +2022,11 @@ function handoffJson(bundle: Bundle): Record<string, unknown> {
     buildSimulationTriage: state.simulationTriageOverrides,
     revisionRequests: state.revisionRequests,
     productionIntegration: bundle.productionIntegrationContracts,
+    e2e: {
+      scenarios: bundle.e2eScenarios,
+      results: bundle.e2eResults,
+      findings: bundle.e2eFindings
+    },
     targetFrontend: {
       sourceFileManifest: bundle.sourceFileManifest,
       routeComponentMap: bundle.routeComponentMap,
@@ -2692,6 +2707,58 @@ function renderSimulation(bundle: Bundle): string {
   `;
 }
 
+function renderE2E(bundle: Bundle): string {
+  const summary = bundle.e2eResults.summary ?? {};
+  const results = bundle.e2eResults.results ?? [];
+  const faults = bundle.e2eResults.revealed_faults ?? [];
+  const fixPlan = bundle.e2eResults.fix_plan ?? [];
+  const coverage = bundle.e2eScenarios.coverage ?? [];
+  const failing = results.filter((item: any) => item.status === "fail");
+  const warning = results.filter((item: any) => item.status === "warning");
+  return `
+    <div class="grid cols-3">
+      ${metric("Scenarios", summary.total ?? results.length, (summary.total ?? results.length) === 100 ? "success" : "danger")}
+      ${metric("Pass", summary.pass ?? 0, "success")}
+      ${metric("Warnings", summary.warning ?? warning.length, warning.length ? "warning" : "success")}
+    </div>
+    <div class="grid cols-3" style="margin-top:14px">
+      ${metric("Failures", summary.fail ?? failing.length, failing.length ? "danger" : "success")}
+      ${metric("Happy paths", summary.happy_path ?? 0)}
+      ${metric("Edge cases", summary.edge_case ?? 0)}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("What Is Wrong", faults.length ? table(["Fault"], faults.map((fault: string) => [esc(fault)])) : `<div class="empty">No current faults exposed by the E2E pass.</div>`)}
+      ${panel("How To Fix It", fixPlan.length ? table(["Fix"], fixPlan.map((fix: string) => [esc(fix)])) : `<div class="empty">No fix plan required.</div>`)}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Coverage", table(["Area", "Scenarios", "Happy", "Edge"], coverage.map((area: any) => [
+        esc(area.area),
+        esc(area.scenarios),
+        esc(area.happy_path),
+        esc(area.edge_case)
+      ])))}
+      ${panel("Warnings By Scenario", warning.length ? table(["Scenario", "Area", "Fault", "Fix"], warning.map((item: any) => [
+        `<code>${esc(item.scenario_id)}</code> ${esc(item.title)}`,
+        esc(item.area),
+        esc(item.revealed_fault ?? "none"),
+        esc(item.fix_hint ?? "none")
+      ])) : `<div class="empty">No warning scenarios.</div>`)}
+    </div>
+    <div style="margin-top:14px">
+      ${panel("All 100 Scenarios", table(["Status", "Scenario", "Area", "Type", "Result"], results.map((item: any) => [
+        badge(item.status, statusTone(item.status)),
+        `<code>${esc(item.scenario_id)}</code> ${esc(item.title)}`,
+        esc(item.area),
+        esc(item.type),
+        esc(item.result)
+      ])))}
+    </div>
+    <div style="margin-top:14px">
+      ${panel("E2E Findings Report", code(bundle.e2eFindings))}
+    </div>
+  `;
+}
+
 function renderImpact(bundle: Bundle): string {
   const current = currentSnapshot(bundle);
   const baseline = state.baselineSnapshot;
@@ -2979,6 +3046,8 @@ function renderContent(bundle: Bundle): string {
       return renderContract(bundle);
     case "simulation":
       return renderSimulation(bundle);
+    case "e2e":
+      return renderE2E(bundle);
     case "impact":
       return renderImpact(bundle);
     case "export":
@@ -4331,6 +4400,9 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
     codegenTasks: await getJson("12-target-frontend/codegen-tasks.json"),
     adapterInterfaceSource: await getText("12-target-frontend/adapter-interfaces.ts"),
     sourceGenerationRunbook: await getText("12-target-frontend/source-generation-runbook.md"),
+    e2eScenarios: await getJson("13-e2e/e2e-scenarios.json"),
+    e2eResults: await getJson("13-e2e/e2e-results.json"),
+    e2eFindings: await getText("13-e2e/e2e-findings.md"),
     acceptanceCriteria: await getJson("06-frontend-agent-contract/acceptance-criteria.json"),
     buildSimulation: {
       buildPlan: await getJson("11-build-simulation/build-plan.json"),

@@ -2,6 +2,7 @@ import type {
   ArchetypePackage,
   DesignSystemArtifacts,
   DSAGGraph,
+  E2EScenarioArtifacts,
   EvidenceLedger,
   ExperienceArtifacts,
   FrontendBuildSimulationArtifacts,
@@ -32,6 +33,7 @@ interface QualityInput {
   revision: RevisionArtifacts;
   buildSimulation: FrontendBuildSimulationArtifacts;
   targetFrontend: TargetFrontendArtifacts;
+  e2e: E2EScenarioArtifacts;
 }
 
 function check(id: string, condition: boolean, details: string, warning = false): ValidationReport["checks"][number] {
@@ -98,6 +100,8 @@ function buildSpecCoverageAudit(input: QualityInput, readiness: ReadinessReport)
   };
   const routeComponentMap = input.targetFrontend.routeComponentMap as { routes?: unknown[]; blockers?: string[] };
   const codegenTasks = input.targetFrontend.codegenTasks as { tasks?: unknown[]; blockers?: string[] };
+  const e2eScenarios = input.e2e.scenarioCatalog as { scenario_count?: number; scenarios?: unknown[] };
+  const e2eResults = input.e2e.scenarioResults as { summary?: { total?: number; fail?: number; warning?: number; pass?: number }; results?: unknown[] };
   const coverage = [
     coverageItem("evidence", "Evidence and source normalization", input.evidence.sources.length > 0 && input.ingestion.normalizedSources.length > 0, ["01-evidence/evidence-ledger.json", "01-evidence/source-analysis-report.json"], "Evidence Ledger and normalized source analysis exist."),
     coverageItem("visual_evidence", "Visual evidence extraction", input.ingestion.visualEvidence.source_count > 0 || input.ingestion.normalizedSources.every((source) => !["image_reference", "screenshot", "design_file"].includes(source.source_type)), ["01-evidence/visual-evidence-extraction.json"], "Visual sources are converted into abstract design signals when present."),
@@ -110,6 +114,7 @@ function buildSpecCoverageAudit(input: QualityInput, readiness: ReadinessReport)
     coverageItem("verification", "Implementation verification", (verificationContracts.coverage?.test_count ?? 0) > 0 && (verificationContracts.blockers ?? []).length === 0, ["06-frontend-agent-contract/verification-contracts.json"], "Verification suites define downstream proof obligations."),
     coverageItem("production_integration_contract", "Production integration contract", (productionIntegrationContracts.backend_api?.endpoint_mappings?.length ?? 0) > 0 && (productionIntegrationContracts.authentication_authorization?.route_guards?.length ?? 0) > 0 && (productionIntegrationContracts.content_brand?.copy_surfaces?.length ?? 0) > 0 && (productionIntegrationContracts.human_review?.review_gates?.length ?? 0) > 0 && (productionIntegrationContracts.target_stack_execution?.required_commands?.length ?? 0) > 0 && (productionIntegrationContracts.blockers ?? []).length === 0, ["06-frontend-agent-contract/production-integration-contracts.json", "06-frontend-agent-contract/production-integration-plan.md"], "Backend, auth, copy, review, and target-stack confirmation work is exported as explicit contracts."),
     coverageItem("target_frontend_source_manifest", "Target frontend source manifest", (sourceFileManifest.file_count ?? 0) > 0 && (sourceFileManifest.coverage?.routes ?? 0) === input.experience.screenSpecs.length && (routeComponentMap.routes?.length ?? 0) === input.experience.screenSpecs.length && (codegenTasks.tasks?.length ?? 0) > 0 && (sourceFileManifest.blockers ?? []).length === 0 && (routeComponentMap.blockers ?? []).length === 0 && (codegenTasks.blockers ?? []).length === 0, ["12-target-frontend/source-file-manifest.json", "12-target-frontend/route-component-map.json", "12-target-frontend/codegen-tasks.json", "12-target-frontend/adapter-interfaces.ts", "12-target-frontend/source-generation-runbook.md"], "Downstream frontend builders receive exact file paths, route/component mapping, adapter interfaces, and ordered generation tasks."),
+    coverageItem("e2e_scenarios", "E2E scenario coverage", e2eScenarios.scenario_count === 100 && e2eResults.summary?.total === 100 && (e2eResults.summary?.fail ?? 1) === 0, ["13-e2e/e2e-scenarios.json", "13-e2e/e2e-results.json", "13-e2e/e2e-findings.md"], "One hundred web-visible E2E scenarios evaluate happy paths and high-risk edge cases."),
     coverageItem("traceability", "DSAG traceability", input.dsag.integrity.status !== "fail", ["03-experience-architecture/dsag.json", "08-quality/dsag-integrity-report.md"], "DSAG connects evidence, product, UX, design system, contracts, and quality gates."),
     coverageItem("workbench", "Workbench review and handoff", input.referenceSurfaces.dashboard.length > 0 && input.revision.revisionProtocol.length > 0, ["07-reference-surfaces/*.md", "10-revision/revision-protocol.md"], "Workbench package includes review surfaces, governance, revision, simulation, and handoff artifacts."),
     coverageItem("production_backend", "Production backend/API confirmation", false, ["06-frontend-agent-contract/production-integration-contracts.json"], "Live backend API, auth provider, and production validation rules still require project-specific confirmation.", true),
@@ -240,6 +245,16 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     blockers?: string[];
     warnings?: string[];
   };
+  const e2eScenarios = input.e2e.scenarioCatalog as {
+    scenario_count?: number;
+    scenarios?: unknown[];
+  };
+  const e2eResults = input.e2e.scenarioResults as {
+    summary?: { total?: number; pass?: number; warning?: number; fail?: number; happy_path?: number; edge_case?: number };
+    results?: Array<{ status?: string }>;
+    revealed_faults?: unknown[];
+    fix_plan?: unknown[];
+  };
   const tokenContracts = input.designSystem.tokenContracts as {
     layers?: Record<string, unknown>;
     usage_map?: Record<string, unknown>;
@@ -322,6 +337,10 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   checks.push(check("target_frontend.codegen_tasks.present", (codegenTasks.tasks?.length ?? 0) >= 7, "Target frontend codegen tasks define the downstream build order."));
   checks.push(check("target_frontend.adapter_interfaces.present", input.targetFrontend.adapterInterfaceSource.includes("ArchetypeDataAdapter") && input.targetFrontend.adapterInterfaceSource.includes("ArchetypeAuthAdapter"), "Target frontend adapter interface source declares data and auth adapters."));
   checks.push(check("target_frontend.no_blockers", (sourceFileManifest.blockers ?? []).length === 0 && (routeComponentMap.blockers ?? []).length === 0 && (codegenTasks.blockers ?? []).length === 0, "Target frontend source artifacts have no blockers."));
+  checks.push(check("e2e.scenarios.count", e2eScenarios.scenario_count === 100 && (e2eScenarios.scenarios?.length ?? 0) === 100, "E2E catalog contains exactly 100 scenarios."));
+  checks.push(check("e2e.results.count", e2eResults.summary?.total === 100 && (e2eResults.results?.length ?? 0) === 100, "E2E results cover exactly 100 scenarios."));
+  checks.push(check("e2e.results.no_failures", (e2eResults.summary?.fail ?? 0) === 0, "E2E results have no failing scenarios."));
+  checks.push(check("e2e.results.revealed_faults", (e2eResults.revealed_faults?.length ?? 0) > 0, "E2E results reveal current faults and fix hints."));
   checks.push(check("accessibility.rules.present", Object.keys(input.designSystem.accessibilityRules).length > 0, "Accessibility rules exist."));
   checks.push(check("tokens.contracts.present", Object.keys(tokenContracts.layers ?? {}).length >= 4, "Token contracts declare primitive, semantic, component, and typography layers."));
   checks.push(check("tokens.contracts.no_blockers", (tokenContracts.blockers ?? []).length === 0, "Token contracts have no blockers."));
@@ -373,6 +392,8 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   validateRequiredFields(checks, "source-file-manifest.schema.json", input.schemas.schemas["source-file-manifest.schema.json"], input.targetFrontend.sourceFileManifest, "source-file-manifest");
   validateRequiredFields(checks, "route-component-map.schema.json", input.schemas.schemas["route-component-map.schema.json"], input.targetFrontend.routeComponentMap, "route-component-map");
   validateRequiredFields(checks, "codegen-tasks.schema.json", input.schemas.schemas["codegen-tasks.schema.json"], input.targetFrontend.codegenTasks, "codegen-tasks");
+  validateRequiredFields(checks, "e2e-scenarios.schema.json", input.schemas.schemas["e2e-scenarios.schema.json"], input.e2e.scenarioCatalog, "e2e-scenarios");
+  validateRequiredFields(checks, "e2e-results.schema.json", input.schemas.schemas["e2e-results.schema.json"], input.e2e.scenarioResults, "e2e-results");
   validateRequiredFields(checks, "dsag.schema.json", input.schemas.schemas["dsag.schema.json"], input.dsag as unknown as Record<string, unknown>, "dsag");
   for (const screen of input.experience.screenSpecs) {
     validateRequiredFields(checks, "screen-spec.schema.json", input.schemas.schemas["screen-spec.schema.json"], screen as unknown as Record<string, unknown>, `screen-spec.${screen.screen_id}`);
@@ -448,6 +469,9 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   warnings.push(...((sourceFileManifest.warnings ?? []).map((warning) => `Target frontend source manifest: ${warning}`)));
   warnings.push(...((routeComponentMap.warnings ?? []).map((warning) => `Target frontend route map: ${warning}`)));
   warnings.push(...((codegenTasks.warnings ?? []).map((warning) => `Target frontend codegen tasks: ${warning}`)));
+  if ((e2eResults.summary?.warning ?? 0) > 0) {
+    warnings.push(`E2E scenarios: ${e2eResults.summary?.warning ?? 0} warning scenarios reveal remaining production and runtime proof gaps.`);
+  }
   warnings.push(...((tokenContracts.warnings ?? []).map((warning) => `Token contracts: ${warning}`)));
   warnings.push(...((typographySystem.warnings ?? []).map((warning) => `Typography system: ${warning}`)));
   warnings.push(...input.ingestion.safetyFindings.filter((finding) => finding.severity !== "blocker").map((finding) => `Safety ${finding.severity}: ${finding.finding} (${finding.source_id})`));
@@ -533,6 +557,8 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
       `Production review gates: ${productionIntegrationContracts.human_review?.review_gates?.length ?? 0}`,
       `Target frontend source files: ${sourceFileManifest.file_count ?? 0}`,
       `Target frontend codegen tasks: ${codegenTasks.tasks?.length ?? 0}`,
+      `E2E scenarios: ${e2eResults.summary?.total ?? 0}`,
+      `E2E warnings: ${e2eResults.summary?.warning ?? 0}`,
       `Token contract layers: ${Object.keys(tokenContracts.layers ?? {}).length}`,
       `Typography roles: ${Object.keys(typographySystem.type_roles ?? {}).length}`,
       `DSAG nodes: ${input.dsag.nodes.length}`,

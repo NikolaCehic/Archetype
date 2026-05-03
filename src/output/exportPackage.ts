@@ -218,6 +218,10 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeText(outDir, "12-target-frontend/adapter-interfaces.ts", pkg.targetFrontend.adapterInterfaceSource);
   writeText(outDir, "12-target-frontend/source-generation-runbook.md", pkg.targetFrontend.sourceGenerationRunbook);
 
+  writeJson(outDir, "13-e2e/e2e-scenarios.json", pkg.e2e.scenarioCatalog);
+  writeJson(outDir, "13-e2e/e2e-results.json", pkg.e2e.scenarioResults);
+  writeText(outDir, "13-e2e/e2e-findings.md", pkg.e2e.findingsReport);
+
   writeText(outDir, "08-quality/consistency-report.md", pkg.quality.consistencyReport);
   writeText(outDir, "08-quality/accessibility-report.md", pkg.quality.accessibilityReport);
   writeText(outDir, "08-quality/safety-report.md", pkg.ingestion.safetyReport);

@@ -484,6 +484,12 @@ export interface TargetFrontendArtifacts {
   sourceGenerationRunbook: string;
 }
 
+export interface E2EScenarioArtifacts {
+  scenarioCatalog: Record<string, unknown>;
+  scenarioResults: Record<string, unknown>;
+  findingsReport: string;
+}
+
 export interface ValidationReport {
   status: "pass" | "warning" | "fail";
   checks: Array<{
@@ -550,5 +556,6 @@ export interface ArchetypePackage {
   revision: RevisionArtifacts;
   buildSimulation: FrontendBuildSimulationArtifacts;
   targetFrontend: TargetFrontendArtifacts;
+  e2e: E2EScenarioArtifacts;
   quality: QualityArtifacts;
 }

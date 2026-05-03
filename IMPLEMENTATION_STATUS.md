@@ -1622,3 +1622,37 @@ Verification:
 Next phase:
 
 - Add target frontend source execution/typecheck with installed dependencies, or build backend/auth adapter import workflow.
+
+## Completed Phase: E2E Scenario Coverage and Findings
+
+Status: complete
+
+Implemented:
+
+- Added a 100-scenario E2E catalog covering intake, evidence, product model, UX architecture, design system, frontend contracts, production integration, target frontend source generation, quality traceability, workbench/revision, security, accessibility, and compliance.
+- Added deterministic scenario evaluation with pass, warning, and fail statuses.
+- Added E2E results with revealed faults and fix hints.
+- Added `13-e2e/e2e-scenarios.json`.
+- Added `13-e2e/e2e-results.json`.
+- Added `13-e2e/e2e-findings.md`.
+- Added E2E schemas at `09-schemas/e2e-scenarios.schema.json` and `09-schemas/e2e-results.schema.json`.
+- Wired E2E artifacts into manifest indexing, package export, quality validation, spec coverage audit, readiness warnings, workbench import, workbench export handoff, and a dedicated Workbench E2E view.
+- The E2E pass now reveals the current product faults directly: backend/API confirmation, auth provider confirmation, production copy approval, backend validation alignment, target-stack execution proof, non-default state runtime proof, richer component implementation, browser visual regression proof, fixture adapter replacement, and human accessibility/compliance review.
+
+Verification:
+
+- `npm run build` passes.
+- `npm run smoke` passes.
+- `npm run check` passes.
+- Workbench production build passes.
+- E2E scenarios: 100.
+- E2E results: 87 pass, 13 warning, 0 fail.
+- Spec coverage: 14 pass, 2 warning, 0 fail.
+- Package validation blockers: 0.
+- Manifest-listed files generated: 163.
+- Workbench sample bundle includes E2E scenario and result artifacts.
+- Workbench dev server responds at `http://127.0.0.1:4173/`.
+
+Next phase:
+
+- Execute generated target frontend source in its real stack, then replace fixture adapters with confirmed backend and auth adapters.
