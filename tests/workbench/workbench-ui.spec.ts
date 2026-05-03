@@ -224,10 +224,57 @@ test("generation progress runs compiler phases and exposes created artifacts", a
 
   await page.locator("#run-all-generation-phases").click();
   await expect(page.getByText(/Generation completed/).first()).toBeVisible();
-  await expect(page.getByText("Phase 5 will graduate this into Launch Review.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open Launch Review" })).toBeVisible();
   await expect(page.getByText("10/10")).toBeVisible();
   await expect(page.locator("[data-start-generation-phase='prepare-launch-review']")).toContainText("00-launch-review/launch-review-brief.md");
   await expect(page.locator("#run-next-generation-phase")).toBeDisabled();
+});
+
+test("generation progress graduates to Launch Review and completes onboarding", async ({ page }) => {
+  await completeProviderSetupAndStartGeneration(page);
+  await page.locator("#run-all-generation-phases").click();
+  await page.locator("#open-generated-launch-review").click();
+
+  await expect(page.locator("[data-agent-landmark='launch-review']")).toBeVisible();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-current-view", "overview");
+  await expect(page.locator("[data-agent-section='launch-review-answers']")).toContainText("Is this package ready for frontend agent?");
+  await expect(page.locator("[data-agent-section='launch-review-answers']")).toContainText("What is trusted?");
+  await expect(page.locator("[data-agent-section='launch-review-answers']")).toContainText("What is missing?");
+  await expect(page.locator("[data-agent-section='launch-review-answers']")).toContainText("What needs human review?");
+  await expect(page.locator("[data-agent-section='launch-review-answers']")).toContainText("What can be exported?");
+  await expect(page.locator("[data-onboarding-hint-id]")).toHaveCount(4);
+  await expect.poll(async () => page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("archetype:onboarding-state:v1") ?? "{}");
+    return Boolean(state.first_package_created && state.provider_connected && state.launch_review_completed);
+  })).toBe(true);
+
+  await page.locator("#save-launch-package").click();
+  await expect(page.getByRole("status").filter({ hasText: /Saved/i })).toBeVisible();
+  await page.locator("#reset-active-package").click();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "fresh-start");
+  await expect(page.locator(".eyebrow").filter({ hasText: "Returning Workspace" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Replay onboarding" }).first()).toBeVisible();
+});
+
+test("Launch Review callouts can be dismissed and onboarding can be replayed", async ({ page }) => {
+  await completeProviderSetupAndStartGeneration(page, { localMode: true });
+  await page.locator("#run-all-generation-phases").click();
+  await page.locator("#open-generated-launch-review").click();
+
+  await page.locator("[data-dismiss-onboarding-hint='launch-proof']").click();
+  await expect(page.locator("[data-onboarding-hint-id='launch-proof']")).toHaveCount(0);
+  await expect.poll(async () => page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("archetype:onboarding-state:v1") ?? "{}");
+    return Array.isArray(state.dismissed_contextual_hints) && state.dismissed_contextual_hints.includes("launch-proof");
+  })).toBe(true);
+
+  await page.locator("#replay-onboarding").click();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "fresh-start");
+  await expect(page.getByText("Onboarding replay started. Saved packages stay in the workspace.")).toBeVisible();
+  await expect.poll(async () => page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("archetype:onboarding-state:v1") ?? "{}");
+    return Boolean(state.launch_review_completed);
+  })).toBe(true);
 });
 
 test("generation progress supports warning repair, draft save, and key-safe logs", async ({ page }) => {
@@ -364,6 +411,10 @@ test("primary human workflow can save, validate, compose, and export without bre
   const handoffDownload = page.waitForEvent("download");
   await page.locator("#download-handoff-json").click();
   await expect((await handoffDownload).suggestedFilename()).toMatch(/handoff.*\.json$/);
+  await expect.poll(async () => page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("archetype:onboarding-state:v1") ?? "{}");
+    return Boolean(state.handoff_exported);
+  })).toBe(true);
   await page.locator("#copy-validate-command").click();
   await expect(page.getByText("Validation command copied.")).toBeVisible();
 });

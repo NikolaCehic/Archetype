@@ -29,6 +29,14 @@ type ProviderId = "openai" | "anthropic" | "google" | "local";
 type ProviderDiagnosticStatus = "pass" | "warning" | "fail";
 type StartGenerationRunStatus = "idle" | "running" | "blocked" | "complete";
 type StartGenerationPhaseStatus = "queued" | "running" | "pass" | "warning" | "blocked";
+type BundleActivationSource = "workspace" | "sample" | "import" | "generated" | "restore";
+type OnboardingStateFlag =
+  | "start_hub_seen"
+  | "first_package_created"
+  | "sample_explored"
+  | "provider_connected"
+  | "launch_review_completed"
+  | "handoff_exported";
 
 interface ArtifactDigest {
   path: string;
@@ -170,6 +178,17 @@ interface StartGenerationPhaseView extends StartGenerationPhaseDefinition {
   issue: string;
   action: string;
   repaired: boolean;
+}
+
+interface OnboardingLocalState {
+  start_hub_seen: boolean;
+  first_package_created: boolean;
+  sample_explored: boolean;
+  provider_connected: boolean;
+  launch_review_completed: boolean;
+  handoff_exported: boolean;
+  dismissed_contextual_hints: string[];
+  updated_at: string;
 }
 
 interface Bundle {
@@ -378,6 +397,7 @@ const views: Array<{ id: ViewId; label: string; group: ViewGroup; description: s
 ];
 
 const START_DRAFT_STORAGE_KEY = "archetype:start-draft:v1";
+const ONBOARDING_STATE_STORAGE_KEY = "archetype:onboarding-state:v1";
 const operatingModeOptions = ["fast_architecture", "full_architecture", "existing_product_audit", "contract_repair"];
 const sourceMaterialTypes: SourceMaterialDraft["type"][] = ["document", "code", "design_file", "screenshot", "brand", "other"];
 const providerOptions: Array<{ id: ProviderId; label: string; detail: string; keyHint: string }> = [
@@ -460,6 +480,19 @@ function blankStartGenerationRun(): StartGenerationRunState {
   };
 }
 
+function blankOnboardingState(): OnboardingLocalState {
+  return {
+    start_hub_seen: false,
+    first_package_created: false,
+    sample_explored: false,
+    provider_connected: false,
+    launch_review_completed: false,
+    handoff_exported: false,
+    dismissed_contextual_hints: [],
+    updated_at: ""
+  };
+}
+
 const state: {
   bundle: Bundle | null;
   view: ViewId;
@@ -507,6 +540,9 @@ const state: {
   workspaceCompareBaseId: string;
   workspaceCompareTargetId: string;
   workspaceComparison: SavedPackageComparison | null;
+  onboardingState: OnboardingLocalState;
+  launchReviewMessage: string;
+  replayingOnboarding: boolean;
   startMode: StartMode;
   startDraft: IntakeFormState;
   startSourceMaterials: SourceMaterialDraft[];
@@ -574,6 +610,9 @@ const state: {
   workspaceCompareBaseId: "",
   workspaceCompareTargetId: "",
   workspaceComparison: null,
+  onboardingState: blankOnboardingState(),
+  launchReviewMessage: "",
+  replayingOnboarding: false,
   startMode: "hub",
   startDraft: blankIntakeForm(),
   startSourceMaterials: [],
@@ -895,20 +934,153 @@ function workflowStep(index: number, step: ReturnType<typeof launchSteps>[number
   `;
 }
 
+function launchReviewAnswers(bundle: Bundle): Array<{ question: string; answer: string; tone: "success" | "warning" | "danger" | "neutral" }> {
+  const decision = readinessDecision(bundle);
+  const e2eSummary = bundle.e2eResults.summary ?? {};
+  const trusted = [
+    `${bundle.evidence.sources?.length ?? 0} evidence sources`,
+    `${bundle.routeMap.routes.length} routes`,
+    `${bundle.screenInventory.screens.length} screen specs`,
+    `DSAG ${humanLabel(bundle.dsag.integrity.status)}`,
+    `schema ${humanLabel(bundle.schemaValidation.status)}`
+  ];
+  const missing = [...bundle.readiness.blockers, ...bundle.readiness.warnings];
+  const exportable = [
+    "Frontend contract",
+    "Route and screen map",
+    "Design system contracts",
+    "E2E proof",
+    "Handoff prompt"
+  ];
+  return [
+    {
+      question: "Is this package ready for frontend agent?",
+      answer: `${decision.label}. ${decision.body}`,
+      tone: decision.tone
+    },
+    {
+      question: "What is trusted?",
+      answer: trusted.join(", "),
+      tone: bundle.schemaValidation.blockers.length || bundle.dsag.integrity.blockers?.length ? "warning" : "success"
+    },
+    {
+      question: "What is missing?",
+      answer: missing.length ? missing.slice(0, 4).join(" ") : "No blockers or readiness warnings are currently open.",
+      tone: bundle.readiness.blockers.length ? "danger" : bundle.readiness.warnings.length ? "warning" : "success"
+    },
+    {
+      question: "What needs human review?",
+      answer: bundle.readiness.requiredHumanReview.length
+        ? bundle.readiness.requiredHumanReview.slice(0, 5).join(" ")
+        : "No required human review items are open.",
+      tone: bundle.readiness.requiredHumanReview.length ? "warning" : "success"
+    },
+    {
+      question: "What can be exported?",
+      answer: `${exportable.join(", ")}. E2E proof shows ${e2eSummary.pass ?? 0}/${e2eSummary.total ?? 0} passing scenarios with ${e2eSummary.warning ?? 0} warnings.`,
+      tone: bundle.readiness.readyForFrontendAgent ? "success" : "warning"
+    }
+  ];
+}
+
+function renderLaunchReviewAnswers(bundle: Bundle): string {
+  return panel("Launch Review Answers", `
+    <div class="launch-answer-grid" data-agent-section="launch-review-answers">
+      ${launchReviewAnswers(bundle).map((item) => `
+        <div class="launch-answer" data-agent-launch-question="${esc(item.question)}">
+          ${badge(item.tone === "success" ? "answered" : item.tone === "danger" ? "blocked" : "review", item.tone)}
+          <strong>${esc(item.question)}</strong>
+          <span>${esc(item.answer)}</span>
+        </div>
+      `).join("")}
+    </div>
+  `);
+}
+
+function launchReviewCallouts(bundle: Bundle): Array<{ id: string; title: string; body: string; view: ViewId; action: string; tone: "success" | "warning" | "danger" | "neutral" }> {
+  const decision = readinessDecision(bundle);
+  const warningCount = bundle.readiness.blockers.length + bundle.readiness.warnings.length;
+  const e2eSummary = bundle.e2eResults.summary ?? {};
+  return [
+    {
+      id: "launch-readiness",
+      title: "Readiness decision",
+      body: `${decision.label}: ${decision.body}`,
+      view: "overview",
+      action: "Review readiness",
+      tone: decision.tone
+    },
+    {
+      id: "launch-warnings",
+      title: "Warnings and missing context",
+      body: warningCount
+        ? `${warningCount} item${warningCount === 1 ? "" : "s"} need review before production handoff.`
+        : "No readiness warnings are currently open.",
+      view: "revision",
+      action: "Review warnings",
+      tone: warningCount ? "warning" : "success"
+    },
+    {
+      id: "launch-proof",
+      title: "Proof coverage",
+      body: `E2E proof reports ${e2eSummary.pass ?? 0}/${e2eSummary.total ?? 0} passing scenarios and target status ${humanLabel(bundle.targetExecution.status ?? "pending")}.`,
+      view: "e2e",
+      action: "Inspect proof",
+      tone: (e2eSummary.fail ?? 0) ? "danger" : (e2eSummary.warning ?? 0) ? "warning" : "success"
+    },
+    {
+      id: "launch-handoff",
+      title: "Handoff export",
+      body: "The frontend contract, validation proof, and agent prompt can be exported from Handoff.",
+      view: "export",
+      action: "Open handoff",
+      tone: bundle.readiness.readyForFrontendAgent ? "success" : "warning"
+    }
+  ];
+}
+
+function renderLaunchReviewCallouts(bundle: Bundle): string {
+  if (!state.onboardingState.launch_review_completed) {
+    return state.launchReviewMessage ? `<div class="notice" role="status">${esc(state.launchReviewMessage)}</div>` : "";
+  }
+  const callouts = launchReviewCallouts(bundle).filter((callout) => !onboardingHintDismissed(callout.id));
+  if (!callouts.length && !state.launchReviewMessage) return "";
+  return panel("First Launch Review", `
+    ${state.launchReviewMessage ? `<div class="notice" role="status">${esc(state.launchReviewMessage)}</div>` : ""}
+    ${callouts.length ? `<div class="launch-callout-list">
+      ${callouts.map((callout) => `
+        <div class="launch-callout" data-onboarding-hint-id="${esc(callout.id)}" data-agent-landmark="${esc(callout.id)}">
+          <div>
+            ${badge(callout.title, callout.tone)}
+            <strong>${esc(callout.title)}</strong>
+            <span>${esc(callout.body)}</span>
+          </div>
+          <div class="launch-callout-actions">
+            ${actionButton(callout.action, callout.view, "button small", callout.action)}
+            <button class="button small subtle" data-dismiss-onboarding-hint="${esc(callout.id)}" type="button" aria-label="${esc(`Dismiss ${callout.title}`)}">Dismiss</button>
+          </div>
+        </div>
+      `).join("")}
+    </div>` : ""}
+  `);
+}
+
 function renderOverview(bundle: Bundle): string {
   const decision = readinessDecision(bundle);
   const warningGroups = warningBuckets(bundle);
   const e2eSummary = bundle.e2eResults.summary ?? {};
   return `
-    <section class="launch-hero panel" data-agent-section="launch-review">
+    <section class="launch-hero panel" data-agent-section="launch-review" data-agent-landmark="launch-review" data-agent-onboarding-complete="${state.onboardingState.launch_review_completed ? "true" : "false"}">
       <div class="launch-copy">
         <div class="eyebrow">Launch Decision</div>
         <h2>${esc(decision.label)}</h2>
         <p>${esc(decision.body)}</p>
         <div class="hero-actions">
-          ${actionButton("Review frontend contract", "contract", "button primary", "Open frontend contract")}
-          ${actionButton("Inspect E2E proof", "e2e", "button", "Open E2E proof")}
-          ${actionButton("Prepare handoff", "export", "button", "Open handoff export")}
+          <button class="button primary" id="save-launch-package" data-agent-action="save-package-to-workspace" type="button">Save package to workspace</button>
+          ${actionButton("Review frontend contract", "contract", "button", "Open frontend contract")}
+          ${actionButton("Review E2E proof", "e2e", "button", "Open E2E proof")}
+          ${actionButton("Export handoff", "export", "button", "Open handoff export")}
+          ${actionButton("Create revision request", "revision", "button subtle", "Create revision request")}
         </div>
       </div>
       <div class="launch-score" aria-label="Readiness score">
@@ -917,6 +1089,7 @@ function renderOverview(bundle: Bundle): string {
         ${badge(decision.label, decision.tone)}
       </div>
     </section>
+    ${renderLaunchReviewCallouts(bundle)}
     <div class="status-grid">
       ${statusSummary("Routes", bundle.routeMap.routes.length, bundle.routeMap.routes.length ? "success" : "danger", "Mapped")}
       ${statusSummary("Screens", bundle.screenInventory.screens.length, bundle.screenInventory.screens.length ? "success" : "danger", "Specified")}
@@ -924,6 +1097,9 @@ function renderOverview(bundle: Bundle): string {
       ${statusSummary("E2E", `${e2eSummary.pass ?? 0}/${e2eSummary.total ?? 0}`, (e2eSummary.fail ?? 0) ? "danger" : (e2eSummary.warning ?? 0) ? "warning" : "success", `${e2eSummary.warning ?? 0} warnings`)}
       ${statusSummary("Target build", bundle.targetExecution.status ?? "pending", statusTone(bundle.targetExecution.status), humanLabel(bundle.targetExecution.summary?.build ?? "pending"))}
       ${statusSummary("Warnings", bundle.readiness.warnings.length, bundle.readiness.warnings.length ? "warning" : "success", bundle.readiness.warnings.length ? "Review" : "Clear")}
+    </div>
+    <div class="section-gap">
+      ${renderLaunchReviewAnswers(bundle)}
     </div>
     <div class="grid cols-2 section-gap">
       ${panel("Guided Review Path", `
@@ -1905,6 +2081,7 @@ async function restoreWorkbenchState(payload: WorkbenchStateExport): Promise<voi
   state.packageName = payload.packageName || "restored-package";
   state.view = "workspace";
   state.startMode = "hub";
+  state.replayingOnboarding = false;
   state.startMessage = "";
   state.selectedScreen = null;
   state.screenFilter = "";
@@ -1928,6 +2105,7 @@ async function restoreWorkbenchState(payload: WorkbenchStateExport): Promise<voi
   state.baselineName = state.baselineSnapshot?.name ?? "";
   state.impactMessage = "";
   state.handoffMessage = "";
+  state.launchReviewMessage = "";
   state.intakeForm = payload.localState.intakeForm ?? null;
   state.sourceMaterials = payload.localState.sourceMaterials ?? [];
   state.sourceDraft = blankSourceDraft();
@@ -1968,29 +2146,43 @@ function resetPackageScopedState(): void {
   state.baselineName = "";
   state.impactMessage = "";
   state.handoffMessage = "";
+  state.launchReviewMessage = "";
   state.intakeForm = null;
   state.sourceMaterials = [];
   state.sourceDraft = blankSourceDraft();
   state.sourceMessage = "";
 }
 
-function enterFreshState(message = ""): void {
+function enterFreshState(message = "", replayingOnboarding = false): void {
   state.bundle = null;
   state.packageName = "No active package";
   state.view = "overview";
   state.startMode = "hub";
+  state.replayingOnboarding = replayingOnboarding;
   state.startMessage = message;
   state.workspaceMessage = "";
   resetPackageScopedState();
 }
 
-async function activateBundle(bundle: Bundle, packageName: string, view: ViewId = "overview"): Promise<void> {
+function replayOnboarding(): void {
+  clearStartDraftStorage();
+  state.onboardingState = {
+    ...state.onboardingState,
+    dismissed_contextual_hints: state.onboardingState.dismissed_contextual_hints.filter((id) => !id.startsWith("launch-"))
+  };
+  persistOnboardingState();
+  enterFreshState("Onboarding replay started. Saved packages stay in the workspace.", true);
+}
+
+async function activateBundle(bundle: Bundle, packageName: string, view: ViewId = "overview", source: BundleActivationSource = "workspace"): Promise<void> {
   state.bundle = bundle;
   state.packageName = packageName;
   state.view = view;
   state.startMode = "hub";
+  state.replayingOnboarding = false;
   state.startMessage = "";
   resetPackageScopedState();
+  state.launchReviewMessage = "";
   loadApprovalOverrides();
   loadCoverageOverrides();
   loadDesignReviewOverrides();
@@ -1999,6 +2191,12 @@ async function activateBundle(bundle: Bundle, packageName: string, view: ViewId 
   loadRevisionRequests();
   loadBaselineSnapshot();
   await refreshWorkspaceEntries();
+  if (view === "overview" && (source === "generated" || source === "import")) {
+    markOnboardingFlag("launch_review_completed");
+    state.launchReviewMessage = source === "generated"
+      ? "Launch Review reached from generation. The package is ready for readiness, proof, and handoff review."
+      : "Imported package opened in Launch Review. Review readiness, proof, and handoff before exporting.";
+  }
 }
 
 async function activateBundleFromFiles(files: FileList | File[]): Promise<void> {
@@ -2006,7 +2204,7 @@ async function activateBundleFromFiles(files: FileList | File[]): Promise<void> 
   if (!fileList.length) return;
   const bundle = await bundleFromFiles(fileList);
   const packageName = fileList[0]?.webkitRelativePath?.split("/")[0] || "imported-package";
-  await activateBundle(bundle, packageName);
+  await activateBundle(bundle, packageName, "overview", "import");
 }
 
 async function refreshWorkspaceEntries(): Promise<void> {
@@ -2780,6 +2978,64 @@ function normalizeStartGenerationRun(value: unknown): StartGenerationRunState {
   };
 }
 
+function normalizeOnboardingState(value: unknown): OnboardingLocalState {
+  const record = typeof value === "object" && value && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  const blank = blankOnboardingState();
+  const hints = Array.isArray(record.dismissed_contextual_hints)
+    ? record.dismissed_contextual_hints.map(String).filter(Boolean)
+    : Array.isArray(record.dismissedHints)
+      ? record.dismissedHints.map(String).filter(Boolean)
+      : [];
+  return {
+    start_hub_seen: Boolean(record.start_hub_seen ?? record.startHubSeen ?? blank.start_hub_seen),
+    first_package_created: Boolean(record.first_package_created ?? record.firstPackageCreated ?? blank.first_package_created),
+    sample_explored: Boolean(record.sample_explored ?? record.sampleExplored ?? blank.sample_explored),
+    provider_connected: Boolean(record.provider_connected ?? record.providerConnected ?? blank.provider_connected),
+    launch_review_completed: Boolean(record.launch_review_completed ?? record.launchReviewCompleted ?? blank.launch_review_completed),
+    handoff_exported: Boolean(record.handoff_exported ?? record.handoffExported ?? blank.handoff_exported),
+    dismissed_contextual_hints: [...new Set(hints)].slice(0, 80),
+    updated_at: typeof record.updated_at === "string" ? record.updated_at : typeof record.updatedAt === "string" ? record.updatedAt : ""
+  };
+}
+
+function loadOnboardingState(): void {
+  try {
+    state.onboardingState = normalizeOnboardingState(localStorage.getItem(ONBOARDING_STATE_STORAGE_KEY)
+      ? JSON.parse(localStorage.getItem(ONBOARDING_STATE_STORAGE_KEY) ?? "{}")
+      : {});
+  } catch {
+    state.onboardingState = blankOnboardingState();
+  }
+}
+
+function persistOnboardingState(): void {
+  try {
+    state.onboardingState.updated_at = new Date().toISOString();
+    localStorage.setItem(ONBOARDING_STATE_STORAGE_KEY, JSON.stringify(state.onboardingState));
+  } catch {
+    // Onboarding progress is helpful, but the Workbench remains usable without localStorage.
+  }
+}
+
+function markOnboardingFlag(flag: OnboardingStateFlag, value = true): void {
+  if (state.onboardingState[flag] === value) return;
+  state.onboardingState = { ...state.onboardingState, [flag]: value };
+  persistOnboardingState();
+}
+
+function dismissOnboardingHint(id: string): void {
+  if (!id) return;
+  state.onboardingState = {
+    ...state.onboardingState,
+    dismissed_contextual_hints: [...new Set([...state.onboardingState.dismissed_contextual_hints, id])]
+  };
+  persistOnboardingState();
+}
+
+function onboardingHintDismissed(id: string): boolean {
+  return state.onboardingState.dismissed_contextual_hints.includes(id);
+}
+
 function startDraftHasContent(): boolean {
   const draft = state.startDraft;
   return [draft.projectName, draft.context, draft.goals, draft.businessGoals, draft.users, draft.constraints, draft.preferredStack].some((value) => String(value).trim().length > 0)
@@ -3399,8 +3655,8 @@ function completeStartGenerationMessage(): string {
   const phases = generationPhaseViews();
   const warnings = phases.filter((phase) => phase.status === "warning").length;
   return warnings
-    ? `Generation completed with ${warnings} warning${warnings === 1 ? "" : "s"}. Launch Review graduation begins in Phase 5.`
-    : "Generation completed. Launch Review graduation begins in Phase 5.";
+    ? `Generation completed with ${warnings} warning${warnings === 1 ? "" : "s"}. Launch Review is ready.`
+    : "Generation completed. Launch Review is ready.";
 }
 
 function runNextStartGenerationPhase(): void {
@@ -3463,7 +3719,42 @@ function repairStartGenerationPhase(phaseId: string): void {
 
 function intakeFileName(value: Record<string, unknown>): string {
   const projectName = String(value.projectName ?? "custom-project");
-  return `${projectName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "custom-project"}-intake.json`;
+  return `${slugFromText(projectName, "custom-project")}-intake.json`;
+}
+
+function slugFromText(value: string, fallback = "archetype-project"): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || fallback;
+}
+
+function launchPackageName(): string {
+  return state.startDraft.projectName.trim() || "Generated Architecture Package";
+}
+
+function generatedBundleFromTemplate(template: Bundle): Bundle {
+  const now = new Date().toISOString();
+  const projectName = launchPackageName();
+  const slug = slugFromText(projectName, "generated-architecture-package");
+  const bundle = structuredClone(template) as Bundle;
+  bundle.generatedAt = now;
+  bundle.productModel = {
+    ...bundle.productModel,
+    product_name: projectName,
+    primary_goal: state.startDraft.goals.trim() || bundle.productModel.primary_goal
+  };
+  bundle.manifest = {
+    ...bundle.manifest,
+    package_id: `package_${slug}_${Date.now().toString(36)}`,
+    project_slug: slug,
+    generated_at: now,
+    operating_mode: state.startDraft.operatingMode,
+    source_hash: `onboarding-${slug}`
+  };
+  bundle.evidence = {
+    ...bundle.evidence,
+    onboarding_intake: intakeFromForm(state.startDraft, state.startSourceMaterials),
+    onboarding_generation_log: startGenerationLog()
+  };
+  return bundle;
 }
 
 function parseGenerationDraft(): { ok: true; value: Record<string, unknown> } | { ok: false; error: string } {
@@ -4390,6 +4681,32 @@ function renderRecentPackages(): string {
   ]));
 }
 
+function returningUserActive(): boolean {
+  return !state.replayingOnboarding && (state.onboardingState.launch_review_completed || state.workspaceEntries.some((entry) => !entry.archivedAt));
+}
+
+function renderReturningWorkspaceHealth(): string {
+  const health = workspaceHealthSnapshot(state.workspaceEntries);
+  return `
+    <div class="mini-metrics">
+      <div><strong>${esc(health.readyCount)}</strong><span>ready packages</span></div>
+      <div><strong>${esc(health.holdCount)}</strong><span>review gates</span></div>
+      <div><strong>${esc(health.highPriorityCount)}</strong><span>high priority</span></div>
+    </div>
+    <div class="workspace-health-list">
+      ${health.reviewQueue.slice(0, 3).map((entry) => `
+        <div class="workspace-health-item" data-agent-workspace-health="${esc(entry.id)}">
+          <div>
+            <strong>${esc(entry.name)}</strong>
+            <span>${esc(entry.signals.join(", ") || "No review signal")}</span>
+          </div>
+          ${badge(entry.archived ? "archived" : entry.readinessScore >= 90 ? "ready" : "review", entry.readinessScore >= 90 ? "success" : "warning")}
+        </div>
+      `).join("") || `<div class="empty">No unresolved workspace gates.</div>`}
+    </div>
+  `;
+}
+
 function startOnboardingState(): string {
   const states: Record<StartMode, string> = {
     hub: "fresh-start",
@@ -4865,7 +5182,15 @@ function renderStartGenerationProgressStep(): string {
           <button class="button primary" id="run-next-generation-phase" data-agent-action="run-next-generation-phase" type="button" ${state.startGenerationRun.status === "complete" ? "disabled" : ""}>Run next phase</button>
           <button class="button primary" id="run-all-generation-phases" data-agent-action="run-all-generation-phases" type="button" ${state.startGenerationRun.status === "complete" ? "disabled" : ""}>Run all phases</button>
         </div>
-        ${state.startGenerationRun.status === "complete" ? `<div class="notice" role="status">Generation progress is complete. Phase 5 will graduate this into Launch Review.</div>` : ""}
+        ${state.startGenerationRun.status === "complete" ? `
+          <div class="notice launch-graduation" role="status" data-agent-landmark="launch-review-graduation">
+            <div>
+              <strong>Generation complete.</strong>
+              <span>Open Launch Review to finish onboarding with readiness, trusted evidence, missing context, human review, and handoff actions.</span>
+            </div>
+            <button class="button primary" id="open-generated-launch-review" data-agent-action="open-launch-review" type="button">Open Launch Review</button>
+          </div>
+        ` : ""}
       `)}
       ${panel("Current Phase", renderCurrentGenerationPhase(activePhase))}
     </div>
@@ -4945,30 +5270,40 @@ function renderStartDraft(): string {
 }
 
 function renderStartHub(): string {
+  if (state.startMode === "hub") markOnboardingFlag("start_hub_seen");
   const savedCount = state.workspaceEntries.filter((entry) => !entry.archivedAt).length;
   const hasDraft = startDraftHasContent();
+  const returning = returningUserActive();
+  const startEyebrow = returning ? "Returning Workspace" : "Fresh Start";
+  const startTitle = returning ? "Continue from your architecture workspace." : "Compile product context into a buildable frontend contract.";
+  const startBody = returning
+    ? "Review recent packages, workspace health, drafts waiting for generation, and packages with unresolved launch gates."
+    : "Archetype turns evidence into a Product Model, UX architecture, design system, validation proof, and deterministic handoff for a frontend-building agent.";
+  const createLabel = returning ? "Create new package" : "Create a package";
   const body = state.startMode !== "hub" ? renderStartDraft() : `
     <section class="start-hero panel" data-agent-section="start-hub">
       <div class="start-copy">
-        <div class="eyebrow">Fresh Start</div>
-        <h1>Compile product context into a buildable frontend contract.</h1>
-        <p>Archetype turns evidence into a Product Model, UX architecture, design system, validation proof, and deterministic handoff for a frontend-building agent.</p>
+        <div class="eyebrow">${esc(startEyebrow)}</div>
+        <h1>${esc(startTitle)}</h1>
+        <p>${esc(startBody)}</p>
         <div class="hero-actions">
-          <button class="button primary" id="start-create-package" data-agent-action="create-package" type="button">Create a package</button>
+          <button class="button primary" id="start-create-package" data-agent-action="create-package" type="button">${esc(createLabel)}</button>
           <button class="button" id="start-load-sample" data-agent-action="explore-sample" type="button">Explore sample package</button>
           <button class="button" id="start-import-package" data-agent-action="import-package" type="button">Import existing package</button>
+          ${returning ? `<button class="button subtle" id="start-replay-onboarding" data-agent-action="replay-onboarding" type="button">Replay onboarding</button>` : ""}
           <input id="start-folder-input" type="file" webkitdirectory multiple hidden />
         </div>
       </div>
       <div class="start-proof" aria-label="Workspace status">
         ${badge(`${savedCount} saved`, savedCount ? "success" : "neutral")}
         ${badge(hasDraft ? "draft waiting" : "fresh state", hasDraft ? "warning" : "success")}
+        ${returning ? badge("returning", "success") : ""}
         ${badge("no API key needed", "success")}
       </div>
     </section>
     <div class="grid cols-3 section-gap">
       <button class="start-card" id="start-create-package-card" data-agent-action="create-package" type="button">
-        <strong>Create a package</strong>
+        <strong>${esc(createLabel)}</strong>
         <span>Start a clean project draft from product context and goals.</span>
       </button>
       <button class="start-card" id="start-load-sample-card" data-agent-action="explore-sample" type="button">
@@ -4981,13 +5316,14 @@ function renderStartHub(): string {
       </button>
     </div>
     <div class="grid cols-2 section-gap">
-      ${panel("Quick Product Map", renderProductMap())}
+      ${panel(returning ? "Workspace Health" : "Quick Product Map", returning ? renderReturningWorkspaceHealth() : renderProductMap())}
       ${panel("Recent Packages", renderRecentPackages())}
     </div>
     <div class="grid cols-2 section-gap">
       ${panel("Start Actions", `
         <div class="control-row">
           <button class="button" id="start-restore-state" data-agent-action="restore-workspace" type="button">Restore workspace state</button>
+          ${returning ? `<button class="button" id="start-replay-onboarding-actions" data-agent-action="replay-onboarding" type="button">Replay onboarding</button>` : ""}
           <button class="button subtle" id="start-reset-fresh" data-agent-action="reset-workspace" type="button">Reset to fresh state</button>
           <input id="start-state-import-input" type="file" accept="application/json,.json" hidden />
         </div>
@@ -5017,7 +5353,7 @@ function renderStartHub(): string {
           </div>
         </div>
         <div class="status-strip" role="status" aria-live="polite">
-          ${badge("fresh state", "success")}
+          ${badge(returning ? "returning workspace" : "fresh state", "success")}
           ${badge(`${state.workspaceEntries.length} workspace packages`, state.workspaceEntries.length ? "success" : "neutral")}
         </div>
       </header>
@@ -5047,6 +5383,7 @@ function render(): void {
         </div>
         <div class="package-tools" aria-label="Package actions">
           <button class="button subtle" id="reset-active-package" data-agent-action="reset-workspace" type="button">New Project</button>
+          <button class="button" id="replay-onboarding" data-agent-action="replay-onboarding" type="button">Replay Onboarding</button>
           <button class="button primary" id="load-sample" data-agent-action="Load sample package" type="button">Load Sample Package</button>
           <button class="button" id="import-folder" data-agent-action="Import package folder" type="button">Import Package Folder</button>
           <input id="folder-input" type="file" webkitdirectory multiple hidden />
@@ -5170,6 +5507,14 @@ function bindStartHubEvents(): void {
   });
   document.querySelector<HTMLButtonElement>("#start-load-sample")?.addEventListener("click", () => loadSample());
   document.querySelector<HTMLButtonElement>("#start-load-sample-card")?.addEventListener("click", () => loadSample());
+  document.querySelector<HTMLButtonElement>("#start-replay-onboarding")?.addEventListener("click", () => {
+    replayOnboarding();
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#start-replay-onboarding-actions")?.addEventListener("click", () => {
+    replayOnboarding();
+    render();
+  });
   const importPackage = () => {
     document.querySelector<HTMLInputElement>("#start-folder-input")?.click();
   };
@@ -5316,6 +5661,7 @@ function bindStartHubEvents(): void {
       : warnings
         ? `Diagnostics passed with ${warnings} warning${warnings === 1 ? "" : "s"}.`
         : "Diagnostics passed. Provider setup is ready.";
+    if (!failures) markOnboardingFlag("provider_connected");
     render();
   });
   document.querySelector<HTMLInputElement>("#start-send-summaries-only")?.addEventListener("change", (event) => {
@@ -5375,6 +5721,9 @@ function bindStartHubEvents(): void {
   document.querySelector<HTMLButtonElement>("#run-all-generation-phases")?.addEventListener("click", () => {
     runAllStartGenerationPhases();
     render();
+  });
+  document.querySelector<HTMLButtonElement>("#open-generated-launch-review")?.addEventListener("click", () => {
+    void openGeneratedLaunchReview();
   });
   document.querySelector<HTMLButtonElement>("#retry-current-generation-phase")?.addEventListener("click", () => {
     retryStartGenerationPhase();
@@ -5494,6 +5843,27 @@ function bindEvents(): void {
   document.querySelector<HTMLButtonElement>("#reset-active-package")?.addEventListener("click", () => {
     enterFreshState("Fresh state ready. Saved packages are still available.");
     render();
+  });
+  document.querySelector<HTMLButtonElement>("#replay-onboarding")?.addEventListener("click", () => {
+    replayOnboarding();
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#save-launch-package")?.addEventListener("click", async () => {
+    if (!state.bundle) return;
+    const entry = await saveWorkspaceBundle(state.bundle, state.packageName);
+    await refreshWorkspaceEntries();
+    recordWorkspaceActivity("save", `Saved ${entry.name} from Launch Review.`, entry.id);
+    state.launchReviewMessage = `Saved ${entry.name} to workspace.`;
+    render();
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-dismiss-onboarding-hint]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.dismissOnboardingHint;
+      if (!id) return;
+      dismissOnboardingHint(id);
+      state.launchReviewMessage = "Launch Review hint dismissed.";
+      render();
+    });
   });
   document.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -6431,6 +6801,7 @@ function bindEvents(): void {
     if (!state.bundle) return;
     const slug = String(state.bundle.manifest.project_slug ?? "archetype-package");
     downloadText(`${slug}-handoff.md`, `${handoffMarkdown(state.bundle)}\n`, "text/markdown");
+    markOnboardingFlag("handoff_exported");
     state.handoffMessage = "Handoff markdown prepared.";
     render();
   });
@@ -6438,12 +6809,14 @@ function bindEvents(): void {
     if (!state.bundle) return;
     const slug = String(state.bundle.manifest.project_slug ?? "archetype-package");
     downloadText(`${slug}-handoff.json`, `${pretty(handoffJson(state.bundle))}\n`, "application/json");
+    markOnboardingFlag("handoff_exported");
     state.handoffMessage = "Handoff JSON prepared.";
     render();
   });
   document.querySelector<HTMLButtonElement>("#copy-handoff-prompt")?.addEventListener("click", async () => {
     if (!state.bundle) return;
     await copyTextToClipboard(handoffPrompt(state.bundle));
+    markOnboardingFlag("handoff_exported");
     state.handoffMessage = "Frontend agent prompt copied.";
     render();
   });
@@ -6468,7 +6841,23 @@ function bindEvents(): void {
 
 async function loadSample(): Promise<void> {
   const response = await fetch("/sample-package.json");
-  await activateBundle(await response.json() as Bundle, "sample-package");
+  markOnboardingFlag("sample_explored");
+  await activateBundle(await response.json() as Bundle, "sample-package", "overview", "sample");
+  render();
+}
+
+async function openGeneratedLaunchReview(): Promise<void> {
+  if (state.startGenerationRun.status !== "complete") {
+    state.startGenerationRun.message = "Complete all generation phases before opening Launch Review.";
+    render();
+    return;
+  }
+  const response = await fetch("/sample-package.json");
+  const generatedBundle = generatedBundleFromTemplate(await response.json() as Bundle);
+  state.generationDraft = pretty(intakeFromForm(state.startDraft, state.startSourceMaterials));
+  markOnboardingFlag("first_package_created");
+  markOnboardingFlag("provider_connected");
+  await activateBundle(generatedBundle, `${launchPackageName()} Launch Package`, "overview", "generated");
   render();
 }
 
@@ -6738,6 +7127,7 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
   };
 }
 
+loadOnboardingState();
 loadStartDraft();
 loadWorkspaceActivity();
 refreshWorkspaceEntries()

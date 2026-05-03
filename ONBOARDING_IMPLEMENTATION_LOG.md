@@ -768,3 +768,178 @@ Phase 5: Launch Review Graduation.
 Why this is next:
 
 The user can now safely start generation, see every compiler phase, inspect created artifacts, repair warnings, and save a progress log. The next product risk is activation: onboarding should complete when the user reaches Launch Review and understands readiness, trusted evidence, missing context, human review needs, and export actions.
+
+## Phase 5: Launch Review Graduation
+
+Status: complete
+
+Date: 2026-05-03
+
+Source plan: `ONBOARDING_PLAN.md`
+
+## Phase Goal
+
+Implement the fifth onboarding phase fully:
+
+- Mark onboarding complete when the user reaches Launch Review with a generated or imported package.
+- Add first-run callouts only to readiness, warnings, proof, and handoff.
+- Add replay onboarding from help or settings.
+- Ensure the first Launch Review answers readiness, trust, missing context, human review, and exportability.
+
+## Changes Made
+
+### Launch Review Graduation
+
+- Added durable browser-local onboarding state under `archetype:onboarding-state:v1`.
+- Tracked the required local state landmarks:
+  - `start_hub_seen`
+  - `first_package_created`
+  - `sample_explored`
+  - `provider_connected`
+  - `launch_review_completed`
+  - `handoff_exported`
+  - `dismissed_contextual_hints`
+- Added generated package graduation from `Generation Progress` to `Launch Review`.
+- Replaced the Phase 4 placeholder copy with a real `Open Launch Review` completion action.
+- Generated graduation now clones the sample package shape, applies the user's project name, operating mode, generated package id, generated timestamp, onboarding source hash, intake, and generation log.
+- Imported package activation now marks Launch Review completion without forcing the user through unnecessary onboarding.
+
+### First Launch Review Surface
+
+- Added `data-agent-landmark="launch-review"` and `data-agent-onboarding-complete="true|false"` to the Launch Review decision surface.
+- Added first-run callouts only for:
+  - Readiness decision.
+  - Warnings and missing context.
+  - Proof coverage.
+  - Handoff export.
+- Added dismissible contextual hints with durable local dismissal state.
+- Added a `Launch Review Answers` panel that answers:
+  - Is this package ready for frontend agent?
+  - What is trusted?
+  - What is missing?
+  - What needs human review?
+  - What can be exported?
+
+### Completion Actions
+
+- Added direct Launch Review actions:
+  - Save package to workspace.
+  - Review frontend contract.
+  - Review E2E proof.
+  - Export handoff.
+  - Create revision request.
+- Added `handoff_exported` tracking for handoff markdown download, handoff JSON download, and frontend agent prompt copy.
+- Added Launch Review save activity logging to workspace activity.
+
+### Returning User and Replay
+
+- Added returning-user Start Hub behavior after a completed Launch Review or saved workspace package exists.
+- Returning users see recent packages, workspace health, draft state, create/import/sample actions, and replay onboarding.
+- Added `Replay Onboarding` from the active Workbench package tools and returning Start Hub actions.
+- Replay clears the local onboarding draft and reopens Start Hub without deleting saved packages or erasing completion history.
+
+### Styling and Accessibility
+
+- Added responsive Launch Review answer cards, callouts, graduation notice, and workspace health rows.
+- Added focus-visible coverage for Start Hub action cards.
+- Verified desktop and mobile Launch Review graduation without page horizontal overflow, unnamed buttons, or focusable overflow outside intentional scroll regions.
+
+### Tests
+
+- Updated generation progress E2E to expect the real `Open Launch Review` action.
+- Added E2E coverage for:
+  - Generation completion graduating to Launch Review.
+  - Onboarding completion flags after graduation.
+  - The five Launch Review answer questions.
+  - Four first-run callouts.
+  - Saving package to workspace from Launch Review.
+  - Returning user Start Hub after reset.
+  - Dismissible Launch Review callouts.
+  - Replay onboarding from the active Workbench.
+  - Handoff export state tracking.
+
+## Validation Against ONBOARDING_PLAN.md
+
+### Phase 5 Requirement: Mark Onboarding Complete at Launch Review
+
+Result: pass
+
+Generated and imported package activation now mark `launch_review_completed` once the user reaches Launch Review with a package. Generated flow also marks `first_package_created` and `provider_connected`.
+
+### Phase 5 Requirement: First-Run Callouts Only to Readiness, Warnings, Proof, Handoff
+
+Result: pass
+
+The only first Launch Review callouts are readiness decision, warnings and missing context, proof coverage, and handoff export. They are dismissible and persisted by feature id.
+
+### Phase 5 Requirement: Replay Onboarding
+
+Result: pass
+
+Replay onboarding is available from the active Workbench package tools and returning Start Hub. It preserves saved packages and completion history while clearing the local draft so the guided flow can be replayed.
+
+### Launch Review Activation Questions
+
+Result: pass
+
+The Launch Review now explicitly answers readiness, trusted evidence, missing context, human review needs, and exportable artifacts before the user moves into contract, proof, handoff, or revision work.
+
+### Returning User Flow
+
+Result: pass
+
+Returning users do not get the first-run explanation as the default. They see workspace health, recent packages, drafts waiting, create/import/sample actions, and replay onboarding.
+
+## Test Evidence
+
+- Unit/type test: `npm run build` passed through `npm run smoke`, `npm run check`, and `npm run workbench:build`.
+- Smoke test: `npm run smoke` passed.
+- Focused Phase 5 E2E/UI regression: `npm run workbench:e2e -- --grep "generation progress|Launch Review|primary human workflow"` passed with 5 passed, 0 failed.
+- Full E2E/UI test: `npm run workbench:e2e` passed with 37 passed, 0 failed.
+- Malformed-data E2E regression: 20 passed, 0 failed.
+- E2E report generation: `npm run workbench:e2e:report` passed and wrote `tmp/workbench-ui-e2e`.
+- Integration test: `npm run check` passed.
+- Generated frontend integration inside `npm run check`:
+  - `npm install` passed in `tmp/generated-frontend`.
+  - `npm run typecheck` passed in `tmp/generated-frontend`.
+  - `npm run build` passed in `tmp/generated-frontend`.
+- Root dependency audit: `npm audit --json` reports 0 vulnerabilities.
+- Generated target dependency audit: `npm audit --json` in `tmp/generated-frontend` reports 0 vulnerabilities.
+- Diff hygiene: `git diff --check` passed.
+- Desktop browser visual check: `tmp/onboarding-phase5-desktop-launch.png`.
+- Mobile browser visual check: `tmp/onboarding-phase5-mobile-launch.png`.
+- Browser diagnostics: `tmp/onboarding-phase5-browser-check.json`, no desktop or mobile horizontal overflow, no unnamed buttons, no focusable overflow outside intentional scroll regions, Launch Review landmark present, onboarding complete flag true, 5 answer questions present, 4 first-run callouts present.
+
+## Self-Critique and Iteration Decision
+
+Question: Is this implementation the most optimal and correct Phase 5 solution?
+
+Answer: Yes, for Phase 5.
+
+Reasoning:
+
+- It makes Launch Review the real activation point instead of another intermediate step.
+- It answers the exact questions the user and frontend-building agent need before handoff.
+- It avoids turning onboarding into a tour. The callouts are only attached to the four launch-critical surfaces.
+- It keeps import, sample, generated, saved workspace, and replay paths distinct.
+- It preserves the privacy boundary: provider keys remain session-only, and onboarding state stores only progress flags and dismissed hint ids.
+- It gives AI agents deterministic landmarks, state attributes, actions, and local state names.
+- It intentionally leaves broader analytics, keyboard path audits, and skip/completion metrics to Phase 6, because those are measurement and hardening scope.
+
+Known next work is intentionally Phase 6, not a Phase 5 defect:
+
+- Track reset usage, skip usage, first save, generation success, and provider setup success as explicit metrics.
+- Add deeper accessibility checks for keyboard navigation, focus order, status announcements, and screen-reader names.
+- Add E2E scenarios for import, sample, failed key, redaction, skipped provider, and reset paths as measurement-grade coverage.
+
+## Exit Condition
+
+I dont know any better solution for this nor do I see anything worng with the current one.
+
+## Next Phase
+
+Phase 6: Measurement and Hardening.
+
+Why this is next:
+
+Launch Review now completes onboarding and gives the user the first real handoff moment. The next product risk is confidence at scale: the app should measure completion, reset, skip, provider, generation, save, and handoff events, then harden accessibility and edge-case coverage around those flows.

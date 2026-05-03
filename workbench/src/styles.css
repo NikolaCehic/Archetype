@@ -68,6 +68,7 @@
   textarea:focus-visible,
   .nav-item:focus-visible,
   .list-button:focus-visible,
+  .start-card:focus-visible,
   .step-card:focus-visible,
   .mode-card:focus-visible,
   .provider-card:focus-visible {
@@ -736,6 +737,96 @@
     @apply mt-1 block text-xs leading-5 text-muted-foreground;
   }
 
+  .launch-answer-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .launch-answer {
+    @apply grid min-h-[150px] content-start gap-2 rounded-md border p-3;
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+  }
+
+  .launch-answer .badge {
+    justify-self: start;
+  }
+
+  .launch-answer strong {
+    @apply text-sm font-semibold leading-5 text-foreground;
+  }
+
+  .launch-answer span {
+    @apply text-xs leading-5 text-muted-foreground;
+  }
+
+  .launch-callout-list {
+    @apply grid gap-2;
+  }
+
+  .launch-callout {
+    @apply grid items-start gap-3 rounded-md border p-3;
+    grid-template-columns: minmax(0, 1fr) auto;
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+  }
+
+  .launch-callout > div:first-child {
+    @apply grid gap-2;
+  }
+
+  .launch-callout .badge {
+    justify-self: start;
+  }
+
+  .launch-callout strong {
+    @apply text-sm font-semibold text-foreground;
+  }
+
+  .launch-callout span {
+    @apply text-xs leading-5 text-muted-foreground;
+  }
+
+  .launch-callout-actions {
+    @apply flex flex-wrap justify-end gap-2;
+  }
+
+  .launch-graduation {
+    @apply flex items-start justify-between gap-3;
+  }
+
+  .launch-graduation > div {
+    @apply grid gap-1;
+  }
+
+  .launch-graduation strong {
+    @apply text-sm font-semibold text-foreground;
+  }
+
+  .launch-graduation span {
+    @apply text-sm leading-6 text-muted-foreground;
+  }
+
+  .workspace-health-list {
+    @apply mt-3 grid gap-2;
+  }
+
+  .workspace-health-item {
+    @apply grid items-start gap-3 rounded-md border px-3 py-2.5;
+    grid-template-columns: minmax(0, 1fr) auto;
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+  }
+
+  .workspace-health-item strong {
+    @apply block text-sm font-semibold text-foreground;
+  }
+
+  .workspace-health-item span {
+    @apply mt-1 block text-xs leading-5 text-muted-foreground;
+  }
+
   .panel {
     @apply overflow-hidden rounded-lg border bg-card text-card-foreground shadow-premium;
     border-color: hsl(224 7% 20%);
@@ -1192,6 +1283,9 @@
   .topbar,
   .start-hero,
   .launch-hero,
+  .launch-answer-grid,
+  .launch-callout,
+  .workspace-health-item,
   .grid.cols-2,
   .grid.cols-3,
   .intake-stepper,
@@ -1223,6 +1317,18 @@
   .launch-score {
     border-left-width: 0;
     border-top-width: 1px;
+  }
+
+  .launch-callout-actions {
+    justify-content: flex-start;
+  }
+
+  .launch-graduation {
+    display: grid;
+  }
+
+  .launch-graduation .button {
+    width: 100%;
   }
 
   .launch-score strong {
