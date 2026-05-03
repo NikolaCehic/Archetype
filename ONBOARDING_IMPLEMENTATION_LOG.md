@@ -564,3 +564,207 @@ Phase 4: Generation Progress.
 Why this is next:
 
 The user can now reach a trusted provider setup state, inspect exactly what will be sent, redact or exclude risky evidence, run diagnostics, and approve generation. The next product risk is what happens after the final click: the app needs a production-grade generation-progress flow with clear compiler phases, recoverable errors, artifacts, and deterministic completion feedback.
+
+## Phase 4: Generation Progress
+
+Status: complete
+
+Date: 2026-05-03
+
+Source plan: `ONBOARDING_PLAN.md`
+
+## Phase Goal
+
+Implement the fourth onboarding phase fully:
+
+- Add compiler-phase progress view.
+- Show artifacts as they are created.
+- Surface warnings and blockers per phase.
+- Add retry, repair, and save-draft actions.
+
+## Changes Made
+
+### Generation Progress State
+
+- Added the fifth guided onboarding step: `Generation Progress`.
+- Added `data-agent-onboarding-state="generation-progress"`.
+- Final Provider Setup generation now starts a deterministic generation run instead of stopping at a placeholder message.
+- Added persisted, key-safe generation run state:
+  - started time.
+  - completed time.
+  - active phase index.
+  - run status.
+  - repaired phase ids.
+  - user-visible progress message.
+- Kept the provider session key out of localStorage, generation logs, draft export, and payload previews.
+
+### Compiler Phase Timeline
+
+- Added the exact 10 phases required by `ONBOARDING_PLAN.md`:
+  - Normalize evidence.
+  - Build Evidence Ledger.
+  - Model users, roles, permissions, and entities.
+  - Create routes, workflows, and screen inventory.
+  - Build DSAG.
+  - Generate screen specs.
+  - Generate design-system contracts.
+  - Generate frontend-agent contract.
+  - Validate package.
+  - Prepare Launch Review.
+- Each phase now shows:
+  - status.
+  - artifact path.
+  - phase detail.
+  - warning or blocker issue when relevant.
+  - repair guidance when relevant.
+
+### Artifact Creation
+
+- Added an `Artifacts Created` panel.
+- Completed phases create visible artifact rows.
+- Artifact rows include phase status, phase name, artifact path, and any issue carried forward.
+- Added a generation log preview with run metadata, phase results, provider summary, and payload preview.
+- Added `Download generation log`.
+
+### Controls and Recovery
+
+- Added `Run next phase`.
+- Added `Run all phases`.
+- Added `Retry current phase`.
+- Added per-phase retry where a phase is running or blocked.
+- Added per-phase `Record repair` where a phase has a warning or blocker.
+- Added `Back to provider setup`.
+- Added `Save progress draft`.
+- Added disabled-complete behavior after generation reaches the final phase.
+
+### Warning and Blocker Semantics
+
+- Generation can block if required context or unresolved included safety blockers somehow reach the progress step.
+- Generation can warn for:
+  - no included evidence.
+  - incomplete high-impact constraints.
+  - local deterministic screen generation.
+  - missing brand evidence.
+  - provider diagnostic warnings.
+  - Launch Review warnings that need to graduate into Phase 5.
+- Recording a repair turns the specific phase to pass for that run and preserves the repair id in the progress draft.
+
+### AI-Agent Accessibility
+
+- Added machine-readable phase rows with `data-start-generation-phase`.
+- Added machine-readable actions for:
+  - `run-next-generation-phase`.
+  - `run-all-generation-phases`.
+  - `retry-generation-phase`.
+  - `repair-generation-phase`.
+  - `save-generation-progress-draft`.
+  - `download-generation-progress-log`.
+- Generation logs explicitly say provider keys are session-only, not persisted, and excluded from logs.
+
+### Visual and Accessibility Iteration
+
+- Added responsive progress metrics, phase rows, phase actions, artifact tables, and log preview.
+- Added stable row structure for desktop and mobile.
+- Kept the UI dense and inspectable, consistent with the product design context.
+- Verified no horizontal overflow and no unnamed focusable controls in desktop and mobile browser diagnostics.
+
+### Tests
+
+- Added Playwright coverage for:
+  - Provider setup entering `generation-progress`.
+  - 10 compiler phases rendering.
+  - first phase running after generation starts.
+  - `Run next phase` creating the first artifact and advancing the active phase.
+  - `Run all phases` completing all 10 phases.
+  - final phase producing `00-launch-review/launch-review-brief.md`.
+  - warning repair on a design-contract phase.
+  - progress draft saving.
+  - generation log excluding the session key.
+  - localStorage excluding the session key.
+- Preserved provider setup, local deterministic mode, evidence review, guided intake, Start Hub, sample/import, whole-app navigation, primary workflow, and malformed-data edge-case tests.
+
+## Validation Against ONBOARDING_PLAN.md
+
+### Phase 4 Requirement: Add Compiler-Phase Progress View
+
+Result: pass
+
+Generation Progress now renders as a compiler timeline with all 10 required phases. It uses deterministic statuses instead of vague AI-thinking copy.
+
+### Phase 4 Requirement: Show Artifacts as They Are Created
+
+Result: pass
+
+Artifacts appear in `Artifacts Created` as phases pass or complete with warnings. The generation log also records the created artifact path for every phase.
+
+### Phase 4 Requirement: Surface Warnings and Blockers Per Phase
+
+Result: pass
+
+Each phase has deterministic warning/blocker evaluation. Warnings and blockers show the issue and a suggested repair action in the phase row and log.
+
+### Phase 4 Requirement: Add Retry, Repair, and Save-Draft Actions
+
+Result: pass
+
+The UI includes run-next, run-all, retry-current, per-phase retry, per-phase repair, save-progress-draft, back-to-provider, and log download actions.
+
+### LLM API Key Boundary
+
+Result: pass
+
+The generation run keeps the provider key session-only. The key is not persisted to localStorage and is not included in the generation log or payload preview.
+
+## Test Evidence
+
+- Unit/type test: `npm run build` passed and was rerun through `npm run check`.
+- Smoke test: `npm run smoke` passed.
+- Focused provider/progress E2E/UI regression: `npm run workbench:e2e -- --grep "provider setup|provider evidence|generation progress|local deterministic|local preflight can graduate"` passed with 7 passed, 0 failed.
+- Full E2E/UI test: `npm run workbench:e2e` passed with 35 passed, 0 failed.
+- Malformed-data E2E regression: 20 passed, 0 failed.
+- E2E report generation: `npm run workbench:e2e:report` passed and wrote `tmp/workbench-ui-e2e`.
+- Integration test: `npm run check` passed.
+- Generated frontend integration inside `npm run check`:
+  - `npm install` passed in `tmp/generated-frontend`.
+  - `npm run typecheck` passed in `tmp/generated-frontend`.
+  - `npm run build` passed in `tmp/generated-frontend`.
+- Root dependency audit: `npm audit --json` reports 0 vulnerabilities.
+- Generated target dependency audit: `npm audit --json` in `tmp/generated-frontend` reports 0 vulnerabilities.
+- Diff hygiene: `git diff --check` passed.
+- Desktop browser visual check: `tmp/onboarding-phase4-desktop-progress.png`.
+- Mobile browser visual check: `tmp/onboarding-phase4-mobile-progress.png`.
+- Browser diagnostics: `tmp/onboarding-phase4-browser-check.json`, no desktop or mobile horizontal overflow, no unnamed focusable controls, skip link hidden unless focused, generation-progress state active, 10 phases present, warning/repair action visible, session key absent from storage and generation log, Launch Review artifact present.
+
+## Self-Critique and Iteration Decision
+
+Question: Is this implementation the most optimal and correct Phase 4 solution?
+
+Answer: Yes, for Phase 4.
+
+Reasoning:
+
+- It turns generation into an inspectable compiler process instead of a vague AI loading state.
+- It implements every phase named in the onboarding plan and attaches a concrete artifact to each phase.
+- It exposes warnings and blockers where they happen, not only as a final summary.
+- It gives the user recoverable actions: retry, repair, save draft, return to provider setup, and download logs.
+- It keeps the privacy boundary intact after provider setup by excluding the session key from persistence and logs.
+- It gives AI agents deterministic state, phase rows, actions, and artifact paths.
+- It intentionally stops at a prepared Launch Review artifact, because Launch Review graduation is Phase 5 scope.
+
+Known next work is intentionally Phase 5, not a Phase 4 defect:
+
+- Mark onboarding complete when the generated or imported package reaches Launch Review.
+- Add first-run Launch Review callouts only where they help readiness, warnings, proof, and handoff.
+- Add replay onboarding from help or settings.
+
+## Exit Condition
+
+I dont know any better solution for this nor do I see anything worng with the current one.
+
+## Next Phase
+
+Phase 5: Launch Review Graduation.
+
+Why this is next:
+
+The user can now safely start generation, see every compiler phase, inspect created artifacts, repair warnings, and save a progress log. The next product risk is activation: onboarding should complete when the user reaches Launch Review and understands readiness, trusted evidence, missing context, human review needs, and export actions.

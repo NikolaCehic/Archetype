@@ -391,7 +391,7 @@
 
   .intake-stepper {
     @apply grid gap-2;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .step-card {
@@ -410,6 +410,12 @@
     background: hsl(224 8% 12%);
     border-color: hsl(220 7% 31%);
     transform: translateY(-1px);
+  }
+
+  .step-card:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+    transform: none;
   }
 
   .step-card.active {
@@ -594,6 +600,59 @@
   .provider-card em {
     @apply mt-1 block text-xs leading-5 text-muted-foreground;
     font-style: normal;
+  }
+
+  .generation-phase-list {
+    @apply grid gap-2;
+  }
+
+  .generation-phase-row {
+    @apply grid items-start gap-3 rounded-md border p-3;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+  }
+
+  .generation-phase-row.running,
+  .generation-phase-row.warning,
+  .generation-phase-row.blocked {
+    background: hsl(224 8% 10%);
+    border-color: hsl(220 6% 29%);
+  }
+
+  .generation-phase-index {
+    @apply grid h-8 w-8 place-items-center rounded-md border text-xs font-semibold tabular-nums;
+    background: hsl(224 8% 13%);
+    border-color: hsl(224 7% 22%);
+    color: hsl(220 8% 83%);
+  }
+
+  .generation-phase-copy {
+    min-width: 0;
+  }
+
+  .generation-phase-title {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .generation-phase-title strong {
+    @apply text-sm font-semibold text-foreground;
+  }
+
+  .generation-phase-copy span {
+    @apply mt-1 block text-xs leading-5 text-muted-foreground;
+  }
+
+  .generation-phase-copy code {
+    @apply mt-2 inline-block rounded-md border px-2 py-1;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    background: hsl(224 10% 6%);
+    border-color: hsl(224 7% 18%);
+  }
+
+  .generation-phase-actions {
+    @apply flex flex-wrap justify-end gap-2;
   }
 
   .launch-score .badge,
@@ -1138,12 +1197,13 @@
   .intake-stepper,
   .mode-grid,
   .provider-grid,
-  .provider-key-grid,
-  .review-row,
-  .payload-scope,
-  .status-grid,
-  .split,
-  .form-grid,
+    .provider-key-grid,
+    .review-row,
+    .payload-scope,
+    .generation-phase-row,
+    .status-grid,
+    .split,
+    .form-grid,
   .mini-metrics {
     grid-template-columns: 1fr;
   }
@@ -1173,7 +1233,8 @@
   .issue-row,
   .step-card,
   .preflight-row,
-  .diagnostic-row {
+  .diagnostic-row,
+  .generation-phase-row {
     grid-template-columns: 1fr;
   }
 

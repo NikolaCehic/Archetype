@@ -164,7 +164,8 @@ test("provider setup asks for a session key only after generation is requested",
   await expect(page.getByText("Diagnostics passed. Provider setup is ready.")).toBeVisible();
   await expect(page.locator("#final-start-generate-architecture")).toBeEnabled();
   await page.locator("#final-start-generate-architecture").click();
-  await expect(page.getByText("Provider setup complete. Generation progress begins in Phase 4.")).toBeVisible();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "generation-progress");
+  await expect(page.getByText("Generation started. Normalize evidence is running.")).toBeVisible();
   await expect.poll(async () => page.evaluate((key) => localStorage.getItem("archetype:start-draft:v1")?.includes(key), sessionKey)).toBe(false);
 });
 
@@ -206,6 +207,44 @@ test("provider evidence review supports summaries, exclusion, redaction, and pay
   await expect(page.locator("#final-start-generate-architecture")).toBeEnabled();
   await expect(page.locator(".code").filter({ hasText: "Remove prompt-injection instruction" }).first()).toBeVisible();
   await expect(page.locator(".code").filter({ hasText: "[redacted credential]" }).first()).toBeVisible();
+});
+
+test("generation progress runs compiler phases and exposes created artifacts", async ({ page }) => {
+  await completeProviderSetupAndStartGeneration(page);
+
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "generation-progress");
+  await expect(page.locator("[data-start-generation-phase]")).toHaveCount(10);
+  await expect(page.locator("[data-start-generation-phase='normalize-evidence']")).toContainText("Running");
+  await expect(page.locator("[data-start-generation-phase='normalize-evidence'] code")).toHaveText("01-normalized-evidence/context.json");
+
+  await page.locator("#run-next-generation-phase").click();
+  await expect(page.getByText("Normalize evidence created 01-normalized-evidence/context.json.")).toBeVisible();
+  await expect(page.locator("[data-start-generation-phase='build-evidence-ledger']")).toContainText("Running");
+  await expect(page.locator("td").filter({ hasText: "Normalize evidence" }).first()).toBeVisible();
+
+  await page.locator("#run-all-generation-phases").click();
+  await expect(page.getByText(/Generation completed/).first()).toBeVisible();
+  await expect(page.getByText("Phase 5 will graduate this into Launch Review.")).toBeVisible();
+  await expect(page.getByText("10/10")).toBeVisible();
+  await expect(page.locator("[data-start-generation-phase='prepare-launch-review']")).toContainText("00-launch-review/launch-review-brief.md");
+  await expect(page.locator("#run-next-generation-phase")).toBeDisabled();
+});
+
+test("generation progress supports warning repair, draft save, and key-safe logs", async ({ page }) => {
+  const sessionKey = await completeProviderSetupAndStartGeneration(page, { brandAttributes: "" });
+
+  await page.locator("#run-all-generation-phases").click();
+  await expect(page.locator("[data-start-generation-phase='generate-design-contracts']")).toContainText("Warning");
+  await expect(page.locator("[data-start-generation-phase='generate-design-contracts'] .notice")).toContainText("No brand attributes were supplied.");
+
+  await page.locator("[data-start-generation-phase='generate-design-contracts'] [data-start-generation-repair='generate-design-contracts']").click();
+  await expect(page.getByText("Repair recorded for Generate design-system contracts.")).toBeVisible();
+  await expect(page.locator("[data-start-generation-phase='generate-design-contracts']")).toContainText("Pass");
+
+  await page.locator("#save-generation-progress-draft").click();
+  await expect(page.getByText("Generation progress draft saved locally.")).toBeVisible();
+  await expect(page.locator(".code").filter({ hasText: "session-only, not persisted, excluded from logs" }).first()).toBeVisible();
+  await expect.poll(async () => page.evaluate((key) => localStorage.getItem("archetype:start-draft:v1")?.includes(key), sessionKey)).toBe(false);
 });
 
 test("guided intake draft persists locally across reloads", async ({ page }) => {
@@ -358,9 +397,12 @@ async function ensureWorkbenchPackage(page: Page): Promise<void> {
   await expect(page.locator("#main-content")).toHaveAttribute("data-agent-current-view", "overview");
 }
 
-async function completeReadyIntakeToPreflight(page: Page, source: { sourceLabel?: string; sourceContent?: string } = {}): Promise<void> {
+async function completeReadyIntakeToPreflight(page: Page, source: { sourceLabel?: string; sourceContent?: string; brandAttributes?: string } = {}): Promise<void> {
   await page.locator("#start-create-package").click();
   await page.locator("#start-project-name").fill("Provider Setup QA");
+  if (source.brandAttributes !== undefined) {
+    await page.locator("#start-brand-attributes").fill(source.brandAttributes);
+  }
   await page.locator("#start-context").fill("A production operations console for support leads who review failed customer workflows, assign repair tasks, and validate recovery proof before closing an incident.");
   await page.locator("#start-goals").fill("Review failed workflows\nAssign repair tasks\nValidate recovery proof");
   await page.locator("#start-business-goals").fill("Reduce unresolved incidents and make handoff quality measurable.");
@@ -374,6 +416,23 @@ async function completeReadyIntakeToPreflight(page: Page, source: { sourceLabel?
   await page.locator("#add-start-source").click();
   await page.locator("#continue-start-preflight").click();
   await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "guided-preflight");
+}
+
+async function completeProviderSetupAndStartGeneration(page: Page, options: { localMode?: boolean; brandAttributes?: string } = {}): Promise<string> {
+  const sessionKey = "sk-1234567890abcdefghijklmnop";
+  await completeReadyIntakeToPreflight(page, { brandAttributes: options.brandAttributes });
+  await page.locator("#start-generate-architecture").click();
+  if (options.localMode) {
+    await page.locator("#start-use-local-mode").click();
+  } else {
+    await page.locator("#start-api-key").fill(sessionKey);
+  }
+  await page.locator("#start-provider-consent").check();
+  await page.locator("#start-run-provider-diagnostics").click();
+  await expect(page.locator("#final-start-generate-architecture")).toBeEnabled();
+  await page.locator("#final-start-generate-architecture").click();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "generation-progress");
+  return sessionKey;
 }
 
 async function runMalformedScenario(page: Page, scenario: MalformedScenario): Promise<void> {

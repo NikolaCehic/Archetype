@@ -23,10 +23,12 @@ type WorkspacePriority = "low" | "medium" | "high";
 type WorkspaceSortKey = "savedAt" | "generatedAt" | "name" | "readinessScore" | "artifactCount" | "warningCount" | "priority";
 type WorkspaceSortDirection = "asc" | "desc";
 type WorkspaceHealthFilter = "all" | "hold" | "high" | "pinned" | "untagged" | "no_notes";
-type StartMode = "hub" | "intent" | "evidence" | "preflight" | "provider";
+type StartMode = "hub" | "intent" | "evidence" | "preflight" | "provider" | "progress";
 type PreflightStatus = "pass" | "warning" | "blocker";
 type ProviderId = "openai" | "anthropic" | "google" | "local";
 type ProviderDiagnosticStatus = "pass" | "warning" | "fail";
+type StartGenerationRunStatus = "idle" | "running" | "blocked" | "complete";
+type StartGenerationPhaseStatus = "queued" | "running" | "pass" | "warning" | "blocked";
 
 interface ArtifactDigest {
   path: string;
@@ -137,6 +139,37 @@ interface ProviderDiagnostic {
   label: string;
   status: ProviderDiagnosticStatus;
   detail: string;
+}
+
+interface StartGenerationRunState {
+  startedAt: string;
+  completedAt: string;
+  activePhaseIndex: number;
+  status: StartGenerationRunStatus;
+  repairedPhaseIds: string[];
+  message: string;
+}
+
+interface StartGenerationPhaseDefinition {
+  id: string;
+  label: string;
+  artifact: string;
+  detail: string;
+}
+
+interface StartGenerationPhaseEvaluation {
+  status: "pass" | "warning" | "blocked";
+  detail: string;
+  issue: string;
+  action: string;
+}
+
+interface StartGenerationPhaseView extends StartGenerationPhaseDefinition {
+  status: StartGenerationPhaseStatus;
+  detail: string;
+  issue: string;
+  action: string;
+  repaired: boolean;
 }
 
 interface Bundle {
@@ -353,6 +386,79 @@ const providerOptions: Array<{ id: ProviderId; label: string; detail: string; ke
   { id: "google", label: "Google AI", detail: "Provider-backed architecture reasoning with Gemini-compatible keys.", keyHint: "Session key usually starts with AIza." },
   { id: "local", label: "Local deterministic mode", detail: "Offline demo, validation, and sample review. No provider key is needed.", keyHint: "No API key required." }
 ];
+const startGenerationPhaseDefinitions: StartGenerationPhaseDefinition[] = [
+  {
+    id: "normalize-evidence",
+    label: "Normalize evidence",
+    artifact: "01-normalized-evidence/context.json",
+    detail: "Normalize product context, reviewed evidence, redaction notes, and provider payload boundaries."
+  },
+  {
+    id: "build-evidence-ledger",
+    label: "Build Evidence Ledger",
+    artifact: "02-evidence-ledger/evidence-ledger.json",
+    detail: "Create a traceable ledger of included evidence, safety findings, confidence, and source limits."
+  },
+  {
+    id: "model-domain",
+    label: "Model users, roles, permissions, and entities",
+    artifact: "03-product-model/users-roles-permissions-entities.json",
+    detail: "Infer users, jobs, roles, permissions, entities, and high-impact product constraints."
+  },
+  {
+    id: "create-routes-workflows",
+    label: "Create routes, workflows, and screen inventory",
+    artifact: "03-product-model/routes-workflows-screen-inventory.json",
+    detail: "Convert product goals into route structure, user workflows, screen inventory, and state coverage."
+  },
+  {
+    id: "build-dsag",
+    label: "Build DSAG",
+    artifact: "05-dsag/dsag.json",
+    detail: "Link evidence, product model, routes, screens, components, and contracts into the trace graph."
+  },
+  {
+    id: "generate-screen-specs",
+    label: "Generate screen specs",
+    artifact: "03-product-model/screen-specifications.json",
+    detail: "Produce screen-by-screen layout, states, interactions, data dependencies, and acceptance criteria."
+  },
+  {
+    id: "generate-design-contracts",
+    label: "Generate design-system contracts",
+    artifact: "04-design-system/design-system-contracts.json",
+    detail: "Create tokens, typography, component contracts, product patterns, and usage boundaries."
+  },
+  {
+    id: "generate-frontend-agent-contract",
+    label: "Generate frontend-agent contract",
+    artifact: "06-frontend-agent-contract/frontend-agent-contract.md",
+    detail: "Prepare deterministic instructions, source manifest, data contracts, actions, forms, and adapter expectations."
+  },
+  {
+    id: "validate-package",
+    label: "Validate package",
+    artifact: "10-validation/package-validation-report.json",
+    detail: "Check readiness, contract coverage, DSAG integrity, E2E proof expectations, and target build assumptions."
+  },
+  {
+    id: "prepare-launch-review",
+    label: "Prepare Launch Review",
+    artifact: "00-launch-review/launch-review-brief.md",
+    detail: "Summarize readiness, trusted evidence, missing context, human review needs, and handoff actions."
+  }
+];
+
+function blankStartGenerationRun(): StartGenerationRunState {
+  return {
+    startedAt: "",
+    completedAt: "",
+    activePhaseIndex: 0,
+    status: "idle",
+    repairedPhaseIds: [],
+    message: ""
+  };
+}
 
 const state: {
   bundle: Bundle | null;
@@ -415,6 +521,7 @@ const state: {
   startProviderConsent: boolean;
   startProviderDiagnosticsRan: boolean;
   startProviderMessage: string;
+  startGenerationRun: StartGenerationRunState;
   startMessage: string;
   intakeForm: IntakeFormState | null;
   sourceMaterials: SourceMaterialDraft[];
@@ -481,6 +588,7 @@ const state: {
   startProviderConsent: false,
   startProviderDiagnosticsRan: false,
   startProviderMessage: "",
+  startGenerationRun: blankStartGenerationRun(),
   startMessage: "",
   intakeForm: null,
   sourceMaterials: [],
@@ -2655,6 +2763,23 @@ function normalizeEvidenceReview(value: unknown): Record<string, StartEvidenceRe
   }));
 }
 
+function normalizeStartGenerationRun(value: unknown): StartGenerationRunState {
+  const record = typeof value === "object" && value && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  const rawStatus = String(record.status ?? "idle");
+  const status: StartGenerationRunStatus = rawStatus === "running" || rawStatus === "blocked" || rawStatus === "complete" ? rawStatus : "idle";
+  const activePhaseIndex = Math.max(0, Math.min(startGenerationPhaseDefinitions.length, Number(record.activePhaseIndex) || 0));
+  return {
+    startedAt: typeof record.startedAt === "string" ? record.startedAt : "",
+    completedAt: typeof record.completedAt === "string" ? record.completedAt : "",
+    activePhaseIndex,
+    status,
+    repairedPhaseIds: Array.isArray(record.repairedPhaseIds)
+      ? record.repairedPhaseIds.map(String).filter((id) => startGenerationPhaseDefinitions.some((phase) => phase.id === id))
+      : [],
+    message: typeof record.message === "string" ? record.message : ""
+  };
+}
+
 function startDraftHasContent(): boolean {
   const draft = state.startDraft;
   return [draft.projectName, draft.context, draft.goals, draft.businessGoals, draft.users, draft.constraints, draft.preferredStack].some((value) => String(value).trim().length > 0)
@@ -2671,7 +2796,8 @@ function persistStartDraft(): boolean {
       sourceMaterials: state.startSourceMaterials,
       evidenceReview: state.startEvidenceReview,
       sendSummariesOnly: state.startSendSummariesOnly,
-      provider: state.startProvider
+      provider: state.startProvider,
+      generationRun: state.startGenerationRun
     }));
     state.startDraftSavedAt = savedAt;
     return true;
@@ -2696,6 +2822,7 @@ function loadStartDraft(): void {
     state.startEvidenceReview = normalizeEvidenceReview(parsed.evidenceReview);
     state.startSendSummariesOnly = parsed.sendSummariesOnly !== false;
     state.startProvider = isProviderId(parsed.provider) ? parsed.provider : "openai";
+    state.startGenerationRun = normalizeStartGenerationRun(parsed.generationRun);
     state.startDraftSavedAt = typeof parsed.savedAt === "string" ? parsed.savedAt : "";
   } catch {
     state.startMessage = "Saved onboarding draft could not be read. Start a fresh draft or reset onboarding.";
@@ -2721,6 +2848,7 @@ function clearStartDraftStorage(): void {
   state.startProviderConsent = false;
   state.startProviderDiagnosticsRan = false;
   state.startProviderMessage = "";
+  state.startGenerationRun = blankStartGenerationRun();
 }
 
 function scheduleStartDraftRefresh(): void {
@@ -3033,6 +3161,304 @@ function providerDiagnostics(): ProviderDiagnostic[] {
 
 function providerSetupReady(diagnostics = providerDiagnostics()): boolean {
   return state.startProviderDiagnosticsRan && diagnostics.every((diagnostic) => diagnostic.status !== "fail");
+}
+
+function startGenerationStarted(): boolean {
+  return !!state.startGenerationRun.startedAt;
+}
+
+function generationPhaseTone(status: StartGenerationPhaseStatus): "success" | "warning" | "danger" | "neutral" {
+  if (status === "pass") return "success";
+  if (status === "warning" || status === "running") return "warning";
+  if (status === "blocked") return "danger";
+  return "neutral";
+}
+
+function generationPhaseLabel(status: StartGenerationPhaseStatus): string {
+  if (status === "pass") return "pass";
+  if (status === "warning") return "warning";
+  if (status === "blocked") return "blocked";
+  if (status === "running") return "running";
+  return "queued";
+}
+
+function generationPhaseEvaluation(phase: StartGenerationPhaseDefinition): StartGenerationPhaseEvaluation {
+  const included = includedStartSources();
+  const unresolvedBlockers = unresolvedIncludedSafetyBlockers();
+  const checks = startPreflightChecks();
+  const summary = startPreflightSummary(checks);
+  const requiredBlockers = requiredContextBlockers(checks);
+  const providerWarnings = providerDiagnostics().filter((diagnostic) => diagnostic.status === "warning").length;
+  const constraintCheck = checks.find((check) => check.id === "constraints");
+  const readableEvidenceCheck = checks.find((check) => check.id === "evidence");
+  const brandMissing = !state.startDraft.brandAttributes.trim();
+  const repaired = state.startGenerationRun.repairedPhaseIds.includes(phase.id);
+
+  let evaluation: StartGenerationPhaseEvaluation = {
+    status: "pass",
+    detail: phase.detail,
+    issue: "",
+    action: ""
+  };
+
+  if (phase.id === "normalize-evidence") {
+    if (requiredBlockers) {
+      evaluation = {
+        status: "blocked",
+        detail: "Required context is still missing before generation can be trusted.",
+        issue: `${requiredBlockers} required context blocker${requiredBlockers === 1 ? "" : "s"} remain.`,
+        action: "Return to Local Preflight and resolve required context."
+      };
+    } else if (unresolvedBlockers.length) {
+      evaluation = {
+        status: "blocked",
+        detail: "Included evidence still has unresolved secret-like material.",
+        issue: `${unresolvedBlockers.length} included evidence item${unresolvedBlockers.length === 1 ? "" : "s"} need redaction notes or exclusion.`,
+        action: "Return to Provider Setup and repair the evidence review."
+      };
+    }
+  }
+
+  if (phase.id === "build-evidence-ledger" && included.length === 0) {
+    evaluation = {
+      status: "warning",
+      detail: "The ledger can be created from product context, but no source evidence is included.",
+      issue: "No included evidence. Architecture quality may be less grounded.",
+      action: "Include source material or continue with a warning."
+    };
+  }
+
+  if (phase.id === "model-domain" && constraintCheck?.status === "warning") {
+    evaluation = {
+      status: "warning",
+      detail: "The domain model can be inferred, but high-impact constraints are incomplete.",
+      issue: constraintCheck.detail,
+      action: "Add backend, auth, copy, or compliance notes before rerunning if those decisions are known."
+    };
+  }
+
+  if (phase.id === "create-routes-workflows" && summary.warnings) {
+    evaluation = {
+      status: "warning",
+      detail: "Routes and workflows can be created, but intake warnings should remain visible in Launch Review.",
+      issue: `${summary.warnings} local preflight warning${summary.warnings === 1 ? "" : "s"} remain.`,
+      action: "Review warnings or record a repair before Launch Review."
+    };
+  }
+
+  if (phase.id === "build-dsag" && readableEvidenceCheck?.status === "warning") {
+    evaluation = {
+      status: "warning",
+      detail: "DSAG can be built, but evidence trace confidence is limited.",
+      issue: readableEvidenceCheck.detail,
+      action: "Add readable evidence excerpts for stronger trace links."
+    };
+  }
+
+  if (phase.id === "generate-screen-specs" && state.startProvider === "local") {
+    evaluation = {
+      status: "warning",
+      detail: "Screen specs are generated by deterministic local inference.",
+      issue: "Local deterministic mode skips provider-backed reasoning.",
+      action: "Connect a provider and rerun if production reasoning is required."
+    };
+  }
+
+  if (phase.id === "generate-design-contracts" && brandMissing) {
+    evaluation = {
+      status: "warning",
+      detail: "Design contracts can be created from product context, but brand evidence is thin.",
+      issue: "No brand attributes were supplied.",
+      action: "Add brand notes or accept the neutral product UI defaults."
+    };
+  }
+
+  if (phase.id === "generate-frontend-agent-contract" && constraintCheck?.status === "warning") {
+    evaluation = {
+      status: "warning",
+      detail: "Frontend-agent contracts can be produced, but some integration assumptions stay explicit.",
+      issue: constraintCheck.detail,
+      action: "Confirm backend, auth, copy, and compliance contracts before production handoff."
+    };
+  }
+
+  if (phase.id === "validate-package" && providerWarnings) {
+    evaluation = {
+      status: "warning",
+      detail: "Package validation can finish, but provider setup warnings remain part of the proof trail.",
+      issue: `${providerWarnings} provider diagnostic warning${providerWarnings === 1 ? "" : "s"} remain.`,
+      action: "Review diagnostics before Launch Review."
+    };
+  }
+
+  if (phase.id === "prepare-launch-review" && (summary.warnings || providerWarnings)) {
+    evaluation = {
+      status: "warning",
+      detail: "Launch Review can be prepared with explicit warnings and human-review notes.",
+      issue: `${summary.warnings + providerWarnings} warning${summary.warnings + providerWarnings === 1 ? "" : "s"} will graduate into Launch Review.`,
+      action: "Keep warnings visible in Phase 5 or record repairs now."
+    };
+  }
+
+  if (repaired && evaluation.status !== "pass") {
+    return {
+      status: "pass",
+      detail: `Repair recorded. ${evaluation.detail}`,
+      issue: "",
+      action: "Repair has been acknowledged for this generation run."
+    };
+  }
+
+  return evaluation;
+}
+
+function generationPhaseViews(): StartGenerationPhaseView[] {
+  const run = state.startGenerationRun;
+  const started = startGenerationStarted();
+  return startGenerationPhaseDefinitions.map((phase, index) => {
+    const evaluation = generationPhaseEvaluation(phase);
+    let status: StartGenerationPhaseStatus = "queued";
+    if (started) {
+      if (run.status === "complete" || run.activePhaseIndex > index) {
+        status = evaluation.status === "blocked" ? "blocked" : evaluation.status;
+      } else if (run.activePhaseIndex === index) {
+        status = run.status === "blocked" ? "blocked" : run.status === "running" ? "running" : "queued";
+      }
+    }
+    return {
+      ...phase,
+      status,
+      detail: evaluation.detail,
+      issue: evaluation.issue,
+      action: evaluation.action,
+      repaired: state.startGenerationRun.repairedPhaseIds.includes(phase.id)
+    };
+  });
+}
+
+function generationRunSummary(phases = generationPhaseViews()): { completed: number; warnings: number; blockers: number; queued: number; label: string; tone: "success" | "warning" | "danger" | "neutral" } {
+  const completed = phases.filter((phase) => phase.status === "pass" || phase.status === "warning").length;
+  const warnings = phases.filter((phase) => phase.status === "warning").length;
+  const blockers = phases.filter((phase) => phase.status === "blocked").length;
+  const queued = phases.filter((phase) => phase.status === "queued").length;
+  if (blockers) return { completed, warnings, blockers, queued, label: "Blocked", tone: "danger" };
+  if (state.startGenerationRun.status === "complete") return { completed, warnings, blockers, queued, label: warnings ? "Complete with warnings" : "Complete", tone: warnings ? "warning" : "success" };
+  if (state.startGenerationRun.status === "running") return { completed, warnings, blockers, queued, label: "Running", tone: "warning" };
+  return { completed, warnings, blockers, queued, label: "Ready", tone: "neutral" };
+}
+
+function startGenerationLog(): Record<string, unknown> {
+  const phases = generationPhaseViews();
+  const summary = generationRunSummary(phases);
+  return {
+    run: {
+      status: state.startGenerationRun.status,
+      startedAt: state.startGenerationRun.startedAt || null,
+      completedAt: state.startGenerationRun.completedAt || null,
+      activePhaseIndex: state.startGenerationRun.activePhaseIndex,
+      repairedPhaseIds: state.startGenerationRun.repairedPhaseIds
+    },
+    summary: {
+      completed: summary.completed,
+      warnings: summary.warnings,
+      blockers: summary.blockers,
+      queued: summary.queued,
+      label: summary.label
+    },
+    provider: {
+      id: state.startProvider,
+      label: providerDetail().label,
+      keyHandling: providerRequiresKey() ? "session-only, not persisted, excluded from logs" : "no provider key required"
+    },
+    phases: phases.map((phase) => ({
+      id: phase.id,
+      label: phase.label,
+      status: phase.status,
+      artifact: phase.artifact,
+      detail: phase.detail,
+      issue: phase.issue || null,
+      action: phase.action || null,
+      repaired: phase.repaired
+    })),
+    payloadPreview: providerPayloadPreview()
+  };
+}
+
+function beginStartGenerationRun(): void {
+  state.startGenerationRun = {
+    ...blankStartGenerationRun(),
+    startedAt: new Date().toISOString(),
+    activePhaseIndex: 0,
+    status: "running",
+    message: "Generation started. Normalize evidence is running."
+  };
+  persistStartDraft();
+}
+
+function completeStartGenerationMessage(): string {
+  const phases = generationPhaseViews();
+  const warnings = phases.filter((phase) => phase.status === "warning").length;
+  return warnings
+    ? `Generation completed with ${warnings} warning${warnings === 1 ? "" : "s"}. Launch Review graduation begins in Phase 5.`
+    : "Generation completed. Launch Review graduation begins in Phase 5.";
+}
+
+function runNextStartGenerationPhase(): void {
+  if (!startGenerationStarted()) beginStartGenerationRun();
+  if (state.startGenerationRun.status === "complete") {
+    state.startGenerationRun.message = completeStartGenerationMessage();
+    return;
+  }
+  const activeIndex = Math.min(state.startGenerationRun.activePhaseIndex, startGenerationPhaseDefinitions.length - 1);
+  const phase = startGenerationPhaseDefinitions[activeIndex];
+  const evaluation = generationPhaseEvaluation(phase);
+  if (evaluation.status === "blocked") {
+    state.startGenerationRun.status = "blocked";
+    state.startGenerationRun.message = `${phase.label} is blocked. ${evaluation.issue || evaluation.detail}`;
+    persistStartDraft();
+    return;
+  }
+
+  const nextIndex = activeIndex + 1;
+  state.startGenerationRun.activePhaseIndex = nextIndex;
+  if (nextIndex >= startGenerationPhaseDefinitions.length) {
+    state.startGenerationRun.status = "complete";
+    state.startGenerationRun.completedAt = new Date().toISOString();
+    state.startGenerationRun.message = completeStartGenerationMessage();
+  } else {
+    state.startGenerationRun.status = "running";
+    state.startGenerationRun.message = `${phase.label} created ${phase.artifact}. ${startGenerationPhaseDefinitions[nextIndex].label} is running.`;
+  }
+  persistStartDraft();
+}
+
+function runAllStartGenerationPhases(): void {
+  if (!startGenerationStarted()) beginStartGenerationRun();
+  while (state.startGenerationRun.status !== "blocked" && state.startGenerationRun.status !== "complete") {
+    runNextStartGenerationPhase();
+  }
+}
+
+function retryStartGenerationPhase(): void {
+  if (!startGenerationStarted()) {
+    beginStartGenerationRun();
+    return;
+  }
+  const activePhase = startGenerationPhaseDefinitions[Math.min(state.startGenerationRun.activePhaseIndex, startGenerationPhaseDefinitions.length - 1)];
+  state.startGenerationRun.status = "running";
+  state.startGenerationRun.message = activePhase ? `Retrying ${activePhase.label}.` : "Retrying generation.";
+  persistStartDraft();
+}
+
+function repairStartGenerationPhase(phaseId: string): void {
+  if (!startGenerationPhaseDefinitions.some((phase) => phase.id === phaseId)) return;
+  state.startGenerationRun.repairedPhaseIds = [...new Set([...state.startGenerationRun.repairedPhaseIds, phaseId])];
+  const phase = startGenerationPhaseDefinitions.find((candidate) => candidate.id === phaseId);
+  if (state.startGenerationRun.status === "blocked" && phase?.id === startGenerationPhaseDefinitions[state.startGenerationRun.activePhaseIndex]?.id) {
+    state.startGenerationRun.status = "running";
+  }
+  state.startGenerationRun.message = `Repair recorded for ${phase?.label ?? "generation phase"}. Rerun the phase to refresh proof.`;
+  persistStartDraft();
 }
 
 function intakeFileName(value: Record<string, unknown>): string {
@@ -3970,7 +4396,8 @@ function startOnboardingState(): string {
     intent: "guided-intent",
     evidence: "guided-evidence",
     preflight: "guided-preflight",
-    provider: "provider-setup"
+    provider: "provider-setup",
+    progress: "generation-progress"
   };
   return states[state.startMode];
 }
@@ -3980,18 +4407,22 @@ function renderStartStepper(): string {
     { id: "intent", label: "Project Intent", detail: "Context, users, goals, stack, mode." },
     { id: "evidence", label: "Evidence Upload", detail: "Screenshots, docs, code, brand, API notes." },
     { id: "preflight", label: "Local Preflight", detail: "Deterministic readiness before provider setup." },
-    { id: "provider", label: "Provider Setup", detail: "Key, evidence review, redaction, diagnostics." }
+    { id: "provider", label: "Provider Setup", detail: "Key, evidence review, redaction, diagnostics." },
+    { id: "progress", label: "Generation Progress", detail: "Compiler phases, artifacts, repair actions." }
   ];
   return `<div class="intake-stepper" aria-label="Guided package creation steps">
-    ${steps.map((step, index) => `
-      <button class="step-card ${state.startMode === step.id ? "active" : ""}" data-start-step="${esc(step.id)}" data-agent-action="open-${esc(step.id)}-step" type="button" ${state.startMode === step.id ? "aria-current=\"step\"" : ""}>
+    ${steps.map((step, index) => {
+      const disabled = step.id === "progress" && !startGenerationStarted();
+      return `
+      <button class="step-card ${state.startMode === step.id ? "active" : ""}" data-start-step="${esc(step.id)}" data-agent-action="open-${esc(step.id)}-step" type="button" ${state.startMode === step.id ? "aria-current=\"step\"" : ""} ${disabled ? "disabled aria-disabled=\"true\"" : ""}>
         <span class="step-index">${String(index + 1).padStart(2, "0")}</span>
         <span>
           <strong>${esc(step.label)}</strong>
           <small>${esc(step.detail)}</small>
         </span>
       </button>
-    `).join("")}
+    `;
+    }).join("")}
   </div>`;
 }
 
@@ -4334,6 +4765,124 @@ function renderStartProviderStep(): string {
   `;
 }
 
+function renderGenerationPhaseRow(phase: StartGenerationPhaseView, index: number): string {
+  const canRepair = phase.status === "warning" || phase.status === "blocked";
+  const canRetry = phase.status === "blocked" || phase.status === "running";
+  return `
+    <div class="generation-phase-row ${esc(phase.status)}" data-start-generation-phase="${esc(phase.id)}">
+      <span class="generation-phase-index">${esc(String(index + 1).padStart(2, "0"))}</span>
+      <div class="generation-phase-copy">
+        <div class="generation-phase-title">
+          <strong>${esc(phase.label)}</strong>
+          ${badge(generationPhaseLabel(phase.status), generationPhaseTone(phase.status))}
+        </div>
+        <span>${esc(phase.detail)}</span>
+        <code>${esc(phase.artifact)}</code>
+        ${phase.issue ? `<div class="notice compact" role="note">${esc(phase.issue)} ${esc(phase.action)}</div>` : ""}
+      </div>
+      <div class="generation-phase-actions">
+        ${canRetry ? `<button class="button small" data-start-generation-retry="${esc(phase.id)}" type="button">Retry phase</button>` : ""}
+        ${canRepair ? `<button class="button small" data-start-generation-repair="${esc(phase.id)}" type="button">${phase.repaired ? "Repair recorded" : "Record repair"}</button>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function renderCurrentGenerationPhase(phase: StartGenerationPhaseView | undefined): string {
+  if (!phase) {
+    return `<div class="empty">Generation has not started. Return to Provider Setup and approve generation.</div>`;
+  }
+  return `
+    <div class="snapshot-line">
+      <div>
+        <h3>${esc(phase.label)}</h3>
+        <div class="muted">${esc(phase.detail)}</div>
+      </div>
+      ${badge(generationPhaseLabel(phase.status), generationPhaseTone(phase.status))}
+    </div>
+    <div class="payload-scope" style="margin-top:10px">
+      <div>
+        <strong>Artifact</strong>
+        <span>${esc(phase.artifact)}</span>
+      </div>
+      <div>
+        <strong>Phase status</strong>
+        <span>${esc(generationPhaseLabel(phase.status))}</span>
+      </div>
+      <div>
+        <strong>Repair action</strong>
+        <span>${esc(phase.issue ? phase.action : "No repair needed for this phase.")}</span>
+      </div>
+    </div>
+    ${phase.issue ? `<div class="notice" role="status">${esc(phase.issue)}</div>` : ""}
+    <div class="control-row">
+      <button class="button" id="retry-current-generation-phase" data-agent-action="retry-generation-phase" type="button" ${phase.status === "blocked" || phase.status === "running" ? "" : "disabled"}>Retry current phase</button>
+      <button class="button" data-start-generation-repair="${esc(phase.id)}" data-agent-action="repair-generation-phase" type="button" ${phase.status === "warning" || phase.status === "blocked" ? "" : "disabled"}>Record repair</button>
+    </div>
+  `;
+}
+
+function renderGenerationArtifacts(phases: StartGenerationPhaseView[]): string {
+  const created = phases.filter((phase) => phase.status === "pass" || phase.status === "warning");
+  if (!created.length) {
+    return `<div class="empty">Artifacts appear here as compiler phases complete.</div>`;
+  }
+  return table(["Status", "Phase", "Artifact", "Issue"], created.map((phase) => [
+    badge(generationPhaseLabel(phase.status), generationPhaseTone(phase.status)),
+    esc(phase.label),
+    `<code>${esc(phase.artifact)}</code>`,
+    esc(phase.issue || "None")
+  ]));
+}
+
+function renderStartGenerationProgressStep(): string {
+  const phases = generationPhaseViews();
+  const summary = generationRunSummary(phases);
+  const activePhase = phases[state.startGenerationRun.activePhaseIndex] ?? phases[phases.length - 1];
+  const progress = Math.round((summary.completed / startGenerationPhaseDefinitions.length) * 100);
+  return `
+    <div class="grid cols-2 section-gap">
+      ${panel("Compiler Progress", `
+        <div class="preflight-summary ${esc(summary.tone)}">
+          <strong>${esc(summary.label)}</strong>
+          <span>${esc(state.startGenerationRun.message || "Generation is ready to run through deterministic compiler phases.")}</span>
+        </div>
+        <div class="quality-meter" aria-label="Generation progress ${esc(progress)} percent">
+          <div style="width:${esc(progress)}%"></div>
+        </div>
+        <div class="mini-metrics">
+          <div><strong>${esc(`${summary.completed}/10`)}</strong><span>phases complete</span></div>
+          <div><strong>${esc(summary.warnings)}</strong><span>warnings</span></div>
+          <div><strong>${esc(summary.blockers)}</strong><span>blockers</span></div>
+          <div><strong>${esc(summary.queued)}</strong><span>queued</span></div>
+          <div><strong>${esc(providerDetail().label)}</strong><span>provider</span></div>
+          <div><strong>${esc(state.startGenerationRun.repairedPhaseIds.length)}</strong><span>repairs</span></div>
+        </div>
+        <div class="control-row">
+          <button class="button subtle" id="back-start-provider" data-agent-action="back-to-provider-setup" type="button">Back to provider setup</button>
+          <button class="button" id="save-generation-progress-draft" data-agent-action="save-generation-progress-draft" type="button">Save progress draft</button>
+          <button class="button" id="download-generation-progress-log" data-agent-action="download-generation-progress-log" type="button">Download generation log</button>
+          <button class="button primary" id="run-next-generation-phase" data-agent-action="run-next-generation-phase" type="button" ${state.startGenerationRun.status === "complete" ? "disabled" : ""}>Run next phase</button>
+          <button class="button primary" id="run-all-generation-phases" data-agent-action="run-all-generation-phases" type="button" ${state.startGenerationRun.status === "complete" ? "disabled" : ""}>Run all phases</button>
+        </div>
+        ${state.startGenerationRun.status === "complete" ? `<div class="notice" role="status">Generation progress is complete. Phase 5 will graduate this into Launch Review.</div>` : ""}
+      `)}
+      ${panel("Current Phase", renderCurrentGenerationPhase(activePhase))}
+    </div>
+    <div class="grid cols-2 section-gap">
+      ${panel("Phase Timeline", `
+        <div class="generation-phase-list">
+          ${phases.map((phase, index) => renderGenerationPhaseRow(phase, index)).join("")}
+        </div>
+      `)}
+      ${panel("Artifacts Created", renderGenerationArtifacts(phases))}
+    </div>
+    <div class="section-gap">
+      ${panel("Generation Log Preview", code(startGenerationLog()))}
+    </div>
+  `;
+}
+
 function renderStartDraft(): string {
   const checks = startPreflightChecks();
   const summary = startPreflightSummary(checks);
@@ -4357,6 +4906,11 @@ function renderStartDraft(): string {
       eyebrow: "Provider Setup",
       title: "Review what will be sent before generation.",
       body: "Choose a provider, keep the key session-only, redact risky evidence, and run diagnostics before architecture generation starts."
+    },
+    progress: {
+      eyebrow: "Generation Progress",
+      title: "Watch Archetype compile the architecture package.",
+      body: "Generation is shown as deterministic compiler phases with artifacts, warnings, blockers, repair actions, and a saveable progress log."
     }
   };
   const copy = stepCopy[state.startMode === "hub" ? "intent" : state.startMode];
@@ -4376,8 +4930,9 @@ function renderStartDraft(): string {
         ${badge(summary.label, summary.tone)}
         ${badge(`${state.startSourceMaterials.length} evidence`, state.startSourceMaterials.length ? "success" : "warning")}
         ${state.startMode === "provider" ? badge(providerDetail().label, state.startProvider === "local" ? "success" : "neutral") : ""}
+        ${state.startMode === "progress" ? badge(generationRunSummary().label, generationRunSummary().tone) : ""}
         ${badge(state.startDraftSavedAt ? "draft saved" : "local draft", state.startDraftSavedAt ? "success" : "neutral")}
-        ${badge(state.startMode === "provider" && providerRequiresKey() ? "session key only" : "no API key needed", "success")}
+        ${badge((state.startMode === "provider" || state.startMode === "progress") && providerRequiresKey() ? "session key only" : "no API key needed", "success")}
       </div>
     </section>
     ${renderStartStepper()}
@@ -4385,6 +4940,7 @@ function renderStartDraft(): string {
     ${state.startMode === "evidence" ? renderStartEvidenceStep() : ""}
     ${state.startMode === "preflight" ? renderStartPreflightStep(checks, summary) : ""}
     ${state.startMode === "provider" ? renderStartProviderStep() : ""}
+    ${state.startMode === "progress" ? renderStartGenerationProgressStep() : ""}
   `;
 }
 
@@ -4551,6 +5107,12 @@ function bindStartHubEvents(): void {
     button.addEventListener("click", () => {
       const step = button.dataset.startStep as StartMode | undefined;
       if (!step || step === "hub") return;
+      if (step === "progress" && !startGenerationStarted()) {
+        state.startProviderMessage = "Start generation from Provider Setup before opening Generation Progress.";
+        state.startMode = "provider";
+        render();
+        return;
+      }
       state.startMode = step;
       state.startMessage = "";
       render();
@@ -4595,6 +5157,11 @@ function bindStartHubEvents(): void {
   document.querySelector<HTMLButtonElement>("#back-start-preflight")?.addEventListener("click", () => {
     state.startMode = "preflight";
     state.startProviderMessage = "";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#back-start-provider")?.addEventListener("click", () => {
+    state.startMode = "provider";
+    state.startGenerationRun.message = "";
     render();
   });
   document.querySelector<HTMLButtonElement>("#toggle-start-examples")?.addEventListener("click", () => {
@@ -4701,6 +5268,12 @@ function bindStartHubEvents(): void {
     state.startProviderMessage = "Provider payload preview prepared.";
     render();
   });
+  document.querySelector<HTMLButtonElement>("#download-generation-progress-log")?.addEventListener("click", () => {
+    const payload = providerPayloadPreview();
+    downloadText(`${intakeFileName(payload).replace("-intake.json", "")}-generation-log.json`, `${pretty(startGenerationLog())}\n`, "application/json");
+    state.startGenerationRun.message = "Generation log prepared.";
+    render();
+  });
   document.querySelector<HTMLSelectElement>("#start-provider")?.addEventListener("change", (event) => {
     const provider = (event.target as HTMLSelectElement).value;
     if (!isProviderId(provider)) return;
@@ -4790,8 +5363,41 @@ function bindStartHubEvents(): void {
       render();
       return;
     }
-    state.startProviderMessage = "Provider setup complete. Generation progress begins in Phase 4.";
+    beginStartGenerationRun();
+    state.startMode = "progress";
+    state.startProviderMessage = "";
     render();
+  });
+  document.querySelector<HTMLButtonElement>("#run-next-generation-phase")?.addEventListener("click", () => {
+    runNextStartGenerationPhase();
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#run-all-generation-phases")?.addEventListener("click", () => {
+    runAllStartGenerationPhases();
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#retry-current-generation-phase")?.addEventListener("click", () => {
+    retryStartGenerationPhase();
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#save-generation-progress-draft")?.addEventListener("click", () => {
+    saveStartDraft("Generation progress draft saved locally.");
+    state.startGenerationRun.message = "Generation progress draft saved locally.";
+    render();
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-start-generation-retry]").forEach((button) => {
+    button.addEventListener("click", () => {
+      retryStartGenerationPhase();
+      render();
+    });
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-start-generation-repair]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const phaseId = button.dataset.startGenerationRepair;
+      if (!phaseId) return;
+      repairStartGenerationPhase(phaseId);
+      render();
+    });
   });
   const startSourceBindings: Array<[keyof SourceMaterialDraft, string]> = [
     ["label", "#start-source-label"],
