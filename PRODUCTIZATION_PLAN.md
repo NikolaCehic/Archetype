@@ -77,6 +77,8 @@ Exit criteria:
 
 ## Phase 4: Telemetry and Audit Transport
 
+Status: complete
+
 Goal: make measurement production-safe.
 
 Build:

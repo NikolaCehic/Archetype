@@ -95,6 +95,8 @@ const bundle = {
   accountWorkspaceReport: readText("15-productization/account-workspace-contract.md"),
   providerExecutionContract: readJson("15-productization/provider-execution-contract.json"),
   providerExecutionReport: readText("15-productization/provider-execution-contract.md"),
+  telemetryAuditContract: readJson("15-productization/telemetry-audit-contract.json"),
+  telemetryAuditReport: readText("15-productization/telemetry-audit-contract.md"),
   acceptanceCriteria: readJson("06-frontend-agent-contract/acceptance-criteria.json"),
   buildSimulation: {
     buildPlan: readJson("11-build-simulation/build-plan.json"),

@@ -627,3 +627,237 @@ Productization Phase 4: Telemetry and Audit Transport.
 Why this is next:
 
 Provider execution now has an implementable contract, but product telemetry and audit transport remain local or contract-only. The next productization risk is enabling measurement and operational audit flows without silently changing the local-first onboarding promise or collecting data before consent, retention, deletion, and privacy rules exist.
+
+## Phase 4: Telemetry and Audit Transport
+
+Status: complete
+
+Date: 2026-05-04
+
+Source plans:
+
+- `ONBOARDING_PLAN.md`
+- `PRODUCTIZATION_PLAN.md`
+
+## Phase Goal
+
+Implement the fourth productization phase fully:
+
+- Define consent and privacy behavior.
+- Define telemetry event schema.
+- Define telemetry transport retry/drop behavior.
+- Define workspace audit log model.
+- Define retention, export, deletion, and receipt controls.
+- Define workspace analytics boundaries.
+- Keep telemetry off by default and preserve local-first onboarding.
+
+## Changes Made
+
+### Compiler Contract
+
+- Added a generated Telemetry and Audit Transport contract to `src/modules/productization.ts`.
+- Added `TelemetryAuditContract` and `TelemetryAuditArtifacts` types.
+- Generated `15-productization/telemetry-audit-contract.json`.
+- Generated `15-productization/telemetry-audit-contract.md`.
+- Added telemetry/audit status into `15-productization/productization-readiness.json`.
+- Marked `telemetry_transport` as `configured` because the implementation contract now exists.
+- Marked `privacy_retention` as `configured` because retention, deletion, export, and workspace analytics privacy boundaries now exist as contracts.
+- Kept `production_launch_ready: false` because telemetry ingest, audit store, consent UI, and retention workers are not implemented yet.
+- Kept telemetry disabled by default.
+
+### Consent and Privacy Contract
+
+- Defined consent states:
+  - `not_asked`
+  - `granted`
+  - `declined`
+  - `revoked`
+- Set collection default to disabled.
+- Defined purposes:
+  - Product analytics.
+  - Workspace audit.
+  - Provider execution audit.
+  - Support debug.
+- Required consent proof fields and copy points.
+- Added privacy classifications, data minimization rules, forbidden telemetry fields, regional policy, and data-subject-right controls.
+
+### Event Schema
+
+- Defined event envelope fields with schema version, privacy classification, consent snapshot, workspace/account/package/session ids, request id, and payload.
+- Defined payload limits and source-material policy.
+- Added 12 event catalog entries for onboarding, package generation/export, workspace save/delete/migration, provider execution, consent updates, and support debug.
+- Defined event id and idempotency policy.
+
+### Transport Retry Policy
+
+- Defined `POST /v1/telemetry/events`.
+- Kept transport state `not_implemented_off_by_default`.
+- Defined batching, local queue, offline behavior, and backpressure behavior.
+- Added retry/drop rules for:
+  - Network retry.
+  - Server retry.
+  - Client drop.
+  - Consent recheck.
+  - Dead letter.
+- Ensured telemetry transport never blocks local package workflows.
+
+### Audit Log Model
+
+- Defined append-only `workspace_audit_event` model.
+- Added required audit fields, event types, immutability policy, visibility by role, and forbidden audit fields.
+- Audit forbidden fields include raw source material, raw prompts, raw provider output, provider API keys, session cookies, and unredacted secret values.
+
+### Retention, Deletion, Export, and Workspace Analytics
+
+- Defined retention classes for analytics events, workspace audit, provider execution audit, support debug, and security abuse.
+- Defined deletion sequence:
+  - Resolve scope.
+  - Pause transport.
+  - Delete events.
+  - Anonymize audit.
+  - Delete aggregates.
+  - Issue receipt.
+- Defined export sequence and retention exception policy.
+- Defined workspace analytics boundaries:
+  - Owner/admin visibility by default.
+  - Minimum group size of 5.
+  - Allowed metrics.
+  - Forbidden metrics.
+  - No raw source, prompt, provider output, secret values, individual keystrokes, or cross-workspace user tracking.
+
+### Schema and Manifest Coverage
+
+- Added `telemetry-audit-contract.schema.json`.
+- Added telemetry/audit schema to the schema index.
+- Added telemetry/audit JSON, markdown, and schema artifacts to the manifest artifact index.
+- Export validation now checks 178 files.
+
+### Workbench Governance UI
+
+- Loaded telemetry/audit contract JSON and markdown into Workbench sample and imported bundles.
+- Added backwards-compatible legacy fallback for packages generated before Phase 4.
+- Added a Governance section for the Telemetry Audit Contract with:
+  - Contract readiness.
+  - Transport implementation state.
+  - Default telemetry state.
+  - Consent default.
+  - Collection default.
+  - Telemetry endpoint.
+  - Audit store state.
+  - Analytics visibility.
+  - Consent purpose table.
+  - Event catalog.
+  - Transport retry rules.
+  - Audit event types.
+  - Retention classes.
+  - Workspace analytics boundaries.
+- Added AI-readable hooks:
+  - `data-agent-section="telemetry-audit-contract"`
+  - `data-agent-telemetry-default="off"`
+  - `data-agent-event-schema-version="1.0"`
+  - `data-agent-consent-state="not_asked"`
+
+### Tests
+
+- Updated the productization readiness E2E expectation because telemetry runtime now reports a configured off-by-default telemetry/audit contract.
+- Added a Workbench E2E/UI test for the Telemetry Audit Contract Governance section.
+- The test verifies:
+  - Telemetry default remains off.
+  - Event schema version is visible.
+  - Consent state is `not_asked`.
+  - Transport remains contract-only.
+  - Telemetry endpoint, product analytics purpose, onboarding event, consent retry rule, provider audit event, support debug retention class, and forbidden raw source metric are visible.
+
+## Validation Against ONBOARDING_PLAN.md
+
+### Fresh Start Hub Without Telemetry
+
+Result: pass
+
+The telemetry contract explicitly keeps Fresh Start Hub, sample, import, local draft save, local preflight, and local diagnostics free of telemetry transport by default.
+
+### Local Onboarding Metrics Stay Local
+
+Result: pass
+
+Local onboarding metrics remain browser-local until the user opts into hosted telemetry.
+
+### Just-In-Time LLM/API Key Boundary
+
+Result: pass
+
+Telemetry events forbid provider API keys, session secrets, raw prompts, raw provider output, and raw source material.
+
+### Consent Before Collection
+
+Result: pass
+
+Collection default is disabled and consent starts as `not_asked`. Revocation drops queued analytics immediately.
+
+### Sample and Import Paths
+
+Result: pass
+
+Sample bundles include telemetry/audit contracts. Older imported packages receive a legacy fallback that does not enable telemetry.
+
+### AI-Agent Handoff Discovery
+
+Result: pass
+
+The Governance section exposes telemetry default state, consent state, event schema version, raw purpose ids, raw event names, raw retry ids, raw audit event types, and raw retention classes.
+
+## Test Evidence
+
+- Unit/type test: `npm run build` passed.
+- Smoke test: `npm run smoke` passed.
+- Artifact assertion: telemetry/audit JSON, markdown, schema, and manifest entries exist; telemetry and privacy gates are `configured`; production launch remains false; telemetry default remains off; contract has 4 consent purposes, 12 events, and 5 retention classes.
+- Package validation: `npm run validate` passed inside `npm run check` with 178 checked files and 0 blockers.
+- Focused E2E/UI regression: `npx playwright test --config playwright.config.ts tests/workbench/workbench-ui.spec.ts --grep "telemetry audit"` passed with 1 passed, 0 failed.
+- Full E2E/UI test: `npm run workbench:e2e` passed with 43 passed, 0 failed.
+- Malformed-data E2E regression: 20 passed, 0 failed.
+- E2E report generation: `npm run workbench:e2e:report` passed and wrote `tmp/workbench-ui-e2e`.
+- Integration test: `npm run check` passed.
+- Generated frontend integration inside `npm run check`:
+  - `npm install` passed in `tmp/generated-frontend`.
+  - `npm run typecheck` passed in `tmp/generated-frontend`.
+  - `npm run build` passed in `tmp/generated-frontend`.
+- Golden regression: `npm run golden` passed inside `npm run check` for fintech, healthcare, logistics, and web3 examples.
+- Root dependency audit: `npm audit --json` reports 0 vulnerabilities.
+- Generated target dependency audit: `npm audit --json` in `tmp/generated-frontend` reports 0 vulnerabilities.
+- Diff hygiene: `git diff --check` passed.
+
+## Iteration During Validation
+
+- The telemetry-focused E2E passed on the first run.
+- Raw ids were exposed from the first implementation pass for consent purposes, event names, retry rules, audit event types, and retention classes.
+- No additional implementation iteration was required after full validation.
+
+## Self-Critique and Iteration Decision
+
+Question: Is this implementation the most optimal and correct Productization Phase 4 solution?
+
+Answer: Yes, for Productization Phase 4.
+
+Reasoning:
+
+- It defines measurement without quietly enabling measurement.
+- It preserves local-first onboarding and lets users decline/revoke telemetry without blocking local product value.
+- It gives backend agents a concrete ingest, schema, retry, audit, retention, deletion, export, and aggregation contract.
+- It gives frontend agents concrete consent states, telemetry-disabled states, audit visibility rules, retention classes, and privacy-control hooks.
+- It separates product analytics from workspace/security/provider audit behavior.
+- It forbids source material, provider prompts, provider outputs, secrets, and individual surveillance from analytics payloads.
+- It keeps production launch readiness false until hosted transport, consent UI, audit store, retention workers, and privacy policy exist.
+
+I do not see a better Phase 4 solution inside the current scope. Implementing telemetry transport now would skip deployment operations and launch gates, which are still required before any hosted product can safely turn telemetry on.
+
+## Exit Condition
+
+I dont know any better solution for this nor do I see anything worng with the current one.
+
+## Next Phase
+
+Productization Phase 5: Deployment Operations and Launch Gates.
+
+Why this is next:
+
+Accounts, provider execution, telemetry, audit, privacy, deletion, and workspace analytics are now implementable as contracts. The final unresolved productization risk is operations: environment configuration, CI/CD gates, deployment runbook, backup, rollback, observability, incident response, and the explicit launch gates that decide when hosted production can actually go live.

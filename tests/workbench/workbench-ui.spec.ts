@@ -428,7 +428,7 @@ test("productization readiness contract is visible in Governance", async ({ page
   await expect(section).toBeVisible();
   await expect(section).toContainText("Foundation");
   await expect(section).toContainText("not ready");
-  await expect(section).toContainText("none_by_default_local_metrics_only");
+  await expect(section).toContainText("telemetry_audit_contract_ready_off_by_default");
   await expect(section).toContainText("provider_execution_bridge");
   await expect(section).toContainText("Configured");
   await expect(section).toContainText("Fresh Start Hub remains available without an account");
@@ -469,6 +469,26 @@ test("provider execution bridge contract is visible in Governance", async ({ pag
   await expect(section).toContainText("provider_execution.provider_called");
   await expect(section).toContainText("redaction_blocked");
   await expect(section).toContainText("localStorage");
+});
+
+test("telemetry audit transport contract is visible in Governance", async ({ page }) => {
+  await ensureWorkbenchPackage(page);
+  await openView(page, "governance");
+
+  const section = page.locator("[data-agent-section='telemetry-audit-contract']");
+  await expect(section).toBeVisible();
+  await expect(section).toHaveAttribute("data-agent-telemetry-default", "off");
+  await expect(section).toHaveAttribute("data-agent-event-schema-version", "1.0");
+  await expect(section).toHaveAttribute("data-agent-consent-state", "not_asked");
+  await expect(section).toContainText("contract only");
+  await expect(section).toContainText("off");
+  await expect(section).toContainText("POST /v1/telemetry/events");
+  await expect(section).toContainText("product_analytics");
+  await expect(section).toContainText("onboarding.local_preflight_run");
+  await expect(section).toContainText("consent_recheck");
+  await expect(section).toContainText("provider.execution_audited");
+  await expect(section).toContainText("support_debug");
+  await expect(section).toContainText("raw_source_content");
 });
 
 test("onboarding keyboard path, status announcements, and AI action hooks are accessible", async ({ page }) => {

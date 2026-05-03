@@ -144,6 +144,8 @@ const ARTIFACT_INDEX = [
   "15-productization/account-workspace-contract.md",
   "15-productization/provider-execution-contract.json",
   "15-productization/provider-execution-contract.md",
+  "15-productization/telemetry-audit-contract.json",
+  "15-productization/telemetry-audit-contract.md",
   "08-quality/consistency-report.md",
   "08-quality/accessibility-report.md",
   "08-quality/safety-report.md",
@@ -186,6 +188,7 @@ const ARTIFACT_INDEX = [
   "09-schemas/productization-readiness.schema.json",
   "09-schemas/account-workspace-contract.schema.json",
   "09-schemas/provider-execution-contract.schema.json",
+  "09-schemas/telemetry-audit-contract.schema.json",
   "09-schemas/frontend-build-manifest.schema.json",
   "09-schemas/dsag.schema.json",
   "09-schemas/readiness-report.schema.json"

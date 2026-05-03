@@ -285,6 +285,8 @@ interface Bundle {
   accountWorkspaceReport: string;
   providerExecutionContract: Record<string, any>;
   providerExecutionReport: string;
+  telemetryAuditContract: Record<string, any>;
+  telemetryAuditReport: string;
   acceptanceCriteria: { criteria: Array<Record<string, any>> };
   buildSimulation: Record<string, any>;
   revision: Record<string, any>;
@@ -3916,6 +3918,10 @@ function generatedBundleFromTemplate(template: Bundle): Bundle {
     ...bundle.providerExecutionContract,
     product_name: projectName
   };
+  bundle.telemetryAuditContract = {
+    ...bundle.telemetryAuditContract,
+    product_name: projectName
+  };
   return bundle;
 }
 
@@ -4876,6 +4882,97 @@ function renderProviderExecutionContract(bundle: Bundle): string {
   `;
 }
 
+function renderTelemetryAuditContract(bundle: Bundle): string {
+  const contract = bundle.telemetryAuditContract ?? legacyTelemetryAuditContract();
+  const consent = contract.consent_privacy_contract ?? {};
+  const eventSchema = contract.event_schema ?? {};
+  const transport = contract.transport_retry_policy ?? {};
+  const audit = contract.audit_log_model ?? {};
+  const retention = contract.retention_deletion_controls ?? {};
+  const analytics = contract.workspace_analytics_boundaries ?? {};
+  const readiness = contract.readiness ?? {};
+  const purposes = Array.isArray(consent.purposes) ? consent.purposes : [];
+  const eventCatalog = Array.isArray(eventSchema.event_catalog) ? eventSchema.event_catalog : [];
+  const retryRules = Array.isArray(transport.retry_rules) ? transport.retry_rules : [];
+  const auditTypes = Array.isArray(audit.event_types) ? audit.event_types : [];
+  const retentionClasses = Array.isArray(retention.retention_classes) ? retention.retention_classes : [];
+  const allowedMetrics = Array.isArray(analytics.allowed_metrics) ? analytics.allowed_metrics : [];
+  return `
+    <section
+      data-agent-section="telemetry-audit-contract"
+      data-agent-telemetry-default="${readiness.telemetry_default_enabled ? "on" : "off"}"
+      data-agent-event-schema-version="${esc(eventSchema.schema_version ?? "unknown")}"
+      data-agent-consent-state="${esc(consent.default_state ?? "not_asked")}"
+    >
+      <div class="grid cols-3">
+        ${metric("Contract", readiness.implementable_without_invention ? "ready" : "review", readiness.implementable_without_invention ? "success" : "warning")}
+        ${metric("Transport", readiness.transport_implemented ? "live" : "contract only", readiness.transport_implemented ? "success" : "warning")}
+        ${metric("Default", readiness.telemetry_default_enabled ? "on" : "off", readiness.telemetry_default_enabled ? "danger" : "success")}
+      </div>
+      <div class="productization-boundary">
+        <div><strong>Consent</strong><span>${esc(consent.default_state ?? "unknown")}</span></div>
+        <div><strong>Collection</strong><span>${esc(consent.collection_default ?? "unknown")}</span></div>
+        <div><strong>Endpoint</strong><span>${esc(transport.endpoint ?? "unknown")}</span></div>
+        <div><strong>Audit store</strong><span>${esc(audit.storage_status ?? "unknown")}</span></div>
+        <div><strong>Analytics</strong><span>${esc(analytics.default_visibility ?? "unknown")}</span></div>
+      </div>
+      <div class="productization-lists contract-lists">
+        <div>
+          <h3>Consent Purposes</h3>
+          ${table(["Purpose", "Default", "Local required"], purposes.map((purpose: any) => [
+            `<strong>${esc(humanLabel(purpose.purpose))}</strong><div class="muted"><code>${esc(purpose.purpose ?? "")}</code></div>`,
+            esc(humanLabel(purpose.default_state)),
+            badge(String(Boolean(purpose.required_for_local_use)), purpose.required_for_local_use ? "warning" : "success")
+          ]))}
+        </div>
+        <div>
+          <h3>Event Catalog</h3>
+          ${table(["Event", "Purpose", "Privacy"], eventCatalog.map((event: any) => [
+            `<strong>${esc(humanLabel(event.event_name))}</strong><div class="muted"><code>${esc(event.event_name ?? "")}</code></div>`,
+            esc(humanLabel(event.purpose)),
+            esc(humanLabel(event.privacy_classification))
+          ]))}
+        </div>
+      </div>
+      <div class="productization-lists contract-lists">
+        <div>
+          <h3>Transport Retry</h3>
+          ${table(["Rule", "Requirement"], retryRules.map((rule: any) => [
+            `<strong>${esc(humanLabel(rule.id))}</strong><div class="muted"><code>${esc(rule.id ?? "")}</code></div>`,
+            esc(rule.rule ?? "")
+          ]))}
+        </div>
+        <div>
+          <h3>Audit Events</h3>
+          ${table(["Type", "Description"], auditTypes.map((event: any) => [
+            `<strong>${esc(humanLabel(event.event_type))}</strong><div class="muted"><code>${esc(event.event_type ?? "")}</code></div>`,
+            esc(event.description ?? "")
+          ]))}
+        </div>
+      </div>
+      <div class="productization-lists contract-lists">
+        <div>
+          <h3>Retention Classes</h3>
+          ${table(["Class", "Retention", "Deletion"], retentionClasses.map((item: any) => [
+            `<strong>${esc(humanLabel(item.class))}</strong><div class="muted"><code>${esc(item.class ?? "")}</code></div>`,
+            esc(item.default_retention ?? ""),
+            esc(item.deletion_behavior ?? "")
+          ]))}
+        </div>
+        <div>
+          <h3>Workspace Analytics</h3>
+          ${table(["Boundary", "Value"], [
+            ["Default visibility", esc(analytics.default_visibility ?? "")],
+            ["Minimum group size", esc(analytics.minimum_group_size ?? "")],
+            ["Allowed metrics", esc(allowedMetrics.join(", "))],
+            ["Forbidden metrics", esc(((analytics.forbidden_metrics ?? []) as string[]).join(", "))]
+          ])}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderGovernance(bundle: Bundle): string {
   const queue = governanceActionQueue();
   const approvalGates = bundle.revision.approvalGates?.gates ?? [];
@@ -4916,6 +5013,9 @@ function renderGovernance(bundle: Bundle): string {
     </div>
     <div style="margin-top:14px">
       ${panel("Provider Execution Contract", renderProviderExecutionContract(bundle))}
+    </div>
+    <div style="margin-top:14px">
+      ${panel("Telemetry Audit Contract", renderTelemetryAuditContract(bundle))}
     </div>
     <div style="margin-top:14px">
       ${panel("Action Queue", queue.length ? table(["Severity", "Source", "Item", "Status", "Note"], queue.map((item) => [
@@ -7615,6 +7715,57 @@ function legacyProviderExecutionReport(): string {
   return "# Provider Execution Bridge Contract\n\nThis package was generated before provider execution bridge artifacts existed. Regenerate it with the current compiler to inspect provider contracts.";
 }
 
+function legacyTelemetryAuditContract(): Record<string, any> {
+  return {
+    contract_version: "legacy",
+    product_name: "Legacy package",
+    implementation_status: "contract_ready_transport_not_implemented",
+    purpose: "This imported package was generated before the telemetry and audit transport contract existed.",
+    onboarding_guarantees: ["Legacy package import remains non-blocking and does not enable telemetry."],
+    consent_privacy_contract: {
+      default_state: "not_asked",
+      collection_default: "disabled",
+      purposes: []
+    },
+    event_schema: {
+      schema_version: "legacy",
+      event_catalog: []
+    },
+    transport_retry_policy: {
+      endpoint: "unknown",
+      retry_rules: []
+    },
+    audit_log_model: {
+      storage_status: "unknown",
+      event_types: []
+    },
+    retention_deletion_controls: {
+      retention_classes: []
+    },
+    workspace_analytics_boundaries: {
+      default_visibility: "unknown",
+      allowed_metrics: [],
+      forbidden_metrics: []
+    },
+    ai_agent_contract: {
+      discovery: ["Regenerate the package to inspect telemetry and audit hooks."]
+    },
+    implementation_checklist: ["Regenerate the package with the current compiler."],
+    readiness: {
+      implementable_without_invention: false,
+      transport_implemented: false,
+      launch_ready: false,
+      telemetry_default_enabled: false,
+      unresolved_launch_work: ["Telemetry and audit contract artifact missing."],
+      evidence_refs: ["15-productization/telemetry-audit-contract.json"]
+    }
+  };
+}
+
+function legacyTelemetryAuditReport(): string {
+  return "# Telemetry and Audit Transport Contract\n\nThis package was generated before telemetry and audit artifacts existed. Regenerate it with the current compiler to inspect consent, event, audit, retention, and deletion contracts.";
+}
+
 async function bundleFromFiles(files: File[]): Promise<Bundle> {
   const byPath = new Map<string, File>();
   for (const file of files) {
@@ -7697,6 +7848,8 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
     accountWorkspaceReport: await getOptionalText("15-productization/account-workspace-contract.md", legacyAccountWorkspaceReport()),
     providerExecutionContract: await getOptionalJson("15-productization/provider-execution-contract.json", legacyProviderExecutionContract()),
     providerExecutionReport: await getOptionalText("15-productization/provider-execution-contract.md", legacyProviderExecutionReport()),
+    telemetryAuditContract: await getOptionalJson("15-productization/telemetry-audit-contract.json", legacyTelemetryAuditContract()),
+    telemetryAuditReport: await getOptionalText("15-productization/telemetry-audit-contract.md", legacyTelemetryAuditReport()),
     acceptanceCriteria: await getJson("06-frontend-agent-contract/acceptance-criteria.json"),
     buildSimulation: {
       buildPlan: await getJson("11-build-simulation/build-plan.json"),

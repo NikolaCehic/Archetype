@@ -4,7 +4,8 @@ import type {
   FrontendContractArtifacts,
   ProviderExecutionContract,
   ProductizationArtifacts,
-  ProductizationGate
+  ProductizationGate,
+  TelemetryAuditContract
 } from "../core/types";
 
 type ProductionIntegrationContracts = {
@@ -925,6 +926,337 @@ function buildProviderExecutionContract(input: ArchetypeInput): ProviderExecutio
   };
 }
 
+function telemetryAuditReport(contract: TelemetryAuditContract): string {
+  const purposes = contract.consent_privacy_contract.purposes as Array<Record<string, string | boolean>>;
+  const events = contract.event_schema.event_catalog as Array<Record<string, string>>;
+  const retryRules = contract.transport_retry_policy.retry_rules as Array<Record<string, string | number>>;
+  const auditEvents = contract.audit_log_model.event_types as Array<Record<string, string>>;
+  const retentionRows = contract.retention_deletion_controls.retention_classes as Array<Record<string, string>>;
+  const lines = [
+    "# Telemetry and Audit Transport Contract",
+    "",
+    `Product: ${contract.product_name}`,
+    `Status: ${contract.implementation_status}`,
+    `Implementable without invention: ${contract.readiness.implementable_without_invention}`,
+    `Transport implemented: ${contract.readiness.transport_implemented}`,
+    `Telemetry default enabled: ${contract.readiness.telemetry_default_enabled}`,
+    "",
+    "## Purpose",
+    "",
+    contract.purpose,
+    "",
+    "## Onboarding Guarantees",
+    "",
+    ...contract.onboarding_guarantees.map((item) => `- ${item}`),
+    "",
+    "## Consent Purposes",
+    "",
+    "| Purpose | Default | Required for local use |",
+    "|---|---|---|",
+    ...purposes.map((purpose) => `| ${purpose.purpose} | ${purpose.default_state} | ${purpose.required_for_local_use} |`),
+    "",
+    "## Event Catalog",
+    "",
+    "| Event | Purpose | Privacy class |",
+    "|---|---|---|",
+    ...events.map((event) => `| ${event.event_name} | ${event.purpose} | ${event.privacy_classification} |`),
+    "",
+    "## Transport Retry Policy",
+    "",
+    ...retryRules.map((rule) => `- ${rule.id}: ${rule.rule}`),
+    "",
+    "## Audit Log Model",
+    "",
+    ...auditEvents.map((event) => `- ${event.event_type}: ${event.description}`),
+    "",
+    "## Retention Classes",
+    "",
+    ...retentionRows.map((row) => `- ${row.class}: ${row.default_retention}`),
+    "",
+    "## Unresolved Launch Work",
+    "",
+    ...contract.readiness.unresolved_launch_work.map((item) => `- ${item}`)
+  ];
+  return lines.join("\n");
+}
+
+function buildTelemetryAuditContract(input: ArchetypeInput): TelemetryAuditContract {
+  const projectName = input.projectName?.trim() || "Generated product";
+  return {
+    contract_version: "1.0",
+    product_name: projectName,
+    implementation_status: "contract_ready_transport_not_implemented",
+    purpose: "Define product telemetry and workspace audit transport so measurement can be enabled only after explicit consent, privacy classification, retention, deletion, and workspace analytics boundaries are implemented.",
+    onboarding_guarantees: [
+      "Telemetry transport is off by default for Fresh Start Hub, sample package, import package, local draft save, local preflight, and local deterministic diagnostics.",
+      "Local onboarding metrics remain browser-local until the user opts into hosted telemetry.",
+      "No telemetry event may include provider API keys, session secrets, raw source material, raw provider prompts, or raw provider outputs.",
+      "Consent can be declined or revoked without blocking local package creation, sample exploration, import, export, or reset.",
+      "Workspace audit events are separate from product analytics and are visible/exportable to authorized workspace roles.",
+      "Deletion and export controls apply to telemetry events, audit logs, provider audit metadata, and workspace analytics aggregates."
+    ],
+    consent_privacy_contract: {
+      consent_states: ["not_asked", "granted", "declined", "revoked"],
+      default_state: "not_asked",
+      collection_default: "disabled",
+      purposes: [
+        { purpose: "product_analytics", default_state: "not_asked", required_for_local_use: false, description: "Usage events for product improvement after explicit consent." },
+        { purpose: "workspace_audit", default_state: "enabled_when_hosted_workspace_exists", required_for_local_use: false, description: "Security and collaboration audit trail for hosted workspace actions." },
+        { purpose: "provider_execution_audit", default_state: "enabled_for_hosted_provider_execution", required_for_local_use: false, description: "Provider execution metadata needed for security, billing, cost, and incident review." },
+        { purpose: "support_debug", default_state: "not_asked", required_for_local_use: false, description: "Short-lived sanitized diagnostics shared only after user/workspace approval." }
+      ],
+      consent_capture: {
+        trigger: "Only when user enables hosted telemetry, hosted workspace collaboration, provider execution, or support diagnostics.",
+        required_copy_points: ["what_is_collected", "why_it_is_collected", "retention", "deletion", "workspace_visibility", "revocation"],
+        proof_fields: ["consent_id", "purpose", "state", "policy_version", "captured_at", "actor_id", "workspace_id", "region"]
+      },
+      privacy_classifications: ["operational", "analytics", "security", "support_debug", "sensitive_forbidden"],
+      data_minimization: [
+        "Hash or omit IP addresses and user agents unless security policy requires temporary retention.",
+        "Use package_id, workspace_id, artifact counts, status, and timings instead of raw source content.",
+        "Store redaction counts and safety categories, never original secret/PII values.",
+        "Aggregate analytics before display when workspace membership count is too small."
+      ],
+      forbidden_payload_fields: [
+        "provider_api_key",
+        "session_secret",
+        "raw_source_material",
+        "raw_prompt",
+        "raw_provider_output",
+        "unredacted_secret_value",
+        "session_cookie",
+        "full_ip_address"
+      ],
+      regional_policy: {
+        default_region: "workspace_selected_region",
+        cross_region_transfer: "disabled_until_policy_and_dpa_are_configured",
+        data_subject_rights: ["export", "delete", "revoke_consent", "appeal_retention_exception"]
+      }
+    },
+    event_schema: {
+      schema_version: "1.0",
+      envelope_required_fields: [
+        "event_id",
+        "event_name",
+        "schema_version",
+        "occurred_at",
+        "producer",
+        "privacy_classification",
+        "consent_snapshot_id",
+        "workspace_id",
+        "account_id",
+        "anonymous_session_id",
+        "package_id",
+        "request_id",
+        "payload"
+      ],
+      payload_rules: {
+        allowed_value_types: ["string", "number", "boolean", "null", "array", "object"],
+        max_payload_bytes: 8192,
+        pii_policy: "No direct PII in analytics payloads. Account/workspace ids are allowed only when consent or hosted audit purpose permits.",
+        source_material_policy: "Use source_count, source_type_counts, redaction_counts, and source_hashes only."
+      },
+      event_catalog: [
+        { event_name: "onboarding.start_hub_viewed", purpose: "product_analytics", privacy_classification: "analytics" },
+        { event_name: "onboarding.local_preflight_run", purpose: "product_analytics", privacy_classification: "analytics" },
+        { event_name: "package.generated", purpose: "product_analytics", privacy_classification: "analytics" },
+        { event_name: "package.exported", purpose: "product_analytics", privacy_classification: "analytics" },
+        { event_name: "workspace.package_saved", purpose: "workspace_audit", privacy_classification: "operational" },
+        { event_name: "workspace.package_deleted", purpose: "workspace_audit", privacy_classification: "security" },
+        { event_name: "workspace.local_migration_committed", purpose: "workspace_audit", privacy_classification: "operational" },
+        { event_name: "provider.execution_requested", purpose: "provider_execution_audit", privacy_classification: "security" },
+        { event_name: "provider.execution_completed", purpose: "provider_execution_audit", privacy_classification: "security" },
+        { event_name: "provider.redaction_blocked", purpose: "provider_execution_audit", privacy_classification: "security" },
+        { event_name: "consent.updated", purpose: "workspace_audit", privacy_classification: "security" },
+        { event_name: "support.debug_bundle_created", purpose: "support_debug", privacy_classification: "support_debug" }
+      ],
+      event_id_policy: "evt_<ksuid> generated client-side for analytics and server-side for audit/security events.",
+      idempotency_policy: "event_id is idempotency key; duplicate event_id must be ignored after first accepted write."
+    },
+    transport_retry_policy: {
+      endpoint: "POST /v1/telemetry/events",
+      transport_state: "not_implemented_off_by_default",
+      batching: {
+        max_events: 50,
+        max_bytes: 65536,
+        max_delay_ms: 10000
+      },
+      local_queue: {
+        enabled_only_after_consent: true,
+        storage: "IndexedDB or in-memory queue with explicit consent snapshot",
+        max_age: "24h",
+        drop_on_revoke_consent: true
+      },
+      retry_rules: [
+        { id: "network_retry", rule: "Retry transient network failures with exponential backoff and jitter.", max_attempts: 3 },
+        { id: "server_retry", rule: "Retry HTTP 429, 500, 502, 503, and 504 when retry_after is absent or valid.", max_attempts: 3 },
+        { id: "client_drop", rule: "Drop HTTP 400, 401, 403, and schema-invalid events after recording local non-telemetry diagnostic.", max_attempts: 0 },
+        { id: "consent_recheck", rule: "Recheck consent snapshot before every flush; revoke drops queued analytics immediately.", max_attempts: 0 },
+        { id: "dead_letter", rule: "Server stores sanitized dead-letter metadata for accepted audit events that fail downstream processing.", max_attempts: 0 }
+      ],
+      offline_behavior: "Queue only after consent. If queue is unavailable or consent missing, drop analytics and preserve local app behavior.",
+      backpressure_behavior: "Telemetry transport must never block package generation, local preflight, sample exploration, import, export, or reset."
+    },
+    audit_log_model: {
+      storage_status: "contract_ready_audit_store_not_implemented",
+      entity: {
+        name: "workspace_audit_event",
+        primary_key: "audit_event_id",
+        id_format: "aud_<ksuid>"
+      },
+      required_fields: [
+        "audit_event_id",
+        "event_type",
+        "workspace_id",
+        "actor_account_id",
+        "actor_role",
+        "target_resource_type",
+        "target_resource_id",
+        "occurred_at",
+        "request_id",
+        "privacy_classification",
+        "retention_class",
+        "payload_digest",
+        "sanitized_payload"
+      ],
+      event_types: [
+        { event_type: "workspace.created", description: "Workspace created or transferred." },
+        { event_type: "membership.changed", description: "Workspace member invited, joined, role-changed, removed, or suspended." },
+        { event_type: "package.revision_created", description: "Immutable package revision created." },
+        { event_type: "package.export_created", description: "Export bundle created or downloaded." },
+        { event_type: "package.deleted", description: "Package deletion requested, held, purged, or restored." },
+        { event_type: "provider.execution_audited", description: "Provider execution metadata recorded without raw prompt, output, or secrets." },
+        { event_type: "telemetry.consent_changed", description: "Consent purpose changed by user or workspace admin." },
+        { event_type: "data_export.created", description: "Workspace/account data export requested or completed." },
+        { event_type: "data_deletion.completed", description: "Workspace/account/package deletion scope completed." }
+      ],
+      immutability: "Append-only except privacy-preserving anonymization fields after deletion/retention windows.",
+      visibility: {
+        owner: "all_workspace_audit_events",
+        admin: "all_workspace_audit_events",
+        reviewer: "package_and_provider_review_events",
+        editor: "own_actions_and_package_revision_events",
+        viewer: "none",
+        agent: "none"
+      },
+      forbidden_fields: [
+        "raw_source_material",
+        "raw_prompt",
+        "raw_provider_output",
+        "provider_api_key",
+        "session_cookie",
+        "unredacted_secret_value"
+      ]
+    },
+    retention_deletion_controls: {
+      retention_classes: [
+        { class: "analytics_event", default_retention: "180d", deletion_behavior: "delete_or_anonymize_on_account_deletion_or_consent_revocation" },
+        { class: "workspace_audit", default_retention: "365d", deletion_behavior: "retain_minimal_tombstone_until_retention_expires" },
+        { class: "provider_execution_audit", default_retention: "180d", deletion_behavior: "delete_or_anonymize_metadata_after_workspace_deletion" },
+        { class: "support_debug", default_retention: "7d", deletion_behavior: "delete_on_expiry_or_revoke" },
+        { class: "security_abuse", default_retention: "365d", deletion_behavior: "retain_only_when security_or_legal_exception_applies" }
+      ],
+      deletion_sequence: [
+        { id: "resolve_scope", action: "Resolve account, workspace, package, telemetry purpose, provider execution, and support-debug records in scope." },
+        { id: "pause_transport", action: "Stop new analytics collection for revoked purposes before deletion begins." },
+        { id: "delete_events", action: "Delete or anonymize analytics and support-debug events according to retention class." },
+        { id: "anonymize_audit", action: "Anonymize actor identifiers in retained audit logs after retention/exception policy allows it." },
+        { id: "delete_aggregates", action: "Recompute or delete workspace analytics aggregates that include deleted events." },
+        { id: "issue_receipt", action: "Return deletion receipt with completed scopes, retained exceptions, and request id." }
+      ],
+      export_sequence: [
+        { id: "collect_records", action: "Collect consent records, telemetry events, audit events, aggregates, and retention exceptions visible to requester." },
+        { id: "sanitize_records", action: "Remove forbidden fields and annotate redacted/anonymized values." },
+        { id: "package_export", action: "Produce signed download with schema version and retention metadata." }
+      ],
+      retention_exception_policy: "Security, abuse, and legal-hold exceptions must be explicit, auditable, time-bound, and visible in export/deletion receipts."
+    },
+    workspace_analytics_boundaries: {
+      default_visibility: "workspace_owner_and_admin_only",
+      minimum_group_size: 5,
+      aggregation_rules: [
+        "Do not show individual member productivity analytics.",
+        "Do not expose source material, prompt text, or provider output in analytics dashboards.",
+        "Use counts, durations, warning categories, readiness scores, and artifact coverage only.",
+        "Suppress or bucket metrics when group size is below minimum_group_size.",
+        "Separate product analytics from security audit logs in navigation and permissions."
+      ],
+      allowed_metrics: [
+        "packages_created",
+        "packages_exported",
+        "local_preflight_runs",
+        "readiness_score_distribution",
+        "redaction_blocker_count",
+        "provider_execution_count",
+        "provider_execution_cost_cents",
+        "e2e_pass_rate",
+        "launch_gate_status_counts"
+      ],
+      forbidden_metrics: [
+        "raw_source_content",
+        "raw_prompt_text",
+        "raw_provider_output",
+        "individual_keystrokes",
+        "secret_values",
+        "cross_workspace_user_tracking"
+      ]
+    },
+    ai_agent_contract: {
+      discovery: [
+        "Expose data-agent-telemetry-default=\"off\" until consent is granted.",
+        "Expose data-agent-consent-state for each telemetry purpose.",
+        "Expose data-agent-event-schema-version in telemetry settings and audit export UI.",
+        "Expose data-agent-retention-class for audit and telemetry rows.",
+        "Expose data-agent-delete-scope and data-agent-export-scope in privacy controls."
+      ],
+      deterministic_recovery: {
+        consent_missing: "Keep analytics local/off and continue the user workflow.",
+        consent_revoked: "Drop queued analytics events and update UI state without blocking local use.",
+        telemetry_transport_failed: "Do not block package workflows; retry according to transport policy.",
+        deletion_requested: "Pause matching telemetry collection, process deletion sequence, and show receipt.",
+        export_requested: "Generate sanitized export with retention metadata."
+      },
+      forbidden_behavior: [
+        "Do not enable telemetry silently during onboarding.",
+        "Do not send analytics from sample or import paths without consent.",
+        "Do not include raw source material, prompts, provider outputs, or secrets in telemetry payloads.",
+        "Do not expose individual member analytics when workspace group size is below threshold.",
+        "Do not delete browser-local packages when hosted telemetry deletion is requested."
+      ]
+    },
+    implementation_checklist: [
+      "Implement consent capture, revocation, and policy-version records.",
+      "Implement event schema validation and privacy classification at ingest.",
+      "Implement transport batching, retry, idempotency, offline queue, and consent recheck.",
+      "Implement append-only workspace audit storage and role-filtered audit views.",
+      "Implement telemetry/audit export and deletion workers with receipts.",
+      "Implement workspace analytics aggregation with group-size suppression.",
+      "Add integration tests for consent missing, consent revoke, forbidden payload fields, retry/drop behavior, deletion receipts, and workspace analytics permissions."
+    ],
+    readiness: {
+      implementable_without_invention: true,
+      transport_implemented: false,
+      launch_ready: false,
+      telemetry_default_enabled: false,
+      unresolved_launch_work: [
+        "Build consent settings UI and hosted consent records.",
+        "Build telemetry ingest endpoint and schema validation.",
+        "Build audit log store and role-filtered audit views.",
+        "Build retention, deletion, export, and receipt workers.",
+        "Build workspace analytics aggregation and suppression.",
+        "Publish privacy policy, DPA posture, and region/retention documentation before enabling telemetry."
+      ],
+      evidence_refs: [
+        "PRODUCTIZATION_PLAN:Phase 4",
+        "ONBOARDING_PLAN:Step 0",
+        "ONBOARDING_PLAN:Activation Metrics",
+        "15-productization/provider-execution-contract.json",
+        "15-productization/account-workspace-contract.json"
+      ]
+    }
+  };
+}
+
 function productizationReport(artifacts: Omit<ProductizationArtifacts, "readinessReport">): string {
   const lines = [
     "# Productization Readiness",
@@ -971,6 +1303,14 @@ function productizationReport(artifacts: Omit<ProductizationArtifacts, "readines
   lines.push(`- Session keys persisted: ${artifacts.providerExecution.contract.readiness.session_keys_persisted}`);
   lines.push(`- Artifact: 15-productization/provider-execution-contract.json`);
   lines.push("");
+  lines.push("## Telemetry and Audit Contract");
+  lines.push("");
+  lines.push(`- Status: ${artifacts.telemetryAudit.contract.implementation_status}`);
+  lines.push(`- Implementable without invention: ${artifacts.telemetryAudit.contract.readiness.implementable_without_invention}`);
+  lines.push(`- Transport implemented: ${artifacts.telemetryAudit.contract.readiness.transport_implemented}`);
+  lines.push(`- Telemetry default enabled: ${artifacts.telemetryAudit.contract.readiness.telemetry_default_enabled}`);
+  lines.push(`- Artifact: 15-productization/telemetry-audit-contract.json`);
+  lines.push("");
   lines.push("## Next Phase");
   lines.push("");
   lines.push(artifacts.next_phase);
@@ -990,6 +1330,11 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
     contract: providerExecutionContract,
     report: providerExecutionReport(providerExecutionContract)
   };
+  const telemetryAuditContract = buildTelemetryAuditContract(input);
+  const telemetryAudit = {
+    contract: telemetryAuditContract,
+    report: telemetryAuditReport(telemetryAuditContract)
+  };
   const gates: ProductizationGate[] = [
     gate(
       "account_workspace_backend",
@@ -1004,12 +1349,12 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
     gate(
       "telemetry_transport",
       "telemetry",
-      "local_only",
+      telemetryAudit.contract.readiness.implementable_without_invention ? "configured" : "local_only",
       "minor",
-      "Onboarding metrics are local browser state only. No external analytics endpoint is called by default.",
-      "Define privacy policy, consent, event schema, transport retries, and deletion controls before enabling product telemetry.",
+      "Telemetry consent, event schema, retry/drop behavior, audit model, retention, deletion, export, and workspace analytics boundaries are defined. Transport remains off by default until implemented and consented.",
+      "Implement consent UI, telemetry ingest, audit store, retention/deletion workers, and privacy policy before enabling product telemetry.",
       "product-ops",
-      ["ONBOARDING_PLAN:Phase 6", "ONBOARDING_IMPLEMENTATION_LOG:Phase 6"]
+      ["ONBOARDING_PLAN:Phase 6", "ONBOARDING_IMPLEMENTATION_LOG:Phase 6", "15-productization/telemetry-audit-contract.json"]
     ),
     gate(
       "provider_execution_bridge",
@@ -1034,12 +1379,12 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
     gate(
       "privacy_retention",
       "privacy",
-      "planned",
+      telemetryAudit.contract.readiness.implementable_without_invention ? "configured" : "planned",
       "major",
-      "Source material safety checks, redaction notes, and session-key boundaries are implemented locally. Retention is browser or file-system scoped.",
-      "Define hosted data retention, workspace deletion, audit export, regulated-data policy, and encryption requirements.",
+      "Hosted telemetry/audit retention classes, deletion/export sequences, consent revocation, and workspace analytics privacy boundaries are now defined as contracts. Runtime retention is not implemented yet.",
+      "Implement retention/deletion/export workers, receipts, regional policy, and privacy documentation before hosted launch.",
       "security",
-      ["08-quality/safety-report.md", "ONBOARDING_PLAN:Evidence Review"]
+      ["08-quality/safety-report.md", "ONBOARDING_PLAN:Evidence Review", "15-productization/telemetry-audit-contract.json"]
     ),
     gate(
       "production_contract_closure",
@@ -1069,14 +1414,14 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
       account_mode: "local_anonymous_workspace",
       workspace_persistence: "browser_local_storage_and_exported_package_files",
       provider_execution: "provider_execution_contract_ready_session_keys_never_persisted",
-      telemetry_transport: "none_by_default_local_metrics_only",
+      telemetry_transport: "telemetry_audit_contract_ready_off_by_default",
       deployment_target: "local_cli_and_static_workbench_build",
       target_frontend_execution: `${stats.verificationSuites} verification suites plus generated target install, typecheck, and build proof`
     },
     gates,
     launch_blockers: [
       "Hosted accounts and server-side package storage have an implementation contract but are not implemented.",
-      "External telemetry transport is intentionally disabled until privacy, consent, and deletion controls exist.",
+      "Telemetry and audit transport have implementation contracts but the hosted transport, consent UI, retention workers, and privacy policy are not implemented.",
       "Provider execution has an implementation contract but the hosted execution service is not implemented.",
       "Deployment operations, observability, backup, rollback, and rate limiting are not configured."
     ],
@@ -1088,9 +1433,10 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
       "Sample and import paths do not require provider setup.",
       "A frontend-building AI agent can find handoff actions through deterministic data-agent hooks."
     ],
-    next_phase: "Productization Phase 4 should define telemetry and audit transport without silently changing the local-first onboarding promise.",
+    next_phase: "Productization Phase 5 should define deployment operations and launch gates.",
     accountWorkspace,
-    providerExecution
+    providerExecution,
+    telemetryAudit
   };
   return {
     ...base,

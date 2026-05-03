@@ -565,6 +565,35 @@ export interface ProviderExecutionArtifacts {
   report: string;
 }
 
+export interface TelemetryAuditContract {
+  contract_version: string;
+  product_name: string;
+  implementation_status: "contract_ready_transport_not_implemented";
+  purpose: string;
+  onboarding_guarantees: string[];
+  consent_privacy_contract: Record<string, unknown>;
+  event_schema: Record<string, unknown>;
+  transport_retry_policy: Record<string, unknown>;
+  audit_log_model: Record<string, unknown>;
+  retention_deletion_controls: Record<string, unknown>;
+  workspace_analytics_boundaries: Record<string, unknown>;
+  ai_agent_contract: Record<string, unknown>;
+  implementation_checklist: string[];
+  readiness: {
+    implementable_without_invention: boolean;
+    transport_implemented: boolean;
+    launch_ready: boolean;
+    telemetry_default_enabled: boolean;
+    unresolved_launch_work: string[];
+    evidence_refs: string[];
+  };
+}
+
+export interface TelemetryAuditArtifacts {
+  contract: TelemetryAuditContract;
+  report: string;
+}
+
 export interface ProductizationArtifacts {
   productization_version: string;
   product_name: string;
@@ -583,6 +612,7 @@ export interface ProductizationArtifacts {
   next_phase: string;
   accountWorkspace: AccountWorkspaceArtifacts;
   providerExecution: ProviderExecutionArtifacts;
+  telemetryAudit: TelemetryAuditArtifacts;
   readinessReport: string;
 }
 
