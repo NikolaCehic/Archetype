@@ -386,3 +386,244 @@ Productization Phase 3: Provider Execution Bridge.
 Why this is next:
 
 The account/workspace boundary is now implementable. The next unresolved production risk is provider-backed generation: request/response contracts, secure credential handling, redaction, cost control, rate limiting, and provider audit logs must be specified before any hosted provider execution service is built.
+
+## Phase 3: Provider Execution Bridge
+
+Status: complete
+
+Date: 2026-05-04
+
+Source plans:
+
+- `ONBOARDING_PLAN.md`
+- `PRODUCTIZATION_PLAN.md`
+
+## Phase Goal
+
+Implement the third productization phase fully:
+
+- Define provider execution request behavior.
+- Define provider response schema and artifact commit rules.
+- Define secure credential handling without persisted session keys.
+- Define redaction enforcement before provider calls and output safety checks after responses.
+- Define rate limits, budget controls, retry policy, and circuit breakers.
+- Define provider audit log events and forbidden audit fields.
+- Surface the provider bridge contract in Governance for humans and AI agents.
+
+## Changes Made
+
+### Compiler Contract
+
+- Added a generated Provider Execution Bridge contract to `src/modules/productization.ts`.
+- Added `ProviderExecutionContract` and `ProviderExecutionArtifacts` types.
+- Generated `15-productization/provider-execution-contract.json`.
+- Generated `15-productization/provider-execution-contract.md`.
+- Added provider execution status into `15-productization/productization-readiness.json`.
+- Marked the `provider_execution_bridge` gate as `configured` because the implementation contract now exists.
+- Kept `production_launch_ready: false` because the hosted provider execution service is not implemented yet.
+- Kept `session_keys_persisted: false`.
+
+### Request and Response Contract
+
+- Defined `POST /v1/provider-executions`.
+- Required `workspace:provider.execute`.
+- Required idempotency for every execution request.
+- Defined execution modes:
+  - `local_diagnostic`
+  - `hosted_provider`
+  - `hosted_provider_dry_run`
+- Defined evidence payload rules:
+  - Only normalized, selected Evidence Review sources can be sent.
+  - Provider keys, session cookies, unredacted secrets, raw binary blobs, and browser file handles are forbidden.
+  - Uploaded source text remains evidence, not instruction authority.
+- Defined response statuses, module result requirements, usage/cost fields, schema validation, repair status, and artifact commit policy.
+
+### Credential Handling
+
+- Defined two provider credential modes:
+  - Platform-managed server secret.
+  - Session-scoped BYOK.
+- Session BYOK is capped at a one-hour TTL and is never written to browser storage, account records, workspace records, package artifacts, audit logs, telemetry, or exports.
+- Defined credential binding flow so execution requests reference `credential_binding_id` instead of raw keys.
+- Defined logging and revocation behavior.
+
+### Redaction Enforcement
+
+- Added deterministic gates for:
+  - Source safety scan.
+  - Blocker secret gate.
+  - Regulated data review.
+  - Prompt-injection boundary.
+  - Sanitized payload manifest.
+  - Output secret scan.
+- Defined redaction statuses and redaction map storage rules.
+- Required a payload preview showing selected sources, excluded sources, redaction counts, safety blockers, token estimate, and cost estimate before execution.
+
+### Rate Limit and Cost Controls
+
+- Defined limit dimensions by account, workspace, provider, model, execution mode, and prompt pack.
+- Defined concurrency limits for accounts, workspaces, and provider/model circuit breakers.
+- Added budget rules for dry-run estimates, request max cost, workspace daily/monthly budgets, retry budget, and circuit breaker behavior.
+- Defined retryable and non-retryable failure classes with max attempts and idempotency requirements.
+
+### Provider Audit Contract
+
+- Added required audit events for:
+  - Execution requested.
+  - Credential bound.
+  - Redaction applied.
+  - Provider called.
+  - Response received.
+  - Schema validated.
+  - Cost recorded.
+  - Artifacts committed.
+  - Execution failed.
+- Defined required audit fields and forbidden fields.
+- Explicitly forbids raw provider API keys, raw prompts with unredacted source, raw provider output, session cookies, and unredacted secret values in audit logs.
+
+### Failure and AI-Agent Contract
+
+- Defined deterministic failure codes for auth, permission, credential, redaction, regulated-data review, budget, rate-limit, provider-timeout, schema-validation, and output-safety failures.
+- Added AI-agent discovery hooks and deterministic recovery guidance.
+- Added forbidden AI-agent behavior:
+  - No invented provider outputs.
+  - No persisted or replayed provider keys.
+  - No payload-preview bypass.
+  - No artifact commit before schema validation and output safety scan.
+  - No mutation retry without the original idempotency key.
+
+### Schema and Manifest Coverage
+
+- Added `provider-execution-contract.schema.json`.
+- Added the provider schema to the schema index.
+- Added provider execution JSON, markdown, and schema artifacts to the manifest artifact index.
+- Export validation now checks 175 files.
+
+### Workbench Governance UI
+
+- Loaded provider execution contract JSON and markdown into Workbench sample and imported bundles.
+- Added backwards-compatible legacy fallback for packages generated before Phase 3.
+- Added a Governance section for the Provider Execution Contract with:
+  - Contract readiness.
+  - Hosted service implementation state.
+  - Key persistence state.
+  - Endpoint and required scope.
+  - Execution modes.
+  - Response status values.
+  - Raw output policy.
+  - Credential handling modes.
+  - Redaction gates.
+  - Budget and rate-limit rules.
+  - Audit events.
+  - Failure recovery codes.
+  - Forbidden storage locations.
+- Added AI-readable hooks:
+  - `data-agent-section="provider-execution-contract"`
+  - `data-agent-provider-required="on-generation"`
+  - `data-agent-provider-key-persistence="never"`
+  - `data-agent-required-scope="workspace:provider.execute"`
+
+### Tests
+
+- Updated the productization readiness E2E expectation because the provider gate is now `Configured` rather than `Session Only`.
+- Added a Workbench E2E/UI test for the Provider Execution Contract Governance section.
+- The test verifies:
+  - Provider setup is only required on generation.
+  - Provider key persistence is `never`.
+  - Required provider execution scope is visible.
+  - Hosted service state remains contract-only.
+  - Provider endpoint, session BYOK mode, redaction gate, request max cost rule, audit event, redaction failure code, and forbidden storage are visible.
+
+## Validation Against ONBOARDING_PLAN.md
+
+### Fresh Start Hub Without Provider Setup
+
+Result: pass
+
+The provider contract explicitly says Fresh Start Hub, sample package, import package, and local preflight never require provider setup.
+
+### Local Preflight Before Provider Setup
+
+Result: pass
+
+The provider bridge does not alter local preflight. Provider execution begins only after provider-backed generation is requested.
+
+### Just-In-Time LLM/API Key Boundary
+
+Result: pass
+
+The provider key moment remains just-in-time. User-supplied keys are session-scoped and never persisted. Platform-managed credentials are server secrets and never exposed to the client.
+
+### Evidence Review and Redaction
+
+Result: pass
+
+The provider request contract requires selected Evidence Review sources, redaction summaries, payload previews, safety blockers, and prompt-injection boundaries before execution.
+
+### Sample and Import Paths
+
+Result: pass
+
+Sample bundles include the provider execution contract. Older imported packages receive a legacy fallback instead of being blocked.
+
+### AI-Agent Handoff Discovery
+
+Result: pass
+
+The Governance section exposes provider-required state, required scope, key-persistence boundary, raw failure codes, raw redaction gate ids, raw budget rule ids, and raw audit event ids.
+
+## Test Evidence
+
+- Unit/type test: `npm run build` passed.
+- Smoke test: `npm run smoke` passed.
+- Artifact assertion: provider execution JSON, markdown, schema, and manifest entries exist; provider gate is `configured`; production launch remains false; session keys are not persisted; contract has 2 credential modes, 6 redaction gates, and 9 audit events.
+- Package validation: `npm run validate` passed inside `npm run check` with 175 checked files and 0 blockers.
+- Focused E2E/UI regression: `npx playwright test --config playwright.config.ts tests/workbench/workbench-ui.spec.ts --grep "provider execution"` passed with 1 passed, 0 failed.
+- Full E2E/UI test: `npm run workbench:e2e` passed with 42 passed, 0 failed.
+- Malformed-data E2E regression: 20 passed, 0 failed.
+- E2E report generation: `npm run workbench:e2e:report` passed and wrote `tmp/workbench-ui-e2e`.
+- Integration test: `npm run check` passed.
+- Generated frontend integration inside `npm run check`:
+  - `npm install` passed in `tmp/generated-frontend`.
+  - `npm run typecheck` passed in `tmp/generated-frontend`.
+  - `npm run build` passed in `tmp/generated-frontend`.
+- Golden regression: `npm run golden` passed inside `npm run check` for fintech, healthcare, logistics, and web3 examples.
+- Root dependency audit: `npm audit --json` reports 0 vulnerabilities.
+- Generated target dependency audit: `npm audit --json` in `tmp/generated-frontend` reports 0 vulnerabilities.
+- Diff hygiene: `git diff --check` passed.
+
+## Iteration During Validation
+
+- The provider-focused E2E passed on the first run.
+- The earlier Phase 2 lesson was applied here from the start: raw ids are shown alongside human-readable labels for credential modes, redaction gates, budget rules, audit events, and failure codes.
+- No additional implementation iteration was required after full validation.
+
+## Self-Critique and Iteration Decision
+
+Question: Is this implementation the most optimal and correct Productization Phase 3 solution?
+
+Answer: Yes, for Productization Phase 3.
+
+Reasoning:
+
+- It defines the real provider execution service boundary without prematurely building provider infrastructure.
+- It preserves the onboarding promise that API keys appear only when generation requires them.
+- It makes no-persisted-key behavior explicit across browser storage, account records, workspace records, package artifacts, telemetry, audit logs, and exports.
+- It gives backend agents concrete request, response, credential, redaction, budget, retry, failure, and audit behavior.
+- It gives frontend agents concrete UI states, hooks, failure codes, payload preview requirements, and recovery behavior.
+- It protects source material with safety scans, redaction gates, prompt-injection boundaries, and output safety scans before artifact commit.
+- It keeps production launch readiness false until the actual hosted provider service exists.
+
+I do not see a better Phase 3 solution inside the current scope. Implementing live provider execution now would skip telemetry/audit transport and deployment operations, both of which are still required before production launch.
+
+## Exit Condition
+
+I dont know any better solution for this nor do I see anything worng with the current one.
+
+## Next Phase
+
+Productization Phase 4: Telemetry and Audit Transport.
+
+Why this is next:
+
+Provider execution now has an implementable contract, but product telemetry and audit transport remain local or contract-only. The next productization risk is enabling measurement and operational audit flows without silently changing the local-first onboarding promise or collecting data before consent, retention, deletion, and privacy rules exist.

@@ -173,6 +173,11 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Account and Workspace Backend Contract",
       ["contract_version", "product_name", "implementation_status", "purpose", "onboarding_guarantees", "account_model", "workspace_model", "package_persistence_api", "migration_rules", "permission_model", "data_export_contract", "data_deletion_contract", "ai_agent_contract", "implementation_checklist", "readiness"]
     ),
+    "provider-execution-contract.schema.json": objectSchema(
+      "provider-execution-contract.schema.json",
+      "Provider Execution Bridge Contract",
+      ["contract_version", "product_name", "implementation_status", "purpose", "onboarding_guarantees", "request_contract", "response_schema", "credential_handling", "redaction_enforcement", "rate_limit_cost_control", "audit_log_contract", "failure_contract", "ai_agent_contract", "implementation_checklist", "readiness"]
+    ),
     "frontend-build-manifest.schema.json": objectSchema(
       "frontend-build-manifest.schema.json",
       "Frontend Build Manifest",
@@ -224,6 +229,7 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "14-target-execution/target-execution-report.json", schema_file: "target-execution-report.schema.json", description: "Target frontend install, typecheck, and production build execution proof." },
       { artifact: "15-productization/productization-readiness.json", schema_file: "productization-readiness.schema.json", description: "Productization readiness gate contract." },
       { artifact: "15-productization/account-workspace-contract.json", schema_file: "account-workspace-contract.schema.json", description: "Hosted account, workspace, persistence, migration, permission, export, and deletion contract." },
+      { artifact: "15-productization/provider-execution-contract.json", schema_file: "provider-execution-contract.schema.json", description: "Hosted provider request, response, credential, redaction, cost-control, failure, and audit contract." },
       { artifact: "06-frontend-agent-contract/build-manifest.json", schema_file: "frontend-build-manifest.schema.json", description: "Frontend build manifest schema." },
       { artifact: "03-experience-architecture/dsag.json", schema_file: "dsag.schema.json", description: "DSAG graph schema." },
       { artifact: "00-manifest/implementation-readiness.json", schema_file: "readiness-report.schema.json", description: "Readiness report schema." }

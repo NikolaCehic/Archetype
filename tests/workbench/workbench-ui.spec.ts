@@ -430,7 +430,7 @@ test("productization readiness contract is visible in Governance", async ({ page
   await expect(section).toContainText("not ready");
   await expect(section).toContainText("none_by_default_local_metrics_only");
   await expect(section).toContainText("provider_execution_bridge");
-  await expect(section).toContainText("Session Only");
+  await expect(section).toContainText("Configured");
   await expect(section).toContainText("Fresh Start Hub remains available without an account");
   await expect(page.locator(".code").filter({ hasText: "productizationFoundationReady" }).first()).toContainText("productionLaunchReady");
 });
@@ -449,6 +449,26 @@ test("account workspace backend contract is visible in Governance", async ({ pag
   await expect(section).toContainText("/v1/local-migrations");
   await expect(section).toContainText("migrate_local_workspace");
   await expect(section).toContainText("DELETE /v1/workspaces/:workspace_id or DELETE /v1/account");
+});
+
+test("provider execution bridge contract is visible in Governance", async ({ page }) => {
+  await ensureWorkbenchPackage(page);
+  await openView(page, "governance");
+
+  const section = page.locator("[data-agent-section='provider-execution-contract']");
+  await expect(section).toBeVisible();
+  await expect(section).toHaveAttribute("data-agent-provider-required", "on-generation");
+  await expect(section).toHaveAttribute("data-agent-provider-key-persistence", "never");
+  await expect(section).toHaveAttribute("data-agent-required-scope", "workspace:provider.execute");
+  await expect(section).toContainText("contract only");
+  await expect(section).toContainText("never");
+  await expect(section).toContainText("POST /v1/provider-executions");
+  await expect(section).toContainText("session_byok");
+  await expect(section).toContainText("blocker_secret_gate");
+  await expect(section).toContainText("request_max_cost");
+  await expect(section).toContainText("provider_execution.provider_called");
+  await expect(section).toContainText("redaction_blocked");
+  await expect(section).toContainText("localStorage");
 });
 
 test("onboarding keyboard path, status announcements, and AI action hooks are accessible", async ({ page }) => {

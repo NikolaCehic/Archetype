@@ -535,6 +535,36 @@ export interface AccountWorkspaceArtifacts {
   report: string;
 }
 
+export interface ProviderExecutionContract {
+  contract_version: string;
+  product_name: string;
+  implementation_status: "contract_ready_service_not_implemented";
+  purpose: string;
+  onboarding_guarantees: string[];
+  request_contract: Record<string, unknown>;
+  response_schema: Record<string, unknown>;
+  credential_handling: Record<string, unknown>;
+  redaction_enforcement: Record<string, unknown>;
+  rate_limit_cost_control: Record<string, unknown>;
+  audit_log_contract: Record<string, unknown>;
+  failure_contract: Record<string, unknown>;
+  ai_agent_contract: Record<string, unknown>;
+  implementation_checklist: string[];
+  readiness: {
+    implementable_without_invention: boolean;
+    service_implemented: boolean;
+    launch_ready: boolean;
+    session_keys_persisted: boolean;
+    unresolved_launch_work: string[];
+    evidence_refs: string[];
+  };
+}
+
+export interface ProviderExecutionArtifacts {
+  contract: ProviderExecutionContract;
+  report: string;
+}
+
 export interface ProductizationArtifacts {
   productization_version: string;
   product_name: string;
@@ -552,6 +582,7 @@ export interface ProductizationArtifacts {
   preserved_onboarding_contracts: string[];
   next_phase: string;
   accountWorkspace: AccountWorkspaceArtifacts;
+  providerExecution: ProviderExecutionArtifacts;
   readinessReport: string;
 }
 

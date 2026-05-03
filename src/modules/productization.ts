@@ -2,6 +2,7 @@ import type {
   AccountWorkspaceContract,
   ArchetypeInput,
   FrontendContractArtifacts,
+  ProviderExecutionContract,
   ProductizationArtifacts,
   ProductizationGate
 } from "../core/types";
@@ -535,6 +536,395 @@ function buildAccountWorkspaceContract(input: ArchetypeInput): AccountWorkspaceC
   };
 }
 
+function providerExecutionReport(contract: ProviderExecutionContract): string {
+  const requestFields = contract.request_contract.required_fields as string[];
+  const responseStates = contract.response_schema.status_values as string[];
+  const credentialModes = contract.credential_handling.supported_modes as Array<Record<string, string | boolean>>;
+  const redactionGates = contract.redaction_enforcement.gates as Array<Record<string, string>>;
+  const budgetRules = contract.rate_limit_cost_control.budget_rules as Array<Record<string, string>>;
+  const auditEvents = contract.audit_log_contract.events as Array<Record<string, string>>;
+  const failureCodes = contract.failure_contract.codes as Array<Record<string, string>>;
+  const lines = [
+    "# Provider Execution Bridge Contract",
+    "",
+    `Product: ${contract.product_name}`,
+    `Status: ${contract.implementation_status}`,
+    `Implementable without invention: ${contract.readiness.implementable_without_invention}`,
+    `Service implemented: ${contract.readiness.service_implemented}`,
+    `Session keys persisted: ${contract.readiness.session_keys_persisted}`,
+    "",
+    "## Purpose",
+    "",
+    contract.purpose,
+    "",
+    "## Onboarding Guarantees",
+    "",
+    ...contract.onboarding_guarantees.map((item) => `- ${item}`),
+    "",
+    "## Request Contract",
+    "",
+    `- Endpoint: ${contract.request_contract.endpoint}`,
+    `- Auth scope: ${contract.request_contract.required_scope}`,
+    `- Idempotency: ${contract.request_contract.idempotency}`,
+    `- Required fields: ${requestFields.join(", ")}`,
+    "",
+    "## Response Schema",
+    "",
+    `- Status values: ${responseStates.join(", ")}`,
+    `- Artifact commit policy: ${(contract.response_schema.artifact_commit_policy as Record<string, string>).commit_condition}`,
+    "",
+    "## Credential Handling",
+    "",
+    "| Mode | Secret storage | Requires user key |",
+    "|---|---|---|",
+    ...credentialModes.map((mode) => `| ${mode.mode} | ${mode.secret_storage} | ${mode.requires_user_key} |`),
+    "",
+    "## Redaction Enforcement",
+    "",
+    ...redactionGates.map((gateItem) => `- ${gateItem.id}: ${gateItem.rule}`),
+    "",
+    "## Rate Limits and Cost Controls",
+    "",
+    ...budgetRules.map((rule) => `- ${rule.id}: ${rule.rule}`),
+    "",
+    "## Audit Events",
+    "",
+    ...auditEvents.map((event) => `- ${event.event}: ${event.description}`),
+    "",
+    "## Failure Codes",
+    "",
+    ...failureCodes.map((failure) => `- ${failure.code}: ${failure.recovery}`),
+    "",
+    "## Unresolved Launch Work",
+    "",
+    ...contract.readiness.unresolved_launch_work.map((item) => `- ${item}`)
+  ];
+  return lines.join("\n");
+}
+
+function buildProviderExecutionContract(input: ArchetypeInput): ProviderExecutionContract {
+  const projectName = input.projectName?.trim() || "Generated product";
+  return {
+    contract_version: "1.0",
+    product_name: projectName,
+    implementation_status: "contract_ready_service_not_implemented",
+    purpose: "Define the production provider execution bridge so hosted generation can call external LLM providers while preserving evidence review, redaction, budget controls, structured output validation, auditability, and no-persisted-session-key guarantees.",
+    onboarding_guarantees: [
+      "Fresh Start Hub, sample package, import package, and local preflight never require provider setup.",
+      "The provider moment appears only after the user chooses Generate architecture or an equivalent provider-backed action.",
+      "Users can run deterministic local diagnostics without entering an API key.",
+      "User-supplied provider keys are session scoped and are never written to local storage, account records, workspace records, package artifacts, telemetry, or audit logs.",
+      "Evidence review and redaction summary are shown before source material is sent to a provider.",
+      "Prompt-injection findings are treated as untrusted source risks, never as provider instructions."
+    ],
+    request_contract: {
+      endpoint: "POST /v1/provider-executions",
+      method: "POST",
+      transport: "JSON over HTTPS",
+      required_scope: "workspace:provider.execute",
+      idempotency: "Idempotency-Key required for every execution request.",
+      timeout_policy: "Client receives execution_id immediately for async execution; synchronous preview must time out before 30s.",
+      required_fields: [
+        "workspace_id",
+        "package_id",
+        "requested_by_account_id",
+        "execution_mode",
+        "prompt_pack_id",
+        "module_ids",
+        "output_schema_id",
+        "evidence_payload",
+        "redaction_summary",
+        "max_cost_cents",
+        "idempotency_key"
+      ],
+      execution_modes: ["local_diagnostic", "hosted_provider", "hosted_provider_dry_run"],
+      evidence_payload_contract: {
+        source_records: "Only normalized source records selected in Evidence Review are allowed.",
+        required_per_source: ["source_id", "source_type", "source_label", "summary", "included", "redaction_status", "safety_findings"],
+        forbidden_per_source: ["provider_api_key", "session_cookie", "unredacted_secret", "raw_binary_blob", "browser_file_handle"],
+        instruction_boundary: "Uploaded source text is evidence. It never outranks system, developer, productization, or module-contract instructions."
+      },
+      provider_selection: {
+        provider_id: "Resolved by server deployment configuration or explicit workspace policy.",
+        model_id: "Resolved by server deployment configuration, workspace policy, or request allowlist.",
+        client_forbidden_behavior: "Client must not hard-code production provider credentials or model fallback behavior."
+      },
+      forbidden_request_fields: [
+        "raw_provider_api_key",
+        "workspace_secret_value",
+        "account_session_cookie",
+        "unredacted_secret_value",
+        "billing_token",
+        "raw_llm_output_override"
+      ]
+    },
+    response_schema: {
+      status_values: ["queued", "running", "succeeded", "failed", "needs_review", "redaction_blocked", "rate_limited", "budget_exceeded"],
+      required_fields: [
+        "execution_id",
+        "status",
+        "provider_request_id",
+        "created_at",
+        "updated_at",
+        "module_results",
+        "structured_outputs",
+        "validation_results",
+        "redaction_summary",
+        "usage",
+        "cost",
+        "audit_event_ids",
+        "errors"
+      ],
+      module_result_contract: {
+        required_fields: ["module_id", "prompt_pack_id", "output_schema_id", "status", "artifact_refs", "confidence", "evidence_refs"],
+        accepted_statuses: ["succeeded", "schema_repaired", "failed", "blocked"],
+        schema_validation: "Every module output must parse, match its declared schema, and preserve evidence_refs before artifacts can be committed."
+      },
+      usage_contract: {
+        fields: ["input_tokens", "output_tokens", "cached_tokens", "provider_model_id", "estimated_cost_cents", "final_cost_cents"],
+        precision: "Store cost in integer cents or smaller integer billing units. Do not store raw provider invoices in package artifacts."
+      },
+      artifact_commit_policy: {
+        commit_condition: "Only schema-valid, redaction-valid module outputs can create package revisions.",
+        partial_success: "A failed module cannot silently generate placeholder artifacts; it must create a blocker or needs_review result.",
+        raw_output_policy: "Raw provider output is discarded by default after structured parsing; sanitized debug snippets require explicit ops retention policy."
+      }
+    },
+    credential_handling: {
+      supported_modes: [
+        {
+          mode: "platform_managed",
+          secret_storage: "server_secret_manager_or_runtime_environment",
+          requires_user_key: false,
+          persistence: "server_owned_secret_not_exposed_to_client"
+        },
+        {
+          mode: "session_byok",
+          secret_storage: "encrypted_in_memory_or_short_lived_secure_session_binding",
+          requires_user_key: true,
+          persistence: "ttl_max_1h_never_written_to_database_or_local_storage"
+        }
+      ],
+      credential_binding_flow: [
+        "User clicks provider-backed Generate architecture.",
+        "Workbench shows provider requirement, evidence payload scope, redaction summary, estimated cost, and session-key persistence statement.",
+        "User enters provider key only for session_byok mode or confirms platform-managed execution.",
+        "Client sends key only to the credential binding endpoint over HTTPS.",
+        "Server returns credential_binding_id, expires_at, and provider capability summary.",
+        "Execution request references credential_binding_id and never includes the raw key."
+      ],
+      forbidden_storage: [
+        "localStorage",
+        "sessionStorage",
+        "IndexedDB",
+        "account table",
+        "workspace table",
+        "package artifacts",
+        "audit log body",
+        "telemetry payload",
+        "browser downloadable exports"
+      ],
+      rotation_and_revocation: {
+        session_byok: "Expire automatically after max 1h, logout, tab close signal when available, account suspension, or explicit revoke.",
+        platform_managed: "Rotate through deployment secret manager and record credential alias version only."
+      },
+      logging_policy: "Logs may contain credential_binding_id and provider alias. They must never contain secret values or reversible secret fragments."
+    },
+    redaction_enforcement: {
+      gates: [
+        {
+          id: "source_safety_scan",
+          rule: "Run deterministic safety checks on every selected source before provider execution."
+        },
+        {
+          id: "blocker_secret_gate",
+          rule: "Block execution when a blocker secret finding is present unless the affected source is excluded or redacted."
+        },
+        {
+          id: "regulated_data_review",
+          rule: "Require needs_review state for regulated data findings unless workspace policy explicitly allows provider processing."
+        },
+        {
+          id: "prompt_injection_boundary",
+          rule: "Wrap uploaded content as quoted evidence and attach prompt-injection findings as risks, not instructions."
+        },
+        {
+          id: "payload_manifest",
+          rule: "Persist a sanitized payload manifest with source ids, hashes, redaction status, and inclusion flags."
+        },
+        {
+          id: "output_secret_scan",
+          rule: "Scan provider outputs for leaked secrets or source-sensitive fragments before committing artifacts."
+        }
+      ],
+      redaction_statuses: ["not_required", "redacted", "excluded", "blocked", "needs_review"],
+      redaction_map_policy: {
+        storage: "store one-way hashes and replacement labels only",
+        forbidden: "Do not store original secret, PII, or regulated value in redaction maps.",
+        replacement_format: "[REDACTED:<category>:<stable_index>]"
+      },
+      payload_preview_requirement: "Workbench must show selected sources, excluded sources, redaction counts, safety blockers, estimated token use, and estimated cost before execution."
+    },
+    rate_limit_cost_control: {
+      dimensions: ["account_id", "workspace_id", "provider_id", "model_id", "execution_mode", "prompt_pack_id"],
+      concurrency_limits: {
+        per_account: "2 active hosted_provider executions",
+        per_workspace: "5 active hosted_provider executions",
+        per_provider_model: "deployment-configured circuit breaker"
+      },
+      budget_rules: [
+        {
+          id: "dry_run_estimate",
+          rule: "Hosted provider execution must support a dry-run estimate before paid execution."
+        },
+        {
+          id: "request_max_cost",
+          rule: "Every request must include max_cost_cents and fail closed when estimate exceeds it."
+        },
+        {
+          id: "workspace_daily_budget",
+          rule: "Workspace policy may define daily and monthly provider budgets."
+        },
+        {
+          id: "retry_budget",
+          rule: "Retries and schema repair attempts count toward the same execution budget."
+        },
+        {
+          id: "circuit_breaker",
+          rule: "Provider timeout, error-rate, or spend spikes trip a provider/model circuit breaker."
+        }
+      ],
+      retry_policy: {
+        retryable_errors: ["provider_timeout", "provider_rate_limited", "transient_network_error"],
+        non_retryable_errors: ["redaction_blocked", "schema_contract_missing", "budget_exceeded", "permission_denied", "credential_missing"],
+        max_attempts: 2,
+        backoff: "exponential_with_jitter",
+        idempotency: "All attempts reuse the original idempotency key and execution_id."
+      }
+    },
+    audit_log_contract: {
+      retention: {
+        metadata_events: "180d by default or workspace policy",
+        sanitized_debug_payload: "disabled by default; max 7d when explicitly enabled for support",
+        raw_prompt_or_raw_output: "not retained by default"
+      },
+      events: [
+        { event: "provider_execution.requested", description: "Execution requested with workspace, package, module ids, redaction summary, and max cost." },
+        { event: "provider_execution.credential_bound", description: "Credential binding created without storing or logging secret value." },
+        { event: "provider_execution.redaction_applied", description: "Payload redaction, exclusion, blocker, and needs-review counts recorded." },
+        { event: "provider_execution.provider_called", description: "Provider alias, model alias, prompt pack, source hash set, and request id recorded." },
+        { event: "provider_execution.response_received", description: "Provider response metadata, latency, token usage, and status recorded." },
+        { event: "provider_execution.schema_validated", description: "Structured output validation and repair status recorded." },
+        { event: "provider_execution.cost_recorded", description: "Estimated and final cost recorded against account/workspace budget." },
+        { event: "provider_execution.artifacts_committed", description: "Artifact refs and revision id recorded only after validation passes." },
+        { event: "provider_execution.failed", description: "Failure code, retryability, and recovery action recorded." }
+      ],
+      required_fields: [
+        "audit_event_id",
+        "execution_id",
+        "workspace_id",
+        "package_id",
+        "account_id",
+        "event",
+        "created_at",
+        "provider_alias",
+        "model_alias",
+        "prompt_pack_id",
+        "source_hashes",
+        "redaction_counts",
+        "cost_cents",
+        "request_id"
+      ],
+      forbidden_fields: [
+        "raw_provider_api_key",
+        "raw_prompt_with_unredacted_source",
+        "raw_provider_output",
+        "session_cookie",
+        "unredacted_secret_value"
+      ]
+    },
+    failure_contract: {
+      codes: [
+        { code: "auth_required", retryable: "false", recovery: "Authenticate or use local deterministic mode." },
+        { code: "permission_denied", retryable: "false", recovery: "Request workspace:provider.execute or switch workspace." },
+        { code: "credential_missing", retryable: "false", recovery: "Bind a session key or use platform-managed provider if available." },
+        { code: "credential_expired", retryable: "true", recovery: "Re-enter session key and rerun with the same draft payload." },
+        { code: "redaction_blocked", retryable: "false", recovery: "Exclude or redact blocked source material before retrying." },
+        { code: "regulated_data_review_required", retryable: "false", recovery: "Complete human review or change workspace provider policy." },
+        { code: "budget_exceeded", retryable: "false", recovery: "Increase max_cost_cents or reduce source payload/module scope." },
+        { code: "rate_limited", retryable: "true", recovery: "Wait for retry_after_ms or reduce concurrent executions." },
+        { code: "provider_timeout", retryable: "true", recovery: "Retry within budget using the same execution idempotency key." },
+        { code: "schema_validation_failed", retryable: "true", recovery: "Run schema repair; if repair fails, return needs_review." },
+        { code: "output_secret_scan_failed", retryable: "false", recovery: "Block artifact commit and show sanitized finding." }
+      ],
+      error_shape: {
+        error: {
+          code: "string",
+          message: "human-readable summary",
+          retryable: "boolean",
+          recovery_action: "string",
+          retry_after_ms: "optional number",
+          execution_id: "optional string",
+          request_id: "string"
+        }
+      }
+    },
+    ai_agent_contract: {
+      discovery: [
+        "Expose data-agent-provider-required only on generation actions that require hosted_provider execution.",
+        "Expose data-agent-provider-key-persistence=\"never\" beside BYOK setup.",
+        "Expose data-agent-payload-preview for selected sources, redactions, token estimate, and max cost.",
+        "Expose data-agent-provider-execution-id after request creation.",
+        "Expose data-agent-provider-failure-code for deterministic recovery."
+      ],
+      deterministic_recovery: {
+        redaction_blocked: "Exclude or redact source, rerun local preflight, then request execution.",
+        budget_exceeded: "Reduce modules/source scope or raise explicit max cost.",
+        schema_validation_failed: "Run repair path and require needs_review if repair fails.",
+        credential_expired: "Request fresh session key without reading previous key from storage."
+      },
+      forbidden_behavior: [
+        "Do not invent provider outputs when execution fails.",
+        "Do not persist or replay a user-entered provider key.",
+        "Do not bypass payload preview when source material has safety findings.",
+        "Do not commit provider output as artifacts until schema validation and output safety scan pass.",
+        "Do not retry mutating execution requests without the original idempotency key."
+      ]
+    },
+    implementation_checklist: [
+      "Implement credential binding endpoint with no persistent BYOK storage.",
+      "Implement provider execution endpoint and async job state machine.",
+      "Implement deterministic redaction gates before provider calls and output safety scan after responses.",
+      "Implement provider adapters with structured output validation and schema repair.",
+      "Implement workspace/account/provider/model rate limits, budgets, and circuit breakers.",
+      "Implement provider audit events without raw prompt, raw output, or secret values.",
+      "Wire Workbench payload preview, provider setup, execution status, failures, and recovery actions to the contract.",
+      "Add integration tests for secret blocking, expired credentials, budget exceeded, rate limits, schema repair failure, and no-persisted-key storage."
+    ],
+    readiness: {
+      implementable_without_invention: true,
+      service_implemented: false,
+      launch_ready: false,
+      session_keys_persisted: false,
+      unresolved_launch_work: [
+        "Choose production provider adapters and model allowlist.",
+        "Build credential binding and provider execution services.",
+        "Implement redaction enforcement and output safety scanning in the hosted service.",
+        "Implement rate-limit, budget, retry, and circuit-breaker infrastructure.",
+        "Implement provider audit log transport and retention controls.",
+        "Run hosted provider integration tests with synthetic and malformed payloads."
+      ],
+      evidence_refs: [
+        "PRODUCTIZATION_PLAN:Phase 3",
+        "ONBOARDING_PLAN:Step 4",
+        "ONBOARDING_PLAN:Evidence Review",
+        "07-agent-runtime/provider-policy.json",
+        "08-quality/safety-report.md"
+      ]
+    }
+  };
+}
+
 function productizationReport(artifacts: Omit<ProductizationArtifacts, "readinessReport">): string {
   const lines = [
     "# Productization Readiness",
@@ -573,6 +963,14 @@ function productizationReport(artifacts: Omit<ProductizationArtifacts, "readines
   lines.push(`- Backend implemented: ${artifacts.accountWorkspace.contract.readiness.backend_implemented}`);
   lines.push(`- Artifact: 15-productization/account-workspace-contract.json`);
   lines.push("");
+  lines.push("## Provider Execution Contract");
+  lines.push("");
+  lines.push(`- Status: ${artifacts.providerExecution.contract.implementation_status}`);
+  lines.push(`- Implementable without invention: ${artifacts.providerExecution.contract.readiness.implementable_without_invention}`);
+  lines.push(`- Service implemented: ${artifacts.providerExecution.contract.readiness.service_implemented}`);
+  lines.push(`- Session keys persisted: ${artifacts.providerExecution.contract.readiness.session_keys_persisted}`);
+  lines.push(`- Artifact: 15-productization/provider-execution-contract.json`);
+  lines.push("");
   lines.push("## Next Phase");
   lines.push("");
   lines.push(artifacts.next_phase);
@@ -586,6 +984,11 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
   const accountWorkspace = {
     contract: accountWorkspaceContract,
     report: accountWorkspaceReport(accountWorkspaceContract)
+  };
+  const providerExecutionContract = buildProviderExecutionContract(input);
+  const providerExecution = {
+    contract: providerExecutionContract,
+    report: providerExecutionReport(providerExecutionContract)
   };
   const gates: ProductizationGate[] = [
     gate(
@@ -611,12 +1014,12 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
     gate(
       "provider_execution_bridge",
       "provider",
-      "session_only",
+      providerExecution.contract.readiness.implementable_without_invention ? "configured" : "session_only",
       "major",
-      "Provider setup accepts session-only keys for diagnostics and deterministic local generation paths. Keys are not saved to localStorage.",
-      "Add server or secure client provider execution, request audit trails, redaction enforcement, cost controls, and rate limits before production provider runs.",
+      "Provider execution request, response, credential, redaction, cost-control, rate-limit, failure, and audit contracts are defined. The hosted provider service is not implemented yet and session keys still are not persisted.",
+      "Implement credential binding, provider adapters, redaction enforcement, budget controls, rate limits, schema repair, output safety scan, and provider audit transport before production provider runs.",
       "ai-platform",
-      ["ONBOARDING_PLAN:Step 4", "07-agent-runtime/provider-policy.json"]
+      ["ONBOARDING_PLAN:Step 4", "07-agent-runtime/provider-policy.json", "15-productization/provider-execution-contract.json"]
     ),
     gate(
       "deployment_operations",
@@ -665,7 +1068,7 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
     runtime_boundary: {
       account_mode: "local_anonymous_workspace",
       workspace_persistence: "browser_local_storage_and_exported_package_files",
-      provider_execution: "session_key_diagnostics_with_deterministic_local_generation",
+      provider_execution: "provider_execution_contract_ready_session_keys_never_persisted",
       telemetry_transport: "none_by_default_local_metrics_only",
       deployment_target: "local_cli_and_static_workbench_build",
       target_frontend_execution: `${stats.verificationSuites} verification suites plus generated target install, typecheck, and build proof`
@@ -674,7 +1077,7 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
     launch_blockers: [
       "Hosted accounts and server-side package storage have an implementation contract but are not implemented.",
       "External telemetry transport is intentionally disabled until privacy, consent, and deletion controls exist.",
-      "Provider execution is not a hosted production service yet.",
+      "Provider execution has an implementation contract but the hosted execution service is not implemented.",
       "Deployment operations, observability, backup, rollback, and rate limiting are not configured."
     ],
     preserved_onboarding_contracts: [
@@ -685,8 +1088,9 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
       "Sample and import paths do not require provider setup.",
       "A frontend-building AI agent can find handoff actions through deterministic data-agent hooks."
     ],
-    next_phase: "Productization Phase 3 should define the provider execution bridge without leaking keys or source material.",
-    accountWorkspace
+    next_phase: "Productization Phase 4 should define telemetry and audit transport without silently changing the local-first onboarding promise.",
+    accountWorkspace,
+    providerExecution
   };
   return {
     ...base,

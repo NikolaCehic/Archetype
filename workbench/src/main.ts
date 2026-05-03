@@ -283,6 +283,8 @@ interface Bundle {
   productizationReport: string;
   accountWorkspaceContract: Record<string, any>;
   accountWorkspaceReport: string;
+  providerExecutionContract: Record<string, any>;
+  providerExecutionReport: string;
   acceptanceCriteria: { criteria: Array<Record<string, any>> };
   buildSimulation: Record<string, any>;
   revision: Record<string, any>;
@@ -3910,6 +3912,10 @@ function generatedBundleFromTemplate(template: Bundle): Bundle {
     ...bundle.accountWorkspaceContract,
     product_name: projectName
   };
+  bundle.providerExecutionContract = {
+    ...bundle.providerExecutionContract,
+    product_name: projectName
+  };
   return bundle;
 }
 
@@ -4786,6 +4792,90 @@ function renderAccountWorkspaceContract(bundle: Bundle): string {
   `;
 }
 
+function renderProviderExecutionContract(bundle: Bundle): string {
+  const contract = bundle.providerExecutionContract ?? legacyProviderExecutionContract();
+  const request = contract.request_contract ?? {};
+  const response = contract.response_schema ?? {};
+  const credentials = contract.credential_handling ?? {};
+  const redaction = contract.redaction_enforcement ?? {};
+  const limits = contract.rate_limit_cost_control ?? {};
+  const audit = contract.audit_log_contract ?? {};
+  const failures = contract.failure_contract ?? {};
+  const readiness = contract.readiness ?? {};
+  const credentialModes = Array.isArray(credentials.supported_modes) ? credentials.supported_modes : [];
+  const redactionGates = Array.isArray(redaction.gates) ? redaction.gates : [];
+  const budgetRules = Array.isArray(limits.budget_rules) ? limits.budget_rules : [];
+  const auditEvents = Array.isArray(audit.events) ? audit.events : [];
+  const failureCodes = Array.isArray(failures.codes) ? failures.codes : [];
+  return `
+    <section
+      data-agent-section="provider-execution-contract"
+      data-agent-provider-required="on-generation"
+      data-agent-provider-key-persistence="never"
+      data-agent-required-scope="${esc(request.required_scope ?? "workspace:provider.execute")}"
+    >
+      <div class="grid cols-3">
+        ${metric("Contract", readiness.implementable_without_invention ? "ready" : "review", readiness.implementable_without_invention ? "success" : "warning")}
+        ${metric("Service", readiness.service_implemented ? "live" : "contract only", readiness.service_implemented ? "success" : "warning")}
+        ${metric("Keys persisted", readiness.session_keys_persisted ? "yes" : "never", readiness.session_keys_persisted ? "danger" : "success")}
+      </div>
+      <div class="productization-boundary">
+        <div><strong>Endpoint</strong><span>${esc(request.endpoint ?? "unknown")}</span></div>
+        <div><strong>Scope</strong><span>${esc(request.required_scope ?? "unknown")}</span></div>
+        <div><strong>Modes</strong><span>${esc(((request.execution_modes ?? []) as string[]).map(humanLabel).join(", "))}</span></div>
+        <div><strong>Status values</strong><span>${esc(((response.status_values ?? []) as string[]).map(humanLabel).join(", "))}</span></div>
+        <div><strong>Raw output</strong><span>${esc((response.artifact_commit_policy?.raw_output_policy as string) ?? "unknown")}</span></div>
+      </div>
+      <div class="productization-lists contract-lists">
+        <div>
+          <h3>Credential Handling</h3>
+          ${table(["Mode", "Storage", "User key"], credentialModes.map((mode: any) => [
+            `<strong>${esc(humanLabel(mode.mode))}</strong><div class="muted"><code>${esc(mode.mode ?? "")}</code></div>`,
+            esc(mode.secret_storage ?? ""),
+            badge(String(Boolean(mode.requires_user_key)), mode.requires_user_key ? "warning" : "success")
+          ]))}
+        </div>
+        <div>
+          <h3>Redaction Gates</h3>
+          ${table(["Gate", "Rule"], redactionGates.map((gate: any) => [
+            `<strong>${esc(humanLabel(gate.id))}</strong><div class="muted"><code>${esc(gate.id ?? "")}</code></div>`,
+            esc(gate.rule ?? "")
+          ]))}
+        </div>
+      </div>
+      <div class="productization-lists contract-lists">
+        <div>
+          <h3>Budgets and Rate Limits</h3>
+          ${table(["Rule", "Requirement"], budgetRules.map((rule: any) => [
+            `<strong>${esc(humanLabel(rule.id))}</strong><div class="muted"><code>${esc(rule.id ?? "")}</code></div>`,
+            esc(rule.rule ?? "")
+          ]))}
+        </div>
+        <div>
+          <h3>Audit Events</h3>
+          ${table(["Event", "Description"], auditEvents.map((event: any) => [
+            `<strong>${esc(humanLabel(event.event))}</strong><div class="muted"><code>${esc(event.event ?? "")}</code></div>`,
+            esc(event.description ?? "")
+          ]))}
+        </div>
+      </div>
+      <div class="productization-lists contract-lists">
+        <div>
+          <h3>Failure Contract</h3>
+          ${table(["Code", "Recovery"], failureCodes.map((failure: any) => [
+            `<strong>${esc(humanLabel(failure.code))}</strong><div class="muted"><code>${esc(failure.code ?? "")}</code></div>`,
+            esc(failure.recovery ?? "")
+          ]))}
+        </div>
+        <div>
+          <h3>Forbidden Storage</h3>
+          ${table(["Location"], ((credentials.forbidden_storage ?? []) as string[]).map((item) => [esc(item)]))}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderGovernance(bundle: Bundle): string {
   const queue = governanceActionQueue();
   const approvalGates = bundle.revision.approvalGates?.gates ?? [];
@@ -4823,6 +4913,9 @@ function renderGovernance(bundle: Bundle): string {
     </div>
     <div style="margin-top:14px">
       ${panel("Account Workspace Contract", renderAccountWorkspaceContract(bundle))}
+    </div>
+    <div style="margin-top:14px">
+      ${panel("Provider Execution Contract", renderProviderExecutionContract(bundle))}
     </div>
     <div style="margin-top:14px">
       ${panel("Action Queue", queue.length ? table(["Severity", "Source", "Item", "Status", "Note"], queue.map((item) => [
@@ -7469,6 +7562,59 @@ function legacyAccountWorkspaceReport(): string {
   return "# Account and Workspace Backend Contract\n\nThis package was generated before account and workspace backend artifacts existed. Regenerate it with the current compiler to inspect hosted workspace contracts.";
 }
 
+function legacyProviderExecutionContract(): Record<string, any> {
+  return {
+    contract_version: "legacy",
+    product_name: "Legacy package",
+    implementation_status: "contract_ready_service_not_implemented",
+    purpose: "This imported package was generated before the provider execution bridge contract existed.",
+    onboarding_guarantees: ["Legacy package import remains non-blocking and does not require provider setup."],
+    request_contract: {
+      endpoint: "unknown",
+      required_scope: "workspace:provider.execute",
+      execution_modes: []
+    },
+    response_schema: {
+      status_values: [],
+      artifact_commit_policy: {
+        raw_output_policy: "unknown"
+      }
+    },
+    credential_handling: {
+      supported_modes: [],
+      forbidden_storage: ["localStorage", "package artifacts"]
+    },
+    redaction_enforcement: {
+      gates: []
+    },
+    rate_limit_cost_control: {
+      budget_rules: []
+    },
+    audit_log_contract: {
+      events: []
+    },
+    failure_contract: {
+      codes: []
+    },
+    ai_agent_contract: {
+      discovery: ["Regenerate the package to inspect provider execution hooks."]
+    },
+    implementation_checklist: ["Regenerate the package with the current compiler."],
+    readiness: {
+      implementable_without_invention: false,
+      service_implemented: false,
+      launch_ready: false,
+      session_keys_persisted: false,
+      unresolved_launch_work: ["Provider execution contract artifact missing."],
+      evidence_refs: ["15-productization/provider-execution-contract.json"]
+    }
+  };
+}
+
+function legacyProviderExecutionReport(): string {
+  return "# Provider Execution Bridge Contract\n\nThis package was generated before provider execution bridge artifacts existed. Regenerate it with the current compiler to inspect provider contracts.";
+}
+
 async function bundleFromFiles(files: File[]): Promise<Bundle> {
   const byPath = new Map<string, File>();
   for (const file of files) {
@@ -7549,6 +7695,8 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
     productizationReport: await getOptionalText("15-productization/productization-readiness.md", legacyProductizationReport()),
     accountWorkspaceContract: await getOptionalJson("15-productization/account-workspace-contract.json", legacyAccountWorkspaceContract()),
     accountWorkspaceReport: await getOptionalText("15-productization/account-workspace-contract.md", legacyAccountWorkspaceReport()),
+    providerExecutionContract: await getOptionalJson("15-productization/provider-execution-contract.json", legacyProviderExecutionContract()),
+    providerExecutionReport: await getOptionalText("15-productization/provider-execution-contract.md", legacyProviderExecutionReport()),
     acceptanceCriteria: await getJson("06-frontend-agent-contract/acceptance-criteria.json"),
     buildSimulation: {
       buildPlan: await getJson("11-build-simulation/build-plan.json"),
