@@ -1780,3 +1780,36 @@ Verification:
 Next phase:
 
 - Add browser visual regression/state proof for every generated route and non-default screen state.
+
+## Completed Phase: Workbench Playwright UI E2E Suite
+
+Status: complete
+
+Implemented:
+
+- Added Playwright as a dev dependency.
+- Added `playwright.config.ts` for a Chrome-backed Workbench preview run on `127.0.0.1:4175`.
+- Added `npm run workbench:e2e`.
+- Added `npm run workbench:e2e:report`.
+- Added 20 malformed-data scenarios under `tests/workbench/malformed-scenarios.json`.
+- Added full Workbench UI tests covering every navigation view, AI-readable navigation/action hooks, human save/validate/compose/export workflow, and all malformed-data scenarios.
+- Added `scripts/generate-workbench-e2e-report.mjs` to write scenario data, scenario results, Playwright JSON, and suite inventory artifacts under `tmp/workbench-ui-e2e/`.
+
+Verification:
+
+- `npm run workbench:e2e` passes.
+- `npm run check` passes.
+- Root `npm audit --json` reports 0 vulnerabilities.
+- Generated target frontend `npm audit --json` reports 0 vulnerabilities.
+- Playwright results: 22 passed, 0 failed.
+- Malformed-data scenarios: 20 passed, 0 failed.
+- Generated artifacts:
+  - `tmp/workbench-ui-e2e/malformed-scenarios.json`
+  - `tmp/workbench-ui-e2e/malformed-scenario-results.json`
+  - `tmp/workbench-ui-e2e/malformed-scenario-results.md`
+  - `tmp/workbench-ui-e2e/ui-test-suite.md`
+  - `tmp/workbench-ui-e2e/playwright-results.json`
+
+Next phase:
+
+- Add browser visual regression/state proof for every generated route and non-default screen state.

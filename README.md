@@ -27,6 +27,7 @@ Implemented:
 - Workbench premium dark monochrome Tailwind/shadcn-style interface.
 - Workbench polished control language, button hierarchy, dropdown styling, review rows, and mobile navigation.
 - Workbench launch-review cockpit, grouped IA, AI-readable actions, and guided handoff flow.
+- Workbench Playwright UI test suite with 20 malformed-data edge scenarios and generated result artifacts.
 - Spec coverage and remaining-gap audit.
 - Product Model.
 - User, role, permission, entity, and lifecycle artifacts.
@@ -139,6 +140,20 @@ Run the browser workbench:
 npm run workbench:dev
 ```
 
+Run the Workbench UI E2E suite:
+
+```bash
+npm run workbench:e2e
+```
+
+Generate readable Workbench UI E2E artifacts:
+
+```bash
+npm run workbench:e2e:report
+```
+
+The E2E artifact report is written to `tmp/workbench-ui-e2e/`.
+
 The compiler extracts visual evidence from screenshots, reference images, and design materials into density, navigation, layout, component, state, typography, data-display, and safety signals. It also exports UX flow/state completeness, deterministic component contracts, pattern contracts, data operation contracts, action contracts, form contracts, token contracts, typography contracts, verification contracts, production integration contracts, target frontend source manifests, target frontend execution proof artifacts, a 100-scenario E2E catalog/results/findings package, and a spec coverage audit with required states, contextual states, recovery actions, transition contracts, props, slots, variants, events, token bindings, accessibility rules, test selectors, pattern composition, workflow refs, data refs, query/mutation behavior, action preconditions, validation rules, type roles, CSS variables, acceptance rules, implementation proof suites, backend/API endpoint mappings, auth guards, copy surfaces, review gates, target-stack proof commands, exact target source file paths, route/component maps, adapter interfaces, ordered codegen tasks, install/typecheck/build command results, and explicit remaining gaps for deterministic frontend generation. The workbench can review generated packages, inspect deterministic contract artifacts, E2E results, and target execution proof, import an exported package folder, save packages into a local browser workspace, duplicate, rename, prioritize, pin, tag, annotate, search, filter, sort, browse, inspect, bulk-update visible package sets, export saved package collections, review collection imports before writing them, track workspace activity, summarize, filter, act on, and export workspace health, archive and clean up packages, export and restore an active workbench session, import and export multi-package workspaces, compare saved packages, prepare an intake JSON draft from structured form controls, collect source materials with a safety preview, copy a matching CLI command, track route and screen coverage, review design-system components and tokens, report frontend contract gaps, triage production integration gaps, inspect target source generation plans, triage build simulation and acceptance coverage, compose revision change requests, track local approval gate decisions, compare package baselines for revision impact, summarize governance actions, and generate handoff artifacts for downstream frontend work.
 
 Run all checks:
@@ -164,6 +179,9 @@ node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archety
 - `PRODUCT_DEVELOPMENT_PLAN.md`: Full phased product plan.
 - `SPEC_CONVERGED.md`: Converged product specification.
 - `WORKBENCH_UI_AUDIT.md`: Detailed UI audit, root-cause findings, and production polish plan.
+- `playwright.config.ts`: Workbench UI Playwright configuration.
+- `tests/workbench/`: Workbench UI and malformed-data E2E scenarios.
+- `scripts/generate-workbench-e2e-report.mjs`: Converts Playwright JSON into readable Workbench UI E2E artifacts.
 - `src/core/pipeline.ts`: Compiler pipeline.
 - `src/modules/`: Generation modules.
 - `src/quality/quality.ts`: Validation and readiness scoring.

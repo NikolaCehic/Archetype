@@ -16,10 +16,13 @@
     "workbench:sample": "npm run build && node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archetype-output && node dist/cli.js write-target --out tmp/archetype-output --target tmp/generated-frontend --force && node dist/cli.js verify-target --out tmp/archetype-output --target tmp/generated-frontend && node scripts/create-workbench-sample.mjs tmp/archetype-output workbench/public/sample-package.json",
     "workbench:build": "npm run workbench:sample && vite build --config vite.workbench.config.ts",
     "workbench:dev": "npm run workbench:sample && vite --config vite.workbench.config.ts --host 127.0.0.1",
+    "workbench:e2e": "playwright test --config playwright.config.ts",
+    "workbench:e2e:report": "node scripts/generate-workbench-e2e-report.mjs",
     "check": "npm run smoke && npm run validate && npm run simulate && npm run write-target && npm run verify-target && npm run golden && npm run workbench:build",
     "clean": "rm -rf dist dist-workbench tmp/archetype-output tmp/golden workbench/public/sample-package.json"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/node": "^22.15.3",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.5.10",
