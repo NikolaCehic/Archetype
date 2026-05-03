@@ -140,6 +140,8 @@ const ARTIFACT_INDEX = [
   "14-target-execution/target-execution-report.md",
   "15-productization/productization-readiness.json",
   "15-productization/productization-readiness.md",
+  "15-productization/account-workspace-contract.json",
+  "15-productization/account-workspace-contract.md",
   "08-quality/consistency-report.md",
   "08-quality/accessibility-report.md",
   "08-quality/safety-report.md",
@@ -179,6 +181,8 @@ const ARTIFACT_INDEX = [
   "09-schemas/e2e-scenarios.schema.json",
   "09-schemas/e2e-results.schema.json",
   "09-schemas/target-execution-report.schema.json",
+  "09-schemas/productization-readiness.schema.json",
+  "09-schemas/account-workspace-contract.schema.json",
   "09-schemas/frontend-build-manifest.schema.json",
   "09-schemas/dsag.schema.json",
   "09-schemas/readiness-report.schema.json"

@@ -233,9 +233,17 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
     gates: pkg.productization.gates,
     launch_blockers: pkg.productization.launch_blockers,
     preserved_onboarding_contracts: pkg.productization.preserved_onboarding_contracts,
+    account_workspace_contract: {
+      implementation_status: pkg.productization.accountWorkspace.contract.implementation_status,
+      implementable_without_invention: pkg.productization.accountWorkspace.contract.readiness.implementable_without_invention,
+      backend_implemented: pkg.productization.accountWorkspace.contract.readiness.backend_implemented,
+      artifact: "15-productization/account-workspace-contract.json"
+    },
     next_phase: pkg.productization.next_phase
   });
   writeText(outDir, "15-productization/productization-readiness.md", pkg.productization.readinessReport);
+  writeJson(outDir, "15-productization/account-workspace-contract.json", pkg.productization.accountWorkspace.contract);
+  writeText(outDir, "15-productization/account-workspace-contract.md", pkg.productization.accountWorkspace.report);
 
   writeText(outDir, "08-quality/consistency-report.md", pkg.quality.consistencyReport);
   writeText(outDir, "08-quality/accessibility-report.md", pkg.quality.accessibilityReport);

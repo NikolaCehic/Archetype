@@ -91,6 +91,8 @@ const bundle = {
   targetExecutionReport: readText("14-target-execution/target-execution-report.md"),
   productizationReadiness: readJson("15-productization/productization-readiness.json"),
   productizationReport: readText("15-productization/productization-readiness.md"),
+  accountWorkspaceContract: readJson("15-productization/account-workspace-contract.json"),
+  accountWorkspaceReport: readText("15-productization/account-workspace-contract.md"),
   acceptanceCriteria: readJson("06-frontend-agent-contract/acceptance-criteria.json"),
   buildSimulation: {
     buildPlan: readJson("11-build-simulation/build-plan.json"),

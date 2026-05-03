@@ -506,6 +506,35 @@ export interface ProductizationGate {
   evidence_refs: string[];
 }
 
+export interface AccountWorkspaceContract {
+  contract_version: string;
+  product_name: string;
+  implementation_status: "contract_ready_backend_not_implemented";
+  purpose: string;
+  onboarding_guarantees: string[];
+  account_model: Record<string, unknown>;
+  workspace_model: Record<string, unknown>;
+  package_persistence_api: Record<string, unknown>;
+  migration_rules: Record<string, unknown>;
+  permission_model: Record<string, unknown>;
+  data_export_contract: Record<string, unknown>;
+  data_deletion_contract: Record<string, unknown>;
+  ai_agent_contract: Record<string, unknown>;
+  implementation_checklist: string[];
+  readiness: {
+    implementable_without_invention: boolean;
+    backend_implemented: boolean;
+    launch_ready: boolean;
+    unresolved_launch_work: string[];
+    evidence_refs: string[];
+  };
+}
+
+export interface AccountWorkspaceArtifacts {
+  contract: AccountWorkspaceContract;
+  report: string;
+}
+
 export interface ProductizationArtifacts {
   productization_version: string;
   product_name: string;
@@ -522,6 +551,7 @@ export interface ProductizationArtifacts {
   launch_blockers: string[];
   preserved_onboarding_contracts: string[];
   next_phase: string;
+  accountWorkspace: AccountWorkspaceArtifacts;
   readinessReport: string;
 }
 

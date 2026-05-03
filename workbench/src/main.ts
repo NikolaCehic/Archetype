@@ -281,6 +281,8 @@ interface Bundle {
   targetExecutionReport: string;
   productizationReadiness: Record<string, any>;
   productizationReport: string;
+  accountWorkspaceContract: Record<string, any>;
+  accountWorkspaceReport: string;
   acceptanceCriteria: { criteria: Array<Record<string, any>> };
   buildSimulation: Record<string, any>;
   revision: Record<string, any>;
@@ -3900,6 +3902,14 @@ function generatedBundleFromTemplate(template: Bundle): Bundle {
     onboarding_intake: intakeFromForm(state.startDraft, state.startSourceMaterials),
     onboarding_generation_log: startGenerationLog()
   };
+  bundle.productizationReadiness = {
+    ...bundle.productizationReadiness,
+    product_name: projectName
+  };
+  bundle.accountWorkspaceContract = {
+    ...bundle.accountWorkspaceContract,
+    product_name: projectName
+  };
   return bundle;
 }
 
@@ -4702,6 +4712,80 @@ function renderProductizationReadiness(bundle: Bundle): string {
   `;
 }
 
+function renderAccountWorkspaceContract(bundle: Bundle): string {
+  const contract = bundle.accountWorkspaceContract ?? legacyAccountWorkspaceContract();
+  const account = contract.account_model ?? {};
+  const workspace = contract.workspace_model ?? {};
+  const api = contract.package_persistence_api ?? {};
+  const migration = contract.migration_rules ?? {};
+  const permissions = contract.permission_model ?? {};
+  const dataExport = contract.data_export_contract ?? {};
+  const deletion = contract.data_deletion_contract ?? {};
+  const readiness = contract.readiness ?? {};
+  const endpoints = Array.isArray(api.endpoints) ? api.endpoints : [];
+  const migrationSteps = Array.isArray(migration.sequence) ? migration.sequence : [];
+  const permissionRows = Array.isArray(permissions.package_permissions) ? permissions.package_permissions : [];
+  const deletionSteps = Array.isArray(deletion.sequence) ? deletion.sequence : [];
+  const roles = Array.isArray(workspace.roles) ? workspace.roles : [];
+  const accountStates = Array.isArray(account.states) ? account.states : [];
+  return `
+    <section data-agent-section="account-workspace-contract" data-agent-auth-required="hosted-save" data-agent-required-scope="workspace:package.create">
+      <div class="grid cols-3">
+        ${metric("Contract", readiness.implementable_without_invention ? "ready" : "review", readiness.implementable_without_invention ? "success" : "warning")}
+        ${metric("Backend", readiness.backend_implemented ? "live" : "contract only", readiness.backend_implemented ? "success" : "warning")}
+        ${metric("Launch", readiness.launch_ready ? "ready" : "not ready", readiness.launch_ready ? "success" : "warning")}
+      </div>
+      <div class="productization-boundary">
+        <div><strong>Account states</strong><span>${esc(accountStates.map(humanLabel).join(", ") || "unknown")}</span></div>
+        <div><strong>Workspace roles</strong><span>${esc(roles.map(humanLabel).join(", ") || "unknown")}</span></div>
+        <div><strong>Persistence</strong><span>${esc((workspace.package_revision_policy?.immutability as string) ?? "unknown")}</span></div>
+        <div><strong>Migration</strong><span>${esc((migration.trigger as string) ?? "unknown")}</span></div>
+        <div><strong>Provider keys</strong><span>${esc((account.provider_key_policy?.storage as string) ?? "unknown")}</span></div>
+      </div>
+      <div class="productization-lists contract-lists">
+        <div>
+          <h3>API Contract</h3>
+          ${table(["Method", "Path", "Auth"], endpoints.map((endpoint: any) => [
+            badge(endpoint.method ?? "GET", "neutral"),
+            `<code>${esc(endpoint.path ?? "")}</code><div class="muted">${esc(endpoint.purpose ?? "")}</div>`,
+            esc(endpoint.auth ?? "")
+          ]))}
+        </div>
+        <div>
+          <h3>Migration Sequence</h3>
+          ${table(["Step", "Action"], migrationSteps.map((step: any) => [
+            `<strong>${esc(humanLabel(step.id))}</strong><div class="muted"><code>${esc(step.id ?? "")}</code></div>`,
+            esc(step.action ?? "")
+          ]))}
+        </div>
+      </div>
+      <div class="productization-lists contract-lists">
+        <div>
+          <h3>Package Permissions</h3>
+          ${table(["Action", "Owner", "Admin", "Editor", "Reviewer", "Viewer", "Agent"], permissionRows.map((row: any) => [
+            `<strong>${esc(humanLabel(row.action))}</strong><div class="muted"><code>${esc(row.action ?? "")}</code></div>`,
+            esc(humanLabel(row.owner)),
+            esc(humanLabel(row.admin)),
+            esc(humanLabel(row.editor)),
+            esc(humanLabel(row.reviewer)),
+            esc(humanLabel(row.viewer)),
+            esc(humanLabel(row.agent))
+          ]))}
+        </div>
+        <div>
+          <h3>Deletion and Export</h3>
+          ${table(["Contract", "Value"], [
+            ["Export endpoint", `<code>${esc(dataExport.endpoint ?? "")}</code>`],
+            ["Deletion endpoint", `<code>${esc(deletion.endpoint ?? "")}</code>`],
+            ["Export includes", esc(((dataExport.included_records ?? []) as string[]).join(", "))],
+            ...deletionSteps.map((step: any) => [esc(humanLabel(step.id)), esc(step.action ?? "")])
+          ])}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderGovernance(bundle: Bundle): string {
   const queue = governanceActionQueue();
   const approvalGates = bundle.revision.approvalGates?.gates ?? [];
@@ -4736,6 +4820,9 @@ function renderGovernance(bundle: Bundle): string {
     </div>
     <div style="margin-top:14px">
       ${panel("Productization Readiness", renderProductizationReadiness(bundle))}
+    </div>
+    <div style="margin-top:14px">
+      ${panel("Account Workspace Contract", renderAccountWorkspaceContract(bundle))}
     </div>
     <div style="margin-top:14px">
       ${panel("Action Queue", queue.length ? table(["Severity", "Source", "Item", "Status", "Note"], queue.map((item) => [
@@ -7331,6 +7418,57 @@ function legacyProductizationReport(): string {
   return "# Productization Readiness\n\nThis package was generated before productization readiness artifacts existed. Regenerate it with the current compiler to inspect production launch gates.";
 }
 
+function legacyAccountWorkspaceContract(): Record<string, any> {
+  return {
+    contract_version: "legacy",
+    product_name: "Legacy package",
+    implementation_status: "contract_ready_backend_not_implemented",
+    purpose: "This imported package was generated before the account and workspace backend contract existed.",
+    onboarding_guarantees: ["Legacy package import remains non-blocking and does not require an account."],
+    account_model: {
+      states: ["unknown"],
+      provider_key_policy: { storage: "unknown" }
+    },
+    workspace_model: {
+      roles: ["unknown"],
+      package_revision_policy: { immutability: "unknown" }
+    },
+    package_persistence_api: {
+      endpoints: []
+    },
+    migration_rules: {
+      trigger: "Regenerate package to inspect hosted migration rules.",
+      sequence: []
+    },
+    permission_model: {
+      package_permissions: []
+    },
+    data_export_contract: {
+      endpoint: "unknown",
+      included_records: []
+    },
+    data_deletion_contract: {
+      endpoint: "unknown",
+      sequence: []
+    },
+    ai_agent_contract: {
+      discovery: ["Regenerate the package to inspect account-gated AI hooks."]
+    },
+    implementation_checklist: ["Regenerate the package with the current compiler."],
+    readiness: {
+      implementable_without_invention: false,
+      backend_implemented: false,
+      launch_ready: false,
+      unresolved_launch_work: ["Account and workspace contract artifact missing."],
+      evidence_refs: ["15-productization/account-workspace-contract.json"]
+    }
+  };
+}
+
+function legacyAccountWorkspaceReport(): string {
+  return "# Account and Workspace Backend Contract\n\nThis package was generated before account and workspace backend artifacts existed. Regenerate it with the current compiler to inspect hosted workspace contracts.";
+}
+
 async function bundleFromFiles(files: File[]): Promise<Bundle> {
   const byPath = new Map<string, File>();
   for (const file of files) {
@@ -7409,6 +7547,8 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
     targetExecutionReport: await getText("14-target-execution/target-execution-report.md"),
     productizationReadiness: await getOptionalJson("15-productization/productization-readiness.json", legacyProductizationReadiness()),
     productizationReport: await getOptionalText("15-productization/productization-readiness.md", legacyProductizationReport()),
+    accountWorkspaceContract: await getOptionalJson("15-productization/account-workspace-contract.json", legacyAccountWorkspaceContract()),
+    accountWorkspaceReport: await getOptionalText("15-productization/account-workspace-contract.md", legacyAccountWorkspaceReport()),
     acceptanceCriteria: await getJson("06-frontend-agent-contract/acceptance-criteria.json"),
     buildSimulation: {
       buildPlan: await getJson("11-build-simulation/build-plan.json"),

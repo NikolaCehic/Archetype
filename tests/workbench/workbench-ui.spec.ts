@@ -435,6 +435,22 @@ test("productization readiness contract is visible in Governance", async ({ page
   await expect(page.locator(".code").filter({ hasText: "productizationFoundationReady" }).first()).toContainText("productionLaunchReady");
 });
 
+test("account workspace backend contract is visible in Governance", async ({ page }) => {
+  await ensureWorkbenchPackage(page);
+  await openView(page, "governance");
+
+  const section = page.locator("[data-agent-section='account-workspace-contract']");
+  await expect(section).toBeVisible();
+  await expect(section).toHaveAttribute("data-agent-auth-required", "hosted-save");
+  await expect(section).toHaveAttribute("data-agent-required-scope", "workspace:package.create");
+  await expect(section).toContainText("contract only");
+  await expect(section).toContainText("Owner, Admin, Editor, Reviewer, Viewer, Agent");
+  await expect(section).toContainText("never_in_account_or_workspace_tables");
+  await expect(section).toContainText("/v1/local-migrations");
+  await expect(section).toContainText("migrate_local_workspace");
+  await expect(section).toContainText("DELETE /v1/workspaces/:workspace_id or DELETE /v1/account");
+});
+
 test("onboarding keyboard path, status announcements, and AI action hooks are accessible", async ({ page }) => {
   await expect(page.locator("#main-content")).toHaveAttribute("data-agent-landmark", "start-hub");
   await page.keyboard.press("Tab");

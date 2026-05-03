@@ -18,6 +18,8 @@ Archetype becomes productization-ready when a human user or AI agent can inspect
 
 ## Phase 1: Productization Readiness Contract
 
+Status: complete
+
 Goal: make production readiness inspectable without introducing hosted infrastructure.
 
 Build:
@@ -36,6 +38,8 @@ Exit criteria:
 - Productization does not require an account, telemetry endpoint, or persisted provider key.
 
 ## Phase 2: Account and Workspace Backend Contract
+
+Status: complete
 
 Goal: define the hosted account and workspace boundary before implementation.
 
