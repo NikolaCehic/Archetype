@@ -225,6 +225,18 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeJson(outDir, "14-target-execution/target-execution-report.json", pkg.targetExecution.executionReport);
   writeText(outDir, "14-target-execution/target-execution-report.md", pkg.targetExecution.executionMarkdown);
 
+  writeJson(outDir, "15-productization/productization-readiness.json", {
+    productization_version: pkg.productization.productization_version,
+    product_name: pkg.productization.product_name,
+    summary: pkg.productization.summary,
+    runtime_boundary: pkg.productization.runtime_boundary,
+    gates: pkg.productization.gates,
+    launch_blockers: pkg.productization.launch_blockers,
+    preserved_onboarding_contracts: pkg.productization.preserved_onboarding_contracts,
+    next_phase: pkg.productization.next_phase
+  });
+  writeText(outDir, "15-productization/productization-readiness.md", pkg.productization.readinessReport);
+
   writeText(outDir, "08-quality/consistency-report.md", pkg.quality.consistencyReport);
   writeText(outDir, "08-quality/accessibility-report.md", pkg.quality.accessibilityReport);
   writeText(outDir, "08-quality/safety-report.md", pkg.ingestion.safetyReport);

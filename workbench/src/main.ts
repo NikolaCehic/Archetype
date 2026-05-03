@@ -279,6 +279,8 @@ interface Bundle {
   e2eFindings: string;
   targetExecution: Record<string, any>;
   targetExecutionReport: string;
+  productizationReadiness: Record<string, any>;
+  productizationReport: string;
   acceptanceCriteria: { criteria: Array<Record<string, any>> };
   buildSimulation: Record<string, any>;
   revision: Record<string, any>;
@@ -4655,18 +4657,66 @@ function renderExport(bundle: Bundle): string {
   `;
 }
 
+function productizationTone(status: string): "success" | "warning" | "danger" | "neutral" {
+  if (status === "configured") return "success";
+  if (status === "session_only" || status === "local_only" || status === "planned") return "warning";
+  return "neutral";
+}
+
+function renderProductizationReadiness(bundle: Bundle): string {
+  const readiness = bundle.productizationReadiness ?? legacyProductizationReadiness();
+  const summary = readiness.summary ?? {};
+  const gates = Array.isArray(readiness.gates) ? readiness.gates : [];
+  const runtime = readiness.runtime_boundary ?? {};
+  return `
+    <section data-agent-section="productization-readiness">
+      <div class="grid cols-3">
+        ${metric("Foundation", summary.productization_foundation_ready ? "ready" : "review", summary.productization_foundation_ready ? "success" : "warning")}
+        ${metric("Launch", summary.production_launch_ready ? "ready" : "not ready", summary.production_launch_ready ? "success" : "warning")}
+        ${metric("Open gates", summary.open_major_gates ?? gates.filter((gate: any) => gate.severity === "major" && gate.status !== "configured").length, "warning")}
+      </div>
+      <div class="productization-boundary">
+        <div><strong>Accounts</strong><span>${esc(runtime.account_mode ?? "unknown")}</span></div>
+        <div><strong>Workspace</strong><span>${esc(runtime.workspace_persistence ?? "unknown")}</span></div>
+        <div><strong>Provider</strong><span>${esc(runtime.provider_execution ?? "unknown")}</span></div>
+        <div><strong>Telemetry</strong><span>${esc(runtime.telemetry_transport ?? "unknown")}</span></div>
+        <div><strong>Deployment</strong><span>${esc(runtime.deployment_target ?? "unknown")}</span></div>
+      </div>
+      ${table(["Gate", "Area", "Status", "Requirement"], gates.map((gate: any) => [
+        `<strong>${esc(gate.gate_id)}</strong><div class="muted">${esc(gate.current_state ?? "")}</div>`,
+        esc(gate.area),
+        badge(gate.status ?? "planned", productizationTone(gate.status ?? "planned")),
+        esc(gate.launch_requirement ?? "")
+      ]))}
+      <div class="productization-lists">
+        <div>
+          <h3>Preserved Onboarding Contracts</h3>
+          ${table(["Contract"], (readiness.preserved_onboarding_contracts ?? []).map((item: string) => [esc(item)]))}
+        </div>
+        <div>
+          <h3>Launch Blockers</h3>
+          ${table(["Blocker"], (readiness.launch_blockers ?? []).map((item: string) => [esc(item)]))}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderGovernance(bundle: Bundle): string {
   const queue = governanceActionQueue();
   const approvalGates = bundle.revision.approvalGates?.gates ?? [];
   const approvedGates = approvalGates.filter((gate: any) => approvalStateForGate(gate) === "approved").length;
   const blockers = queue.filter((item) => item.severity === "blocker").length;
+  const productization = bundle.productizationReadiness?.summary ?? {};
   const reviewSignals = {
     approvalGates: `${approvedGates}/${approvalGates.length}`,
     coverageOverrides: Object.keys(state.coverageOverrides).length,
     designReviews: Object.keys(state.designReviewOverrides).length,
     contractGaps: state.contractGaps.length,
     simulationTriage: Object.keys(state.simulationTriageOverrides).length,
-    revisionRequests: state.revisionRequests.length
+    revisionRequests: state.revisionRequests.length,
+    productizationFoundationReady: Boolean(productization.productization_foundation_ready),
+    productionLaunchReady: Boolean(productization.production_launch_ready)
   };
   return `
     <div class="grid cols-3">
@@ -4683,6 +4733,9 @@ function renderGovernance(bundle: Bundle): string {
         warnings: bundle.readiness.warnings,
         humanReview: bundle.readiness.requiredHumanReview
       }))}
+    </div>
+    <div style="margin-top:14px">
+      ${panel("Productization Readiness", renderProductizationReadiness(bundle))}
     </div>
     <div style="margin-top:14px">
       ${panel("Action Queue", queue.length ? table(["Severity", "Source", "Item", "Status", "Note"], queue.map((item) => [
@@ -7240,6 +7293,44 @@ async function hashFile(file: File): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function legacyProductizationReadiness(): Record<string, any> {
+  return {
+    productization_version: "legacy",
+    summary: {
+      productization_foundation_ready: false,
+      production_launch_ready: false,
+      local_first_onboarding_preserved: true,
+      session_keys_persisted: false,
+      configured_contract_surfaces: 0,
+      open_major_gates: 1
+    },
+    runtime_boundary: {
+      account_mode: "unknown_legacy_package",
+      workspace_persistence: "package_import_only",
+      provider_execution: "unknown",
+      telemetry_transport: "unknown",
+      deployment_target: "unknown"
+    },
+    gates: [{
+      gate_id: "legacy_productization_artifact_missing",
+      area: "integration",
+      status: "planned",
+      severity: "major",
+      current_state: "This imported package was generated before productization readiness artifacts existed.",
+      launch_requirement: "Regenerate the package with the current compiler before production launch review.",
+      owner: "platform",
+      evidence_refs: ["15-productization/productization-readiness.json"]
+    }],
+    launch_blockers: ["Productization readiness artifact missing."],
+    preserved_onboarding_contracts: ["Legacy package import remains non-blocking."],
+    next_phase: "Regenerate this package to inspect productization readiness."
+  };
+}
+
+function legacyProductizationReport(): string {
+  return "# Productization Readiness\n\nThis package was generated before productization readiness artifacts existed. Regenerate it with the current compiler to inspect production launch gates.";
+}
+
 async function bundleFromFiles(files: File[]): Promise<Bundle> {
   const byPath = new Map<string, File>();
   for (const file of files) {
@@ -7253,6 +7344,14 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
     return readFile(file);
   };
   const getJson = async (path: string) => JSON.parse(await getText(path));
+  const getOptionalText = async (path: string, fallback: string) => {
+    const file = byPath.get(path);
+    return file ? readFile(file) : fallback;
+  };
+  const getOptionalJson = async (path: string, fallback: Record<string, any>) => {
+    const file = byPath.get(path);
+    return file ? JSON.parse(await readFile(file)) : fallback;
+  };
   const screenEntries = [...byPath.entries()]
     .filter(([path]) => path.startsWith("05-screen-specs/") && path.endsWith(".yaml"))
     .sort(([a], [b]) => a.localeCompare(b));
@@ -7308,6 +7407,8 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
     e2eFindings: await getText("13-e2e/e2e-findings.md"),
     targetExecution: await getJson("14-target-execution/target-execution-report.json"),
     targetExecutionReport: await getText("14-target-execution/target-execution-report.md"),
+    productizationReadiness: await getOptionalJson("15-productization/productization-readiness.json", legacyProductizationReadiness()),
+    productizationReport: await getOptionalText("15-productization/productization-readiness.md", legacyProductizationReport()),
     acceptanceCriteria: await getJson("06-frontend-agent-contract/acceptance-criteria.json"),
     buildSimulation: {
       buildPlan: await getJson("11-build-simulation/build-plan.json"),

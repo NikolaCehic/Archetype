@@ -420,6 +420,21 @@ test("whole app navigation and AI-readable UI contract render across every view"
   }
 });
 
+test("productization readiness contract is visible in Governance", async ({ page }) => {
+  await ensureWorkbenchPackage(page);
+  await openView(page, "governance");
+
+  const section = page.locator("[data-agent-section='productization-readiness']");
+  await expect(section).toBeVisible();
+  await expect(section).toContainText("Foundation");
+  await expect(section).toContainText("not ready");
+  await expect(section).toContainText("none_by_default_local_metrics_only");
+  await expect(section).toContainText("provider_execution_bridge");
+  await expect(section).toContainText("Session Only");
+  await expect(section).toContainText("Fresh Start Hub remains available without an account");
+  await expect(page.locator(".code").filter({ hasText: "productizationFoundationReady" }).first()).toContainText("productionLaunchReady");
+});
+
 test("onboarding keyboard path, status announcements, and AI action hooks are accessible", async ({ page }) => {
   await expect(page.locator("#main-content")).toHaveAttribute("data-agent-landmark", "start-hub");
   await page.keyboard.press("Tab");

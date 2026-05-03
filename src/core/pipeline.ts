@@ -17,6 +17,7 @@ import { buildFrontendBuildSimulationArtifacts } from "../modules/frontendBuildS
 import { buildTargetFrontendArtifacts } from "../modules/targetFrontend";
 import { buildPendingTargetExecutionArtifacts } from "../modules/targetExecution";
 import { buildE2EScenarioArtifacts } from "../modules/e2eScenarios";
+import { buildProductizationArtifacts } from "../modules/productization";
 
 const ARTIFACT_INDEX = [
   "00-manifest/manifest.json",
@@ -137,6 +138,8 @@ const ARTIFACT_INDEX = [
   "13-e2e/e2e-findings.md",
   "14-target-execution/target-execution-report.json",
   "14-target-execution/target-execution-report.md",
+  "15-productization/productization-readiness.json",
+  "15-productization/productization-readiness.md",
   "08-quality/consistency-report.md",
   "08-quality/accessibility-report.md",
   "08-quality/safety-report.md",
@@ -237,6 +240,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     targetFrontend,
     dsag
   });
+  const productization = buildProductizationArtifacts(input, frontendContract);
   const quality = buildQualityArtifacts({
     ingestion,
     evidence,
@@ -291,6 +295,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     targetFrontend,
     targetExecution,
     e2e,
+    productization,
     quality
   };
 }

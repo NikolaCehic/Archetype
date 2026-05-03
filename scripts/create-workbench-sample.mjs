@@ -89,6 +89,8 @@ const bundle = {
   e2eFindings: readText("13-e2e/e2e-findings.md"),
   targetExecution: readJson("14-target-execution/target-execution-report.json"),
   targetExecutionReport: readText("14-target-execution/target-execution-report.md"),
+  productizationReadiness: readJson("15-productization/productization-readiness.json"),
+  productizationReport: readText("15-productization/productization-readiness.md"),
   acceptanceCriteria: readJson("06-frontend-agent-contract/acceptance-criteria.json"),
   buildSimulation: {
     buildPlan: readJson("11-build-simulation/build-plan.json"),

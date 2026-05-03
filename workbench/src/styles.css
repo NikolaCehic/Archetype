@@ -842,6 +842,40 @@
     @apply text-xs leading-5 text-muted-foreground;
   }
 
+  .productization-boundary {
+    @apply mt-3 grid gap-2;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .productization-boundary > div {
+    @apply grid gap-1 rounded-md border px-3 py-2.5;
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+  }
+
+  .productization-boundary strong {
+    @apply text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground;
+  }
+
+  .productization-boundary span {
+    @apply text-xs leading-5 text-foreground;
+  }
+
+  .productization-lists {
+    @apply mt-3 grid gap-3;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .productization-lists > div {
+    @apply rounded-md border p-3;
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+  }
+
+  .productization-lists h3 {
+    @apply mb-2 text-sm font-semibold text-foreground;
+  }
+
   .panel {
     @apply overflow-hidden rounded-lg border bg-card text-card-foreground shadow-premium;
     border-color: hsl(224 7% 20%);
@@ -1301,6 +1335,8 @@
   .launch-answer-grid,
   .launch-callout,
   .workspace-health-item,
+  .productization-boundary,
+  .productization-lists,
   .grid.cols-2,
   .grid.cols-3,
   .intake-stepper,

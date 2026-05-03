@@ -495,6 +495,36 @@ export interface E2EScenarioArtifacts {
   findingsReport: string;
 }
 
+export interface ProductizationGate {
+  gate_id: string;
+  area: "accounts" | "telemetry" | "provider" | "deployment" | "privacy" | "integration";
+  status: "configured" | "planned" | "local_only" | "session_only";
+  severity: "blocker" | "major" | "minor";
+  current_state: string;
+  launch_requirement: string;
+  owner: string;
+  evidence_refs: string[];
+}
+
+export interface ProductizationArtifacts {
+  productization_version: string;
+  product_name: string;
+  summary: {
+    productization_foundation_ready: boolean;
+    production_launch_ready: boolean;
+    local_first_onboarding_preserved: boolean;
+    session_keys_persisted: boolean;
+    configured_contract_surfaces: number;
+    open_major_gates: number;
+  };
+  runtime_boundary: Record<string, string>;
+  gates: ProductizationGate[];
+  launch_blockers: string[];
+  preserved_onboarding_contracts: string[];
+  next_phase: string;
+  readinessReport: string;
+}
+
 export interface ValidationReport {
   status: "pass" | "warning" | "fail";
   checks: Array<{
@@ -563,5 +593,6 @@ export interface ArchetypePackage {
   targetFrontend: TargetFrontendArtifacts;
   targetExecution: TargetExecutionArtifacts;
   e2e: E2EScenarioArtifacts;
+  productization: ProductizationArtifacts;
   quality: QualityArtifacts;
 }
