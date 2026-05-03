@@ -26,6 +26,7 @@ Implemented:
 - Workbench E2E scenario/results inspection.
 - Workbench premium dark monochrome Tailwind/shadcn-style interface.
 - Workbench polished control language, button hierarchy, dropdown styling, review rows, and mobile navigation.
+- Workbench launch-review cockpit, grouped IA, AI-readable actions, and guided handoff flow.
 - Spec coverage and remaining-gap audit.
 - Product Model.
 - User, role, permission, entity, and lifecycle artifacts.
@@ -162,6 +163,7 @@ node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archety
 
 - `PRODUCT_DEVELOPMENT_PLAN.md`: Full phased product plan.
 - `SPEC_CONVERGED.md`: Converged product specification.
+- `WORKBENCH_UI_AUDIT.md`: Detailed UI audit, root-cause findings, and production polish plan.
 - `src/core/pipeline.ts`: Compiler pipeline.
 - `src/modules/`: Generation modules.
 - `src/quality/quality.ts`: Validation and readiness scoring.

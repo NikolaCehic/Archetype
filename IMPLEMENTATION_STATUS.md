@@ -1697,6 +1697,36 @@ Next phase:
 
 - Add browser visual regression/state proof for every generated route and non-default screen state.
 
+## Completed Phase: Workbench Launch Review UX
+
+Status: complete
+
+Implemented:
+
+- Added `WORKBENCH_UI_AUDIT.md` with the detailed UI root-cause analysis and production polish plan.
+- Replaced the default artifact inventory mental model with a launch-review cockpit.
+- Grouped Workbench navigation into Launch, Input, Architecture, Build Contract, and Governance.
+- Added a launch decision panel with direct actions for frontend contract review, E2E proof, and handoff.
+- Added a guided review path from intake confirmation through export handoff.
+- Added grouped issue rows for backend, auth, proof, review, design, content, and architecture warnings.
+- Added a human review queue with direct next-step actions.
+- Added an AI Agent Handoff Map with deterministic artifact targets and navigation actions.
+- Added `data-agent-*` attributes for machine-readable current view, actions, views, sections, statuses, and issues.
+- Added shadcn-style workflow step, status card, launch decision, issue row, and review queue primitives.
+
+Verification:
+
+- `npm run workbench:build` passes.
+- `npm run check` passes.
+- Desktop launch-review screenshot rendered at `tmp/workbench-launch-review-verified-desktop.png`.
+- Mobile launch-review screenshot rendered at `tmp/workbench-launch-review-verified-mobile.png`.
+- Browser diagnostics confirm no horizontal overflow at 390px or 1440px.
+- Browser diagnostics confirm machine-readable `data-agent-*` actions and grouped navigation are present.
+
+Next phase:
+
+- Add browser visual regression/state proof for every generated route and non-default screen state.
+
 ## Completed Phase: Premium Workbench UI Redesign
 
 Status: complete

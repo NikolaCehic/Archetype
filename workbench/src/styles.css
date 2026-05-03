@@ -158,6 +158,18 @@
     @apply grid gap-1 overflow-auto pr-1;
   }
 
+  .nav-section {
+    @apply grid gap-1;
+  }
+
+  .nav-section + .nav-section {
+    margin-top: 0.75rem;
+  }
+
+  .nav-section-title {
+    @apply px-2.5 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground;
+  }
+
   .nav-item {
     @apply flex w-full cursor-pointer items-center justify-between rounded-md border border-transparent bg-transparent px-2.5 py-2 text-left text-sm font-medium text-muted-foreground;
     min-height: 2.5rem;
@@ -183,6 +195,10 @@
   .nav-count {
     @apply ml-3 rounded-sm px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground;
     background: hsl(224 8% 11%);
+  }
+
+  .nav-description {
+    display: none;
   }
 
   .nav-item.active .nav-count {
@@ -229,6 +245,127 @@
 
   .grid.cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .section-gap {
+    margin-top: 0.875rem;
+  }
+
+  .launch-hero {
+    @apply mb-3 grid items-stretch overflow-hidden;
+    grid-template-columns: minmax(0, 1fr) 220px;
+  }
+
+  .launch-copy {
+    @apply grid gap-3 p-5;
+  }
+
+  .launch-copy h2 {
+    font-size: 1.45rem;
+    line-height: 1.1;
+  }
+
+  .launch-copy p {
+    @apply m-0 max-w-[72ch] text-sm leading-6 text-muted-foreground;
+  }
+
+  .hero-actions {
+    @apply flex flex-wrap gap-2 pt-1;
+  }
+
+  .launch-score {
+    @apply grid content-center justify-items-start gap-2 border-l p-5;
+    background: hsl(224 9% 8%);
+    border-color: hsl(224 7% 18%);
+  }
+
+  .launch-score strong {
+    @apply text-5xl font-semibold leading-none text-foreground tabular-nums;
+  }
+
+  .launch-score span {
+    @apply text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground;
+  }
+
+  .launch-score .badge,
+  .status-card .badge {
+    justify-self: start;
+  }
+
+  .status-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .status-card {
+    @apply grid min-h-[92px] content-between rounded-lg border p-3;
+    background: hsl(224 9% 8%);
+    border-color: hsl(224 7% 20%);
+  }
+
+  .status-value {
+    @apply text-xl font-semibold leading-none text-foreground tabular-nums;
+  }
+
+  .status-label {
+    @apply mt-1 text-xs font-medium text-muted-foreground;
+  }
+
+  .workflow-list,
+  .issue-list {
+    @apply grid gap-2;
+  }
+
+  .workflow-step {
+    @apply grid w-full cursor-pointer items-start gap-3 rounded-md border p-3 text-left;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+    transition:
+      background-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .workflow-step:hover {
+    background: hsl(224 8% 13%);
+    border-color: hsl(220 7% 31%);
+    transform: translateY(-1px);
+  }
+
+  .workflow-index {
+    @apply grid h-7 w-7 place-items-center rounded-md border text-xs font-semibold tabular-nums;
+    background: hsl(224 8% 13%);
+    border-color: hsl(224 7% 22%);
+    color: hsl(220 8% 84%);
+  }
+
+  .workflow-copy {
+    @apply grid gap-1;
+  }
+
+  .workflow-copy strong {
+    @apply text-sm font-semibold text-foreground;
+  }
+
+  .workflow-copy span {
+    @apply text-xs leading-5 text-muted-foreground;
+  }
+
+  .issue-row {
+    @apply grid items-start gap-3 rounded-md border p-3;
+    grid-template-columns: minmax(0, 1fr) auto;
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+  }
+
+  .issue-row strong {
+    @apply text-sm font-semibold text-foreground;
+  }
+
+  .issue-row span {
+    @apply mt-1 block text-xs leading-5 text-muted-foreground;
   }
 
   .panel {
@@ -633,6 +770,15 @@
     padding-right: 0;
   }
 
+  .nav-section {
+    display: contents;
+  }
+
+  .nav-section-title,
+  .nav-description {
+    display: none;
+  }
+
   .nav-item {
     flex: 0 0 auto;
     min-width: 9.75rem;
@@ -665,11 +811,32 @@
   }
 
   .topbar,
+  .launch-hero,
   .grid.cols-2,
   .grid.cols-3,
+  .status-grid,
   .split,
   .form-grid,
   .mini-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .launch-copy,
+  .launch-score {
+    padding: 1rem;
+  }
+
+  .launch-score {
+    border-left-width: 0;
+    border-top-width: 1px;
+  }
+
+  .launch-score strong {
+    font-size: 2.75rem;
+  }
+
+  .workflow-step,
+  .issue-row {
     grid-template-columns: 1fr;
   }
 

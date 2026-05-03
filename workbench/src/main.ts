@@ -297,22 +297,26 @@ interface SavedPackageComparison {
   componentDelta: { added: string[]; removed: string[] };
 }
 
-const views: Array<{ id: ViewId; label: string; count: (bundle: Bundle) => number | string }> = [
-  { id: "overview", label: "Overview", count: (bundle) => bundle.readiness.score },
-  { id: "workspace", label: "Workspace", count: () => state.workspaceEntries.length },
-  { id: "generation", label: "Generate", count: () => "draft" },
-  { id: "evidence", label: "Evidence", count: (bundle) => bundle.evidence.sources?.length ?? 0 },
-  { id: "architecture", label: "Architecture", count: (bundle) => bundle.routeMap.routes.length },
-  { id: "dsag", label: "DSAG", count: (bundle) => bundle.dsag.integrity.status },
-  { id: "screens", label: "Screens", count: (bundle) => bundle.screens.length },
-  { id: "design", label: "Design System", count: (bundle) => bundle.componentRegistry.components.length },
-  { id: "contract", label: "Frontend Contract", count: (bundle) => bundle.buildManifest.entry_routes?.length ?? 0 },
-  { id: "simulation", label: "Simulation", count: (bundle) => bundle.buildSimulation.routeSimulation?.routes?.length ?? 0 },
-  { id: "e2e", label: "E2E", count: (bundle) => bundle.e2eResults.summary?.total ?? 0 },
-  { id: "impact", label: "Impact", count: () => state.baselineSnapshot ? "diff" : "base" },
-  { id: "export", label: "Export", count: (bundle) => bundle.readiness.readyForFrontendAgent ? "ready" : "hold" },
-  { id: "governance", label: "Governance", count: () => governanceActionQueue().length },
-  { id: "revision", label: "Revision", count: (bundle) => bundle.revision.approvalGates?.gates?.length ?? 0 }
+type ViewGroup = "Launch" | "Input" | "Architecture" | "Build Contract" | "Governance";
+
+const viewGroups: ViewGroup[] = ["Launch", "Input", "Architecture", "Build Contract", "Governance"];
+
+const views: Array<{ id: ViewId; label: string; group: ViewGroup; description: string; count: (bundle: Bundle) => number | string }> = [
+  { id: "overview", label: "Launch Review", group: "Launch", description: "Decision cockpit for readiness, risk, and next actions.", count: (bundle) => bundle.readiness.score },
+  { id: "workspace", label: "Workspace", group: "Launch", description: "Save, compare, import, and manage generated packages.", count: () => state.workspaceEntries.length },
+  { id: "export", label: "Handoff", group: "Launch", description: "Export the reviewed package and agent handoff prompt.", count: (bundle) => bundle.readiness.readyForFrontendAgent ? "ready" : "hold" },
+  { id: "generation", label: "Intake Builder", group: "Input", description: "Draft or repair product context before compilation.", count: () => "draft" },
+  { id: "evidence", label: "Evidence", group: "Input", description: "Inspect source material, visual evidence, and safety signals.", count: (bundle) => bundle.evidence.sources?.length ?? 0 },
+  { id: "architecture", label: "Routes and Flows", group: "Architecture", description: "Review product model, route map, screen inventory, and flow coverage.", count: (bundle) => bundle.routeMap.routes.length },
+  { id: "screens", label: "Screens", group: "Architecture", description: "Inspect deterministic screen specifications.", count: (bundle) => bundle.screens.length },
+  { id: "design", label: "Design System", group: "Architecture", description: "Review tokens, components, patterns, and design contracts.", count: (bundle) => bundle.componentRegistry.components.length },
+  { id: "dsag", label: "Trace Graph", group: "Architecture", description: "Inspect DSAG traceability and graph integrity.", count: (bundle) => bundle.dsag.integrity.status },
+  { id: "contract", label: "Frontend Contract", group: "Build Contract", description: "Inspect source manifests, data contracts, actions, forms, and adapters.", count: (bundle) => bundle.buildManifest.entry_routes?.length ?? 0 },
+  { id: "simulation", label: "Build Simulation", group: "Build Contract", description: "Triage simulated route, component, state, data, and test coverage.", count: (bundle) => bundle.buildSimulation.routeSimulation?.routes?.length ?? 0 },
+  { id: "e2e", label: "E2E Proof", group: "Build Contract", description: "Review 100 happy-path and edge-case scenarios.", count: (bundle) => bundle.e2eResults.summary?.total ?? 0 },
+  { id: "impact", label: "Revision Impact", group: "Governance", description: "Compare baselines and understand downstream invalidation.", count: () => state.baselineSnapshot ? "diff" : "base" },
+  { id: "governance", label: "Governance", group: "Governance", description: "Review local action queues, blockers, and decision records.", count: () => governanceActionQueue().length },
+  { id: "revision", label: "Revision Requests", group: "Governance", description: "Capture approval gates and change requests.", count: (bundle) => bundle.revision.approvalGates?.gates?.length ?? 0 }
 ];
 
 const state: {
@@ -592,26 +596,210 @@ function metric(label: string, value: unknown, tone: "success" | "warning" | "da
   `;
 }
 
-function renderOverview(bundle: Bundle): string {
-  const routeCount = bundle.routeMap.routes.length;
-  const screenCount = bundle.screenInventory.screens.length;
-  const dsagStatus = bundle.dsag.integrity.status;
+function actionButton(label: string, view: ViewId, variant = "button", action = label): string {
+  return `<button class="${esc(variant)}" data-view="${esc(view)}" data-agent-action="${esc(action)}" aria-label="${esc(action)}" type="button">${esc(label)}</button>`;
+}
+
+function warningCategory(value: string): string {
+  const text = value.toLowerCase();
+  if (text.includes("backend") || text.includes("api") || text.includes("adapter")) return "Backend";
+  if (text.includes("auth") || text.includes("permission")) return "Auth";
+  if (text.includes("accessibility") || text.includes("compliance") || text.includes("risk")) return "Review";
+  if (text.includes("copy") || text.includes("brand")) return "Content";
+  if (text.includes("component") || text.includes("pattern") || text.includes("token") || text.includes("typography")) return "Design";
+  if (text.includes("e2e") || text.includes("verification") || text.includes("simulation") || text.includes("target")) return "Proof";
+  return "Architecture";
+}
+
+function warningBuckets(bundle: Bundle): Array<{ category: string; count: number; items: string[] }> {
+  const map = new Map<string, string[]>();
+  for (const warning of bundle.readiness.warnings) {
+    const category = warningCategory(String(warning));
+    map.set(category, [...(map.get(category) ?? []), String(warning)]);
+  }
+  return [...map.entries()]
+    .map(([category, items]) => ({ category, count: items.length, items }))
+    .sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
+}
+
+function readinessDecision(bundle: Bundle): { label: string; tone: "success" | "warning" | "danger"; body: string } {
+  if (bundle.readiness.blockers.length) {
+    return {
+      label: "Blocked",
+      tone: "danger",
+      body: "This package has blockers. Resolve them before handing it to a frontend agent."
+    };
+  }
+  if (!bundle.readiness.readyForFrontendAgent || bundle.readiness.warnings.length) {
+    return {
+      label: "Ready with review",
+      tone: "warning",
+      body: "The deterministic contract is usable, but production confirmations and review gates still need attention."
+    };
+  }
+  return {
+    label: "Ready for handoff",
+    tone: "success",
+    body: "The package has the core contracts and proof required for deterministic frontend generation."
+  };
+}
+
+function launchSteps(bundle: Bundle): Array<{ label: string; view: ViewId; status: string; tone: "success" | "warning" | "danger" | "neutral"; detail: string }> {
+  const warnings = warningBuckets(bundle);
+  const backendWarnings = warnings.find((item) => item.category === "Backend")?.count ?? 0;
+  const proofWarnings = warnings.find((item) => item.category === "Proof")?.count ?? 0;
+  const reviewWarnings = warnings.find((item) => item.category === "Review")?.count ?? 0;
+  return [
+    {
+      label: "Confirm intake",
+      view: "generation",
+      status: bundle.evidence.sources?.length ? "Ready" : "Needs source",
+      tone: bundle.evidence.sources?.length ? "success" : "warning",
+      detail: "Product context, goals, users, brand, and source material are the evidence base."
+    },
+    {
+      label: "Review architecture",
+      view: "architecture",
+      status: `${bundle.routeMap.routes.length} routes`,
+      tone: bundle.routeMap.routes.length && bundle.screenInventory.screens.length ? "success" : "danger",
+      detail: "Routes, screens, states, and flows must be complete before component review matters."
+    },
+    {
+      label: "Approve design system",
+      view: "design",
+      status: `${bundle.componentRegistry.components.length} components`,
+      tone: bundle.componentRegistry.components.length ? "success" : "warning",
+      detail: "Tokens, typography, components, and patterns define what frontend code may use."
+    },
+    {
+      label: "Resolve contract gaps",
+      view: "contract",
+      status: backendWarnings ? `${backendWarnings} backend gaps` : "Mapped",
+      tone: backendWarnings ? "warning" : "success",
+      detail: "Data, actions, forms, auth, adapters, and source manifests become build instructions."
+    },
+    {
+      label: "Verify proof",
+      view: "e2e",
+      status: proofWarnings || reviewWarnings ? "Review proof" : "Proof attached",
+      tone: proofWarnings || reviewWarnings ? "warning" : "success",
+      detail: "E2E scenarios and target execution explain what is proven and what remains external."
+    },
+    {
+      label: "Export handoff",
+      view: "export",
+      status: bundle.readiness.readyForFrontendAgent ? "Ready" : "Hold",
+      tone: bundle.readiness.readyForFrontendAgent ? "success" : "danger",
+      detail: "Export only after the human and agent handoff contract is understandable."
+    }
+  ];
+}
+
+function statusSummary(label: string, value: unknown, tone: "success" | "warning" | "danger" | "neutral", detail: string): string {
   return `
-    <div class="grid cols-3">
-      ${metric("Readiness score", bundle.readiness.score, bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
-      ${metric("Routes", routeCount)}
-      ${metric("Screens", screenCount)}
-      ${metric("DSAG nodes", bundle.dsag.nodes.length, statusTone(dsagStatus))}
-      ${metric("Simulation routes", bundle.buildSimulation.routeSimulation?.routes?.length ?? 0, statusTone(bundle.buildSimulation.status))}
-      ${metric("Manifest artifacts", bundle.manifest.artifact_index?.length ?? 0)}
+    <div class="status-card" data-agent-status="${esc(label)}">
+      <div>
+        <div class="status-value">${esc(value)}</div>
+        <div class="status-label">${esc(label)}</div>
+      </div>
+      ${badge(detail, tone)}
     </div>
-    <div class="grid cols-2" style="margin-top:14px">
-      ${panel("Warnings", list(bundle.readiness.warnings))}
-      ${panel("Human Review", list(bundle.readiness.requiredHumanReview))}
+  `;
+}
+
+function workflowStep(index: number, step: ReturnType<typeof launchSteps>[number]): string {
+  return `
+    <button class="workflow-step" data-view="${esc(step.view)}" data-agent-action="${esc(`Open ${step.label}`)}" type="button">
+      <span class="workflow-index">${esc(index + 1)}</span>
+      <span class="workflow-copy">
+        <strong>${esc(step.label)}</strong>
+        <span>${esc(step.detail)}</span>
+      </span>
+      ${badge(step.status, step.tone)}
+    </button>
+  `;
+}
+
+function renderOverview(bundle: Bundle): string {
+  const decision = readinessDecision(bundle);
+  const warningGroups = warningBuckets(bundle);
+  const e2eSummary = bundle.e2eResults.summary ?? {};
+  return `
+    <section class="launch-hero panel" data-agent-section="launch-review">
+      <div class="launch-copy">
+        <div class="eyebrow">Launch Decision</div>
+        <h2>${esc(decision.label)}</h2>
+        <p>${esc(decision.body)}</p>
+        <div class="hero-actions">
+          ${actionButton("Review frontend contract", "contract", "button primary", "Open frontend contract")}
+          ${actionButton("Inspect E2E proof", "e2e", "button", "Open E2E proof")}
+          ${actionButton("Prepare handoff", "export", "button", "Open handoff export")}
+        </div>
+      </div>
+      <div class="launch-score" aria-label="Readiness score">
+        <strong>${esc(bundle.readiness.score)}</strong>
+        <span>readiness</span>
+        ${badge(decision.label, decision.tone)}
+      </div>
+    </section>
+    <div class="status-grid">
+      ${statusSummary("Routes", bundle.routeMap.routes.length, bundle.routeMap.routes.length ? "success" : "danger", "Mapped")}
+      ${statusSummary("Screens", bundle.screenInventory.screens.length, bundle.screenInventory.screens.length ? "success" : "danger", "Specified")}
+      ${statusSummary("Components", bundle.componentRegistry.components.length, bundle.componentRegistry.components.length ? "success" : "warning", "Contracted")}
+      ${statusSummary("E2E", `${e2eSummary.pass ?? 0}/${e2eSummary.total ?? 0}`, (e2eSummary.fail ?? 0) ? "danger" : (e2eSummary.warning ?? 0) ? "warning" : "success", `${e2eSummary.warning ?? 0} warnings`)}
+      ${statusSummary("Target build", bundle.targetExecution.status ?? "pending", statusTone(bundle.targetExecution.status), humanLabel(bundle.targetExecution.summary?.build ?? "pending"))}
+      ${statusSummary("Warnings", bundle.readiness.warnings.length, bundle.readiness.warnings.length ? "warning" : "success", bundle.readiness.warnings.length ? "Review" : "Clear")}
     </div>
-    <div class="grid cols-2" style="margin-top:14px">
-      ${panel("Product Model", code(bundle.productModel))}
-      ${panel("Validation", code({ status: bundle.schemaValidation.status, checks: bundle.schemaValidation.checks.length, blockers: bundle.schemaValidation.blockers.length }))}
+    <div class="grid cols-2 section-gap">
+      ${panel("Guided Review Path", `
+        <div class="workflow-list">
+          ${launchSteps(bundle).map((step, index) => workflowStep(index, step)).join("")}
+        </div>
+      `)}
+      ${panel("What Is Actually Wrong", warningGroups.length ? `
+        <div class="issue-list">
+          ${warningGroups.map((group) => `
+            <div class="issue-row" data-agent-issue="${esc(group.category)}">
+              <div>
+                <strong>${esc(group.category)}</strong>
+                <span>${esc(group.items[0])}</span>
+              </div>
+              ${badge(`${group.count} items`, group.category === "Review" || group.category === "Proof" || group.category === "Backend" ? "warning" : "neutral")}
+            </div>
+          `).join("")}
+        </div>
+      ` : `<div class="empty">No current readiness warnings.</div>`)}
+    </div>
+    <div class="grid cols-2 section-gap">
+      ${panel("Human Review Queue", bundle.readiness.requiredHumanReview.length ? table(["Review Item", "Next Step"], bundle.readiness.requiredHumanReview.map((item) => [
+        esc(item),
+        item.toLowerCase().includes("backend") ? actionButton("Open contract", "contract", "button small", "Open production contract") :
+          item.toLowerCase().includes("accessibility") ? actionButton("Open governance", "governance", "button small", "Open governance review") :
+            actionButton("Open revision", "revision", "button small", "Open revision gates")
+      ])) : `<div class="empty">No human review items.</div>`)}
+      ${panel("AI Agent Handoff Map", table(["Need", "Artifact", "Open"], [
+        ["Implementation source plan", "<code>12-target-frontend/source-file-manifest.json</code>", actionButton("Contract", "contract", "button small", "Open target source manifest")],
+        ["Route and screen mapping", "<code>12-target-frontend/route-component-map.json</code>", actionButton("Screens", "screens", "button small", "Open screens")],
+        ["Design primitives", "<code>04-design-system/</code>", actionButton("Design", "design", "button small", "Open design system")],
+        ["Runtime proof", "<code>14-target-execution/target-execution-report.json</code>", actionButton("Proof", "e2e", "button small", "Open target proof")],
+        ["Final handoff prompt", "<code>handoff.md</code>", actionButton("Export", "export", "button small", "Open handoff")]
+      ]))}
+    </div>
+    <div class="grid cols-2 section-gap">
+      ${panel("Product Model", code({
+        product: bundle.productModel.product_name,
+        type: bundle.productModel.product_type,
+        mode: bundle.manifest.operating_mode,
+        packageId: bundle.manifest.package_id,
+        sourceHash: bundle.manifest.source_hash
+      }))}
+      ${panel("Validation Proof", code({
+        schema: bundle.schemaValidation.status,
+        checks: bundle.schemaValidation.checks.length,
+        blockers: bundle.schemaValidation.blockers.length,
+        dsag: bundle.dsag.integrity.status,
+        targetExecution: bundle.targetExecution.status
+      }))}
     </div>
   `;
 }
@@ -3175,29 +3363,37 @@ function render(): void {
             <div class="brand-subtitle">Architecture Workbench</div>
           </div>
         </div>
-        <div class="package-tools">
-          <button class="button primary" id="load-sample" type="button">Load Sample Package</button>
-          <button class="button" id="import-folder" type="button">Import Package Folder</button>
+        <div class="package-tools" aria-label="Package actions">
+          <button class="button primary" id="load-sample" data-agent-action="Load sample package" type="button">Load Sample Package</button>
+          <button class="button" id="import-folder" data-agent-action="Import package folder" type="button">Import Package Folder</button>
           <input id="folder-input" type="file" webkitdirectory multiple hidden />
         </div>
         <nav class="nav" aria-label="Workbench views">
-          ${views.map((view) => `
-            <button class="nav-item ${state.view === view.id ? "active" : ""}" data-view="${view.id}" type="button" ${state.view === view.id ? "aria-current=\"page\"" : ""}>
-              <span>${esc(view.label)}</span>
-              <span class="nav-count">${esc(humanLabel(view.count(bundle)))}</span>
-            </button>
+          ${viewGroups.map((group) => `
+            <section class="nav-section" aria-label="${esc(group)}">
+              <div class="nav-section-title">${esc(group)}</div>
+              ${views.filter((view) => view.group === group).map((view) => `
+                <button class="nav-item ${state.view === view.id ? "active" : ""}" data-view="${view.id}" data-agent-view="${view.id}" aria-label="${esc(`${view.label}: ${view.description}`)}" type="button" ${state.view === view.id ? "aria-current=\"page\"" : ""}>
+                  <span>
+                    <span>${esc(view.label)}</span>
+                    <span class="nav-description">${esc(view.description)}</span>
+                  </span>
+                  <span class="nav-count">${esc(humanLabel(view.count(bundle)))}</span>
+                </button>
+              `).join("")}
+            </section>
           `).join("")}
         </nav>
         <div class="footer-note">${esc(state.packageName)} · ${esc(bundle.manifest.project_slug ?? "package")}</div>
       </aside>
-      <main class="main" id="main-content" tabindex="-1">
-        <div class="topbar">
+      <main class="main" id="main-content" data-agent-current-view="${esc(state.view)}" tabindex="-1">
+        <div class="topbar" role="region" aria-label="Current package status">
           <div>
             <div class="eyebrow">${esc(viewLabel)}</div>
             <h1>${esc(bundle.productModel.product_name ?? "Archetype Package")}</h1>
             <div class="meta-line">${esc([humanLabel(bundle.productModel.product_type ?? ""), humanLabel(bundle.manifest.operating_mode ?? "")].filter(Boolean).join(" · "))}</div>
           </div>
-          <div class="status-strip" aria-label="Package status">
+          <div class="status-strip" role="status" aria-live="polite" aria-label="Package status">
             ${badge(`Score ${bundle.readiness.score}`, bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
             ${badge(bundle.readiness.readyForFrontendAgent ? "Ready" : "Blocked", bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
             ${badge(`DSAG ${humanLabel(bundle.dsag.integrity.status)}`, statusTone(bundle.dsag.integrity.status))}
