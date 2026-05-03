@@ -96,6 +96,8 @@ Exit criteria:
 
 ## Phase 5: Deployment Operations and Launch Gates
 
+Status: complete
+
 Goal: make launch readiness operational.
 
 Build:

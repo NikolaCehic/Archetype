@@ -491,6 +491,26 @@ test("telemetry audit transport contract is visible in Governance", async ({ pag
   await expect(section).toContainText("raw_source_content");
 });
 
+test("deployment operations launch gates are visible in Governance", async ({ page }) => {
+  await ensureWorkbenchPackage(page);
+  await openView(page, "governance");
+
+  const section = page.locator("[data-agent-section='deployment-operations-contract']");
+  await expect(section).toBeVisible();
+  await expect(section).toHaveAttribute("data-agent-deployment-contract", "ready");
+  await expect(section).toHaveAttribute("data-agent-production-launch-ready", "false");
+  await expect(section).toContainText("contract only");
+  await expect(section).toContainText("not ready");
+  await expect(section).toContainText("production");
+  await expect(section).toContainText("rollback_drill");
+  await expect(section).toContainText("hosted_smoke");
+  await expect(section).toContainText("telemetry_default_off_regression");
+  await expect(section).toContainText("sev1");
+  await expect(section).toContainText("account_workspace_backend_implemented");
+  await expect(section).toContainText("provider_execution_service_implemented");
+  await expect(section.locator("[data-agent-launch-gate-id='account_workspace_backend_implemented']")).toHaveAttribute("data-agent-launch-gate-status", "blocked");
+});
+
 test("onboarding keyboard path, status announcements, and AI action hooks are accessible", async ({ page }) => {
   await expect(page.locator("#main-content")).toHaveAttribute("data-agent-landmark", "start-hub");
   await page.keyboard.press("Tab");

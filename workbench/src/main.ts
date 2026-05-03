@@ -287,6 +287,8 @@ interface Bundle {
   providerExecutionReport: string;
   telemetryAuditContract: Record<string, any>;
   telemetryAuditReport: string;
+  deploymentOperationsContract: Record<string, any>;
+  deploymentOperationsReport: string;
   acceptanceCriteria: { criteria: Array<Record<string, any>> };
   buildSimulation: Record<string, any>;
   revision: Record<string, any>;
@@ -3922,6 +3924,10 @@ function generatedBundleFromTemplate(template: Bundle): Bundle {
     ...bundle.telemetryAuditContract,
     product_name: projectName
   };
+  bundle.deploymentOperationsContract = {
+    ...bundle.deploymentOperationsContract,
+    product_name: projectName
+  };
   return bundle;
 }
 
@@ -4973,6 +4979,113 @@ function renderTelemetryAuditContract(bundle: Bundle): string {
   `;
 }
 
+function renderDeploymentOperationsContract(bundle: Bundle): string {
+  const contract = bundle.deploymentOperationsContract ?? legacyDeploymentOperationsContract();
+  const environment = contract.environment_configuration ?? {};
+  const ci = contract.ci_cd_gates ?? {};
+  const runbook = contract.hosted_workbench_runbook ?? {};
+  const backup = contract.backup_rollback_policy ?? {};
+  const observability = contract.observability_signals ?? {};
+  const incident = contract.incident_response_checklist ?? {};
+  const launch = contract.launch_gate_matrix ?? {};
+  const readiness = contract.readiness ?? {};
+  const environments = Array.isArray(environment.environments) ? environment.environments : [];
+  const ciGates = Array.isArray(ci.required_gates) ? ci.required_gates : [];
+  const deploySteps = Array.isArray(runbook.deploy_sequence) ? runbook.deploy_sequence : [];
+  const policies = Array.isArray(backup.policies) ? backup.policies : [];
+  const signals = Array.isArray(observability.signals) ? observability.signals : [];
+  const severities = Array.isArray(incident.severity_levels) ? incident.severity_levels : [];
+  const launchGates = Array.isArray(launch.gates) ? launch.gates : [];
+  return `
+    <section
+      data-agent-section="deployment-operations-contract"
+      data-agent-deployment-contract="${readiness.implementable_without_invention ? "ready" : "review"}"
+      data-agent-production-launch-ready="${readiness.launch_ready ? "true" : "false"}"
+    >
+      <div class="grid cols-3">
+        ${metric("Contract", readiness.implementable_without_invention ? "ready" : "review", readiness.implementable_without_invention ? "success" : "warning")}
+        ${metric("Deployment", readiness.deployment_implemented ? "live" : "contract only", readiness.deployment_implemented ? "success" : "warning")}
+        ${metric("Launch", readiness.launch_ready ? "ready" : "not ready", readiness.launch_ready ? "success" : "warning")}
+      </div>
+      <div class="productization-boundary">
+        <div><strong>Environments</strong><span>${esc(environments.map((item: any) => humanLabel(item.name)).join(", "))}</span></div>
+        <div><strong>CI gates</strong><span>${esc(ciGates.length)}</span></div>
+        <div><strong>Runbook</strong><span>${esc(deploySteps.length)} steps</span></div>
+        <div><strong>Rollback</strong><span>${esc((backup.objectives?.rto as string) ?? "unknown")}</span></div>
+        <div><strong>Launch gates</strong><span>${esc(launchGates.length)}</span></div>
+      </div>
+      <div class="productization-lists contract-lists">
+        <div>
+          <h3>Environments</h3>
+          ${table(["Name", "Purpose", "Promotion"], environments.map((item: any) => [
+            `<strong>${esc(humanLabel(item.name))}</strong><div class="muted"><code>${esc(item.name ?? "")}</code></div>`,
+            esc(item.purpose ?? ""),
+            esc(item.promotion_source ?? "")
+          ]))}
+        </div>
+        <div>
+          <h3>CI/CD Gates</h3>
+          ${table(["Gate", "Requirement"], ciGates.map((gate: any) => [
+            `<strong>${esc(humanLabel(gate.id))}</strong><div class="muted"><code>${esc(gate.id ?? "")}</code></div>`,
+            esc(gate.requirement ?? "")
+          ]))}
+        </div>
+      </div>
+      <div class="productization-lists contract-lists">
+        <div>
+          <h3>Deployment Runbook</h3>
+          ${table(["Step", "Action"], deploySteps.map((step: any) => [
+            `<strong>${esc(humanLabel(step.id))}</strong><div class="muted"><code>${esc(step.id ?? "")}</code></div>`,
+            esc(step.action ?? "")
+          ]))}
+        </div>
+        <div>
+          <h3>Backup and Rollback</h3>
+          ${table(["Scope", "Policy"], policies.map((policy: any) => [
+            `<strong>${esc(humanLabel(policy.scope))}</strong><div class="muted"><code>${esc(policy.scope ?? "")}</code></div>`,
+            esc(policy.policy ?? "")
+          ]))}
+        </div>
+      </div>
+      <div class="productization-lists contract-lists">
+        <div>
+          <h3>Observability</h3>
+          ${table(["Signal", "SLO"], signals.map((signal: any) => [
+            `<strong>${esc(humanLabel(signal.signal))}</strong><div class="muted"><code>${esc(signal.signal ?? "")}</code></div>`,
+            esc(signal.slo ?? "")
+          ]))}
+        </div>
+        <div>
+          <h3>Incident Response</h3>
+          ${table(["Severity", "Response", "Examples"], severities.map((severity: any) => [
+            `<strong>${esc(humanLabel(severity.severity))}</strong><div class="muted"><code>${esc(severity.severity ?? "")}</code></div>`,
+            esc(severity.response_time ?? ""),
+            esc(severity.examples ?? "")
+          ]))}
+        </div>
+      </div>
+      <div class="productization-lists contract-lists">
+        <div>
+          <h3>Launch Gate Matrix</h3>
+          ${table(["Gate", "Status", "Owner"], launchGates.map((gate: any) => [
+            `<strong data-agent-launch-gate-id="${esc(gate.id ?? "")}" data-agent-launch-gate-status="${esc(gate.status ?? "")}">${esc(humanLabel(gate.id))}</strong><div class="muted"><code>${esc(gate.id ?? "")}</code></div>`,
+            badge(gate.status ?? "planned", gate.status === "blocked" ? "danger" : gate.status === "pass" ? "success" : "warning"),
+            esc(gate.owner ?? "")
+          ]))}
+        </div>
+        <div>
+          <h3>Launch Rule</h3>
+          ${table(["Rule", "Value"], [
+            ["Calculation", esc(launch.launch_ready_calculation ?? "")],
+            ["Exception policy", esc(launch.exception_policy ?? "")],
+            ["Unresolved work", esc(((readiness.unresolved_launch_work ?? []) as string[]).join(", "))]
+          ])}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderGovernance(bundle: Bundle): string {
   const queue = governanceActionQueue();
   const approvalGates = bundle.revision.approvalGates?.gates ?? [];
@@ -5016,6 +5129,9 @@ function renderGovernance(bundle: Bundle): string {
     </div>
     <div style="margin-top:14px">
       ${panel("Telemetry Audit Contract", renderTelemetryAuditContract(bundle))}
+    </div>
+    <div style="margin-top:14px">
+      ${panel("Deployment Operations Contract", renderDeploymentOperationsContract(bundle))}
     </div>
     <div style="margin-top:14px">
       ${panel("Action Queue", queue.length ? table(["Severity", "Source", "Item", "Status", "Note"], queue.map((item) => [
@@ -7766,6 +7882,54 @@ function legacyTelemetryAuditReport(): string {
   return "# Telemetry and Audit Transport Contract\n\nThis package was generated before telemetry and audit artifacts existed. Regenerate it with the current compiler to inspect consent, event, audit, retention, and deletion contracts.";
 }
 
+function legacyDeploymentOperationsContract(): Record<string, any> {
+  return {
+    contract_version: "legacy",
+    product_name: "Legacy package",
+    implementation_status: "contract_ready_deployment_not_implemented",
+    purpose: "This imported package was generated before the deployment operations contract existed.",
+    onboarding_guarantees: ["Legacy package import remains non-blocking and does not imply production launch readiness."],
+    environment_configuration: {
+      environments: []
+    },
+    ci_cd_gates: {
+      required_gates: []
+    },
+    hosted_workbench_runbook: {
+      deploy_sequence: []
+    },
+    backup_rollback_policy: {
+      objectives: {},
+      policies: []
+    },
+    observability_signals: {
+      signals: []
+    },
+    incident_response_checklist: {
+      severity_levels: []
+    },
+    launch_gate_matrix: {
+      launch_ready_calculation: "Regenerate the package to inspect launch gates.",
+      gates: []
+    },
+    ai_agent_contract: {
+      discovery: ["Regenerate the package to inspect deployment hooks."]
+    },
+    implementation_checklist: ["Regenerate the package with the current compiler."],
+    readiness: {
+      implementable_without_invention: false,
+      deployment_implemented: false,
+      launch_ready: false,
+      unresolved_launch_work: ["Deployment operations contract artifact missing."],
+      evidence_refs: ["15-productization/deployment-operations-contract.json"]
+    }
+  };
+}
+
+function legacyDeploymentOperationsReport(): string {
+  return "# Deployment Operations and Launch Gates Contract\n\nThis package was generated before deployment operations artifacts existed. Regenerate it with the current compiler to inspect launch gates.";
+}
+
 async function bundleFromFiles(files: File[]): Promise<Bundle> {
   const byPath = new Map<string, File>();
   for (const file of files) {
@@ -7850,6 +8014,8 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
     providerExecutionReport: await getOptionalText("15-productization/provider-execution-contract.md", legacyProviderExecutionReport()),
     telemetryAuditContract: await getOptionalJson("15-productization/telemetry-audit-contract.json", legacyTelemetryAuditContract()),
     telemetryAuditReport: await getOptionalText("15-productization/telemetry-audit-contract.md", legacyTelemetryAuditReport()),
+    deploymentOperationsContract: await getOptionalJson("15-productization/deployment-operations-contract.json", legacyDeploymentOperationsContract()),
+    deploymentOperationsReport: await getOptionalText("15-productization/deployment-operations-contract.md", legacyDeploymentOperationsReport()),
     acceptanceCriteria: await getJson("06-frontend-agent-contract/acceptance-criteria.json"),
     buildSimulation: {
       buildPlan: await getJson("11-build-simulation/build-plan.json"),

@@ -1,6 +1,7 @@
 import type {
   AccountWorkspaceContract,
   ArchetypeInput,
+  DeploymentOperationsContract,
   FrontendContractArtifacts,
   ProviderExecutionContract,
   ProductizationArtifacts,
@@ -1257,6 +1258,337 @@ function buildTelemetryAuditContract(input: ArchetypeInput): TelemetryAuditContr
   };
 }
 
+function deploymentOperationsReport(contract: DeploymentOperationsContract): string {
+  const environments = contract.environment_configuration.environments as Array<Record<string, string>>;
+  const ciGates = contract.ci_cd_gates.required_gates as Array<Record<string, string>>;
+  const runbookSteps = contract.hosted_workbench_runbook.deploy_sequence as Array<Record<string, string>>;
+  const backupPolicies = contract.backup_rollback_policy.policies as Array<Record<string, string>>;
+  const signals = contract.observability_signals.signals as Array<Record<string, string>>;
+  const incidents = contract.incident_response_checklist.severity_levels as Array<Record<string, string>>;
+  const launchGates = contract.launch_gate_matrix.gates as Array<Record<string, string>>;
+  const lines = [
+    "# Deployment Operations and Launch Gates Contract",
+    "",
+    `Product: ${contract.product_name}`,
+    `Status: ${contract.implementation_status}`,
+    `Implementable without invention: ${contract.readiness.implementable_without_invention}`,
+    `Deployment implemented: ${contract.readiness.deployment_implemented}`,
+    `Launch ready: ${contract.readiness.launch_ready}`,
+    "",
+    "## Purpose",
+    "",
+    contract.purpose,
+    "",
+    "## Onboarding Guarantees",
+    "",
+    ...contract.onboarding_guarantees.map((item) => `- ${item}`),
+    "",
+    "## Environments",
+    "",
+    "| Environment | Purpose | Promotion source |",
+    "|---|---|---|",
+    ...environments.map((environment) => `| ${environment.name} | ${environment.purpose} | ${environment.promotion_source} |`),
+    "",
+    "## CI/CD Gates",
+    "",
+    ...ciGates.map((gateItem) => `- ${gateItem.id}: ${gateItem.requirement}`),
+    "",
+    "## Hosted Workbench Runbook",
+    "",
+    ...runbookSteps.map((step) => `- ${step.id}: ${step.action}`),
+    "",
+    "## Backup and Rollback",
+    "",
+    ...backupPolicies.map((policy) => `- ${policy.scope}: ${policy.policy}`),
+    "",
+    "## Observability Signals",
+    "",
+    ...signals.map((signalItem) => `- ${signalItem.signal}: ${signalItem.slo}`),
+    "",
+    "## Incident Severities",
+    "",
+    ...incidents.map((incident) => `- ${incident.severity}: ${incident.response_time}`),
+    "",
+    "## Launch Gates",
+    "",
+    ...launchGates.map((gateItem) => `- ${gateItem.id}: ${gateItem.status}`),
+    "",
+    "## Unresolved Launch Work",
+    "",
+    ...contract.readiness.unresolved_launch_work.map((item) => `- ${item}`)
+  ];
+  return lines.join("\n");
+}
+
+function buildDeploymentOperationsContract(input: ArchetypeInput): DeploymentOperationsContract {
+  const projectName = input.projectName?.trim() || "Generated product";
+  return {
+    contract_version: "1.0",
+    product_name: projectName,
+    implementation_status: "contract_ready_deployment_not_implemented",
+    purpose: "Define the hosted Archetype deployment, operations, observability, backup, rollback, incident response, and launch gate contract so production launch cannot be claimed until every runtime dependency is implemented and verified.",
+    onboarding_guarantees: [
+      "Local Fresh Start Hub, sample exploration, import, local draft save, local preflight, and export continue to work when hosted environments are unavailable.",
+      "Deployment configuration cannot force users to create accounts before local onboarding paths.",
+      "Provider keys remain session-scoped and are never added to deployment logs, build output, client bundles, or environment validation reports.",
+      "Telemetry remains off by default until consent UI, transport, retention, deletion, and privacy policy launch gates pass.",
+      "Rollback must preserve package revision integrity, audit receipts, deletion receipts, and local-first fallback instructions.",
+      "An AI agent must be able to inspect launch gate state before attempting hosted deployment or declaring production readiness."
+    ],
+    environment_configuration: {
+      environments: [
+        { name: "local", purpose: "Developer and deterministic local compiler/workbench execution.", promotion_source: "working_tree" },
+        { name: "preview", purpose: "Per-branch hosted Workbench review with non-production data.", promotion_source: "pull_request" },
+        { name: "staging", purpose: "Production-like integration validation with test auth, storage, provider, telemetry, and deployment config.", promotion_source: "main_after_ci" },
+        { name: "production", purpose: "Public hosted Archetype runtime after all launch gates pass.", promotion_source: "signed_release_from_staging" }
+      ],
+      required_variables: [
+        "APP_ORIGIN",
+        "API_ORIGIN",
+        "AUTH_PROVIDER_ISSUER",
+        "DATABASE_URL",
+        "OBJECT_STORAGE_BUCKET",
+        "SECRET_MANAGER_PROJECT",
+        "ENCRYPTION_KEY_ALIAS",
+        "PROVIDER_EXECUTION_ENABLED",
+        "TELEMETRY_TRANSPORT_ENABLED",
+        "TELEMETRY_DEFAULT_ENABLED",
+        "AUDIT_LOG_STORE",
+        "REGION",
+        "RETENTION_POLICY_VERSION",
+        "PRIVACY_POLICY_VERSION",
+        "SENTRY_OR_OBSERVABILITY_DSN",
+        "RATE_LIMIT_POLICY_VERSION"
+      ],
+      secret_policy: {
+        storage: "deployment_secret_manager_only",
+        forbidden_locations: ["git", "client_bundle", "workbench/public", "logs", "artifact_exports", "telemetry_payloads"],
+        validation: "CI must fail when required secrets are missing, malformed, or exposed in build output."
+      },
+      feature_flags: [
+        { flag: "HOSTED_WORKSPACES", default: "off_until_account_backend_launch_gate_passes" },
+        { flag: "PROVIDER_EXECUTION", default: "off_until_provider_bridge_launch_gate_passes" },
+        { flag: "TELEMETRY_TRANSPORT", default: "off_until_telemetry_launch_gate_passes" },
+        { flag: "SUPPORT_DEBUG", default: "off_until_support_policy_launch_gate_passes" }
+      ],
+      configuration_validation: [
+        "Validate origin/CORS/CSP alignment.",
+        "Validate database migrations and object storage access.",
+        "Validate auth issuer, callback URLs, and session cookie policy.",
+        "Validate secret manager access without printing secret values.",
+        "Validate telemetry default is false unless launch gate explicitly allows it.",
+        "Validate provider execution disabled unless credential binding and redaction gates are live."
+      ]
+    },
+    ci_cd_gates: {
+      required_gates: [
+        { id: "typecheck", requirement: "Root TypeScript build must pass." },
+        { id: "smoke_generate", requirement: "Compiler smoke generation must pass for fintech intake." },
+        { id: "package_validate", requirement: "Exported package validation must pass with 0 blockers." },
+        { id: "simulation", requirement: "Build simulation must complete without blockers." },
+        { id: "target_write_verify", requirement: "Generated frontend write, install, typecheck, and build must pass." },
+        { id: "golden_examples", requirement: "Fintech, healthcare, logistics, and web3 golden examples must remain ready." },
+        { id: "workbench_build", requirement: "Workbench production build must pass." },
+        { id: "workbench_e2e", requirement: "Full Workbench E2E/UI suite must pass." },
+        { id: "dependency_audit", requirement: "Root and generated target npm audits must report 0 vulnerabilities." },
+        { id: "secret_scan", requirement: "Source, build output, and generated package must not contain provider keys or known secret patterns." },
+        { id: "migration_dry_run", requirement: "Database/storage migrations must dry-run successfully before staging and production." },
+        { id: "config_validation", requirement: "Environment contract validation must pass for target environment." },
+        { id: "rollback_drill", requirement: "Rollback and restore commands must be tested in staging before production release." }
+      ],
+      promotion_rules: {
+        preview: "Pull request can deploy preview after typecheck, workbench build, and secret scan pass.",
+        staging: "Main can deploy staging after all non-production CI gates pass.",
+        production: "Production deploy requires staging soak, launch gate approval, backup checkpoint, and rollback command verification."
+      },
+      failure_policy: "Any blocker gate stops deployment. Warnings require named owner and explicit launch decision record."
+    },
+    hosted_workbench_runbook: {
+      deploy_sequence: [
+        { id: "preflight", action: "Verify release commit, changelog, environment contract, feature flags, and launch gate matrix." },
+        { id: "backup_checkpoint", action: "Create database backup marker and object storage version checkpoint before deploy." },
+        { id: "migrate", action: "Run schema/object-store migrations with dry-run proof and rollback notes." },
+        { id: "deploy_api", action: "Deploy API/backend services before Workbench when API contract changes exist." },
+        { id: "deploy_workbench", action: "Deploy static Workbench/client bundle with immutable asset version." },
+        { id: "smoke_hosted", action: "Run hosted smoke: load Start Hub, sample, import, local preflight, export, auth-gated hosted save, provider disabled state, telemetry off state." },
+        { id: "canary", action: "Route limited internal traffic, monitor SLOs, error rate, audit writes, and telemetry disabled defaults." },
+        { id: "promote", action: "Promote to full production only after canary gates pass and rollback command remains valid." },
+        { id: "post_deploy", action: "Record deployment receipt, release version, launch gate state, and known warnings." }
+      ],
+      hosted_smoke_checks: [
+        "Start Hub renders without account.",
+        "Sample package opens without provider setup.",
+        "Import package opens without provider setup.",
+        "Local preflight does not call telemetry or provider endpoints without consent/generation.",
+        "Hosted save shows auth-required state when logged out.",
+        "Provider execution shows disabled/contract state unless feature flag and launch gates pass.",
+        "Telemetry settings show default off/not asked.",
+        "Export produces deterministic handoff bundle."
+      ],
+      release_receipt_fields: [
+        "release_id",
+        "commit_sha",
+        "environment",
+        "deployed_at",
+        "deployed_by",
+        "artifact_digest",
+        "migration_digest",
+        "launch_gate_snapshot",
+        "rollback_command",
+        "observability_dashboard"
+      ]
+    },
+    backup_rollback_policy: {
+      objectives: {
+        rpo: "15m for hosted workspace metadata after production backend exists",
+        rto: "60m for hosted Workbench/API restoration after production backend exists",
+        local_first_fallback: "Immediate: users can still use local Workbench if hosted service is unavailable."
+      },
+      policies: [
+        { scope: "database", policy: "Point-in-time recovery, migration checkpoint before deploy, restore drill before production launch." },
+        { scope: "object_storage", policy: "Versioned package artifacts, export bundles, and payload manifests with lifecycle retention." },
+        { scope: "audit_log", policy: "Append-only storage with privacy-preserving anonymization and export/deletion receipts." },
+        { scope: "static_workbench", policy: "Immutable asset versions and previous release retained for instant rollback." },
+        { scope: "secrets", policy: "Secret manager versioning, rotation runbook, and revocation proof for provider/telemetry/auth secrets." }
+      ],
+      rollback_triggers: [
+        "Start Hub unavailable",
+        "Package generation/export blocked",
+        "Auth session failure above SLO",
+        "Provider key persistence boundary violation",
+        "Telemetry default-on regression",
+        "Audit writes failing for hosted mutations",
+        "Error rate or latency SLO breach",
+        "Security/privacy incident"
+      ],
+      rollback_sequence: [
+        { id: "freeze", action: "Freeze deploy pipeline and disable risky feature flags." },
+        { id: "revert_workbench", action: "Route static Workbench to previous immutable release." },
+        { id: "revert_api", action: "Rollback API service or disable affected endpoint behind feature flag." },
+        { id: "restore_data", action: "Restore database/object checkpoint only when forward fix cannot preserve integrity." },
+        { id: "verify", action: "Run hosted smoke and audit integrity checks after rollback." },
+        { id: "communicate", action: "Publish incident/update note with impact, mitigation, and next review time." }
+      ]
+    },
+    observability_signals: {
+      dashboard_groups: ["Workbench UX", "Compiler/API", "Provider Execution", "Telemetry/Audit", "Storage", "Security"],
+      signals: [
+        { signal: "start_hub_availability", slo: "99.9% successful load over 30d" },
+        { signal: "package_generate_success_rate", slo: "99% deterministic/local generation success for valid sample input" },
+        { signal: "package_export_success_rate", slo: "99% successful export for valid package" },
+        { signal: "api_p95_latency", slo: "p95 under 800ms for non-provider API requests" },
+        { signal: "provider_execution_success_rate", slo: "tracked only after provider service launch; threshold set by provider policy" },
+        { signal: "telemetry_default_off_regression", slo: "0 events before consent from onboarding/sample/import paths" },
+        { signal: "audit_write_success_rate", slo: "99.9% for hosted mutating actions" },
+        { signal: "secret_leak_detection", slo: "0 provider keys in logs, telemetry, package artifacts, or client bundle" },
+        { signal: "e2e_pass_rate", slo: "100% required launch E2E scenarios before production deploy" }
+      ],
+      alert_policy: [
+        { alert: "telemetry_default_on", severity: "sev1", response: "Disable telemetry flag and roll back if event collection occurred before consent." },
+        { alert: "secret_leak_detected", severity: "sev1", response: "Revoke/rotate secrets, freeze deploys, audit artifacts/logs, notify per policy." },
+        { alert: "start_hub_down", severity: "sev2", response: "Rollback Workbench/API release or route static fallback." },
+        { alert: "audit_write_failure", severity: "sev2", response: "Disable hosted mutating actions if audit writes cannot be recorded." },
+        { alert: "provider_error_spike", severity: "sev3", response: "Trip provider circuit breaker and continue local deterministic flow." }
+      ],
+      log_policy: "Structured logs must include request_id, workspace_id when permitted, release_id, feature flag snapshot, and no forbidden secret/source fields."
+    },
+    incident_response_checklist: {
+      severity_levels: [
+        { severity: "sev1", response_time: "15m", examples: "secret leak, telemetry before consent, data deletion failure, widespread outage" },
+        { severity: "sev2", response_time: "30m", examples: "hosted save unavailable, audit write failure, package export outage" },
+        { severity: "sev3", response_time: "4h", examples: "provider outage, degraded latency, non-critical analytics failure" },
+        { severity: "sev4", response_time: "next_business_day", examples: "documentation mismatch, non-critical UI defect" }
+      ],
+      roles: ["incident_commander", "engineering_lead", "security_privacy_lead", "comms_owner", "support_owner"],
+      checklist: [
+        "Classify severity and affected surfaces.",
+        "Freeze deployments if production or privacy-affecting.",
+        "Disable feature flags for provider execution, telemetry, or hosted mutations when relevant.",
+        "Preserve audit evidence without copying secrets or raw source material.",
+        "Run rollback or containment sequence.",
+        "Communicate status, impact, mitigation, and next update time.",
+        "File post-incident review with root cause, detection gap, action owners, and due dates.",
+        "Update launch gates if the incident revealed a missing operation proof."
+      ],
+      privacy_incident_rules: [
+        "Treat telemetry-before-consent and secret persistence as sev1 until disproven.",
+        "Rotate provider/auth/telemetry credentials when exposure is possible.",
+        "Export affected event ids, audit ids, and package ids for privacy review without raw secret/source values.",
+        "Notify according to privacy policy and legal review."
+      ]
+    },
+    launch_gate_matrix: {
+      launch_ready_calculation: "Production launch ready is true only when every gate is pass and every blocker has a named accepted exception.",
+      gates: [
+        { id: "account_workspace_backend_implemented", status: "blocked", owner: "platform", evidence: "15-productization/account-workspace-contract.json" },
+        { id: "provider_execution_service_implemented", status: "blocked", owner: "ai-platform", evidence: "15-productization/provider-execution-contract.json" },
+        { id: "telemetry_audit_transport_implemented", status: "blocked", owner: "product-ops", evidence: "15-productization/telemetry-audit-contract.json" },
+        { id: "privacy_policy_published", status: "blocked", owner: "security", evidence: "privacy_policy_version" },
+        { id: "environment_config_validated", status: "planned", owner: "platform", evidence: "environment_configuration" },
+        { id: "ci_cd_required_gates_green", status: "planned", owner: "engineering", evidence: "ci_cd_gates" },
+        { id: "backup_restore_drill_passed", status: "planned", owner: "platform", evidence: "backup_rollback_policy" },
+        { id: "observability_alerts_live", status: "planned", owner: "platform", evidence: "observability_signals" },
+        { id: "incident_response_drill_completed", status: "planned", owner: "security", evidence: "incident_response_checklist" },
+        { id: "hosted_smoke_passed", status: "planned", owner: "engineering", evidence: "hosted_workbench_runbook" }
+      ],
+      exception_policy: "No exception can allow secret persistence, telemetry before consent, missing deletion controls, or unreviewed data retention behavior."
+    },
+    ai_agent_contract: {
+      discovery: [
+        "Expose data-agent-deployment-contract=\"ready\" only after this artifact exists.",
+        "Expose data-agent-production-launch-ready from productization summary.",
+        "Expose data-agent-launch-gate-id and data-agent-launch-gate-status for every launch gate.",
+        "Expose data-agent-rollback-command-ref after deployment receipts exist.",
+        "Expose data-agent-observability-dashboard-ref after dashboards exist."
+      ],
+      deterministic_recovery: {
+        blocked_launch_gate: "Do not deploy production; open required gate evidence and assign owner.",
+        failed_ci_gate: "Stop promotion and surface exact failing command/artifact.",
+        telemetry_default_on: "Disable telemetry flag, roll back if needed, and create sev1 incident.",
+        secret_leak_detected: "Freeze deploys, rotate credentials, audit artifacts/logs, and create sev1 incident.",
+        rollback_required: "Run rollback sequence and verify hosted smoke before resuming promotion."
+      },
+      forbidden_behavior: [
+        "Do not mark production launch ready because contract artifacts exist.",
+        "Do not bypass launch gates with warnings unless exception policy allows it.",
+        "Do not deploy production while account, provider, telemetry, privacy, backup, or incident gates are blocked.",
+        "Do not print secrets while validating environment configuration.",
+        "Do not turn telemetry on by default in any environment."
+      ]
+    },
+    implementation_checklist: [
+      "Implement environment config validation command.",
+      "Implement CI/CD gates for check, E2E, audits, secret scan, migration dry run, and rollback drill.",
+      "Implement hosted Workbench deployment runbook and release receipt generation.",
+      "Implement backup, restore, rollback, and feature-flag containment commands.",
+      "Implement observability dashboards, SLOs, structured logs, and alerts.",
+      "Implement incident response runbooks and privacy/security incident drills.",
+      "Wire launch gate matrix into Governance and deployment pipeline.",
+      "Add integration tests for launch blocked states, telemetry default regression, secret scan failure, rollback drill, and hosted smoke checks."
+    ],
+    readiness: {
+      implementable_without_invention: true,
+      deployment_implemented: false,
+      launch_ready: false,
+      unresolved_launch_work: [
+        "Implement hosted account/workspace backend.",
+        "Implement hosted provider execution service.",
+        "Implement telemetry/audit transport and consent UI.",
+        "Implement environment config validation and deployment pipeline.",
+        "Implement backup/restore, rollback, observability, and incident response runbooks.",
+        "Pass every launch gate in staging and production."
+      ],
+      evidence_refs: [
+        "PRODUCTIZATION_PLAN:Phase 5",
+        "15-productization/account-workspace-contract.json",
+        "15-productization/provider-execution-contract.json",
+        "15-productization/telemetry-audit-contract.json",
+        "14-target-execution/target-execution-report.json"
+      ]
+    }
+  };
+}
+
 function productizationReport(artifacts: Omit<ProductizationArtifacts, "readinessReport">): string {
   const lines = [
     "# Productization Readiness",
@@ -1311,6 +1643,14 @@ function productizationReport(artifacts: Omit<ProductizationArtifacts, "readines
   lines.push(`- Telemetry default enabled: ${artifacts.telemetryAudit.contract.readiness.telemetry_default_enabled}`);
   lines.push(`- Artifact: 15-productization/telemetry-audit-contract.json`);
   lines.push("");
+  lines.push("## Deployment Operations Contract");
+  lines.push("");
+  lines.push(`- Status: ${artifacts.deploymentOperations.contract.implementation_status}`);
+  lines.push(`- Implementable without invention: ${artifacts.deploymentOperations.contract.readiness.implementable_without_invention}`);
+  lines.push(`- Deployment implemented: ${artifacts.deploymentOperations.contract.readiness.deployment_implemented}`);
+  lines.push(`- Launch ready: ${artifacts.deploymentOperations.contract.readiness.launch_ready}`);
+  lines.push(`- Artifact: 15-productization/deployment-operations-contract.json`);
+  lines.push("");
   lines.push("## Next Phase");
   lines.push("");
   lines.push(artifacts.next_phase);
@@ -1334,6 +1674,11 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
   const telemetryAudit = {
     contract: telemetryAuditContract,
     report: telemetryAuditReport(telemetryAuditContract)
+  };
+  const deploymentOperationsContract = buildDeploymentOperationsContract(input);
+  const deploymentOperations = {
+    contract: deploymentOperationsContract,
+    report: deploymentOperationsReport(deploymentOperationsContract)
   };
   const gates: ProductizationGate[] = [
     gate(
@@ -1369,12 +1714,12 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
     gate(
       "deployment_operations",
       "deployment",
-      "local_only",
+      deploymentOperations.contract.readiness.implementable_without_invention ? "configured" : "local_only",
       "major",
-      "The compiler, Workbench build, generated target source, target typecheck, and target build are verified locally.",
-      "Add hosted deployment topology, environment configuration, CI gates, rollback policy, backup policy, and observability before public launch.",
+      "Environment configuration, CI/CD gates, hosted Workbench runbook, backup/rollback, observability, incident response, and launch gate matrix are defined. Hosted deployment pipeline is not implemented yet.",
+      "Implement deployment pipeline, environment validation, hosted smoke, backup/restore drills, observability alerts, incident response, and launch gate enforcement before public launch.",
       "platform",
-      ["14-target-execution/target-execution-report.json", "PRODUCT_DEVELOPMENT_PLAN:Phase 14"]
+      ["14-target-execution/target-execution-report.json", "PRODUCTIZATION_PLAN:Phase 5", "15-productization/deployment-operations-contract.json"]
     ),
     gate(
       "privacy_retention",
@@ -1415,7 +1760,7 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
       workspace_persistence: "browser_local_storage_and_exported_package_files",
       provider_execution: "provider_execution_contract_ready_session_keys_never_persisted",
       telemetry_transport: "telemetry_audit_contract_ready_off_by_default",
-      deployment_target: "local_cli_and_static_workbench_build",
+      deployment_target: "deployment_operations_contract_ready_local_build_only",
       target_frontend_execution: `${stats.verificationSuites} verification suites plus generated target install, typecheck, and build proof`
     },
     gates,
@@ -1423,7 +1768,7 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
       "Hosted accounts and server-side package storage have an implementation contract but are not implemented.",
       "Telemetry and audit transport have implementation contracts but the hosted transport, consent UI, retention workers, and privacy policy are not implemented.",
       "Provider execution has an implementation contract but the hosted execution service is not implemented.",
-      "Deployment operations, observability, backup, rollback, and rate limiting are not configured."
+      "Deployment operations have an implementation contract but hosted deployment pipeline, environment validation, backup/restore drills, observability alerts, and launch gate enforcement are not implemented."
     ],
     preserved_onboarding_contracts: [
       "Fresh Start Hub remains available without an account.",
@@ -1433,10 +1778,11 @@ export function buildProductizationArtifacts(input: ArchetypeInput, frontendCont
       "Sample and import paths do not require provider setup.",
       "A frontend-building AI agent can find handoff actions through deterministic data-agent hooks."
     ],
-    next_phase: "Productization Phase 5 should define deployment operations and launch gates.",
+    next_phase: "Productization contract phases are complete. Implementation should now build the hosted services behind the configured contracts while keeping production launch readiness false until launch gates pass.",
     accountWorkspace,
     providerExecution,
-    telemetryAudit
+    telemetryAudit,
+    deploymentOperations
   };
   return {
     ...base,

@@ -253,6 +253,13 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
       telemetry_default_enabled: pkg.productization.telemetryAudit.contract.readiness.telemetry_default_enabled,
       artifact: "15-productization/telemetry-audit-contract.json"
     },
+    deployment_operations_contract: {
+      implementation_status: pkg.productization.deploymentOperations.contract.implementation_status,
+      implementable_without_invention: pkg.productization.deploymentOperations.contract.readiness.implementable_without_invention,
+      deployment_implemented: pkg.productization.deploymentOperations.contract.readiness.deployment_implemented,
+      launch_ready: pkg.productization.deploymentOperations.contract.readiness.launch_ready,
+      artifact: "15-productization/deployment-operations-contract.json"
+    },
     next_phase: pkg.productization.next_phase
   });
   writeText(outDir, "15-productization/productization-readiness.md", pkg.productization.readinessReport);
@@ -262,6 +269,8 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeText(outDir, "15-productization/provider-execution-contract.md", pkg.productization.providerExecution.report);
   writeJson(outDir, "15-productization/telemetry-audit-contract.json", pkg.productization.telemetryAudit.contract);
   writeText(outDir, "15-productization/telemetry-audit-contract.md", pkg.productization.telemetryAudit.report);
+  writeJson(outDir, "15-productization/deployment-operations-contract.json", pkg.productization.deploymentOperations.contract);
+  writeText(outDir, "15-productization/deployment-operations-contract.md", pkg.productization.deploymentOperations.report);
 
   writeText(outDir, "08-quality/consistency-report.md", pkg.quality.consistencyReport);
   writeText(outDir, "08-quality/accessibility-report.md", pkg.quality.accessibilityReport);

@@ -594,6 +594,35 @@ export interface TelemetryAuditArtifacts {
   report: string;
 }
 
+export interface DeploymentOperationsContract {
+  contract_version: string;
+  product_name: string;
+  implementation_status: "contract_ready_deployment_not_implemented";
+  purpose: string;
+  onboarding_guarantees: string[];
+  environment_configuration: Record<string, unknown>;
+  ci_cd_gates: Record<string, unknown>;
+  hosted_workbench_runbook: Record<string, unknown>;
+  backup_rollback_policy: Record<string, unknown>;
+  observability_signals: Record<string, unknown>;
+  incident_response_checklist: Record<string, unknown>;
+  launch_gate_matrix: Record<string, unknown>;
+  ai_agent_contract: Record<string, unknown>;
+  implementation_checklist: string[];
+  readiness: {
+    implementable_without_invention: boolean;
+    deployment_implemented: boolean;
+    launch_ready: boolean;
+    unresolved_launch_work: string[];
+    evidence_refs: string[];
+  };
+}
+
+export interface DeploymentOperationsArtifacts {
+  contract: DeploymentOperationsContract;
+  report: string;
+}
+
 export interface ProductizationArtifacts {
   productization_version: string;
   product_name: string;
@@ -613,6 +642,7 @@ export interface ProductizationArtifacts {
   accountWorkspace: AccountWorkspaceArtifacts;
   providerExecution: ProviderExecutionArtifacts;
   telemetryAudit: TelemetryAuditArtifacts;
+  deploymentOperations: DeploymentOperationsArtifacts;
   readinessReport: string;
 }
 
