@@ -23,6 +23,7 @@ type WorkspacePriority = "low" | "medium" | "high";
 type WorkspaceSortKey = "savedAt" | "generatedAt" | "name" | "readinessScore" | "artifactCount" | "warningCount" | "priority";
 type WorkspaceSortDirection = "asc" | "desc";
 type WorkspaceHealthFilter = "all" | "hold" | "high" | "pinned" | "untagged" | "no_notes";
+type StartMode = "hub" | "create";
 
 interface ArtifactDigest {
   path: string;
@@ -366,6 +367,9 @@ const state: {
   workspaceCompareBaseId: string;
   workspaceCompareTargetId: string;
   workspaceComparison: SavedPackageComparison | null;
+  startMode: StartMode;
+  startDraft: IntakeFormState;
+  startMessage: string;
   intakeForm: IntakeFormState | null;
   sourceMaterials: SourceMaterialDraft[];
   sourceDraft: SourceMaterialDraft;
@@ -375,7 +379,7 @@ const state: {
   view: "overview",
   selectedScreen: null,
   screenFilter: "",
-  packageName: "sample-package",
+  packageName: "No active package",
   generationDraft: "",
   generationMessage: "",
   approvalOverrides: {},
@@ -417,6 +421,9 @@ const state: {
   workspaceCompareBaseId: "",
   workspaceCompareTargetId: "",
   workspaceComparison: null,
+  startMode: "hub",
+  startDraft: blankIntakeForm(),
+  startMessage: "",
   intakeForm: null,
   sourceMaterials: [],
   sourceDraft: { id: "", label: "", type: "document", content: "", notes: "", path: "" },
@@ -1729,6 +1736,8 @@ async function restoreWorkbenchState(payload: WorkbenchStateExport): Promise<voi
   state.bundle = payload.bundle;
   state.packageName = payload.packageName || "restored-package";
   state.view = "workspace";
+  state.startMode = "hub";
+  state.startMessage = "";
   state.selectedScreen = null;
   state.screenFilter = "";
   state.generationDraft = payload.localState.generationDraft ?? "";
@@ -1766,6 +1775,70 @@ async function restoreWorkbenchState(payload: WorkbenchStateExport): Promise<voi
   await refreshWorkspaceEntries();
   recordWorkspaceActivity("restore", `Restored ${state.packageName}.`, workspaceIdForBundle(payload.bundle));
   state.workspaceMessage = `Restored ${state.packageName}.`;
+}
+
+function resetPackageScopedState(): void {
+  state.selectedScreen = null;
+  state.screenFilter = "";
+  state.generationDraft = "";
+  state.generationMessage = "";
+  state.approvalOverrides = {};
+  state.activeGateNote = "";
+  state.coverageOverrides = {};
+  state.activeCoverageNote = "";
+  state.designReviewOverrides = {};
+  state.activeDesignReviewNote = "";
+  state.contractGaps = [];
+  state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
+  state.contractMessage = "";
+  state.simulationTriageOverrides = {};
+  state.activeSimulationTriageNote = "";
+  state.revisionRequests = [];
+  state.revisionDraft = { priority: "medium", changeType: "screen_spec_changed", summary: "", affectedArtifacts: "", requestedChanges: "" };
+  state.revisionMessage = "";
+  state.baselineSnapshot = null;
+  state.baselineName = "";
+  state.impactMessage = "";
+  state.handoffMessage = "";
+  state.intakeForm = null;
+  state.sourceMaterials = [];
+  state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
+  state.sourceMessage = "";
+}
+
+function enterFreshState(message = ""): void {
+  state.bundle = null;
+  state.packageName = "No active package";
+  state.view = "overview";
+  state.startMode = "hub";
+  state.startMessage = message;
+  state.workspaceMessage = "";
+  resetPackageScopedState();
+}
+
+async function activateBundle(bundle: Bundle, packageName: string, view: ViewId = "overview"): Promise<void> {
+  state.bundle = bundle;
+  state.packageName = packageName;
+  state.view = view;
+  state.startMode = "hub";
+  state.startMessage = "";
+  resetPackageScopedState();
+  loadApprovalOverrides();
+  loadCoverageOverrides();
+  loadDesignReviewOverrides();
+  loadContractGaps();
+  loadSimulationTriageOverrides();
+  loadRevisionRequests();
+  loadBaselineSnapshot();
+  await refreshWorkspaceEntries();
+}
+
+async function activateBundleFromFiles(files: FileList | File[]): Promise<void> {
+  const fileList = [...files];
+  if (!fileList.length) return;
+  const bundle = await bundleFromFiles(fileList);
+  const packageName = fileList[0]?.webkitRelativePath?.split("/")[0] || "imported-package";
+  await activateBundle(bundle, packageName);
 }
 
 async function refreshWorkspaceEntries(): Promise<void> {
@@ -2335,10 +2408,24 @@ function defaultIntakeFromBundle(bundle: Bundle): Record<string, unknown> {
   };
 }
 
-function formFromIntake(value: Record<string, unknown>, bundle: Bundle): IntakeFormState {
+function blankIntakeForm(): IntakeFormState {
+  return {
+    projectName: "",
+    context: "",
+    goals: "",
+    businessGoals: "",
+    users: "",
+    brandAttributes: "clear, precise, trustworthy",
+    primaryColor: "#2563EB",
+    tone: "Clear, direct, and low-hype.",
+    operatingMode: "full_architecture"
+  };
+}
+
+function formFromIntake(value: Record<string, unknown>, bundle?: Bundle): IntakeFormState {
   const brand = typeof value.brand === "object" && value.brand && !Array.isArray(value.brand) ? value.brand as Record<string, unknown> : {};
   return {
-    projectName: String(value.projectName ?? bundle.productModel.product_name ?? ""),
+    projectName: String(value.projectName ?? bundle?.productModel.product_name ?? ""),
     context: String(value.context ?? ""),
     goals: Array.isArray(value.goals) ? value.goals.map(String).join("\n") : "",
     businessGoals: Array.isArray(value.businessGoals) ? value.businessGoals.map(String).join("\n") : "",
@@ -2346,7 +2433,7 @@ function formFromIntake(value: Record<string, unknown>, bundle: Bundle): IntakeF
     brandAttributes: Array.isArray(brand.attributes) ? brand.attributes.map(String).join(", ") : "clear, precise, trustworthy",
     primaryColor: String(brand.primaryColor ?? "#2563EB"),
     tone: String(brand.tone ?? "Clear, direct, and low-hype."),
-    operatingMode: String(value.operatingMode ?? bundle.manifest.operating_mode ?? "full_architecture")
+    operatingMode: String(value.operatingMode ?? bundle?.manifest.operating_mode ?? "full_architecture")
   };
 }
 
@@ -3345,10 +3432,166 @@ function renderContent(bundle: Bundle): string {
   }
 }
 
+function renderProductMap(): string {
+  const rows = [
+    ["Input", "Context, goals, users, screenshots, brand, docs, and code."],
+    ["Compiler", "Evidence Ledger, Product Model, workflows, DSAG, design system, and contracts."],
+    ["Proof", "Validation, readiness, E2E scenarios, and target execution evidence."],
+    ["Handoff", "Frontend-agent instructions, routes, screens, components, tokens, and data contracts."]
+  ];
+  return `<div class="start-map">${rows.map(([label, detail]) => `
+    <div>
+      <strong>${esc(label)}</strong>
+      <span>${esc(detail)}</span>
+    </div>
+  `).join("")}</div>`;
+}
+
+function renderRecentPackages(): string {
+  const recent = state.workspaceEntries.filter((entry) => !entry.archivedAt).slice(0, 5);
+  if (!recent.length) {
+    return `<div class="empty">Saved packages will appear here after you save or restore a package.</div>`;
+  }
+  return table(["Package", "Status", "Saved", "Open"], recent.map((entry) => [
+    `<div><strong>${esc(entry.name)}</strong><div class="muted">${esc(entry.projectSlug)} · ${esc(entry.packageId || entry.id)}</div></div>`,
+    `${badge(entry.readyForFrontendAgent ? "ready" : "hold", entry.readyForFrontendAgent ? "success" : "danger")} ${badge(`score ${entry.readinessScore}`, entry.readyForFrontendAgent ? "success" : "warning")}`,
+    esc(new Date(entry.savedAt).toLocaleString()),
+    `<button class="button small" data-start-recent-load="${esc(entry.id)}" data-agent-action="open-recent-package" type="button">Open</button>`
+  ]));
+}
+
+function renderStartDraft(): string {
+  const intake = intakeFromForm(state.startDraft);
+  return `
+    <section class="start-hero panel" data-agent-section="start-draft">
+      <div class="start-copy">
+        <div class="eyebrow">Create Package</div>
+        <h1>Start with product intent, then add evidence.</h1>
+        <p>Draft the context Archetype will compile later. Local draft creation does not require an LLM API key.</p>
+        <div class="hero-actions">
+          <button class="button primary" id="save-start-draft" data-agent-action="save-project-draft" type="button">Create project draft</button>
+          <button class="button" id="download-start-draft" data-agent-action="download-project-draft" type="button">Download intake JSON</button>
+          <button class="button subtle" id="back-start-hub" data-agent-action="back-to-start-hub" type="button">Back to Start Hub</button>
+        </div>
+      </div>
+      <div class="start-proof" aria-label="Draft status">
+        ${badge(state.startDraft.context.trim() ? "context ready" : "needs context", state.startDraft.context.trim() ? "success" : "warning")}
+        ${badge(state.startDraft.projectName.trim() ? "named" : "unnamed", state.startDraft.projectName.trim() ? "success" : "neutral")}
+        ${badge("no API key needed", "success")}
+      </div>
+    </section>
+    <div class="grid cols-2 section-gap">
+      ${panel("Project Intent", `
+        <div class="form-grid">
+          ${inputField("start-project-name", state.startDraft.projectName, "Project name")}
+          ${selectField("start-mode", state.startDraft.operatingMode, "Operating mode", ["fast_architecture", "full_architecture", "existing_product_audit", "contract_repair"])}
+          ${inputField("start-primary-color", state.startDraft.primaryColor, "Primary color", "color")}
+          ${inputField("start-brand-attributes", state.startDraft.brandAttributes, "Brand attributes")}
+        </div>
+        <div style="height:10px"></div>
+        ${textArea("start-context", state.startDraft.context, "Product context", "textarea short")}
+        <div class="form-grid" style="margin-top:10px">
+          ${textArea("start-goals", state.startDraft.goals, "User goals", "textarea short")}
+          ${textArea("start-business-goals", state.startDraft.businessGoals, "Business goals", "textarea short")}
+          ${textArea("start-users", state.startDraft.users, "Primary users", "textarea short")}
+          ${textArea("start-tone", state.startDraft.tone, "Tone", "textarea short")}
+        </div>
+      `)}
+      ${panel("Draft Preview", `
+        ${state.startMessage ? `<div class="notice" role="status">${esc(state.startMessage)}</div><div style="height:10px"></div>` : ""}
+        ${code(intake)}
+      `)}
+    </div>
+  `;
+}
+
+function renderStartHub(): string {
+  const savedCount = state.workspaceEntries.filter((entry) => !entry.archivedAt).length;
+  const hasDraft = !!state.startDraft.projectName.trim() || !!state.startDraft.context.trim();
+  const body = state.startMode === "create" ? renderStartDraft() : `
+    <section class="start-hero panel" data-agent-section="start-hub">
+      <div class="start-copy">
+        <div class="eyebrow">Fresh Start</div>
+        <h1>Compile product context into a buildable frontend contract.</h1>
+        <p>Archetype turns evidence into a Product Model, UX architecture, design system, validation proof, and deterministic handoff for a frontend-building agent.</p>
+        <div class="hero-actions">
+          <button class="button primary" id="start-create-package" data-agent-action="create-package" type="button">Create a package</button>
+          <button class="button" id="start-load-sample" data-agent-action="explore-sample" type="button">Explore sample package</button>
+          <button class="button" id="start-import-package" data-agent-action="import-package" type="button">Import existing package</button>
+          <input id="start-folder-input" type="file" webkitdirectory multiple hidden />
+        </div>
+      </div>
+      <div class="start-proof" aria-label="Workspace status">
+        ${badge(`${savedCount} saved`, savedCount ? "success" : "neutral")}
+        ${badge(hasDraft ? "draft waiting" : "fresh state", hasDraft ? "warning" : "success")}
+        ${badge("no API key needed", "success")}
+      </div>
+    </section>
+    <div class="grid cols-3 section-gap">
+      <button class="start-card" id="start-create-package-card" data-agent-action="create-package" type="button">
+        <strong>Create a package</strong>
+        <span>Start a clean project draft from product context and goals.</span>
+      </button>
+      <button class="start-card" id="start-load-sample-card" data-agent-action="explore-sample" type="button">
+        <strong>Explore sample package</strong>
+        <span>Learn the Launch Review, proof, contract, and handoff flow with generated data.</span>
+      </button>
+      <button class="start-card" id="start-import-package-card" data-agent-action="import-package" type="button">
+        <strong>Import existing package</strong>
+        <span>Open an exported Archetype package folder without running generation.</span>
+      </button>
+    </div>
+    <div class="grid cols-2 section-gap">
+      ${panel("Quick Product Map", renderProductMap())}
+      ${panel("Recent Packages", renderRecentPackages())}
+    </div>
+    <div class="grid cols-2 section-gap">
+      ${panel("Start Actions", `
+        <div class="control-row">
+          <button class="button" id="start-restore-state" data-agent-action="restore-workspace" type="button">Restore workspace state</button>
+          <button class="button subtle" id="start-reset-fresh" data-agent-action="reset-workspace" type="button">Reset to fresh state</button>
+          <input id="start-state-import-input" type="file" accept="application/json,.json" hidden />
+        </div>
+        ${state.startMessage ? `<div class="notice" role="status">${esc(state.startMessage)}</div>` : ""}
+      `)}
+      ${panel("What You Get", `
+        <div class="start-output-list">
+          <span>Evidence Ledger</span>
+          <span>Product Model</span>
+          <span>Routes and Screen Specs</span>
+          <span>Design System Contracts</span>
+          <span>Frontend Agent Contract</span>
+          <span>Validation and Readiness Proof</span>
+        </div>
+      `)}
+    </div>
+  `;
+  return `
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <main class="start-main" id="main-content" data-agent-current-view="start" data-agent-onboarding-state="${esc(state.startMode === "create" ? "create-draft" : "fresh-start")}" tabindex="-1">
+      <header class="start-header">
+        <div class="brand">
+          <div class="mark">A</div>
+          <div>
+            <div class="brand-title">Archetype</div>
+            <div class="brand-subtitle">Design Architecture Compiler</div>
+          </div>
+        </div>
+        <div class="status-strip" role="status" aria-live="polite">
+          ${badge("fresh state", "success")}
+          ${badge(`${state.workspaceEntries.length} workspace packages`, state.workspaceEntries.length ? "success" : "neutral")}
+        </div>
+      </header>
+      ${body}
+    </main>
+  `;
+}
+
 function render(): void {
   const bundle = state.bundle;
   if (!bundle) {
-    app.innerHTML = `<main class="main" id="main-content"><div class="empty">Package unavailable.</div></main>`;
+    app.innerHTML = renderStartHub();
+    bindStartHubEvents();
     return;
   }
   const viewLabel = views.find((view) => view.id === state.view)?.label ?? "Overview";
@@ -3364,6 +3607,7 @@ function render(): void {
           </div>
         </div>
         <div class="package-tools" aria-label="Package actions">
+          <button class="button subtle" id="reset-active-package" data-agent-action="reset-workspace" type="button">New Project</button>
           <button class="button primary" id="load-sample" data-agent-action="Load sample package" type="button">Load Sample Package</button>
           <button class="button" id="import-folder" data-agent-action="Import package folder" type="button">Import Package Folder</button>
           <input id="folder-input" type="file" webkitdirectory multiple hidden />
@@ -3407,7 +3651,119 @@ function render(): void {
   bindEvents();
 }
 
+function bindStartHubEvents(): void {
+  const openCreate = () => {
+    state.startMode = "create";
+    state.startMessage = "";
+    render();
+  };
+  document.querySelector<HTMLButtonElement>("#start-create-package")?.addEventListener("click", openCreate);
+  document.querySelector<HTMLButtonElement>("#start-create-package-card")?.addEventListener("click", openCreate);
+  document.querySelector<HTMLButtonElement>("#back-start-hub")?.addEventListener("click", () => {
+    state.startMode = "hub";
+    state.startMessage = "";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#start-load-sample")?.addEventListener("click", () => loadSample());
+  document.querySelector<HTMLButtonElement>("#start-load-sample-card")?.addEventListener("click", () => loadSample());
+  const importPackage = () => {
+    document.querySelector<HTMLInputElement>("#start-folder-input")?.click();
+  };
+  document.querySelector<HTMLButtonElement>("#start-import-package")?.addEventListener("click", importPackage);
+  document.querySelector<HTMLButtonElement>("#start-import-package-card")?.addEventListener("click", importPackage);
+  document.querySelector<HTMLInputElement>("#start-folder-input")?.addEventListener("change", async (event) => {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    try {
+      await activateBundleFromFiles(input.files);
+      input.value = "";
+      render();
+    } catch (error) {
+      state.startMessage = error instanceof Error ? error.message : "Could not import package.";
+      input.value = "";
+      render();
+    }
+  });
+  document.querySelector<HTMLButtonElement>("#start-restore-state")?.addEventListener("click", () => {
+    document.querySelector<HTMLInputElement>("#start-state-import-input")?.click();
+  });
+  document.querySelector<HTMLInputElement>("#start-state-import-input")?.addEventListener("change", async (event) => {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (!isWorkbenchStateExport(parsed)) {
+        state.startMessage = "State file is not a valid Archetype workbench export.";
+        input.value = "";
+        render();
+        return;
+      }
+      await restoreWorkbenchState(parsed);
+      input.value = "";
+      render();
+    } catch (error) {
+      state.startMessage = error instanceof Error ? error.message : "Could not restore state.";
+      input.value = "";
+      render();
+    }
+  });
+  document.querySelector<HTMLButtonElement>("#start-reset-fresh")?.addEventListener("click", () => {
+    state.startDraft = blankIntakeForm();
+    enterFreshState("Fresh state reset. Saved packages are still available.");
+    render();
+  });
+  const startBindings: Array<[keyof IntakeFormState, string]> = [
+    ["projectName", "#start-project-name"],
+    ["operatingMode", "#start-mode"],
+    ["primaryColor", "#start-primary-color"],
+    ["brandAttributes", "#start-brand-attributes"],
+    ["context", "#start-context"],
+    ["goals", "#start-goals"],
+    ["businessGoals", "#start-business-goals"],
+    ["users", "#start-users"],
+    ["tone", "#start-tone"]
+  ];
+  startBindings.forEach(([field, selector]) => {
+    document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(selector)?.addEventListener("input", (event) => {
+      state.startDraft[field] = (event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).value as never;
+    });
+  });
+  document.querySelector<HTMLButtonElement>("#save-start-draft")?.addEventListener("click", () => {
+    const intake = intakeFromForm(state.startDraft);
+    state.generationDraft = pretty(intake);
+    state.startMessage = state.startDraft.context.trim()
+      ? "Project draft created locally. Provider setup is only needed when generation starts."
+      : "Project draft created locally. Add product context before generation.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#download-start-draft")?.addEventListener("click", () => {
+    const intake = intakeFromForm(state.startDraft);
+    downloadText(intakeFileName(intake), `${pretty(intake)}\n`, "application/json");
+    state.startMessage = "Intake JSON prepared.";
+    render();
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-start-recent-load]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.startRecentLoad;
+      if (!id) return;
+      const record = await loadWorkspaceBundle(id);
+      if (!record) {
+        state.startMessage = "Saved package not found.";
+        render();
+        return;
+      }
+      await activateBundle(record.bundle, record.entry.name);
+      render();
+    });
+  });
+}
+
 function bindEvents(): void {
+  document.querySelector<HTMLButtonElement>("#reset-active-package")?.addEventListener("click", () => {
+    enterFreshState("Fresh state ready. Saved packages are still available.");
+    render();
+  });
   document.querySelectorAll<HTMLButtonElement>("[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
       state.view = button.dataset.view as ViewId;
@@ -4018,33 +4374,7 @@ function bindEvents(): void {
         render();
         return;
       }
-      state.bundle = record.bundle;
-      state.packageName = record.entry.name;
-      state.view = "overview";
-      state.selectedScreen = null;
-      state.generationDraft = "";
-      state.generationMessage = "";
-      state.activeGateNote = "";
-      state.activeCoverageNote = "";
-      state.activeDesignReviewNote = "";
-      state.handoffMessage = "";
-      state.contractMessage = "";
-      state.activeSimulationTriageNote = "";
-      state.revisionMessage = "";
-      state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
-      state.revisionDraft = { priority: "medium", changeType: "screen_spec_changed", summary: "", affectedArtifacts: "", requestedChanges: "" };
-      state.intakeForm = null;
-      state.sourceMaterials = [];
-      state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
-      state.sourceMessage = "";
-      loadApprovalOverrides();
-      loadCoverageOverrides();
-      loadDesignReviewOverrides();
-      loadContractGaps();
-      loadSimulationTriageOverrides();
-      loadRevisionRequests();
-      loadBaselineSnapshot();
-      await refreshWorkspaceEntries();
+      await activateBundle(record.bundle, record.entry.name);
       render();
     });
   });
@@ -4399,33 +4729,8 @@ function bindEvents(): void {
   document.querySelector<HTMLInputElement>("#folder-input")?.addEventListener("change", async (event) => {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      state.bundle = await bundleFromFiles([...input.files]);
-      state.packageName = input.files[0]?.webkitRelativePath?.split("/")[0] || "imported-package";
-      state.view = "overview";
-      state.selectedScreen = null;
-      state.generationDraft = "";
-      state.generationMessage = "";
-      state.activeGateNote = "";
-      state.activeCoverageNote = "";
-      state.activeDesignReviewNote = "";
-      state.handoffMessage = "";
-      state.contractMessage = "";
-      state.activeSimulationTriageNote = "";
-      state.revisionMessage = "";
-      state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
-      state.revisionDraft = { priority: "medium", changeType: "screen_spec_changed", summary: "", affectedArtifacts: "", requestedChanges: "" };
-      state.intakeForm = null;
-      state.sourceMaterials = [];
-      state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
-      state.sourceMessage = "";
-      loadApprovalOverrides();
-      loadCoverageOverrides();
-      loadDesignReviewOverrides();
-      loadContractGaps();
-      loadSimulationTriageOverrides();
-      loadRevisionRequests();
-      loadBaselineSnapshot();
-      await refreshWorkspaceEntries();
+      await activateBundleFromFiles(input.files);
+      input.value = "";
       render();
     }
   });
@@ -4433,32 +4738,7 @@ function bindEvents(): void {
 
 async function loadSample(): Promise<void> {
   const response = await fetch("/sample-package.json");
-  state.bundle = await response.json() as Bundle;
-  state.packageName = "sample-package";
-  loadApprovalOverrides();
-  state.selectedScreen = null;
-  state.generationDraft = "";
-  state.generationMessage = "";
-  state.activeGateNote = "";
-  state.activeCoverageNote = "";
-  state.activeDesignReviewNote = "";
-  state.handoffMessage = "";
-  state.contractMessage = "";
-  state.activeSimulationTriageNote = "";
-  state.revisionMessage = "";
-  state.contractGapDraft = { category: "data_contract", severity: "major", artifact: "06-frontend-agent-contract/data-contracts.json", description: "" };
-  state.revisionDraft = { priority: "medium", changeType: "screen_spec_changed", summary: "", affectedArtifacts: "", requestedChanges: "" };
-  state.intakeForm = null;
-  state.sourceMaterials = [];
-  state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
-  state.sourceMessage = "";
-  loadBaselineSnapshot();
-  loadCoverageOverrides();
-  loadDesignReviewOverrides();
-  loadContractGaps();
-  loadSimulationTriageOverrides();
-  loadRevisionRequests();
-  await refreshWorkspaceEntries();
+  await activateBundle(await response.json() as Bundle, "sample-package");
   render();
 }
 
@@ -4729,6 +5009,11 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
 }
 
 loadWorkspaceActivity();
-loadSample().catch((error) => {
-  app.innerHTML = `<main class="main"><div class="empty">${esc(error instanceof Error ? error.message : error)}</div></main>`;
-});
+refreshWorkspaceEntries()
+  .catch((error) => {
+    state.startMessage = error instanceof Error ? error.message : "Workspace storage unavailable.";
+  })
+  .finally(() => {
+    enterFreshState(state.startMessage);
+    render();
+  });

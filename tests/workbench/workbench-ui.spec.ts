@@ -62,11 +62,55 @@ const test = base.extend<{ pageErrors: string[] }>({
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("#main-content")).toBeVisible();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-current-view", /start|overview/);
+});
+
+test("fresh Start Hub renders before any package is loaded", async ({ page }) => {
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "fresh-start");
+  await expect(page.getByRole("button", { name: "Create a package" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Explore sample package" }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Import existing package" }).first()).toBeVisible();
+  await expect(page.locator("[data-agent-view='overview']")).toHaveCount(0);
+  await expect(page.getByText("no API key needed").first()).toBeVisible();
+});
+
+test("create package opens a local draft path without asking for an LLM key", async ({ page }) => {
+  await page.locator("#start-create-package").click();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "create-draft");
+  await page.locator("#start-project-name").fill("Fresh Onboarding QA");
+  await page.locator("#start-context").fill("A test product that validates the fresh Start Hub package creation path.");
+  await page.locator("#start-goals").fill("Create a deterministic onboarding draft");
+  await page.locator("#save-start-draft").click();
+  await expect(page.getByText("Project draft created locally.")).toBeVisible();
+  await expect(page.locator("#main-content")).not.toContainText(/API key required|Enter API key/i);
+  await page.locator("#back-start-hub").click();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "fresh-start");
+});
+
+test("sample exploration and reset return to a fresh Start Hub", async ({ page }) => {
+  await ensureWorkbenchPackage(page);
+  await expect(page.locator("[data-agent-view='overview']")).toBeVisible();
+  await page.locator("#reset-active-package").click();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "fresh-start");
+  await expect(page.locator("[data-agent-view='overview']")).toHaveCount(0);
+});
+
+test("recent package recovery opens a saved package from the Start Hub", async ({ page }) => {
+  await ensureWorkbenchPackage(page);
+  await openView(page, "workspace");
+  await page.locator("#save-workspace-package").click();
+  await expect(page.getByRole("status").filter({ hasText: /Saved/i })).toBeVisible();
+
+  await page.locator("#reset-active-package").click();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "fresh-start");
+  await expect(page.locator("[data-start-recent-load]").first()).toBeVisible();
+  await page.locator("[data-start-recent-load]").first().click();
   await expect(page.locator("[data-agent-view='overview']")).toBeVisible();
   await expect(page.locator("#main-content")).toHaveAttribute("data-agent-current-view", "overview");
 });
 
 test("whole app navigation and AI-readable UI contract render across every view", async ({ page }) => {
+  await ensureWorkbenchPackage(page);
   await expect(page.locator("[data-agent-view]")).toHaveCount(allViews.length);
   const overviewActionCount = await page.locator("[data-agent-action]").count();
   expect(overviewActionCount).toBeGreaterThanOrEqual(5);
@@ -135,8 +179,16 @@ for (const scenario of malformedScenarios) {
 }
 
 async function openView(page: Page, view: ViewId): Promise<void> {
+  await ensureWorkbenchPackage(page);
   await page.locator(`[data-agent-view='${view}']`).click();
   await expect(page.locator("#main-content")).toHaveAttribute("data-agent-current-view", view);
+}
+
+async function ensureWorkbenchPackage(page: Page): Promise<void> {
+  if (await page.locator("[data-agent-view='overview']").count()) return;
+  await page.locator("#start-load-sample").click();
+  await expect(page.locator("[data-agent-view='overview']")).toBeVisible();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-current-view", "overview");
 }
 
 async function runMalformedScenario(page: Page, scenario: MalformedScenario): Promise<void> {
