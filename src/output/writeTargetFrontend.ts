@@ -70,15 +70,17 @@ function packageJson(): string {
       typecheck: "tsc --noEmit"
     },
     dependencies: {
-      "@types/node": "latest",
-      "@types/react": "latest",
-      "@types/react-dom": "latest",
-      "next": "latest",
-      "react": "latest",
-      "react-dom": "latest",
-      "typescript": "latest"
+      "next": "16.2.4",
+      "react": "19.2.5",
+      "react-dom": "19.2.5"
     },
-    devDependencies: {}
+    devDependencies: {
+      "@types/node": "25.6.0",
+      "@types/react": "19.2.14",
+      "@types/react-dom": "19.2.3",
+      "tailwindcss": "4.2.4",
+      "typescript": "5.9.3"
+    }
   }, null, 2);
 }
 
@@ -96,13 +98,25 @@ function tsconfigJson(): string {
       moduleResolution: "bundler",
       resolveJsonModule: true,
       isolatedModules: true,
-      jsx: "preserve",
+      jsx: "react-jsx",
       incremental: true,
       plugins: [{ name: "next" }]
     },
-    include: ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+    include: ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],
     exclude: ["node_modules"]
   }, null, 2);
+}
+
+function nextConfigSource(): string {
+  return [
+    "const nextConfig = {",
+    "  turbopack: {",
+    "    root: process.cwd()",
+    "  }",
+    "};",
+    "",
+    "export default nextConfig;"
+  ].join("\n");
 }
 
 function componentSource(name: string, selector: string): string {
@@ -240,6 +254,7 @@ function styleSource(outputDir: string): string {
 function sourceForFile(outputDir: string, file: SourceManifestFile, routeMap: { routes?: Array<Record<string, unknown>> }, adapterInterfaces: string): string {
   if (file.path === "package.json") return packageJson();
   if (file.path === "tsconfig.json") return tsconfigJson();
+  if (file.path === "next.config.mjs") return nextConfigSource();
   if (file.path === "next-env.d.ts") return "/// <reference types=\"next\" />\n/// <reference types=\"next/image-types/global\" />";
   if (file.path === "src/app/layout.tsx") {
     return [

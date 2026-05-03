@@ -484,6 +484,11 @@ export interface TargetFrontendArtifacts {
   sourceGenerationRunbook: string;
 }
 
+export interface TargetExecutionArtifacts {
+  executionReport: Record<string, unknown>;
+  executionMarkdown: string;
+}
+
 export interface E2EScenarioArtifacts {
   scenarioCatalog: Record<string, unknown>;
   scenarioResults: Record<string, unknown>;
@@ -556,6 +561,7 @@ export interface ArchetypePackage {
   revision: RevisionArtifacts;
   buildSimulation: FrontendBuildSimulationArtifacts;
   targetFrontend: TargetFrontendArtifacts;
+  targetExecution: TargetExecutionArtifacts;
   e2e: E2EScenarioArtifacts;
   quality: QualityArtifacts;
 }

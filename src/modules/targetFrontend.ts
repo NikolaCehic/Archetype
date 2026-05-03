@@ -105,6 +105,13 @@ export function buildTargetFrontendArtifacts(input: {
       forbidden_behavior: ["Do not add unapproved UI libraries as design substitutes."]
     },
     {
+      path: "next.config.mjs",
+      kind: "project_config",
+      exports: ["default"],
+      reads: ["06-frontend-agent-contract/build-manifest.json"],
+      forbidden_behavior: ["Do not change framework execution settings to hide generated-source errors."]
+    },
+    {
       path: "tsconfig.json",
       kind: "project_config",
       exports: ["compilerOptions"],

@@ -3,6 +3,7 @@ import path from "node:path";
 import { runArchetypeCompiler } from "./core/pipeline";
 import { exportPackage } from "./output/exportPackage";
 import { writeTargetFrontendSource } from "./output/writeTargetFrontend";
+import { verifyTargetFrontendExecution } from "./output/verifyTargetFrontend";
 import { validateExportedPackage } from "./quality/validatePackage";
 import { simulateExportedPackage } from "./quality/simulatePackage";
 import type { ArchetypeInput } from "./core/types";
@@ -13,6 +14,7 @@ function usage(): never {
   console.log("  archetype validate --out <output-dir>");
   console.log("  archetype simulate --out <output-dir>");
   console.log("  archetype write-target --out <output-dir> --target <target-dir> [--force]");
+  console.log("  archetype verify-target --out <output-dir> --target <target-dir> [--skip-install]");
   process.exit(1);
 }
 
@@ -24,7 +26,7 @@ function getArg(name: string): string | undefined {
 
 async function main(): Promise<void> {
   const command = process.argv[2];
-  if (command !== "generate" && command !== "validate" && command !== "simulate" && command !== "write-target") usage();
+  if (command !== "generate" && command !== "validate" && command !== "simulate" && command !== "write-target" && command !== "verify-target") usage();
 
   if (command === "validate") {
     const outDir = getArg("--out");
@@ -50,6 +52,18 @@ async function main(): Promise<void> {
     if (!outDir || !targetDir) usage();
     const result = writeTargetFrontendSource(path.resolve(outDir), path.resolve(targetDir), {
       force: process.argv.includes("--force")
+    });
+    console.log(JSON.stringify(result, null, 2));
+    if (result.status === "fail") process.exit(1);
+    return;
+  }
+
+  if (command === "verify-target") {
+    const outDir = getArg("--out");
+    const targetDir = getArg("--target");
+    if (!outDir || !targetDir) usage();
+    const result = verifyTargetFrontendExecution(path.resolve(outDir), path.resolve(targetDir), {
+      skipInstall: process.argv.includes("--skip-install")
     });
     console.log(JSON.stringify(result, null, 2));
     if (result.status === "fail") process.exit(1);

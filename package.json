@@ -10,12 +10,13 @@
     "validate": "node dist/cli.js validate --out tmp/archetype-output",
     "simulate": "node dist/cli.js simulate --out tmp/archetype-output",
     "write-target": "node dist/cli.js write-target --out tmp/archetype-output --target tmp/generated-frontend --force",
+    "verify-target": "node dist/cli.js verify-target --out tmp/archetype-output --target tmp/generated-frontend",
     "smoke": "npm run build && node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archetype-output",
     "golden": "npm run build && node scripts/run-golden.mjs",
-    "workbench:sample": "npm run build && node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archetype-output && node scripts/create-workbench-sample.mjs tmp/archetype-output workbench/public/sample-package.json",
+    "workbench:sample": "npm run build && node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archetype-output && node dist/cli.js write-target --out tmp/archetype-output --target tmp/generated-frontend --force && node dist/cli.js verify-target --out tmp/archetype-output --target tmp/generated-frontend && node scripts/create-workbench-sample.mjs tmp/archetype-output workbench/public/sample-package.json",
     "workbench:build": "npm run workbench:sample && vite build --config vite.workbench.config.ts",
     "workbench:dev": "npm run workbench:sample && vite --config vite.workbench.config.ts --host 127.0.0.1",
-    "check": "npm run smoke && npm run validate && npm run simulate && npm run write-target && npm run golden && npm run workbench:build",
+    "check": "npm run smoke && npm run validate && npm run simulate && npm run write-target && npm run verify-target && npm run golden && npm run workbench:build",
     "clean": "rm -rf dist dist-workbench tmp/archetype-output tmp/golden workbench/public/sample-package.json"
   },
   "devDependencies": {

@@ -15,6 +15,7 @@ import type {
   RevisionArtifacts,
   ReadinessReport,
   SchemaArtifacts,
+  TargetExecutionArtifacts,
   TargetFrontendArtifacts,
   ValidationReport
 } from "../core/types";
@@ -33,6 +34,7 @@ interface QualityInput {
   revision: RevisionArtifacts;
   buildSimulation: FrontendBuildSimulationArtifacts;
   targetFrontend: TargetFrontendArtifacts;
+  targetExecution: TargetExecutionArtifacts;
   e2e: E2EScenarioArtifacts;
 }
 
@@ -255,6 +257,13 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     revealed_faults?: unknown[];
     fix_plan?: unknown[];
   };
+  const targetExecutionReport = input.targetExecution.executionReport as {
+    status?: string;
+    commands?: unknown[];
+    summary?: Record<string, unknown>;
+    blockers?: string[];
+    warnings?: string[];
+  };
   const tokenContracts = input.designSystem.tokenContracts as {
     layers?: Record<string, unknown>;
     usage_map?: Record<string, unknown>;
@@ -341,6 +350,8 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   checks.push(check("e2e.results.count", e2eResults.summary?.total === 100 && (e2eResults.results?.length ?? 0) === 100, "E2E results cover exactly 100 scenarios."));
   checks.push(check("e2e.results.no_failures", (e2eResults.summary?.fail ?? 0) === 0, "E2E results have no failing scenarios."));
   checks.push(check("e2e.results.revealed_faults", (e2eResults.revealed_faults?.length ?? 0) > 0, "E2E results reveal current faults and fix hints."));
+  checks.push(check("target_execution.report.present", Object.keys(targetExecutionReport).length > 0, "Target execution proof report exists."));
+  checks.push(check("target_execution.report.commands", (targetExecutionReport.commands?.length ?? 0) >= 3, "Target execution proof tracks install, typecheck, and build commands."));
   checks.push(check("accessibility.rules.present", Object.keys(input.designSystem.accessibilityRules).length > 0, "Accessibility rules exist."));
   checks.push(check("tokens.contracts.present", Object.keys(tokenContracts.layers ?? {}).length >= 4, "Token contracts declare primitive, semantic, component, and typography layers."));
   checks.push(check("tokens.contracts.no_blockers", (tokenContracts.blockers ?? []).length === 0, "Token contracts have no blockers."));
@@ -394,6 +405,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   validateRequiredFields(checks, "codegen-tasks.schema.json", input.schemas.schemas["codegen-tasks.schema.json"], input.targetFrontend.codegenTasks, "codegen-tasks");
   validateRequiredFields(checks, "e2e-scenarios.schema.json", input.schemas.schemas["e2e-scenarios.schema.json"], input.e2e.scenarioCatalog, "e2e-scenarios");
   validateRequiredFields(checks, "e2e-results.schema.json", input.schemas.schemas["e2e-results.schema.json"], input.e2e.scenarioResults, "e2e-results");
+  validateRequiredFields(checks, "target-execution-report.schema.json", input.schemas.schemas["target-execution-report.schema.json"], input.targetExecution.executionReport, "target-execution-report");
   validateRequiredFields(checks, "dsag.schema.json", input.schemas.schemas["dsag.schema.json"], input.dsag as unknown as Record<string, unknown>, "dsag");
   for (const screen of input.experience.screenSpecs) {
     validateRequiredFields(checks, "screen-spec.schema.json", input.schemas.schemas["screen-spec.schema.json"], screen as unknown as Record<string, unknown>, `screen-spec.${screen.screen_id}`);

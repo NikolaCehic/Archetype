@@ -222,6 +222,9 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeJson(outDir, "13-e2e/e2e-results.json", pkg.e2e.scenarioResults);
   writeText(outDir, "13-e2e/e2e-findings.md", pkg.e2e.findingsReport);
 
+  writeJson(outDir, "14-target-execution/target-execution-report.json", pkg.targetExecution.executionReport);
+  writeText(outDir, "14-target-execution/target-execution-report.md", pkg.targetExecution.executionMarkdown);
+
   writeText(outDir, "08-quality/consistency-report.md", pkg.quality.consistencyReport);
   writeText(outDir, "08-quality/accessibility-report.md", pkg.quality.accessibilityReport);
   writeText(outDir, "08-quality/safety-report.md", pkg.ingestion.safetyReport);

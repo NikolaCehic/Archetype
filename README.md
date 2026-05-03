@@ -20,6 +20,7 @@ Implemented:
 - Production integration contracts for backend/API mapping, auth guards, copy confirmation, human review, and target-stack execution proof.
 - Deterministic target frontend source manifests, route/component maps, adapter interfaces, and codegen tasks.
 - Deterministic target frontend source writer CLI command.
+- Target frontend execution proof for install, typecheck, and production build.
 - 100-scenario E2E coverage catalog, E2E results, and findings report.
 - Workbench deterministic contract inspection.
 - Workbench E2E scenario/results inspection.
@@ -111,6 +112,12 @@ Write the deterministic target frontend scaffold:
 npm run write-target
 ```
 
+Verify the generated target frontend in its real stack:
+
+```bash
+npm run verify-target
+```
+
 Run golden examples:
 
 ```bash
@@ -129,7 +136,7 @@ Run the browser workbench:
 npm run workbench:dev
 ```
 
-The compiler extracts visual evidence from screenshots, reference images, and design materials into density, navigation, layout, component, state, typography, data-display, and safety signals. It also exports UX flow/state completeness, deterministic component contracts, pattern contracts, data operation contracts, action contracts, form contracts, token contracts, typography contracts, verification contracts, production integration contracts, target frontend source manifests, a 100-scenario E2E catalog/results/findings package, and a spec coverage audit with required states, contextual states, recovery actions, transition contracts, props, slots, variants, events, token bindings, accessibility rules, test selectors, pattern composition, workflow refs, data refs, query/mutation behavior, action preconditions, validation rules, type roles, CSS variables, acceptance rules, implementation proof suites, backend/API endpoint mappings, auth guards, copy surfaces, review gates, target-stack proof commands, exact target source file paths, route/component maps, adapter interfaces, ordered codegen tasks, and explicit remaining gaps for deterministic frontend generation. The workbench can review generated packages, inspect deterministic contract artifacts and E2E results, import an exported package folder, save packages into a local browser workspace, duplicate, rename, prioritize, pin, tag, annotate, search, filter, sort, browse, inspect, bulk-update visible package sets, export saved package collections, review collection imports before writing them, track workspace activity, summarize, filter, act on, and export workspace health, archive and clean up packages, export and restore an active workbench session, import and export multi-package workspaces, compare saved packages, prepare an intake JSON draft from structured form controls, collect source materials with a safety preview, copy a matching CLI command, track route and screen coverage, review design-system components and tokens, report frontend contract gaps, triage production integration gaps, inspect target source generation plans, triage build simulation and acceptance coverage, compose revision change requests, track local approval gate decisions, compare package baselines for revision impact, summarize governance actions, and generate handoff artifacts for downstream frontend work.
+The compiler extracts visual evidence from screenshots, reference images, and design materials into density, navigation, layout, component, state, typography, data-display, and safety signals. It also exports UX flow/state completeness, deterministic component contracts, pattern contracts, data operation contracts, action contracts, form contracts, token contracts, typography contracts, verification contracts, production integration contracts, target frontend source manifests, target frontend execution proof artifacts, a 100-scenario E2E catalog/results/findings package, and a spec coverage audit with required states, contextual states, recovery actions, transition contracts, props, slots, variants, events, token bindings, accessibility rules, test selectors, pattern composition, workflow refs, data refs, query/mutation behavior, action preconditions, validation rules, type roles, CSS variables, acceptance rules, implementation proof suites, backend/API endpoint mappings, auth guards, copy surfaces, review gates, target-stack proof commands, exact target source file paths, route/component maps, adapter interfaces, ordered codegen tasks, install/typecheck/build command results, and explicit remaining gaps for deterministic frontend generation. The workbench can review generated packages, inspect deterministic contract artifacts, E2E results, and target execution proof, import an exported package folder, save packages into a local browser workspace, duplicate, rename, prioritize, pin, tag, annotate, search, filter, sort, browse, inspect, bulk-update visible package sets, export saved package collections, review collection imports before writing them, track workspace activity, summarize, filter, act on, and export workspace health, archive and clean up packages, export and restore an active workbench session, import and export multi-package workspaces, compare saved packages, prepare an intake JSON draft from structured form controls, collect source materials with a safety preview, copy a matching CLI command, track route and screen coverage, review design-system components and tokens, report frontend contract gaps, triage production integration gaps, inspect target source generation plans, triage build simulation and acceptance coverage, compose revision change requests, track local approval gate decisions, compare package baselines for revision impact, summarize governance actions, and generate handoff artifacts for downstream frontend work.
 
 Run all checks:
 
@@ -166,4 +173,4 @@ node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archety
 
 ## Current Revealed Gaps
 
-The latest E2E pass covers 100 scenarios: 87 pass, 13 warning, and 0 fail. The remaining gaps are live backend/API confirmation, auth provider confirmation, production copy approval, backend validation alignment, target-stack execution proof, non-default state runtime proof, richer generated component implementations, browser visual regression proof, fixture adapter replacement, and qualified human accessibility/compliance review.
+The latest E2E pass after `verify-target` covers 100 scenarios: 88 pass, 12 warning, and 0 fail. The remaining gaps are live backend/API confirmation, auth provider confirmation, production copy approval, backend validation alignment, non-default state runtime proof, richer generated component implementations, browser visual regression proof, fixture adapter replacement, qualified human accessibility/compliance review, and two moderate npm audit advisories in the generated target dependency tree.

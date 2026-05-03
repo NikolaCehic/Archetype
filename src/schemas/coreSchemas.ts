@@ -158,6 +158,11 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "E2E Scenario Results",
       ["result_version", "summary", "results", "revealed_faults", "fix_plan"]
     ),
+    "target-execution-report.schema.json": objectSchema(
+      "target-execution-report.schema.json",
+      "Target Frontend Execution Report",
+      ["report_version", "status", "commands", "summary", "blockers", "warnings", "proof_artifacts"]
+    ),
     "frontend-build-manifest.schema.json": objectSchema(
       "frontend-build-manifest.schema.json",
       "Frontend Build Manifest",
@@ -206,6 +211,7 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "12-target-frontend/codegen-tasks.json", schema_file: "codegen-tasks.schema.json", description: "Ordered downstream frontend code-generation tasks." },
       { artifact: "13-e2e/e2e-scenarios.json", schema_file: "e2e-scenarios.schema.json", description: "One hundred happy-path and edge-case E2E scenarios." },
       { artifact: "13-e2e/e2e-results.json", schema_file: "e2e-results.schema.json", description: "E2E scenario results, revealed faults, and fix plan." },
+      { artifact: "14-target-execution/target-execution-report.json", schema_file: "target-execution-report.schema.json", description: "Target frontend install, typecheck, and production build execution proof." },
       { artifact: "06-frontend-agent-contract/build-manifest.json", schema_file: "frontend-build-manifest.schema.json", description: "Frontend build manifest schema." },
       { artifact: "03-experience-architecture/dsag.json", schema_file: "dsag.schema.json", description: "DSAG graph schema." },
       { artifact: "00-manifest/implementation-readiness.json", schema_file: "readiness-report.schema.json", description: "Readiness report schema." }

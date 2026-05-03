@@ -1656,3 +1656,43 @@ Verification:
 Next phase:
 
 - Execute generated target frontend source in its real stack, then replace fixture adapters with confirmed backend and auth adapters.
+
+## Completed Phase: Target Frontend Execution Proof
+
+Status: complete
+
+Implemented:
+
+- Added `node dist/cli.js verify-target --out <output-dir> --target <target-dir> [--skip-install]`.
+- Added `npm run verify-target`.
+- Added `src/output/verifyTargetFrontend.ts`.
+- Added pending target execution proof artifacts during package generation.
+- Added `14-target-execution/target-execution-report.json`.
+- Added `14-target-execution/target-execution-report.md`.
+- Added `09-schemas/target-execution-report.schema.json`.
+- The verifier runs `npm install`, `npm run typecheck`, and `npm run build` inside the generated target frontend workspace.
+- The verifier writes command results, durations, logs, blockers, warnings, and proof artifact refs back into the package.
+- The verifier updates the target-stack E2E scenario from warning to pass when install, typecheck, and production build pass.
+- Fixed the generated target scaffold by adding deterministic dependency versions, `tailwindcss`, `next.config.mjs`, and a Next-compatible TypeScript config.
+- Wired target execution proof into manifest indexing, package export, schema validation, handoff artifacts, Workbench package import, and the Workbench E2E view.
+
+Verification:
+
+- `npm run build` passes.
+- `npm run smoke` passes.
+- `npm run write-target` passes.
+- `npm run verify-target` passes.
+- `npm run check` passes.
+- Workbench production build passes.
+- Target install: pass.
+- Target typecheck: pass.
+- Target production build: pass.
+- Target execution warnings: 2 moderate npm audit advisories and fixture adapters pending production backend/auth confirmation.
+- Generated target source files: 60.
+- Manifest-listed files checked by validator: 166.
+- E2E after target verification: 88 pass, 12 warning, 0 fail.
+- Workbench sample bundle includes target execution proof.
+
+Next phase:
+
+- Add browser visual regression/state proof for every generated route and non-default screen state.

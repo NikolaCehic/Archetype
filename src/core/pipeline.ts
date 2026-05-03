@@ -15,6 +15,7 @@ import { buildReferenceSurfaceArtifacts } from "../modules/referenceSurfaces";
 import { buildRevisionArtifacts } from "../modules/revisionProtocol";
 import { buildFrontendBuildSimulationArtifacts } from "../modules/frontendBuildSimulation";
 import { buildTargetFrontendArtifacts } from "../modules/targetFrontend";
+import { buildPendingTargetExecutionArtifacts } from "../modules/targetExecution";
 import { buildE2EScenarioArtifacts } from "../modules/e2eScenarios";
 
 const ARTIFACT_INDEX = [
@@ -134,6 +135,8 @@ const ARTIFACT_INDEX = [
   "13-e2e/e2e-scenarios.json",
   "13-e2e/e2e-results.json",
   "13-e2e/e2e-findings.md",
+  "14-target-execution/target-execution-report.json",
+  "14-target-execution/target-execution-report.md",
   "08-quality/consistency-report.md",
   "08-quality/accessibility-report.md",
   "08-quality/safety-report.md",
@@ -172,6 +175,7 @@ const ARTIFACT_INDEX = [
   "09-schemas/codegen-tasks.schema.json",
   "09-schemas/e2e-scenarios.schema.json",
   "09-schemas/e2e-results.schema.json",
+  "09-schemas/target-execution-report.schema.json",
   "09-schemas/frontend-build-manifest.schema.json",
   "09-schemas/dsag.schema.json",
   "09-schemas/readiness-report.schema.json"
@@ -217,6 +221,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     designSystem,
     frontendContract
   });
+  const targetExecution = buildPendingTargetExecutionArtifacts();
   const e2e = buildE2EScenarioArtifacts({
     ingestion,
     evidence,
@@ -245,6 +250,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     revision,
     buildSimulation,
     targetFrontend,
+    targetExecution,
     e2e,
     dsag
   });
@@ -283,6 +289,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     revision,
     buildSimulation,
     targetFrontend,
+    targetExecution,
     e2e,
     quality
   };

@@ -175,6 +175,8 @@ interface Bundle {
   e2eScenarios: Record<string, any>;
   e2eResults: Record<string, any>;
   e2eFindings: string;
+  targetExecution: Record<string, any>;
+  targetExecutionReport: string;
   acceptanceCriteria: { criteria: Array<Record<string, any>> };
   buildSimulation: Record<string, any>;
   revision: Record<string, any>;
@@ -1548,6 +1550,7 @@ function artifactArea(filePath: string): { group: string; nodeId: string | null 
   if (filePath.startsWith("06-frontend-agent-contract/")) return { group: "Frontend Contract", nodeId: "frontendContract" };
   if (filePath.startsWith("12-target-frontend/")) return { group: "Target Frontend", nodeId: "targetFrontend" };
   if (filePath.startsWith("13-e2e/")) return { group: "E2E", nodeId: "e2e" };
+  if (filePath.startsWith("14-target-execution/")) return { group: "Target Execution", nodeId: "targetExecution" };
   if (filePath === "00-manifest/implementation-readiness.json" || filePath.startsWith("08-quality/")) return { group: "Readiness", nodeId: "readiness" };
   if (filePath.startsWith("10-revision/")) return { group: "Revision", nodeId: "revision" };
   if (filePath.startsWith("11-build-simulation/")) return { group: "Build Simulation", nodeId: "frontendContract" };
@@ -1646,6 +1649,7 @@ function triggerForNode(nodeId: string): string | null {
     productionIntegrationContracts: "production_integration_changed",
     targetFrontend: "production_integration_changed",
     e2e: "production_integration_changed",
+    targetExecution: "production_integration_changed",
     designSystem: "accessibility_rule_changed"
   };
   return triggers[nodeId] ?? null;
@@ -1776,6 +1780,8 @@ function requiredHandoffArtifacts(bundle: Bundle): Array<{ path: string; label: 
     ["13-e2e/e2e-scenarios.json", "E2E scenarios"],
     ["13-e2e/e2e-results.json", "E2E results"],
     ["13-e2e/e2e-findings.md", "E2E findings"],
+    ["14-target-execution/target-execution-report.json", "Target execution report"],
+    ["14-target-execution/target-execution-report.md", "Target execution proof"],
     ["03-experience-architecture/dsag.json", "DSAG graph"],
     ["08-quality/export-readiness-checklist.md", "Export readiness checklist"],
     ["11-build-simulation/frontend-build-simulation-report.md", "Build simulation report"]
@@ -2027,6 +2033,7 @@ function handoffJson(bundle: Bundle): Record<string, unknown> {
       results: bundle.e2eResults,
       findings: bundle.e2eFindings
     },
+    targetExecution: bundle.targetExecution,
     targetFrontend: {
       sourceFileManifest: bundle.sourceFileManifest,
       routeComponentMap: bundle.routeComponentMap,
@@ -2713,6 +2720,7 @@ function renderE2E(bundle: Bundle): string {
   const faults = bundle.e2eResults.revealed_faults ?? [];
   const fixPlan = bundle.e2eResults.fix_plan ?? [];
   const coverage = bundle.e2eScenarios.coverage ?? [];
+  const executionCommands = bundle.targetExecution.commands ?? [];
   const failing = results.filter((item: any) => item.status === "fail");
   const warning = results.filter((item: any) => item.status === "warning");
   return `
@@ -2725,6 +2733,11 @@ function renderE2E(bundle: Bundle): string {
       ${metric("Failures", summary.fail ?? failing.length, failing.length ? "danger" : "success")}
       ${metric("Happy paths", summary.happy_path ?? 0)}
       ${metric("Edge cases", summary.edge_case ?? 0)}
+    </div>
+    <div class="grid cols-3" style="margin-top:14px">
+      ${metric("Target execution", bundle.targetExecution.status ?? "pending", statusTone(bundle.targetExecution.status))}
+      ${metric("Typecheck", bundle.targetExecution.summary?.typecheck ?? "pending", statusTone(bundle.targetExecution.summary?.typecheck))}
+      ${metric("Build", bundle.targetExecution.summary?.build ?? "pending", statusTone(bundle.targetExecution.summary?.build))}
     </div>
     <div class="grid cols-2" style="margin-top:14px">
       ${panel("What Is Wrong", faults.length ? table(["Fault"], faults.map((fault: string) => [esc(fault)])) : `<div class="empty">No current faults exposed by the E2E pass.</div>`)}
@@ -2743,6 +2756,14 @@ function renderE2E(bundle: Bundle): string {
         esc(item.revealed_fault ?? "none"),
         esc(item.fix_hint ?? "none")
       ])) : `<div class="empty">No warning scenarios.</div>`)}
+    </div>
+    <div class="grid cols-2" style="margin-top:14px">
+      ${panel("Target Execution Commands", table(["Status", "Command", "Duration"], executionCommands.map((item: any) => [
+        badge(item.status, statusTone(item.status)),
+        `<code>${esc(item.command)}</code>`,
+        esc(item.duration_ms === null || item.duration_ms === undefined ? "pending" : `${item.duration_ms}ms`)
+      ])))}
+      ${panel("Target Execution Report", code(bundle.targetExecutionReport))}
     </div>
     <div style="margin-top:14px">
       ${panel("All 100 Scenarios", table(["Status", "Scenario", "Area", "Type", "Result"], results.map((item: any) => [
@@ -4403,6 +4424,8 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
     e2eScenarios: await getJson("13-e2e/e2e-scenarios.json"),
     e2eResults: await getJson("13-e2e/e2e-results.json"),
     e2eFindings: await getText("13-e2e/e2e-findings.md"),
+    targetExecution: await getJson("14-target-execution/target-execution-report.json"),
+    targetExecutionReport: await getText("14-target-execution/target-execution-report.md"),
     acceptanceCriteria: await getJson("06-frontend-agent-contract/acceptance-criteria.json"),
     buildSimulation: {
       buildPlan: await getJson("11-build-simulation/build-plan.json"),
