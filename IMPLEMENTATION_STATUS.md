@@ -1724,3 +1724,29 @@ Verification:
 Next phase:
 
 - Add browser visual regression/state proof for every generated route and non-default screen state.
+
+## Completed Phase: Workbench UI Polish Pass
+
+Status: complete
+
+Implemented:
+
+- Refined Workbench button hierarchy for primary, secondary, subtle, disabled, and destructive actions.
+- Improved dropdown readability with human labels, clearer select affordances, and consistent focus/hover states.
+- Replaced non-interactive warning/review rows that looked clickable with static review rows.
+- Improved mobile navigation so the active view stays visible and the header no longer consumes the full first screen.
+- Fixed mobile overflow and snapshot badge stretching in stacked panels.
+- Humanized package status labels, topbar metadata, nav counts, and metric state badges.
+
+Verification:
+
+- `npm run workbench:build` passes.
+- Desktop overview screenshot rendered at `tmp/workbench-polish-final-desktop.png`.
+- Mobile overview screenshot rendered at `tmp/workbench-polish-final-mobile.png`.
+- Desktop workspace screenshot rendered at `tmp/workbench-polish-workspace-desktop.png`.
+- Mobile workspace screenshot rendered at `tmp/workbench-polish-final-workspace-mobile.png`.
+- Browser diagnostics confirm no horizontal overflow at 390px or 1440px.
+
+Next phase:
+
+- Add browser visual regression/state proof for every generated route and non-default screen state.

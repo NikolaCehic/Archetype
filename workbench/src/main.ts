@@ -434,9 +434,22 @@ function pretty(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+function badgeLabel(label: string): string {
+  const raw = String(label ?? "").trim();
+  if (!raw || /[/.]/.test(raw) || /^[a-f0-9]{8,}$/i.test(raw) || /^[A-Z0-9]+$/.test(raw)) return raw;
+  return raw
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    .replace(/\bDsag\b/g, "DSAG")
+    .replace(/\bE2e\b/g, "E2E")
+    .replace(/\bJson\b/g, "JSON")
+    .replace(/\bApi\b/g, "API");
+}
+
 function badge(label: string, tone: "success" | "warning" | "danger" | "neutral" = "neutral"): string {
   const cls = tone === "neutral" ? "badge" : `badge ${tone}`;
-  return `<span class="${cls}">${esc(label)}</span>`;
+  return `<span class="${cls}">${esc(badgeLabel(label))}</span>`;
 }
 
 function statusTone(status: unknown): "success" | "warning" | "danger" | "neutral" {
@@ -444,6 +457,70 @@ function statusTone(status: unknown): "success" | "warning" | "danger" | "neutra
   if (status === "warning") return "warning";
   if (status === false || status === "fail") return "danger";
   return "neutral";
+}
+
+const labelOverrides: Record<string, string> = {
+  all: "All",
+  asc: "Ascending",
+  auth: "Auth",
+  backend: "Backend",
+  blocker: "Blocker",
+  brand: "Brand",
+  code: "Code",
+  component: "Component",
+  contract_repair: "Contract repair",
+  copy: "Copy",
+  data_contract: "Data contract",
+  design_file: "Design file",
+  document: "Document",
+  evidence_changed: "Evidence changed",
+  existing_product_audit: "Existing product audit",
+  fast_architecture: "Fast architecture",
+  full_architecture: "Full architecture",
+  generatedAt: "Generated date",
+  high: "High",
+  hold: "Hold",
+  low: "Low",
+  major: "Major",
+  medium: "Medium",
+  minor: "Minor",
+  name: "Package name",
+  no_notes: "Missing notes",
+  other: "Other",
+  priority: "Priority",
+  production_integration: "Production integration",
+  production_integration_changed: "Production integration changed",
+  ready: "Ready",
+  readinessScore: "Readiness score",
+  route: "Route",
+  route_map_changed: "Route map changed",
+  savedAt: "Saved date",
+  screen_spec_changed: "Screen spec changed",
+  screen_state: "Screen state",
+  screenshot: "Screenshot",
+  sourceHash: "Source hash",
+  warningCount: "Warning count",
+  artifactCount: "Artifact count"
+};
+
+function humanLabel(value: unknown): string {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  if (labelOverrides[raw]) return labelOverrides[raw];
+  return raw
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    .replace(/\bDsag\b/g, "DSAG")
+    .replace(/\bE2e\b/g, "E2E")
+    .replace(/\bJson\b/g, "JSON");
+}
+
+function metricStateLabel(tone: "success" | "warning" | "danger" | "neutral"): string {
+  if (tone === "success") return "Pass";
+  if (tone === "warning") return "Review";
+  if (tone === "danger") return "Blocked";
+  return "Tracked";
 }
 
 function panel(title: string, body: string, aside = ""): string {
@@ -497,7 +574,7 @@ function selectField(id: string, value: string, label: string, options: string[]
     <label class="field">
       <span>${esc(label)}</span>
       <select id="${esc(id)}" class="input">
-        ${options.map((option) => `<option value="${esc(option)}" ${option === value ? "selected" : ""}>${esc(option)}</option>`).join("")}
+        ${options.map((option) => `<option value="${esc(option)}" ${option === value ? "selected" : ""}>${esc(humanLabel(option))}</option>`).join("")}
       </select>
     </label>
   `;
@@ -509,7 +586,7 @@ function metric(label: string, value: unknown, tone: "success" | "warning" | "da
       <div class="panel-body metric">
         <div class="metric-value">${esc(value)}</div>
         <div class="metric-label">${esc(label)}</div>
-        <div>${badge(tone === "neutral" ? "tracked" : tone, tone)}</div>
+        <div>${badge(metricStateLabel(tone), tone)}</div>
       </div>
     </section>
   `;
@@ -724,7 +801,7 @@ function renderWorkspaceActivity(): string {
         ]))}
         <div class="control-row">
           <button class="button" id="export-workspace-activity" type="button">Export activity</button>
-          <button class="button" id="clear-workspace-activity" type="button">Clear activity</button>
+          <button class="button danger" id="clear-workspace-activity" type="button">Clear activity</button>
         </div>
       ` : `
         <div class="empty">No workspace activity yet.</div>
@@ -847,12 +924,12 @@ function renderWorkspaceHealth(entries: WorkspaceEntry[]): string {
       <label class="field" style="min-width:180px">
         <span>Health filter</span>
         <select id="workspace-health-filter" class="input">
-          <option value="all" ${state.workspaceHealthFilter === "all" ? "selected" : ""}>all signals</option>
-          <option value="hold" ${state.workspaceHealthFilter === "hold" ? "selected" : ""}>hold</option>
-          <option value="high" ${state.workspaceHealthFilter === "high" ? "selected" : ""}>high priority</option>
-          <option value="pinned" ${state.workspaceHealthFilter === "pinned" ? "selected" : ""}>pinned</option>
-          <option value="untagged" ${state.workspaceHealthFilter === "untagged" ? "selected" : ""}>untagged</option>
-          <option value="no_notes" ${state.workspaceHealthFilter === "no_notes" ? "selected" : ""}>missing notes</option>
+          <option value="all" ${state.workspaceHealthFilter === "all" ? "selected" : ""}>All signals</option>
+          <option value="hold" ${state.workspaceHealthFilter === "hold" ? "selected" : ""}>Hold</option>
+          <option value="high" ${state.workspaceHealthFilter === "high" ? "selected" : ""}>High priority</option>
+          <option value="pinned" ${state.workspaceHealthFilter === "pinned" ? "selected" : ""}>Pinned</option>
+          <option value="untagged" ${state.workspaceHealthFilter === "untagged" ? "selected" : ""}>Untagged</option>
+          <option value="no_notes" ${state.workspaceHealthFilter === "no_notes" ? "selected" : ""}>Missing notes</option>
         </select>
       </label>
       <button class="button" id="export-workspace-health-json" type="button">Export health JSON</button>
@@ -864,8 +941,8 @@ function renderWorkspaceHealth(entries: WorkspaceEntry[]): string {
 
 function renderWorkspacePackageActions(entry: WorkspaceEntry): string {
   return entry.archivedAt
-    ? `<div class="control-row compact"><button class="button small" data-workspace-inspect="${esc(entry.id)}" type="button">Inspect</button><button class="button small" data-workspace-pin="${esc(entry.id)}" data-workspace-pinned="${entry.pinned ? "false" : "true"}" type="button">${entry.pinned ? "Unpin" : "Pin"}</button><button class="button small" data-workspace-duplicate="${esc(entry.id)}" type="button">Duplicate</button><button class="button small" data-workspace-restore="${esc(entry.id)}" type="button">Restore</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
-    : `<div class="control-row compact"><button class="button small" data-workspace-inspect="${esc(entry.id)}" type="button">Inspect</button><button class="button small" data-workspace-load="${esc(entry.id)}" type="button">Load</button><button class="button small" data-workspace-pin="${esc(entry.id)}" data-workspace-pinned="${entry.pinned ? "false" : "true"}" type="button">${entry.pinned ? "Unpin" : "Pin"}</button><button class="button small" data-workspace-duplicate="${esc(entry.id)}" type="button">Duplicate</button><button class="button small" data-workspace-archive="${esc(entry.id)}" type="button">Archive</button><button class="button small" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`;
+    ? `<div class="control-row compact"><button class="button small" data-workspace-inspect="${esc(entry.id)}" type="button">Inspect</button><button class="button small" data-workspace-pin="${esc(entry.id)}" data-workspace-pinned="${entry.pinned ? "false" : "true"}" type="button">${entry.pinned ? "Unpin" : "Pin"}</button><button class="button small" data-workspace-duplicate="${esc(entry.id)}" type="button">Duplicate</button><button class="button small" data-workspace-restore="${esc(entry.id)}" type="button">Restore</button><button class="button small danger" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`
+    : `<div class="control-row compact"><button class="button small" data-workspace-inspect="${esc(entry.id)}" type="button">Inspect</button><button class="button small" data-workspace-load="${esc(entry.id)}" type="button">Load</button><button class="button small" data-workspace-pin="${esc(entry.id)}" data-workspace-pinned="${entry.pinned ? "false" : "true"}" type="button">${entry.pinned ? "Unpin" : "Pin"}</button><button class="button small" data-workspace-duplicate="${esc(entry.id)}" type="button">Duplicate</button><button class="button small" data-workspace-archive="${esc(entry.id)}" type="button">Archive</button><button class="button small danger" data-workspace-delete="${esc(entry.id)}" type="button">Delete</button></div>`;
 }
 
 function renderWorkspaceEntryIdentity(entry: WorkspaceEntry): string {
@@ -936,9 +1013,9 @@ function renderWorkspaceInspection(entry: WorkspaceEntry | undefined, bundle: Bu
       <label class="field">
         <span>Priority</span>
         <select id="workspace-priority" class="input">
-          <option value="low" ${state.workspacePriorityDraft === "low" ? "selected" : ""}>low</option>
-          <option value="medium" ${state.workspacePriorityDraft === "medium" ? "selected" : ""}>medium</option>
-          <option value="high" ${state.workspacePriorityDraft === "high" ? "selected" : ""}>high</option>
+          <option value="low" ${state.workspacePriorityDraft === "low" ? "selected" : ""}>Low</option>
+          <option value="medium" ${state.workspacePriorityDraft === "medium" ? "selected" : ""}>Medium</option>
+          <option value="high" ${state.workspacePriorityDraft === "high" ? "selected" : ""}>High</option>
         </select>
       </label>
       ${inputField("workspace-tags", state.workspaceTagDraft, "Tags")}
@@ -961,7 +1038,7 @@ function renderWorkspaceInspection(entry: WorkspaceEntry | undefined, bundle: Bu
       <button class="button" data-workspace-duplicate="${esc(entry.id)}" type="button">Duplicate</button>
       <button class="button" data-workspace-compare-select="${esc(entry.id)}" data-workspace-compare-role="base" type="button">Use as base</button>
       <button class="button" data-workspace-compare-select="${esc(entry.id)}" data-workspace-compare-role="target" type="button">Use as target</button>
-      <button class="button" id="clear-workspace-inspection" type="button">Clear details</button>
+      <button class="button subtle" id="clear-workspace-inspection" type="button">Clear details</button>
     </div>
   `;
 }
@@ -1008,7 +1085,7 @@ function renderWorkspace(bundle: Bundle): string {
           <button class="button" id="refresh-workspace" type="button">Refresh workspace</button>
           <button class="button" id="export-workspace" type="button" ${state.workspaceEntries.length ? "" : "disabled"}>Export workspace</button>
           <button class="button" id="import-workspace" type="button">Import workspace</button>
-          <button class="button" id="purge-archived-packages" type="button" ${archivedEntries.length ? "" : "disabled"}>Purge archived</button>
+          <button class="button danger" id="purge-archived-packages" type="button" ${archivedEntries.length ? "" : "disabled"}>Purge archived</button>
           <input id="workspace-import-input" type="file" accept="application/json,.json" hidden />
         </div>
         ${state.workspaceMessage ? `<div class="notice" role="status">${esc(state.workspaceMessage)}</div>` : ""}
@@ -1035,28 +1112,28 @@ function renderWorkspace(bundle: Bundle): string {
           <label class="field">
             <span>Readiness</span>
             <select id="workspace-readiness-filter" class="input">
-              <option value="all" ${state.workspaceReadinessFilter === "all" ? "selected" : ""}>all packages</option>
-              <option value="ready" ${state.workspaceReadinessFilter === "ready" ? "selected" : ""}>ready only</option>
-              <option value="hold" ${state.workspaceReadinessFilter === "hold" ? "selected" : ""}>hold only</option>
+              <option value="all" ${state.workspaceReadinessFilter === "all" ? "selected" : ""}>All packages</option>
+              <option value="ready" ${state.workspaceReadinessFilter === "ready" ? "selected" : ""}>Ready only</option>
+              <option value="hold" ${state.workspaceReadinessFilter === "hold" ? "selected" : ""}>Hold only</option>
             </select>
           </label>
           <label class="field">
             <span>Sort by</span>
             <select id="workspace-sort-key" class="input">
-              <option value="savedAt" ${state.workspaceSortKey === "savedAt" ? "selected" : ""}>saved date</option>
-              <option value="generatedAt" ${state.workspaceSortKey === "generatedAt" ? "selected" : ""}>generated date</option>
-              <option value="name" ${state.workspaceSortKey === "name" ? "selected" : ""}>package name</option>
-              <option value="readinessScore" ${state.workspaceSortKey === "readinessScore" ? "selected" : ""}>readiness score</option>
-              <option value="artifactCount" ${state.workspaceSortKey === "artifactCount" ? "selected" : ""}>artifact count</option>
-              <option value="warningCount" ${state.workspaceSortKey === "warningCount" ? "selected" : ""}>warning count</option>
-              <option value="priority" ${state.workspaceSortKey === "priority" ? "selected" : ""}>priority</option>
+              <option value="savedAt" ${state.workspaceSortKey === "savedAt" ? "selected" : ""}>Saved date</option>
+              <option value="generatedAt" ${state.workspaceSortKey === "generatedAt" ? "selected" : ""}>Generated date</option>
+              <option value="name" ${state.workspaceSortKey === "name" ? "selected" : ""}>Package name</option>
+              <option value="readinessScore" ${state.workspaceSortKey === "readinessScore" ? "selected" : ""}>Readiness score</option>
+              <option value="artifactCount" ${state.workspaceSortKey === "artifactCount" ? "selected" : ""}>Artifact count</option>
+              <option value="warningCount" ${state.workspaceSortKey === "warningCount" ? "selected" : ""}>Warning count</option>
+              <option value="priority" ${state.workspaceSortKey === "priority" ? "selected" : ""}>Priority</option>
             </select>
           </label>
           <label class="field">
             <span>Direction</span>
             <select id="workspace-sort-direction" class="input">
-              <option value="desc" ${state.workspaceSortDirection === "desc" ? "selected" : ""}>descending</option>
-              <option value="asc" ${state.workspaceSortDirection === "asc" ? "selected" : ""}>ascending</option>
+              <option value="desc" ${state.workspaceSortDirection === "desc" ? "selected" : ""}>Descending</option>
+              <option value="asc" ${state.workspaceSortDirection === "asc" ? "selected" : ""}>Ascending</option>
             </select>
           </label>
         </div>
@@ -1073,9 +1150,9 @@ function renderWorkspace(bundle: Bundle): string {
           <label class="field" style="min-width:180px">
             <span>Bulk priority</span>
             <select id="workspace-bulk-priority" class="input">
-              <option value="low" ${state.workspaceBulkPriority === "low" ? "selected" : ""}>low</option>
-              <option value="medium" ${state.workspaceBulkPriority === "medium" ? "selected" : ""}>medium</option>
-              <option value="high" ${state.workspaceBulkPriority === "high" ? "selected" : ""}>high</option>
+              <option value="low" ${state.workspaceBulkPriority === "low" ? "selected" : ""}>Low</option>
+              <option value="medium" ${state.workspaceBulkPriority === "medium" ? "selected" : ""}>Medium</option>
+              <option value="high" ${state.workspaceBulkPriority === "high" ? "selected" : ""}>High</option>
             </select>
           </label>
           <button class="button" id="bulk-workspace-priority" type="button" ${visibleWorkspaceEntries.length ? "" : "disabled"}>Apply priority</button>
@@ -1165,8 +1242,8 @@ function renderWorkspace(bundle: Bundle): string {
 }
 
 function list(items: unknown[]): string {
-  if (!items || items.length === 0) return `<div class="empty">None.</div>`;
-  return `<div class="list">${items.map((item) => `<div class="list-button">${esc(typeof item === "string" ? item : JSON.stringify(item))}</div>`).join("")}</div>`;
+  if (!items || items.length === 0) return `<div class="empty">No items to review.</div>`;
+  return `<div class="list">${items.map((item) => `<div class="review-item">${esc(typeof item === "string" ? item : JSON.stringify(item))}</div>`).join("")}</div>`;
 }
 
 const WORKSPACE_DB = "archetype-workbench";
@@ -2232,7 +2309,7 @@ function renderSourceMaterials(): string {
     <div class="control-row">
       <button class="button primary" id="add-source-material" type="button">Add source</button>
       <button class="button" id="import-source-files" type="button">Import files</button>
-      <button class="button" id="clear-source-materials" type="button" ${state.sourceMaterials.length ? "" : "disabled"}>Clear sources</button>
+      <button class="button danger" id="clear-source-materials" type="button" ${state.sourceMaterials.length ? "" : "disabled"}>Clear sources</button>
       <input id="source-file-input" type="file" multiple hidden />
     </div>
     ${state.sourceMessage ? `<div class="notice" role="status">${esc(state.sourceMessage)}</div>` : ""}
@@ -2247,10 +2324,10 @@ function renderSourceMaterials(): string {
         const materialFindings = findingsForMaterial(material);
         return [
           badge(materialFindings.length ? `${materialFindings.length} findings` : "clear", sourceTone(materialFindings)),
-          esc(material.type),
+          esc(humanLabel(material.type)),
           esc(material.label || material.path || "Untitled source"),
           esc(materialFindings.map((finding) => `${finding.severity}: ${finding.finding}`).join("; ") || "None"),
-          `<button class="button small" data-source-remove="${esc(material.id)}" type="button">Remove</button>`
+          `<button class="button small danger" data-source-remove="${esc(material.id)}" type="button">Remove</button>`
         ];
       })) : `<div class="empty">No source materials added.</div>`}
     </div>
@@ -2283,14 +2360,14 @@ function renderGeneration(bundle: Bundle): string {
         <div class="control-row">
           <button class="button primary" id="apply-intake-form" type="button">Create project draft</button>
           <button class="button" id="load-form-from-draft" type="button">Load from draft</button>
-          <button class="button" id="clear-intake-form" type="button">Clear form</button>
+          <button class="button subtle" id="clear-intake-form" type="button">Clear form</button>
         </div>
       `)}
       ${panel("Generation Draft", `
         ${textArea("generation-draft", draft, "Intake JSON")}
         <div class="control-row">
           <button class="button primary" id="validate-draft" type="button">Validate draft</button>
-          <button class="button" id="reset-draft" type="button">Use current package</button>
+          <button class="button subtle" id="reset-draft" type="button">Use current package</button>
           <button class="button" id="download-draft" type="button">Download intake</button>
         </div>
         ${state.generationMessage ? `<div class="notice" role="status">${esc(state.generationMessage)}</div>` : ""}
@@ -2381,7 +2458,7 @@ function renderArchitecture(bundle: Bundle): string {
         <div style="height:10px"></div>
         ${textArea("coverage-note", state.activeCoverageNote, "Coverage note for the next screen action", "textarea short")}
         <div class="control-row">
-          <button class="button" id="reset-coverage" type="button">Reset coverage states</button>
+          <button class="button subtle" id="reset-coverage" type="button">Reset coverage states</button>
         </div>
       `)}
     </div>
@@ -2493,7 +2570,7 @@ function renderDesign(bundle: Bundle): string {
       ${panel("Design Review Note", `
         ${textArea("design-review-note", state.activeDesignReviewNote, "Design note for the next review action", "textarea short")}
         <div class="control-row">
-          <button class="button" id="reset-design-review" type="button">Reset design review</button>
+          <button class="button subtle" id="reset-design-review" type="button">Reset design review</button>
         </div>
       `)}
     </div>
@@ -2635,7 +2712,7 @@ function renderContract(bundle: Bundle): string {
         ${textArea("gap-description", state.contractGapDraft.description, "Gap description", "textarea short")}
         <div class="control-row">
           <button class="button primary" id="add-contract-gap" type="button">Add gap</button>
-          <button class="button" id="clear-resolved-gaps" type="button" ${resolvedGaps.length ? "" : "disabled"}>Clear resolved</button>
+          <button class="button subtle" id="clear-resolved-gaps" type="button" ${resolvedGaps.length ? "" : "disabled"}>Clear resolved</button>
         </div>
         ${state.contractMessage ? `<div class="notice" role="status">${esc(state.contractMessage)}</div>` : ""}
       `)}
@@ -2645,7 +2722,7 @@ function renderContract(bundle: Bundle): string {
         esc(gap.category),
         `<code>${esc(gap.artifact)}</code>`,
         esc(gap.description),
-        `<div class="control-row compact"><button class="button small" data-gap="${esc(gap.id)}" data-gap-status="resolved" type="button">Resolve</button><button class="button small" data-gap="${esc(gap.id)}" data-gap-status="deferred" type="button">Defer</button><button class="button small" data-gap="${esc(gap.id)}" data-gap-status="open" type="button">Reopen</button><button class="button small" data-gap-delete="${esc(gap.id)}" type="button">Delete</button></div>`
+        `<div class="control-row compact"><button class="button small" data-gap="${esc(gap.id)}" data-gap-status="resolved" type="button">Resolve</button><button class="button small" data-gap="${esc(gap.id)}" data-gap-status="deferred" type="button">Defer</button><button class="button small" data-gap="${esc(gap.id)}" data-gap-status="open" type="button">Reopen</button><button class="button small danger" data-gap-delete="${esc(gap.id)}" type="button">Delete</button></div>`
       ])) : `<div class="empty">No frontend contract gaps.</div>`)}
     </div>
   `;
@@ -2707,7 +2784,7 @@ function renderSimulation(bundle: Bundle): string {
       ${panel("Simulation Triage Note", `
         ${textArea("simulation-triage-note", state.activeSimulationTriageNote, "Simulation note for the next triage action", "textarea short")}
         <div class="control-row">
-          <button class="button" id="reset-simulation-triage" type="button">Reset simulation triage</button>
+          <button class="button subtle" id="reset-simulation-triage" type="button">Reset simulation triage</button>
         </div>
       `)}
     </div>
@@ -2817,7 +2894,7 @@ function renderImpact(bundle: Bundle): string {
         <div class="control-row">
           <button class="button primary" id="capture-baseline" type="button">Capture current</button>
           <button class="button" id="import-baseline" type="button">Import baseline</button>
-          <button class="button" id="clear-baseline" type="button" ${baseline ? "" : "disabled"}>Clear baseline</button>
+          <button class="button subtle" id="clear-baseline" type="button" ${baseline ? "" : "disabled"}>Clear baseline</button>
           <input id="baseline-input" type="file" webkitdirectory multiple hidden />
         </div>
         ${state.impactMessage ? `<div class="notice" role="status">${esc(state.impactMessage)}</div>` : ""}
@@ -3006,7 +3083,7 @@ function renderRevision(bundle: Bundle): string {
         <div style="height:10px"></div>
         ${textArea("gate-note", state.activeGateNote, "Approval note for the next gate action")}
         <div class="control-row">
-          <button class="button" id="reset-gates" type="button">Reset local gate states</button>
+          <button class="button subtle" id="reset-gates" type="button">Reset local gate states</button>
         </div>
       `)}
       ${panel("Initial Change Set", code(bundle.revision.initialChangeSet))}
@@ -3039,7 +3116,7 @@ function renderRevision(bundle: Bundle): string {
         badge(request.priority, request.priority === "high" ? "danger" : request.priority === "medium" ? "warning" : "neutral"),
         esc(request.changeType),
         esc(request.summary),
-        `<div class="control-row compact"><button class="button small" data-revision-request="${esc(request.id)}" data-revision-status="ready" type="button">Ready</button><button class="button small" data-revision-request="${esc(request.id)}" data-revision-status="sent" type="button">Sent</button><button class="button small" data-revision-delete="${esc(request.id)}" type="button">Delete</button></div>`
+        `<div class="control-row compact"><button class="button small" data-revision-request="${esc(request.id)}" data-revision-status="ready" type="button">Ready</button><button class="button small" data-revision-request="${esc(request.id)}" data-revision-status="sent" type="button">Sent</button><button class="button small danger" data-revision-delete="${esc(request.id)}" type="button">Delete</button></div>`
       ])) : `<div class="empty">No revision requests.</div>`)}
     </div>
   `;
@@ -3099,15 +3176,15 @@ function render(): void {
           </div>
         </div>
         <div class="package-tools">
-          <button class="button primary" id="load-sample" type="button">Load sample</button>
-          <button class="button" id="import-folder" type="button">Import package</button>
+          <button class="button primary" id="load-sample" type="button">Load Sample Package</button>
+          <button class="button" id="import-folder" type="button">Import Package Folder</button>
           <input id="folder-input" type="file" webkitdirectory multiple hidden />
         </div>
         <nav class="nav" aria-label="Workbench views">
           ${views.map((view) => `
             <button class="nav-item ${state.view === view.id ? "active" : ""}" data-view="${view.id}" type="button" ${state.view === view.id ? "aria-current=\"page\"" : ""}>
               <span>${esc(view.label)}</span>
-              <span class="nav-count">${esc(view.count(bundle))}</span>
+              <span class="nav-count">${esc(humanLabel(view.count(bundle)))}</span>
             </button>
           `).join("")}
         </nav>
@@ -3118,12 +3195,12 @@ function render(): void {
           <div>
             <div class="eyebrow">${esc(viewLabel)}</div>
             <h1>${esc(bundle.productModel.product_name ?? "Archetype Package")}</h1>
-            <div class="meta-line">${esc(bundle.productModel.product_type ?? "")} · ${esc(bundle.manifest.operating_mode ?? "")}</div>
+            <div class="meta-line">${esc([humanLabel(bundle.productModel.product_type ?? ""), humanLabel(bundle.manifest.operating_mode ?? "")].filter(Boolean).join(" · "))}</div>
           </div>
           <div class="status-strip" aria-label="Package status">
-            ${badge(`score ${bundle.readiness.score}`, bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
-            ${badge(bundle.readiness.readyForFrontendAgent ? "ready" : "blocked", bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
-            ${badge(`DSAG ${bundle.dsag.integrity.status}`, statusTone(bundle.dsag.integrity.status))}
+            ${badge(`Score ${bundle.readiness.score}`, bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
+            ${badge(bundle.readiness.readyForFrontendAgent ? "Ready" : "Blocked", bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
+            ${badge(`DSAG ${humanLabel(bundle.dsag.integrity.status)}`, statusTone(bundle.dsag.integrity.status))}
             ${badge(`${bundle.readiness.warnings.length} warnings`, bundle.readiness.warnings.length ? "warning" : "success")}
           </div>
         </div>

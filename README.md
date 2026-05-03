@@ -25,6 +25,7 @@ Implemented:
 - Workbench deterministic contract inspection.
 - Workbench E2E scenario/results inspection.
 - Workbench premium dark monochrome Tailwind/shadcn-style interface.
+- Workbench polished control language, button hierarchy, dropdown styling, review rows, and mobile navigation.
 - Spec coverage and remaining-gap audit.
 - Product Model.
 - User, role, permission, entity, and lifecycle artifacts.
