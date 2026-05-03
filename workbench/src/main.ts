@@ -23,7 +23,8 @@ type WorkspacePriority = "low" | "medium" | "high";
 type WorkspaceSortKey = "savedAt" | "generatedAt" | "name" | "readinessScore" | "artifactCount" | "warningCount" | "priority";
 type WorkspaceSortDirection = "asc" | "desc";
 type WorkspaceHealthFilter = "all" | "hold" | "high" | "pinned" | "untagged" | "no_notes";
-type StartMode = "hub" | "create";
+type StartMode = "hub" | "intent" | "evidence" | "preflight";
+type PreflightStatus = "pass" | "warning" | "blocker";
 
 interface ArtifactDigest {
   path: string;
@@ -94,6 +95,8 @@ interface IntakeFormState {
   goals: string;
   businessGoals: string;
   users: string;
+  constraints: string;
+  preferredStack: string;
   brandAttributes: string;
   primaryColor: string;
   tone: string;
@@ -113,6 +116,13 @@ interface SourceFinding {
   severity: "blocker" | "major" | "minor";
   category: string;
   finding: string;
+}
+
+interface StartPreflightCheck {
+  id: string;
+  label: string;
+  status: PreflightStatus;
+  detail: string;
 }
 
 interface Bundle {
@@ -320,6 +330,10 @@ const views: Array<{ id: ViewId; label: string; group: ViewGroup; description: s
   { id: "revision", label: "Revision Requests", group: "Governance", description: "Capture approval gates and change requests.", count: (bundle) => bundle.revision.approvalGates?.gates?.length ?? 0 }
 ];
 
+const START_DRAFT_STORAGE_KEY = "archetype:start-draft:v1";
+const operatingModeOptions = ["fast_architecture", "full_architecture", "existing_product_audit", "contract_repair"];
+const sourceMaterialTypes: SourceMaterialDraft["type"][] = ["document", "code", "design_file", "screenshot", "brand", "other"];
+
 const state: {
   bundle: Bundle | null;
   view: ViewId;
@@ -369,6 +383,11 @@ const state: {
   workspaceComparison: SavedPackageComparison | null;
   startMode: StartMode;
   startDraft: IntakeFormState;
+  startSourceMaterials: SourceMaterialDraft[];
+  startSourceDraft: SourceMaterialDraft;
+  startSourceMessage: string;
+  startDraftSavedAt: string;
+  startExamplesVisible: boolean;
   startMessage: string;
   intakeForm: IntakeFormState | null;
   sourceMaterials: SourceMaterialDraft[];
@@ -423,15 +442,22 @@ const state: {
   workspaceComparison: null,
   startMode: "hub",
   startDraft: blankIntakeForm(),
+  startSourceMaterials: [],
+  startSourceDraft: blankSourceDraft(),
+  startSourceMessage: "",
+  startDraftSavedAt: "",
+  startExamplesVisible: false,
   startMessage: "",
   intakeForm: null,
   sourceMaterials: [],
-  sourceDraft: { id: "", label: "", type: "document", content: "", notes: "", path: "" },
+  sourceDraft: blankSourceDraft(),
   sourceMessage: ""
 };
 
 const app = document.querySelector<HTMLDivElement>("#app");
 if (!app) throw new Error("App root not found.");
+
+let startDraftRenderTimer: number | undefined;
 
 function esc(value: unknown): string {
   return String(value ?? "")
@@ -1762,7 +1788,7 @@ async function restoreWorkbenchState(payload: WorkbenchStateExport): Promise<voi
   state.handoffMessage = "";
   state.intakeForm = payload.localState.intakeForm ?? null;
   state.sourceMaterials = payload.localState.sourceMaterials ?? [];
-  state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
+  state.sourceDraft = blankSourceDraft();
   state.sourceMessage = "";
   saveApprovalOverrides();
   saveCoverageOverrides();
@@ -1802,7 +1828,7 @@ function resetPackageScopedState(): void {
   state.handoffMessage = "";
   state.intakeForm = null;
   state.sourceMaterials = [];
-  state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
+  state.sourceDraft = blankSourceDraft();
   state.sourceMessage = "";
 }
 
@@ -2399,6 +2425,8 @@ function defaultIntakeFromBundle(bundle: Bundle): Record<string, unknown> {
     goals: (bundle.productModel.core_jobs ?? []).map((job: any) => job.job).filter(Boolean),
     businessGoals: bundle.productModel.business_goals ?? [],
     users: bundle.productModel.primary_users ?? [],
+    constraints: bundle.productModel.constraints ?? [],
+    preferredStack: bundle.buildManifest.framework ? [String(bundle.buildManifest.framework)] : [],
     brand: {
       attributes: ["clear", "precise", "trustworthy"],
       primaryColor: "#2563EB",
@@ -2415,10 +2443,35 @@ function blankIntakeForm(): IntakeFormState {
     goals: "",
     businessGoals: "",
     users: "",
+    constraints: "",
+    preferredStack: "",
     brandAttributes: "clear, precise, trustworthy",
     primaryColor: "#2563EB",
     tone: "Clear, direct, and low-hype.",
     operatingMode: "full_architecture"
+  };
+}
+
+function blankSourceDraft(): SourceMaterialDraft {
+  return { id: "", label: "", type: "document", content: "", notes: "", path: "" };
+}
+
+function normalizeIntakeForm(value: unknown): IntakeFormState {
+  const record = typeof value === "object" && value && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  const blank = blankIntakeForm();
+  const mode = String(record.operatingMode ?? blank.operatingMode);
+  return {
+    projectName: String(record.projectName ?? blank.projectName),
+    context: String(record.context ?? blank.context),
+    goals: String(record.goals ?? blank.goals),
+    businessGoals: String(record.businessGoals ?? blank.businessGoals),
+    users: String(record.users ?? blank.users),
+    constraints: String(record.constraints ?? blank.constraints),
+    preferredStack: String(record.preferredStack ?? blank.preferredStack),
+    brandAttributes: String(record.brandAttributes ?? blank.brandAttributes),
+    primaryColor: String(record.primaryColor ?? blank.primaryColor),
+    tone: String(record.tone ?? blank.tone),
+    operatingMode: operatingModeOptions.includes(mode) ? mode : blank.operatingMode
   };
 }
 
@@ -2430,6 +2483,8 @@ function formFromIntake(value: Record<string, unknown>, bundle?: Bundle): Intake
     goals: Array.isArray(value.goals) ? value.goals.map(String).join("\n") : "",
     businessGoals: Array.isArray(value.businessGoals) ? value.businessGoals.map(String).join("\n") : "",
     users: Array.isArray(value.users) ? value.users.map((user) => typeof user === "string" ? user : JSON.stringify(user)).join("\n") : "",
+    constraints: Array.isArray(value.constraints) ? value.constraints.map(String).join("\n") : String(value.constraints ?? ""),
+    preferredStack: Array.isArray(value.preferredStack) ? value.preferredStack.map(String).join("\n") : String(value.preferredStack ?? ""),
     brandAttributes: Array.isArray(brand.attributes) ? brand.attributes.map(String).join(", ") : "clear, precise, trustworthy",
     primaryColor: String(brand.primaryColor ?? "#2563EB"),
     tone: String(brand.tone ?? "Clear, direct, and low-hype."),
@@ -2448,13 +2503,15 @@ function lines(value: string): string[] {
   return value.split("\n").map((item) => item.trim()).filter(Boolean);
 }
 
-function intakeFromForm(form: IntakeFormState): Record<string, unknown> {
+function intakeFromForm(form: IntakeFormState, sourceMaterials = state.sourceMaterials): Record<string, unknown> {
   const intake: Record<string, unknown> = {
     projectName: form.projectName.trim() || "Archetype Project",
     context: form.context.trim(),
     goals: lines(form.goals),
     businessGoals: lines(form.businessGoals),
     users: lines(form.users),
+    constraints: lines(form.constraints),
+    preferredStack: lines(form.preferredStack),
     brand: {
       attributes: form.brandAttributes.split(",").map((item) => item.trim()).filter(Boolean),
       primaryColor: form.primaryColor.trim() || "#2563EB",
@@ -2462,7 +2519,7 @@ function intakeFromForm(form: IntakeFormState): Record<string, unknown> {
     },
     operatingMode: form.operatingMode
   };
-  const materials = state.sourceMaterials.map((material, index) => ({
+  const materials = sourceMaterials.map((material, index) => ({
     id: material.id || `source_material_${index + 1}`,
     label: material.label,
     type: material.type,
@@ -2531,6 +2588,214 @@ function sourceTypeForFile(fileName: string): SourceMaterialDraft["type"] {
   if (/brand|voice|tone|style/i.test(fileName)) return "brand";
   if (/\.(md|txt|doc|docx|pdf)$/i.test(fileName)) return "document";
   return "other";
+}
+
+function isSourceMaterialType(value: unknown): value is SourceMaterialDraft["type"] {
+  return sourceMaterialTypes.includes(value as SourceMaterialDraft["type"]);
+}
+
+function normalizeSourceMaterial(value: unknown, index: number): SourceMaterialDraft {
+  const record = typeof value === "object" && value && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  return {
+    id: String(record.id ?? `source_material_${index + 1}`),
+    label: String(record.label ?? ""),
+    type: isSourceMaterialType(record.type) ? record.type : "other",
+    content: String(record.content ?? ""),
+    notes: String(record.notes ?? ""),
+    path: String(record.path ?? "")
+  };
+}
+
+function startDraftHasContent(): boolean {
+  const draft = state.startDraft;
+  return [draft.projectName, draft.context, draft.goals, draft.businessGoals, draft.users, draft.constraints, draft.preferredStack].some((value) => String(value).trim().length > 0)
+    || state.startSourceMaterials.length > 0;
+}
+
+function persistStartDraft(): boolean {
+  try {
+    const savedAt = new Date().toISOString();
+    localStorage.setItem(START_DRAFT_STORAGE_KEY, JSON.stringify({
+      exportVersion: 1,
+      savedAt,
+      draft: state.startDraft,
+      sourceMaterials: state.startSourceMaterials
+    }));
+    state.startDraftSavedAt = savedAt;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function saveStartDraft(message: string): void {
+  state.startMessage = persistStartDraft() ? message : "Could not save draft locally in this browser.";
+}
+
+function loadStartDraft(): void {
+  try {
+    const raw = localStorage.getItem(START_DRAFT_STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    state.startDraft = normalizeIntakeForm(parsed.draft);
+    state.startSourceMaterials = Array.isArray(parsed.sourceMaterials)
+      ? parsed.sourceMaterials.map(normalizeSourceMaterial)
+      : [];
+    state.startDraftSavedAt = typeof parsed.savedAt === "string" ? parsed.savedAt : "";
+  } catch {
+    state.startMessage = "Saved onboarding draft could not be read. Start a fresh draft or reset onboarding.";
+  }
+}
+
+function clearStartDraftStorage(): void {
+  try {
+    localStorage.removeItem(START_DRAFT_STORAGE_KEY);
+  } catch {
+    // Local storage can be disabled. Resetting in memory still gives the user a fresh state.
+  }
+  state.startDraft = blankIntakeForm();
+  state.startSourceMaterials = [];
+  state.startSourceDraft = blankSourceDraft();
+  state.startSourceMessage = "";
+  state.startDraftSavedAt = "";
+  state.startExamplesVisible = false;
+}
+
+function scheduleStartDraftRefresh(): void {
+  window.clearTimeout(startDraftRenderTimer);
+  const activeElement = document.activeElement as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+  const activeId = activeElement?.id ?? "";
+  startDraftRenderTimer = window.setTimeout(() => {
+    render();
+    if (!activeId) return;
+    const restored = document.getElementById(activeId) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+    if (!restored || restored.disabled) return;
+    restored.focus();
+    if ("setSelectionRange" in restored && restored.tagName !== "SELECT" && restored.type !== "color") {
+      const end = restored.value.length;
+      restored.setSelectionRange(end, end);
+    }
+  }, 260);
+}
+
+function operatingModeDetail(mode: string): { label: string; bestFor: string; output: string } {
+  const details: Record<string, { label: string; bestFor: string; output: string }> = {
+    fast_architecture: {
+      label: "Fast Architecture",
+      bestFor: "Early product direction, quick screen maps, and a compact agent handoff.",
+      output: "A lean architecture package with routes, core screens, primary components, and readiness checks."
+    },
+    full_architecture: {
+      label: "Full Architecture",
+      bestFor: "Production-grade frontend planning with complete UX, design system, data, and validation contracts.",
+      output: "The complete package: product model, route map, screen specs, tokens, component contracts, E2E proof, and handoff."
+    },
+    existing_product_audit: {
+      label: "Existing Product Audit",
+      bestFor: "Screenshots, docs, or code from an existing app that needs diagnosis before rebuilding or extending.",
+      output: "A gap-led package with evidence findings, UX/contract risks, repair recommendations, and deterministic build notes."
+    },
+    contract_repair: {
+      label: "Contract Repair",
+      bestFor: "A partial or broken frontend-agent contract that needs enough structure to become buildable.",
+      output: "Targeted repairs for routes, screens, components, data contracts, actions, acceptance criteria, and unresolved gaps."
+    }
+  };
+  return details[mode] ?? details.full_architecture;
+}
+
+function startPreflightChecks(): StartPreflightCheck[] {
+  const draft = state.startDraft;
+  const contextLength = draft.context.trim().length;
+  const hasUsersOrGoals = !!draft.users.trim() || !!draft.goals.trim();
+  const findings = state.startSourceMaterials.flatMap(findingsForMaterial);
+  const blockerFindings = findings.filter((finding) => finding.severity === "blocker");
+  const warningFindings = findings.filter((finding) => finding.severity !== "blocker");
+  const evidenceCount = state.startSourceMaterials.length;
+  const unsupportedEvidence = state.startSourceMaterials.filter((material) => material.type === "other").length;
+  const unreadableEvidence = state.startSourceMaterials.filter((material) => !material.content.trim() && !material.path.trim() && !material.notes.trim()).length;
+  const highImpactText = [
+    draft.context,
+    draft.goals,
+    draft.businessGoals,
+    draft.constraints,
+    draft.preferredStack,
+    state.startSourceMaterials.map((material) => `${material.label} ${material.notes} ${material.path}`).join("\n")
+  ].join("\n").toLowerCase();
+  const missingConstraints = [
+    { label: "backend/API", pattern: /\b(api|backend|database|server|endpoint|graphql|rest)\b/ },
+    { label: "auth/permissions", pattern: /\b(auth|permission|role|login|session|oauth|sso|rbac)\b/ },
+    { label: "production copy", pattern: /\b(copy|content|locale|empty state|error message|microcopy|i18n)\b/ },
+    { label: "compliance/accessibility", pattern: /\b(accessibility|wcag|compliance|privacy|gdpr|hipaa|soc 2|audit)\b/ }
+  ].filter((item) => !item.pattern.test(highImpactText)).map((item) => item.label);
+
+  return [
+    {
+      id: "context",
+      label: "Product context",
+      status: contextLength >= 80 ? "pass" : contextLength >= 36 ? "warning" : "blocker",
+      detail: contextLength >= 80
+        ? "Context is specific enough for architecture work."
+        : contextLength >= 36
+          ? "Context exists but should explain the product, state, and desired outcome more clearly."
+          : "Add product context before generation can be trusted."
+    },
+    {
+      id: "users-goals",
+      label: "Users or user goals",
+      status: hasUsersOrGoals ? "pass" : "blocker",
+      detail: hasUsersOrGoals
+        ? "The compiler has a target user or job to optimize around."
+        : "Add primary users or user goals so the generated UX has a real audience."
+    },
+    {
+      id: "mode",
+      label: "Operating mode",
+      status: operatingModeOptions.includes(draft.operatingMode) ? "pass" : "blocker",
+      detail: operatingModeOptions.includes(draft.operatingMode)
+        ? `${operatingModeDetail(draft.operatingMode).label} is selected.`
+        : "Choose a supported operating mode."
+    },
+    {
+      id: "evidence",
+      label: "Evidence readability",
+      status: evidenceCount === 0 || unsupportedEvidence || unreadableEvidence ? "warning" : "pass",
+      detail: evidenceCount === 0
+        ? "No source material is attached yet. You can continue, but evidence will make the architecture less generic."
+        : unsupportedEvidence
+          ? `${unsupportedEvidence} source item uses an unsupported or unknown type and will be recorded with limitations.`
+          : unreadableEvidence
+            ? `${unreadableEvidence} source item needs content, notes, or a path before it can constrain generation.`
+            : `${evidenceCount} evidence item${evidenceCount === 1 ? "" : "s"} are readable locally.`
+    },
+    {
+      id: "safety",
+      label: "Evidence safety",
+      status: blockerFindings.length ? "blocker" : warningFindings.length ? "warning" : "pass",
+      detail: blockerFindings.length
+        ? `${blockerFindings.length} blocker finding requires redaction before provider-backed generation.`
+        : warningFindings.length
+          ? `${warningFindings.length} safety warning${warningFindings.length === 1 ? "" : "s"} should be reviewed.`
+          : "No prompt-injection, secret, PII, or regulated-data signals were detected locally."
+    },
+    {
+      id: "constraints",
+      label: "High-impact constraints",
+      status: missingConstraints.length ? "warning" : "pass",
+      detail: missingConstraints.length
+        ? `Missing context: ${missingConstraints.join(", ")}.`
+        : "Backend, auth, copy, and compliance/accessibility constraints are represented."
+    }
+  ];
+}
+
+function startPreflightSummary(checks = startPreflightChecks()): { label: "Ready to generate" | "Generate with warnings" | "Needs required context"; tone: "success" | "warning" | "danger"; score: number; blockers: number; warnings: number } {
+  const blockers = checks.filter((check) => check.status === "blocker").length;
+  const warnings = checks.filter((check) => check.status === "warning").length;
+  const score = Math.max(0, Math.min(100, 100 - blockers * 28 - warnings * 11));
+  if (blockers) return { label: "Needs required context", tone: "danger", score, blockers, warnings };
+  if (warnings) return { label: "Generate with warnings", tone: "warning", score, blockers, warnings };
+  return { label: "Ready to generate", tone: "success", score, blockers, warnings };
 }
 
 function intakeFileName(value: Record<string, unknown>): string {
@@ -2630,6 +2895,8 @@ function renderGeneration(bundle: Bundle): string {
           ${textArea("intake-goals", form.goals, "User goals", "textarea short")}
           ${textArea("intake-business-goals", form.businessGoals, "Business goals", "textarea short")}
           ${textArea("intake-users", form.users, "Users", "textarea short")}
+          ${textArea("intake-constraints", form.constraints, "Constraints", "textarea short")}
+          ${textArea("intake-preferred-stack", form.preferredStack, "Preferred stack", "textarea short")}
           ${textArea("intake-tone", form.tone, "Tone", "textarea short")}
         </div>
         <div class="control-row">
@@ -3460,31 +3727,108 @@ function renderRecentPackages(): string {
   ]));
 }
 
-function renderStartDraft(): string {
-  const intake = intakeFromForm(state.startDraft);
+function startOnboardingState(): string {
+  const states: Record<StartMode, string> = {
+    hub: "fresh-start",
+    intent: "guided-intent",
+    evidence: "guided-evidence",
+    preflight: "guided-preflight"
+  };
+  return states[state.startMode];
+}
+
+function renderStartStepper(): string {
+  const steps: Array<{ id: Exclude<StartMode, "hub">; label: string; detail: string }> = [
+    { id: "intent", label: "Project Intent", detail: "Context, users, goals, stack, mode." },
+    { id: "evidence", label: "Evidence Upload", detail: "Screenshots, docs, code, brand, API notes." },
+    { id: "preflight", label: "Local Preflight", detail: "Deterministic readiness before provider setup." }
+  ];
+  return `<div class="intake-stepper" aria-label="Guided package creation steps">
+    ${steps.map((step, index) => `
+      <button class="step-card ${state.startMode === step.id ? "active" : ""}" data-start-step="${esc(step.id)}" data-agent-action="open-${esc(step.id)}-step" type="button" ${state.startMode === step.id ? "aria-current=\"step\"" : ""}>
+        <span class="step-index">${String(index + 1).padStart(2, "0")}</span>
+        <span>
+          <strong>${esc(step.label)}</strong>
+          <small>${esc(step.detail)}</small>
+        </span>
+      </button>
+    `).join("")}
+  </div>`;
+}
+
+function renderStartExamples(): string {
+  if (!state.startExamplesVisible) return "";
   return `
-    <section class="start-hero panel" data-agent-section="start-draft">
-      <div class="start-copy">
-        <div class="eyebrow">Create Package</div>
-        <h1>Start with product intent, then add evidence.</h1>
-        <p>Draft the context Archetype will compile later. Local draft creation does not require an LLM API key.</p>
-        <div class="hero-actions">
-          <button class="button primary" id="save-start-draft" data-agent-action="save-project-draft" type="button">Create project draft</button>
-          <button class="button" id="download-start-draft" data-agent-action="download-project-draft" type="button">Download intake JSON</button>
-          <button class="button subtle" id="back-start-hub" data-agent-action="back-to-start-hub" type="button">Back to Start Hub</button>
+    <div class="example-shelf" id="start-examples">
+      <div>
+        <strong>Product context</strong>
+        <span>A B2B approvals tool where finance operators review vendor changes, spot risk, and hand off clean exceptions to managers.</span>
+      </div>
+      <div>
+        <strong>User goals</strong>
+        <span>Find risky changes quickly. Resolve low-risk items in bulk. Leave an auditable trail for every approval.</span>
+      </div>
+      <div>
+        <strong>Constraints</strong>
+        <span>Role-based access, audit log, WCAG AA, empty states for no vendor activity, and REST API backed tables.</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderStartModeOptions(): string {
+  return `<div class="mode-grid" role="group" aria-label="Operating mode options">
+    ${operatingModeOptions.map((mode) => {
+      const detail = operatingModeDetail(mode);
+      const active = state.startDraft.operatingMode === mode;
+      return `
+        <button class="mode-card ${active ? "active" : ""}" data-start-mode-option="${esc(mode)}" type="button" aria-pressed="${active}">
+          <strong>${esc(detail.label)}</strong>
+          <span>${esc(detail.bestFor)}</span>
+          <em>${esc(detail.output)}</em>
+        </button>
+      `;
+    }).join("")}
+  </div>`;
+}
+
+function renderStartQualityPanel(checks: StartPreflightCheck[], summary: ReturnType<typeof startPreflightSummary>): string {
+  return panel("Input Quality", `
+    <div class="quality-meter" aria-label="Input quality score ${esc(summary.score)} out of 100">
+      <div style="width:${esc(summary.score)}%"></div>
+    </div>
+    <div class="mini-metrics">
+      <div><strong>${esc(summary.score)}</strong><span>Quality score</span></div>
+      <div><strong>${esc(summary.blockers)}</strong><span>Required gaps</span></div>
+      <div><strong>${esc(summary.warnings)}</strong><span>Warnings</span></div>
+    </div>
+    <div class="preflight-list compact" aria-label="Current intake checks">
+      ${checks.slice(0, 4).map((check) => `
+        <div class="preflight-row ${esc(check.status)}">
+          ${badge(check.status, check.status === "pass" ? "success" : check.status === "warning" ? "warning" : "danger")}
+          <div>
+            <strong>${esc(check.label)}</strong>
+            <span>${esc(check.detail)}</span>
+          </div>
         </div>
-      </div>
-      <div class="start-proof" aria-label="Draft status">
-        ${badge(state.startDraft.context.trim() ? "context ready" : "needs context", state.startDraft.context.trim() ? "success" : "warning")}
-        ${badge(state.startDraft.projectName.trim() ? "named" : "unnamed", state.startDraft.projectName.trim() ? "success" : "neutral")}
-        ${badge("no API key needed", "success")}
-      </div>
-    </section>
+      `).join("")}
+    </div>
+    <div class="control-row">
+      <button class="button" id="toggle-start-examples" data-agent-action="toggle-intake-examples" type="button">${state.startExamplesVisible ? "Hide examples" : "Show examples"}</button>
+      <button class="button primary" id="continue-start-evidence" data-agent-action="continue-to-evidence" type="button">Continue to evidence</button>
+    </div>
+    ${renderStartExamples()}
+  `);
+}
+
+function renderStartIntentStep(checks: StartPreflightCheck[], summary: ReturnType<typeof startPreflightSummary>): string {
+  const intake = intakeFromForm(state.startDraft, state.startSourceMaterials);
+  return `
     <div class="grid cols-2 section-gap">
       ${panel("Project Intent", `
         <div class="form-grid">
           ${inputField("start-project-name", state.startDraft.projectName, "Project name")}
-          ${selectField("start-mode", state.startDraft.operatingMode, "Operating mode", ["fast_architecture", "full_architecture", "existing_product_audit", "contract_repair"])}
+          ${selectField("start-mode", state.startDraft.operatingMode, "Operating mode", operatingModeOptions)}
           ${inputField("start-primary-color", state.startDraft.primaryColor, "Primary color", "color")}
           ${inputField("start-brand-attributes", state.startDraft.brandAttributes, "Brand attributes")}
         </div>
@@ -3494,10 +3838,16 @@ function renderStartDraft(): string {
           ${textArea("start-goals", state.startDraft.goals, "User goals", "textarea short")}
           ${textArea("start-business-goals", state.startDraft.businessGoals, "Business goals", "textarea short")}
           ${textArea("start-users", state.startDraft.users, "Primary users", "textarea short")}
+          ${textArea("start-constraints", state.startDraft.constraints, "Constraints", "textarea short")}
+          ${textArea("start-preferred-stack", state.startDraft.preferredStack, "Preferred stack", "textarea short")}
           ${textArea("start-tone", state.startDraft.tone, "Tone", "textarea short")}
         </div>
       `)}
-      ${panel("Draft Preview", `
+      ${renderStartQualityPanel(checks, summary)}
+    </div>
+    <div class="grid cols-2 section-gap">
+      ${panel("Operating Mode Explanation", renderStartModeOptions())}
+      ${panel("Local Draft Preview", `
         ${state.startMessage ? `<div class="notice" role="status">${esc(state.startMessage)}</div><div style="height:10px"></div>` : ""}
         ${code(intake)}
       `)}
@@ -3505,10 +3855,150 @@ function renderStartDraft(): string {
   `;
 }
 
+function renderStartEvidenceStep(): string {
+  const findings = state.startSourceMaterials.flatMap(findingsForMaterial);
+  const hasBlockers = findings.some((finding) => finding.severity === "blocker");
+  return `
+    <div class="grid cols-2 section-gap">
+      ${panel("Evidence Upload", `
+        <div class="form-grid">
+          ${inputField("start-source-label", state.startSourceDraft.label, "Evidence label")}
+          ${selectField("start-source-type", state.startSourceDraft.type, "Evidence type", sourceMaterialTypes)}
+          ${inputField("start-source-path", state.startSourceDraft.path, "Path or URL")}
+          ${inputField("start-source-notes", state.startSourceDraft.notes, "Notes")}
+        </div>
+        <div style="height:10px"></div>
+        ${textArea("start-source-content", state.startSourceDraft.content, "Content excerpt", "textarea short")}
+        <div class="control-row">
+          <button class="button primary" id="add-start-source" data-agent-action="add-evidence-record" type="button">Add evidence</button>
+          <button class="button" id="import-start-source-files" data-agent-action="import-evidence-files" type="button">Import files</button>
+          <button class="button danger" id="clear-start-sources" data-agent-action="clear-evidence-records" type="button" ${state.startSourceMaterials.length ? "" : "disabled"}>Clear evidence</button>
+          <input id="start-source-file-input" type="file" multiple hidden />
+        </div>
+        ${state.startSourceMessage ? `<div class="notice" role="status">${esc(state.startSourceMessage)}</div>` : ""}
+      `)}
+      ${panel("Source Material State", `
+        <div class="mini-metrics">
+          <div><strong>${esc(state.startSourceMaterials.length)}</strong><span>Evidence records</span></div>
+          <div><strong>${esc(findings.length)}</strong><span>Safety findings</span></div>
+          <div><strong>${esc(findings.filter((finding) => finding.severity === "blocker").length)}</strong><span>Blockers</span></div>
+        </div>
+        <div class="notice" role="note">
+          Prompt-injection text is treated as risky source material, not as an instruction. Sensitive data should be redacted before Phase 3 provider setup.
+        </div>
+        <div class="control-row">
+          <button class="button subtle" id="back-start-intent" data-agent-action="back-to-intent" type="button">Back to intent</button>
+          <button class="button primary" id="continue-start-preflight" data-agent-action="continue-to-local-preflight" type="button">Continue to preflight</button>
+        </div>
+      `)}
+    </div>
+    <div class="section-gap">
+      ${panel("Evidence Records", `
+        ${state.startSourceMaterials.length ? table(["Safety", "Type", "Label", "Findings", "Actions"], state.startSourceMaterials.map((material) => {
+          const materialFindings = findingsForMaterial(material);
+          return [
+            badge(materialFindings.length ? `${materialFindings.length} findings` : "clear", sourceTone(materialFindings)),
+            esc(humanLabel(material.type)),
+            `<div><strong>${esc(material.label || material.path || "Untitled evidence")}</strong><div class="muted">${esc(material.path || material.notes || "Local draft evidence")}</div></div>`,
+            esc(materialFindings.map((finding) => `${finding.severity}: ${finding.finding}`).join("; ") || "None"),
+            `<button class="button small danger" data-start-source-remove="${esc(material.id)}" type="button">Remove</button>`
+          ];
+        })) : `<div class="source-empty">
+          <strong>No evidence added yet.</strong>
+          <span>Add screenshots, product references, brand notes, docs, code snippets, backend/API notes, or auth/permission notes. The draft can still be checked locally before any LLM key is requested.</span>
+        </div>`}
+        ${hasBlockers ? `<div class="notice" role="status">Safety blocker detected. Redact secrets before provider-backed generation in Phase 3.</div>` : ""}
+      `)}
+    </div>
+  `;
+}
+
+function renderStartPreflightStep(checks: StartPreflightCheck[], summary: ReturnType<typeof startPreflightSummary>): string {
+  const intake = intakeFromForm(state.startDraft, state.startSourceMaterials);
+  return `
+    <div class="grid cols-2 section-gap">
+      ${panel("Local Preflight", `
+        <div class="preflight-summary ${esc(summary.tone)}">
+          <strong>${esc(summary.label)}</strong>
+          <span>${esc(summary.blockers ? "Resolve required gaps before generation." : summary.warnings ? "You can proceed later, but review the warnings first." : "The local intake is ready for provider-backed generation setup.")}</span>
+        </div>
+        <div class="quality-meter" aria-label="Local preflight score ${esc(summary.score)} out of 100">
+          <div style="width:${esc(summary.score)}%"></div>
+        </div>
+        <div class="preflight-list">
+          ${checks.map((check) => `
+            <div class="preflight-row ${esc(check.status)}">
+              ${badge(check.status, check.status === "pass" ? "success" : check.status === "warning" ? "warning" : "danger")}
+              <div>
+                <strong>${esc(check.label)}</strong>
+                <span>${esc(check.detail)}</span>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+        <div class="control-row">
+          <button class="button subtle" id="back-start-evidence" data-agent-action="back-to-evidence" type="button">Back to evidence</button>
+          <button class="button" id="download-start-draft-preflight" data-agent-action="download-project-draft" type="button">Download intake JSON</button>
+          <button class="button primary" id="start-generate-architecture" data-agent-action="generate-architecture" type="button" disabled aria-describedby="phase3-provider-note">Generate architecture</button>
+        </div>
+        <div class="notice" id="phase3-provider-note" role="note">Provider selection and session-only API key entry are Phase 3. No API key is requested during local preflight.</div>
+      `)}
+      ${panel("Intake Preview", code(intake))}
+    </div>
+  `;
+}
+
+function renderStartDraft(): string {
+  const checks = startPreflightChecks();
+  const summary = startPreflightSummary(checks);
+  const stepCopy: Record<Exclude<StartMode, "hub">, { eyebrow: string; title: string; body: string }> = {
+    intent: {
+      eyebrow: "Guided Intake",
+      title: "Tell Archetype what product should exist.",
+      body: "Capture the product, users, goals, constraints, stack, and operating mode locally. No LLM API key is needed for drafting."
+    },
+    evidence: {
+      eyebrow: "Evidence Upload",
+      title: "Attach the source material that should constrain the architecture.",
+      body: "Every source becomes an evidence record with immediate local safety feedback. Risky source text is never treated as an instruction."
+    },
+    preflight: {
+      eyebrow: "Local Preflight",
+      title: "Check readiness before provider setup.",
+      body: "Archetype validates the intake locally and tells you whether it is ready, warning-only, or missing required context."
+    }
+  };
+  const copy = stepCopy[state.startMode === "hub" ? "intent" : state.startMode];
+  return `
+    <section class="start-hero panel" data-agent-section="guided-intake">
+      <div class="start-copy">
+        <div class="eyebrow">${esc(copy.eyebrow)}</div>
+        <h1>${esc(copy.title)}</h1>
+        <p>${esc(copy.body)}</p>
+        <div class="hero-actions">
+          <button class="button primary" id="save-start-draft" data-agent-action="save-project-draft" type="button">Save draft locally</button>
+          <button class="button" id="download-start-draft" data-agent-action="download-project-draft" type="button">Download intake JSON</button>
+          <button class="button subtle" id="back-start-hub" data-agent-action="back-to-start-hub" type="button">Back to Start Hub</button>
+        </div>
+      </div>
+      <div class="start-proof" aria-label="Draft status">
+        ${badge(summary.label, summary.tone)}
+        ${badge(`${state.startSourceMaterials.length} evidence`, state.startSourceMaterials.length ? "success" : "warning")}
+        ${badge(state.startDraftSavedAt ? "draft saved" : "local draft", state.startDraftSavedAt ? "success" : "neutral")}
+        ${badge("no API key needed", "success")}
+      </div>
+    </section>
+    ${renderStartStepper()}
+    ${state.startMode === "intent" ? renderStartIntentStep(checks, summary) : ""}
+    ${state.startMode === "evidence" ? renderStartEvidenceStep() : ""}
+    ${state.startMode === "preflight" ? renderStartPreflightStep(checks, summary) : ""}
+  `;
+}
+
 function renderStartHub(): string {
   const savedCount = state.workspaceEntries.filter((entry) => !entry.archivedAt).length;
-  const hasDraft = !!state.startDraft.projectName.trim() || !!state.startDraft.context.trim();
-  const body = state.startMode === "create" ? renderStartDraft() : `
+  const hasDraft = startDraftHasContent();
+  const body = state.startMode !== "hub" ? renderStartDraft() : `
     <section class="start-hero panel" data-agent-section="start-hub">
       <div class="start-copy">
         <div class="eyebrow">Fresh Start</div>
@@ -3568,7 +4058,7 @@ function renderStartHub(): string {
   `;
   return `
     <a class="skip-link" href="#main-content">Skip to content</a>
-    <main class="start-main" id="main-content" data-agent-current-view="start" data-agent-onboarding-state="${esc(state.startMode === "create" ? "create-draft" : "fresh-start")}" tabindex="-1">
+    <main class="start-main" id="main-content" data-agent-current-view="start" data-agent-onboarding-state="${esc(startOnboardingState())}" tabindex="-1">
       <header class="start-header">
         <div class="brand">
           <div class="mark">A</div>
@@ -3653,7 +4143,7 @@ function render(): void {
 
 function bindStartHubEvents(): void {
   const openCreate = () => {
-    state.startMode = "create";
+    state.startMode = "intent";
     state.startMessage = "";
     render();
   };
@@ -3662,6 +4152,42 @@ function bindStartHubEvents(): void {
   document.querySelector<HTMLButtonElement>("#back-start-hub")?.addEventListener("click", () => {
     state.startMode = "hub";
     state.startMessage = "";
+    render();
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-start-step]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const step = button.dataset.startStep as StartMode | undefined;
+      if (!step || step === "hub") return;
+      state.startMode = step;
+      state.startMessage = "";
+      render();
+    });
+  });
+  document.querySelector<HTMLButtonElement>("#continue-start-evidence")?.addEventListener("click", () => {
+    persistStartDraft();
+    state.startMode = "evidence";
+    state.startMessage = "";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#back-start-intent")?.addEventListener("click", () => {
+    state.startMode = "intent";
+    state.startSourceMessage = "";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#continue-start-preflight")?.addEventListener("click", () => {
+    persistStartDraft();
+    state.startMode = "preflight";
+    state.startSourceMessage = "";
+    state.startMessage = "Local preflight completed without sending data to a provider.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#back-start-evidence")?.addEventListener("click", () => {
+    state.startMode = "evidence";
+    state.startMessage = "";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#toggle-start-examples")?.addEventListener("click", () => {
+    state.startExamplesVisible = !state.startExamplesVisible;
     render();
   });
   document.querySelector<HTMLButtonElement>("#start-load-sample")?.addEventListener("click", () => loadSample());
@@ -3709,7 +4235,7 @@ function bindStartHubEvents(): void {
     }
   });
   document.querySelector<HTMLButtonElement>("#start-reset-fresh")?.addEventListener("click", () => {
-    state.startDraft = blankIntakeForm();
+    clearStartDraftStorage();
     enterFreshState("Fresh state reset. Saved packages are still available.");
     render();
   });
@@ -3722,26 +4248,112 @@ function bindStartHubEvents(): void {
     ["goals", "#start-goals"],
     ["businessGoals", "#start-business-goals"],
     ["users", "#start-users"],
+    ["constraints", "#start-constraints"],
+    ["preferredStack", "#start-preferred-stack"],
     ["tone", "#start-tone"]
   ];
   startBindings.forEach(([field, selector]) => {
     document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(selector)?.addEventListener("input", (event) => {
       state.startDraft[field] = (event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).value as never;
+      persistStartDraft();
+      scheduleStartDraftRefresh();
+    });
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-start-mode-option]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const mode = button.dataset.startModeOption;
+      if (!mode) return;
+      state.startDraft.operatingMode = mode;
+      persistStartDraft();
+      render();
     });
   });
   document.querySelector<HTMLButtonElement>("#save-start-draft")?.addEventListener("click", () => {
-    const intake = intakeFromForm(state.startDraft);
+    const intake = intakeFromForm(state.startDraft, state.startSourceMaterials);
     state.generationDraft = pretty(intake);
-    state.startMessage = state.startDraft.context.trim()
-      ? "Project draft created locally. Provider setup is only needed when generation starts."
-      : "Project draft created locally. Add product context before generation.";
+    saveStartDraft(state.startDraft.context.trim()
+      ? "Project draft saved locally. Provider setup is only needed when generation starts."
+      : "Project draft saved locally. Add product context before generation.");
     render();
   });
-  document.querySelector<HTMLButtonElement>("#download-start-draft")?.addEventListener("click", () => {
-    const intake = intakeFromForm(state.startDraft);
+  const downloadStartDraft = () => {
+    const intake = intakeFromForm(state.startDraft, state.startSourceMaterials);
     downloadText(intakeFileName(intake), `${pretty(intake)}\n`, "application/json");
     state.startMessage = "Intake JSON prepared.";
     render();
+  };
+  document.querySelector<HTMLButtonElement>("#download-start-draft")?.addEventListener("click", downloadStartDraft);
+  document.querySelector<HTMLButtonElement>("#download-start-draft-preflight")?.addEventListener("click", downloadStartDraft);
+  const startSourceBindings: Array<[keyof SourceMaterialDraft, string]> = [
+    ["label", "#start-source-label"],
+    ["type", "#start-source-type"],
+    ["path", "#start-source-path"],
+    ["notes", "#start-source-notes"],
+    ["content", "#start-source-content"]
+  ];
+  startSourceBindings.forEach(([field, selector]) => {
+    document.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(selector)?.addEventListener("input", (event) => {
+      state.startSourceDraft[field] = (event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).value as never;
+    });
+  });
+  document.querySelector<HTMLButtonElement>("#add-start-source")?.addEventListener("click", () => {
+    const material = {
+      ...state.startSourceDraft,
+      id: state.startSourceDraft.id || `start_source_${Date.now().toString(36)}`
+    };
+    if (!material.label.trim() && !material.content.trim() && !material.path.trim()) {
+      state.startSourceMessage = "Evidence requires a label, path, or content excerpt.";
+      render();
+      return;
+    }
+    state.startSourceMaterials = [...state.startSourceMaterials, material];
+    state.startSourceDraft = blankSourceDraft();
+    saveStartDraft("Evidence record saved locally.");
+    state.startSourceMessage = "Evidence record added to the intake draft.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#import-start-source-files")?.addEventListener("click", () => {
+    document.querySelector<HTMLInputElement>("#start-source-file-input")?.click();
+  });
+  document.querySelector<HTMLInputElement>("#start-source-file-input")?.addEventListener("change", async (event) => {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const imported = await Promise.all([...input.files].map(async (file) => ({
+      id: `start_source_${Date.now().toString(36)}_${file.name.replace(/[^a-z0-9]+/gi, "_")}`,
+      label: file.name,
+      type: sourceTypeForFile(file.name),
+      content: file.size <= 120000 && /^text\/|json|javascript|typescript|svg|xml|markdown/i.test(file.type || file.name) ? await file.text() : "",
+      notes: file.size > 120000
+        ? `File omitted from inline content because it is ${formatBytes(file.size)}.`
+        : sourceTypeForFile(file.name) === "screenshot"
+          ? "Binary screenshot recorded as evidence metadata for later provider review."
+          : sourceTypeForFile(file.name) === "other"
+            ? "Unsupported file type recorded with metadata only."
+            : "",
+      path: file.name
+    } satisfies SourceMaterialDraft)));
+    state.startSourceMaterials = [...state.startSourceMaterials, ...imported];
+    saveStartDraft(`Imported ${imported.length} evidence file${imported.length === 1 ? "" : "s"} locally.`);
+    state.startSourceMessage = `Imported ${imported.length} evidence file${imported.length === 1 ? "" : "s"}.`;
+    input.value = "";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#clear-start-sources")?.addEventListener("click", () => {
+    state.startSourceMaterials = [];
+    state.startSourceDraft = blankSourceDraft();
+    saveStartDraft("Evidence records cleared from the local draft.");
+    state.startSourceMessage = "Evidence records cleared.";
+    render();
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-start-source-remove]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.startSourceRemove;
+      if (!id) return;
+      state.startSourceMaterials = state.startSourceMaterials.filter((material) => material.id !== id);
+      saveStartDraft("Evidence record removed from the local draft.");
+      state.startSourceMessage = "Evidence record removed.";
+      render();
+    });
   });
   document.querySelectorAll<HTMLButtonElement>("[data-start-recent-load]").forEach((button) => {
     button.addEventListener("click", async () => {
@@ -4426,6 +5038,8 @@ function bindEvents(): void {
     ["goals", "#intake-goals"],
     ["businessGoals", "#intake-business-goals"],
     ["users", "#intake-users"],
+    ["constraints", "#intake-constraints"],
+    ["preferredStack", "#intake-preferred-stack"],
     ["brandAttributes", "#intake-brand-attributes"],
     ["primaryColor", "#intake-primary-color"],
     ["tone", "#intake-tone"],
@@ -4453,14 +5067,9 @@ function bindEvents(): void {
       return;
     }
     state.intakeForm = formFromIntake(parsed.value, state.bundle);
-    state.sourceMaterials = Array.isArray(parsed.value.materials) ? parsed.value.materials.map((material: any, index) => ({
-      id: String(material.id ?? `source_material_${index + 1}`),
-      label: String(material.label ?? ""),
-      type: ["document", "code", "design_file", "screenshot", "brand", "other"].includes(material.type) ? material.type : "other",
-      content: String(material.content ?? ""),
-      notes: String(material.notes ?? ""),
-      path: String(material.path ?? "")
-    })) : state.sourceMaterials;
+    state.sourceMaterials = Array.isArray(parsed.value.materials)
+      ? parsed.value.materials.map(normalizeSourceMaterial)
+      : state.sourceMaterials;
     state.generationMessage = "Intake form loaded from the draft.";
     render();
   });
@@ -4472,6 +5081,8 @@ function bindEvents(): void {
       goals: [],
       businessGoals: [],
       users: [],
+      constraints: [],
+      preferredStack: [],
       brand: { attributes: [], primaryColor: "#2563EB", tone: "" },
       operatingMode: "full_architecture"
     }, state.bundle);
@@ -4501,7 +5112,7 @@ function bindEvents(): void {
       return;
     }
     state.sourceMaterials = [...state.sourceMaterials, material];
-    state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
+    state.sourceDraft = blankSourceDraft();
     state.sourceMessage = "Source added to the intake draft.";
     render();
   });
@@ -4526,7 +5137,7 @@ function bindEvents(): void {
   });
   document.querySelector<HTMLButtonElement>("#clear-source-materials")?.addEventListener("click", () => {
     state.sourceMaterials = [];
-    state.sourceDraft = { id: "", label: "", type: "document", content: "", notes: "", path: "" };
+    state.sourceDraft = blankSourceDraft();
     state.sourceMessage = "Source materials cleared.";
     render();
   });
@@ -5008,6 +5619,7 @@ async function bundleFromFiles(files: File[]): Promise<Bundle> {
   };
 }
 
+loadStartDraft();
 loadWorkspaceActivity();
 refreshWorkspaceEntries()
   .catch((error) => {

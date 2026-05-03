@@ -67,7 +67,9 @@
   select:focus-visible,
   textarea:focus-visible,
   .nav-item:focus-visible,
-  .list-button:focus-visible {
+  .list-button:focus-visible,
+  .step-card:focus-visible,
+  .mode-card:focus-visible {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }
@@ -109,10 +111,16 @@
 @layer components {
   .skip-link {
     @apply fixed left-3 top-3 z-50 -translate-y-20 rounded-md border bg-card px-3 py-2 text-sm font-semibold text-card-foreground shadow-premium transition-transform;
+    transform: translateY(-6rem);
   }
 
-  .skip-link:focus {
+  .skip-link:focus-visible {
     @apply translate-y-0;
+    transform: translateY(0);
+  }
+
+  .skip-link:focus:not(:focus-visible) {
+    transform: translateY(-6rem);
   }
 
   .shell {
@@ -379,6 +387,145 @@
 
   .start-output-list span {
     @apply text-sm text-muted-foreground;
+  }
+
+  .intake-stepper {
+    @apply grid gap-2;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .step-card {
+    @apply grid cursor-pointer items-start gap-3 rounded-lg border p-3 text-left shadow-premium;
+    grid-template-columns: auto minmax(0, 1fr);
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+    transition:
+      background-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .step-card:hover {
+    background: hsl(224 8% 12%);
+    border-color: hsl(220 7% 31%);
+    transform: translateY(-1px);
+  }
+
+  .step-card.active {
+    background: hsl(224 8% 15%);
+    border-color: hsl(220 7% 34%);
+    box-shadow: 0 14px 28px hsl(0 0% 0% / 0.22), inset 0 1px 0 hsl(220 8% 100% / 0.04);
+  }
+
+  .step-index {
+    @apply grid h-8 w-8 place-items-center rounded-md border text-xs font-semibold tabular-nums;
+    background: hsl(224 8% 13%);
+    border-color: hsl(224 7% 22%);
+    color: hsl(220 8% 83%);
+  }
+
+  .step-card strong,
+  .mode-card strong,
+  .source-empty strong,
+  .preflight-summary strong {
+    @apply block text-sm font-semibold text-foreground;
+  }
+
+  .step-card small,
+  .mode-card span,
+  .mode-card em,
+  .source-empty span,
+  .preflight-summary span {
+    @apply mt-1 block text-xs leading-5 text-muted-foreground;
+    font-style: normal;
+  }
+
+  .mode-grid,
+  .example-shelf,
+  .preflight-list {
+    @apply grid gap-2;
+  }
+
+  .mode-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mode-card {
+    @apply cursor-pointer rounded-md border p-3 text-left;
+    min-height: 8.25rem;
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+    transition:
+      background-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .mode-card:hover,
+  .mode-card.active {
+    background: hsl(224 8% 14%);
+    border-color: hsl(220 7% 33%);
+    transform: translateY(-1px);
+  }
+
+  .mode-card em {
+    color: hsl(220 8% 74%);
+  }
+
+  .quality-meter {
+    @apply mb-3 h-2 overflow-hidden rounded-full border;
+    background: hsl(224 10% 6%);
+    border-color: hsl(224 7% 18%);
+  }
+
+  .quality-meter > div {
+    height: 100%;
+    border-radius: inherit;
+    background: hsl(220 8% 82%);
+    transition: width 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .preflight-list {
+    margin-top: 0.75rem;
+  }
+
+  .preflight-list.compact {
+    margin-top: 0.625rem;
+  }
+
+  .preflight-row {
+    @apply grid items-start gap-3 rounded-md border p-3;
+    grid-template-columns: auto minmax(0, 1fr);
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+  }
+
+  .preflight-row.warning,
+  .preflight-row.blocker {
+    background: hsl(224 8% 10%);
+    border-color: hsl(220 6% 29%);
+  }
+
+  .preflight-row strong {
+    @apply block text-sm font-semibold text-foreground;
+  }
+
+  .preflight-row span {
+    @apply mt-1 block text-xs leading-5 text-muted-foreground;
+  }
+
+  .preflight-summary,
+  .source-empty,
+  .example-shelf > div {
+    @apply rounded-md border p-3;
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+  }
+
+  .preflight-summary.warning,
+  .preflight-summary.danger {
+    border-color: hsl(220 6% 30%);
   }
 
   .launch-score .badge,
@@ -911,6 +1058,8 @@
   .launch-hero,
   .grid.cols-2,
   .grid.cols-3,
+  .intake-stepper,
+  .mode-grid,
   .status-grid,
   .split,
   .form-grid,
@@ -940,7 +1089,9 @@
   }
 
   .workflow-step,
-  .issue-row {
+  .issue-row,
+  .step-card,
+  .preflight-row {
     grid-template-columns: 1fr;
   }
 
