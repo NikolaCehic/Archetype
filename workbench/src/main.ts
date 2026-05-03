@@ -23,8 +23,10 @@ type WorkspacePriority = "low" | "medium" | "high";
 type WorkspaceSortKey = "savedAt" | "generatedAt" | "name" | "readinessScore" | "artifactCount" | "warningCount" | "priority";
 type WorkspaceSortDirection = "asc" | "desc";
 type WorkspaceHealthFilter = "all" | "hold" | "high" | "pinned" | "untagged" | "no_notes";
-type StartMode = "hub" | "intent" | "evidence" | "preflight";
+type StartMode = "hub" | "intent" | "evidence" | "preflight" | "provider";
 type PreflightStatus = "pass" | "warning" | "blocker";
+type ProviderId = "openai" | "anthropic" | "google" | "local";
+type ProviderDiagnosticStatus = "pass" | "warning" | "fail";
 
 interface ArtifactDigest {
   path: string;
@@ -122,6 +124,18 @@ interface StartPreflightCheck {
   id: string;
   label: string;
   status: PreflightStatus;
+  detail: string;
+}
+
+interface StartEvidenceReviewState {
+  included: boolean;
+  redaction: string;
+}
+
+interface ProviderDiagnostic {
+  id: string;
+  label: string;
+  status: ProviderDiagnosticStatus;
   detail: string;
 }
 
@@ -333,6 +347,12 @@ const views: Array<{ id: ViewId; label: string; group: ViewGroup; description: s
 const START_DRAFT_STORAGE_KEY = "archetype:start-draft:v1";
 const operatingModeOptions = ["fast_architecture", "full_architecture", "existing_product_audit", "contract_repair"];
 const sourceMaterialTypes: SourceMaterialDraft["type"][] = ["document", "code", "design_file", "screenshot", "brand", "other"];
+const providerOptions: Array<{ id: ProviderId; label: string; detail: string; keyHint: string }> = [
+  { id: "openai", label: "OpenAI", detail: "Provider-backed architecture reasoning for production packages.", keyHint: "Session key usually starts with sk-." },
+  { id: "anthropic", label: "Anthropic", detail: "Provider-backed architecture reasoning with Claude-compatible keys.", keyHint: "Session key usually starts with sk-ant-." },
+  { id: "google", label: "Google AI", detail: "Provider-backed architecture reasoning with Gemini-compatible keys.", keyHint: "Session key usually starts with AIza." },
+  { id: "local", label: "Local deterministic mode", detail: "Offline demo, validation, and sample review. No provider key is needed.", keyHint: "No API key required." }
+];
 
 const state: {
   bundle: Bundle | null;
@@ -388,6 +408,13 @@ const state: {
   startSourceMessage: string;
   startDraftSavedAt: string;
   startExamplesVisible: boolean;
+  startProvider: ProviderId;
+  startApiKey: string;
+  startSendSummariesOnly: boolean;
+  startEvidenceReview: Record<string, StartEvidenceReviewState>;
+  startProviderConsent: boolean;
+  startProviderDiagnosticsRan: boolean;
+  startProviderMessage: string;
   startMessage: string;
   intakeForm: IntakeFormState | null;
   sourceMaterials: SourceMaterialDraft[];
@@ -447,6 +474,13 @@ const state: {
   startSourceMessage: "",
   startDraftSavedAt: "",
   startExamplesVisible: false,
+  startProvider: "openai",
+  startApiKey: "",
+  startSendSummariesOnly: true,
+  startEvidenceReview: {},
+  startProviderConsent: false,
+  startProviderDiagnosticsRan: false,
+  startProviderMessage: "",
   startMessage: "",
   intakeForm: null,
   sourceMaterials: [],
@@ -2594,6 +2628,10 @@ function isSourceMaterialType(value: unknown): value is SourceMaterialDraft["typ
   return sourceMaterialTypes.includes(value as SourceMaterialDraft["type"]);
 }
 
+function isProviderId(value: unknown): value is ProviderId {
+  return providerOptions.some((provider) => provider.id === value);
+}
+
 function normalizeSourceMaterial(value: unknown, index: number): SourceMaterialDraft {
   const record = typeof value === "object" && value && !Array.isArray(value) ? value as Record<string, unknown> : {};
   return {
@@ -2604,6 +2642,17 @@ function normalizeSourceMaterial(value: unknown, index: number): SourceMaterialD
     notes: String(record.notes ?? ""),
     path: String(record.path ?? "")
   };
+}
+
+function normalizeEvidenceReview(value: unknown): Record<string, StartEvidenceReviewState> {
+  const record = typeof value === "object" && value && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  return Object.fromEntries(Object.entries(record).map(([id, review]) => {
+    const reviewRecord = typeof review === "object" && review && !Array.isArray(review) ? review as Record<string, unknown> : {};
+    return [id, {
+      included: reviewRecord.included !== false,
+      redaction: String(reviewRecord.redaction ?? "")
+    }];
+  }));
 }
 
 function startDraftHasContent(): boolean {
@@ -2619,7 +2668,10 @@ function persistStartDraft(): boolean {
       exportVersion: 1,
       savedAt,
       draft: state.startDraft,
-      sourceMaterials: state.startSourceMaterials
+      sourceMaterials: state.startSourceMaterials,
+      evidenceReview: state.startEvidenceReview,
+      sendSummariesOnly: state.startSendSummariesOnly,
+      provider: state.startProvider
     }));
     state.startDraftSavedAt = savedAt;
     return true;
@@ -2641,6 +2693,9 @@ function loadStartDraft(): void {
     state.startSourceMaterials = Array.isArray(parsed.sourceMaterials)
       ? parsed.sourceMaterials.map(normalizeSourceMaterial)
       : [];
+    state.startEvidenceReview = normalizeEvidenceReview(parsed.evidenceReview);
+    state.startSendSummariesOnly = parsed.sendSummariesOnly !== false;
+    state.startProvider = isProviderId(parsed.provider) ? parsed.provider : "openai";
     state.startDraftSavedAt = typeof parsed.savedAt === "string" ? parsed.savedAt : "";
   } catch {
     state.startMessage = "Saved onboarding draft could not be read. Start a fresh draft or reset onboarding.";
@@ -2659,6 +2714,13 @@ function clearStartDraftStorage(): void {
   state.startSourceMessage = "";
   state.startDraftSavedAt = "";
   state.startExamplesVisible = false;
+  state.startProvider = "openai";
+  state.startApiKey = "";
+  state.startSendSummariesOnly = true;
+  state.startEvidenceReview = {};
+  state.startProviderConsent = false;
+  state.startProviderDiagnosticsRan = false;
+  state.startProviderMessage = "";
 }
 
 function scheduleStartDraftRefresh(): void {
@@ -2796,6 +2858,181 @@ function startPreflightSummary(checks = startPreflightChecks()): { label: "Ready
   if (blockers) return { label: "Needs required context", tone: "danger", score, blockers, warnings };
   if (warnings) return { label: "Generate with warnings", tone: "warning", score, blockers, warnings };
   return { label: "Ready to generate", tone: "success", score, blockers, warnings };
+}
+
+function requiredContextBlockers(checks = startPreflightChecks()): number {
+  return checks.filter((check) => check.status === "blocker" && check.id !== "safety").length;
+}
+
+function providerDetail(providerId = state.startProvider): { id: ProviderId; label: string; detail: string; keyHint: string } {
+  return providerOptions.find((provider) => provider.id === providerId) ?? providerOptions[0];
+}
+
+function providerRequiresKey(providerId = state.startProvider): boolean {
+  return providerId !== "local";
+}
+
+function providerKeyLooksValid(providerId: ProviderId, key: string): boolean {
+  if (providerId === "local") return true;
+  if (providerId === "openai") return /^sk-[A-Za-z0-9_-]{20,}$/.test(key.trim());
+  if (providerId === "anthropic") return /^sk-ant-[A-Za-z0-9_-]{20,}$/.test(key.trim());
+  if (providerId === "google") return /^AIza[A-Za-z0-9_-]{20,}$/.test(key.trim());
+  return false;
+}
+
+function evidenceReviewFor(material: SourceMaterialDraft): StartEvidenceReviewState {
+  if (!state.startEvidenceReview[material.id]) {
+    state.startEvidenceReview[material.id] = { included: true, redaction: "" };
+  }
+  return state.startEvidenceReview[material.id];
+}
+
+function cleanupEvidenceReview(): void {
+  const ids = new Set(state.startSourceMaterials.map((material) => material.id));
+  state.startEvidenceReview = Object.fromEntries(Object.entries(state.startEvidenceReview).filter(([id]) => ids.has(id)));
+}
+
+function redactSensitiveText(value: string): string {
+  return value
+    .replace(/\b(sk-[A-Za-z0-9_-]{8,}|sk-ant-[A-Za-z0-9_-]{8,}|ghp_[A-Za-z0-9_]{8,}|AKIA[0-9A-Z]{8,})\b/g, "[redacted credential]")
+    .replace(/\b(password|api[_-]?key|secret|token)\s*[:=]\s*['"]?[^'"\s]{4,}/gi, "$1=[redacted]")
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[redacted email]");
+}
+
+function materialSummary(material: SourceMaterialDraft): string {
+  const text = [material.label, material.notes, material.path, material.content].filter(Boolean).join(" ");
+  const normalized = text.replace(/\s+/g, " ").trim();
+  return redactSensitiveText(normalized.slice(0, 260) || "Evidence metadata only.");
+}
+
+function redactionSuggestions(material: SourceMaterialDraft): string[] {
+  const findings = findingsForMaterial(material);
+  if (!findings.length) return [];
+  return [...new Set(findings.map((finding) => {
+    if (finding.category === "secret") return "Redact credentials, tokens, passwords, and key-like values.";
+    if (finding.category === "prompt injection") return "Keep the source as evidence, but do not send embedded instructions as commands.";
+    if (finding.category === "PII") return "Remove personal identifiers or use summaries only.";
+    if (finding.category === "regulated data") return "Summarize regulated data and exclude raw records.";
+    return `Review ${finding.category}.`;
+  }))];
+}
+
+function includedStartSources(): SourceMaterialDraft[] {
+  return state.startSourceMaterials.filter((material) => evidenceReviewFor(material).included);
+}
+
+function unresolvedIncludedSafetyBlockers(): SourceMaterialDraft[] {
+  return includedStartSources().filter((material) => {
+    const review = evidenceReviewFor(material);
+    return findingsForMaterial(material).some((finding) => finding.severity === "blocker") && !review.redaction.trim();
+  });
+}
+
+function providerPayloadPreview(): Record<string, unknown> {
+  const intake = intakeFromForm(state.startDraft, state.startSourceMaterials);
+  return {
+    provider: providerDetail().label,
+    keyHandling: providerRequiresKey() ? "session-only, not stored in localStorage" : "no provider key required",
+    sendMode: state.startSendSummariesOnly ? "summaries only" : "approved excerpts",
+    normalizedContext: {
+      projectName: intake.projectName,
+      operatingMode: intake.operatingMode,
+      context: intake.context,
+      users: intake.users,
+      goals: intake.goals,
+      businessGoals: intake.businessGoals,
+      constraints: intake.constraints,
+      preferredStack: intake.preferredStack,
+      brand: intake.brand
+    },
+    evidence: state.startSourceMaterials.map((material) => {
+      const review = evidenceReviewFor(material);
+      const findings = findingsForMaterial(material);
+      return {
+        id: material.id,
+        label: material.label || material.path || "Untitled evidence",
+        type: material.type,
+        included: review.included,
+        sendMode: review.included ? state.startSendSummariesOnly ? "summary" : "approved excerpt" : "excluded",
+        safetyFindings: findings.map((finding) => `${finding.severity}: ${finding.finding}`),
+        redaction: review.redaction.trim() || redactionSuggestions(material).join(" "),
+        summary: review.included ? materialSummary(material) : ""
+      };
+    }),
+    excludedHiddenState: ["workspace history", "saved packages", "browser storage", "session API key"]
+  };
+}
+
+function providerDiagnostics(): ProviderDiagnostic[] {
+  const checks = startPreflightChecks();
+  const summary = startPreflightSummary(checks);
+  const requiredBlockers = requiredContextBlockers(checks);
+  const included = includedStartSources();
+  const unresolvedBlockers = unresolvedIncludedSafetyBlockers();
+  const key = state.startApiKey.trim();
+  const keyRequired = providerRequiresKey();
+  const hasSafetyWarnings = included.some((material) => findingsForMaterial(material).length > 0);
+
+  return [
+    {
+      id: "preflight",
+      label: "Local preflight",
+      status: requiredBlockers ? "fail" : summary.blockers || summary.warnings ? "warning" : "pass",
+      detail: requiredBlockers
+        ? "Resolve required context before provider-backed generation."
+        : summary.blockers || summary.warnings
+          ? "Local preflight allows generation with warnings."
+          : "Local preflight is ready."
+    },
+    {
+      id: "provider",
+      label: "Provider selection",
+      status: "pass",
+      detail: `${providerDetail().label} selected. ${providerDetail().detail}`
+    },
+    {
+      id: "session-key",
+      label: "Session key",
+      status: !keyRequired ? "pass" : !key ? "fail" : providerKeyLooksValid(state.startProvider, key) ? "pass" : "fail",
+      detail: !keyRequired
+        ? "Local deterministic mode does not require an API key."
+        : !key
+          ? "Enter a session-only provider key to continue."
+          : providerKeyLooksValid(state.startProvider, key)
+            ? "Key format looks valid and remains in memory for this browser session."
+            : `Key format does not match ${providerDetail().label}.`
+    },
+    {
+      id: "evidence-inclusion",
+      label: "Evidence inclusion",
+      status: included.length ? hasSafetyWarnings ? "warning" : "pass" : "warning",
+      detail: included.length
+        ? `${included.length} evidence item${included.length === 1 ? "" : "s"} included. ${state.startSendSummariesOnly ? "Summaries only is enabled." : "Approved excerpts may be sent."}`
+        : "No evidence is included. Generation can continue, but architecture quality may be weaker."
+    },
+    {
+      id: "redaction",
+      label: "Redaction gate",
+      status: unresolvedBlockers.length ? "fail" : hasSafetyWarnings ? "warning" : "pass",
+      detail: unresolvedBlockers.length
+        ? `${unresolvedBlockers.length} included evidence item${unresolvedBlockers.length === 1 ? "" : "s"} need redaction notes or exclusion.`
+        : hasSafetyWarnings
+          ? "Safety warnings are documented. Review redaction notes before generation."
+          : "No included evidence safety findings require redaction."
+    },
+    {
+      id: "consent",
+      label: "Final consent",
+      status: state.startProviderConsent ? "pass" : "fail",
+      detail: state.startProviderConsent
+        ? "User approved the reviewed context and evidence summary."
+        : "Confirm the reviewed payload before generation."
+    }
+  ];
+}
+
+function providerSetupReady(diagnostics = providerDiagnostics()): boolean {
+  return state.startProviderDiagnosticsRan && diagnostics.every((diagnostic) => diagnostic.status !== "fail");
 }
 
 function intakeFileName(value: Record<string, unknown>): string {
@@ -3732,7 +3969,8 @@ function startOnboardingState(): string {
     hub: "fresh-start",
     intent: "guided-intent",
     evidence: "guided-evidence",
-    preflight: "guided-preflight"
+    preflight: "guided-preflight",
+    provider: "provider-setup"
   };
   return states[state.startMode];
 }
@@ -3741,7 +3979,8 @@ function renderStartStepper(): string {
   const steps: Array<{ id: Exclude<StartMode, "hub">; label: string; detail: string }> = [
     { id: "intent", label: "Project Intent", detail: "Context, users, goals, stack, mode." },
     { id: "evidence", label: "Evidence Upload", detail: "Screenshots, docs, code, brand, API notes." },
-    { id: "preflight", label: "Local Preflight", detail: "Deterministic readiness before provider setup." }
+    { id: "preflight", label: "Local Preflight", detail: "Deterministic readiness before provider setup." },
+    { id: "provider", label: "Provider Setup", detail: "Key, evidence review, redaction, diagnostics." }
   ];
   return `<div class="intake-stepper" aria-label="Guided package creation steps">
     ${steps.map((step, index) => `
@@ -3915,6 +4154,7 @@ function renderStartEvidenceStep(): string {
 
 function renderStartPreflightStep(checks: StartPreflightCheck[], summary: ReturnType<typeof startPreflightSummary>): string {
   const intake = intakeFromForm(state.startDraft, state.startSourceMaterials);
+  const canOpenProvider = requiredContextBlockers(checks) === 0;
   return `
     <div class="grid cols-2 section-gap">
       ${panel("Local Preflight", `
@@ -3939,11 +4179,157 @@ function renderStartPreflightStep(checks: StartPreflightCheck[], summary: Return
         <div class="control-row">
           <button class="button subtle" id="back-start-evidence" data-agent-action="back-to-evidence" type="button">Back to evidence</button>
           <button class="button" id="download-start-draft-preflight" data-agent-action="download-project-draft" type="button">Download intake JSON</button>
-          <button class="button primary" id="start-generate-architecture" data-agent-action="generate-architecture" type="button" disabled aria-describedby="phase3-provider-note">Generate architecture</button>
+          <button class="button primary" id="start-generate-architecture" data-agent-action="open-provider-setup" type="button" ${canOpenProvider ? "" : "disabled"} aria-describedby="phase3-provider-note">Generate architecture</button>
         </div>
-        <div class="notice" id="phase3-provider-note" role="note">Provider selection and session-only API key entry are Phase 3. No API key is requested during local preflight.</div>
+        <div class="notice" id="phase3-provider-note" role="note">${canOpenProvider ? "Next you will review exactly what will be sent, redact or exclude risky evidence, choose a provider, and enter a session-only key if needed." : "Resolve required context before provider setup. No API key is requested during local preflight."}</div>
       `)}
       ${panel("Intake Preview", code(intake))}
+    </div>
+  `;
+}
+
+function renderProviderSelection(diagnostics: ProviderDiagnostic[]): string {
+  const keyRequired = providerRequiresKey();
+  const keyStatus = diagnostics.find((diagnostic) => diagnostic.id === "session-key");
+  return panel("Provider Setup", `
+    <div class="provider-grid" role="group" aria-label="Provider options">
+      ${providerOptions.map((provider) => {
+        const active = state.startProvider === provider.id;
+        return `
+          <button class="provider-card ${active ? "active" : ""}" data-start-provider-option="${esc(provider.id)}" type="button" aria-pressed="${active}">
+            <strong>${esc(provider.label)}</strong>
+            <span>${esc(provider.detail)}</span>
+            <em>${esc(provider.keyHint)}</em>
+          </button>
+        `;
+      }).join("")}
+    </div>
+    <div class="provider-key-grid">
+      ${selectField("start-provider", state.startProvider, "Provider", providerOptions.map((provider) => provider.id))}
+      <label class="field">
+        <span>${keyRequired ? "Session API key" : "Session API key"}</span>
+        <input id="start-api-key" class="input" type="password" value="${esc(state.startApiKey)}" autocomplete="off" ${keyRequired ? "" : "disabled"} />
+      </label>
+    </div>
+    <div class="notice" role="note">
+      Archetype can run local checks without an LLM key. To generate a full architecture package from your context and evidence, connect a model provider. Review the evidence summary before sending it.
+    </div>
+    <div class="mini-metrics">
+      <div><strong>${esc(providerDetail().label)}</strong><span>Provider</span></div>
+      <div><strong>${esc(keyRequired ? "Session" : "None")}</strong><span>Key handling</span></div>
+      <div><strong>${esc(keyStatus?.status ?? "fail")}</strong><span>Key diagnostic</span></div>
+    </div>
+    <div class="control-row">
+      <button class="button" id="start-use-local-mode" data-agent-action="use-local-deterministic-mode" type="button">Use local deterministic mode</button>
+      <button class="button primary" id="start-run-provider-diagnostics" data-agent-action="run-provider-diagnostics" type="button">Run diagnostics</button>
+    </div>
+    ${state.startProviderMessage ? `<div class="notice" role="status">${esc(state.startProviderMessage)}</div>` : ""}
+  `);
+}
+
+function renderEvidenceReview(): string {
+  return panel("Evidence Review Before Generation", `
+    <div class="checkbox-row">
+      <label>
+        <input id="start-send-summaries-only" type="checkbox" ${state.startSendSummariesOnly ? "checked" : ""} />
+        <span>Send summaries only</span>
+      </label>
+      <small>Default. Raw files and hidden app state are excluded from the provider payload.</small>
+    </div>
+    <div class="evidence-review-list">
+      ${state.startSourceMaterials.length ? state.startSourceMaterials.map((material) => {
+        const review = evidenceReviewFor(material);
+        const findings = findingsForMaterial(material);
+        const suggestions = redactionSuggestions(material);
+        return `
+          <div class="review-row" data-agent-evidence-id="${esc(material.id)}">
+            <div class="review-row-main">
+              <label class="checkbox-row compact">
+                <input type="checkbox" data-start-evidence-include="${esc(material.id)}" ${review.included ? "checked" : ""} />
+                <span>${esc(material.label || material.path || "Untitled evidence")}</span>
+              </label>
+              <div class="muted">${esc(humanLabel(material.type))} · ${esc(material.path || "local draft evidence")}</div>
+              <div class="tag-row">
+                ${badge(review.included ? "included" : "excluded", review.included ? "success" : "neutral")}
+                ${badge(state.startSendSummariesOnly ? "summary only" : "approved excerpt", state.startSendSummariesOnly ? "success" : "warning")}
+                ${badge(findings.length ? `${findings.length} safety` : "clear", sourceTone(findings))}
+              </div>
+              ${suggestions.length ? `<div class="notice compact" role="note">${esc(suggestions.join(" "))}</div>` : ""}
+            </div>
+            <label class="field">
+              <span>Redaction note</span>
+              <textarea class="textarea compact" data-start-evidence-redaction="${esc(material.id)}" spellcheck="false">${esc(review.redaction)}</textarea>
+            </label>
+          </div>
+        `;
+      }).join("") : `<div class="source-empty">
+        <strong>No evidence included.</strong>
+        <span>The provider payload can still use normalized product context, but architecture quality improves when source material is reviewed and included.</span>
+      </div>`}
+    </div>
+  `);
+}
+
+function renderProviderDiagnostics(diagnostics: ProviderDiagnostic[]): string {
+  return panel("Connection Diagnostics", `
+    <div class="diagnostic-list">
+      ${diagnostics.map((diagnostic) => `
+        <div class="diagnostic-row ${esc(diagnostic.status)}">
+          ${badge(diagnostic.status, diagnostic.status === "pass" ? "success" : diagnostic.status === "warning" ? "warning" : "danger")}
+          <div>
+            <strong>${esc(diagnostic.label)}</strong>
+            <span>${esc(diagnostic.detail)}</span>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+    <div class="consent-box">
+      <label class="checkbox-row compact">
+        <input id="start-provider-consent" type="checkbox" ${state.startProviderConsent ? "checked" : ""} />
+        <span>I reviewed the provider payload and approve the included summaries.</span>
+      </label>
+      <small>The session key is not saved to localStorage and is never included in draft export.</small>
+    </div>
+    <div class="control-row">
+      <button class="button subtle" id="back-start-preflight" data-agent-action="back-to-local-preflight" type="button">Back to preflight</button>
+      <button class="button" id="download-provider-payload" data-agent-action="download-provider-payload-preview" type="button">Download payload preview</button>
+      <button class="button primary" id="final-start-generate-architecture" data-agent-action="generate-architecture" type="button" ${providerSetupReady(diagnostics) ? "" : "disabled"}>Generate architecture</button>
+    </div>
+    ${!state.startProviderDiagnosticsRan ? `<div class="notice" role="note">Run diagnostics after provider, key, evidence, and consent are set.</div>` : ""}
+  `);
+}
+
+function renderProviderPayload(): string {
+  return panel("What Will Be Sent", `
+    <div class="payload-scope">
+      <div>
+        <strong>Sent</strong>
+        <span>Normalized product context, selected evidence summaries, safety notes, redaction notes, provider id.</span>
+      </div>
+      <div>
+        <strong>Not sent</strong>
+        <span>Session API key, workspace history, saved packages, hidden browser state, excluded evidence, raw private files.</span>
+      </div>
+      <div>
+        <strong>Do not include</strong>
+        <span>Secrets, credentials, raw regulated data, or private files that have not been approved.</span>
+      </div>
+    </div>
+    ${code(providerPayloadPreview())}
+  `);
+}
+
+function renderStartProviderStep(): string {
+  cleanupEvidenceReview();
+  const diagnostics = providerDiagnostics();
+  return `
+    <div class="grid cols-2 section-gap">
+      ${renderProviderSelection(diagnostics)}
+      ${renderProviderDiagnostics(diagnostics)}
+    </div>
+    <div class="grid cols-2 section-gap">
+      ${renderEvidenceReview()}
+      ${renderProviderPayload()}
     </div>
   `;
 }
@@ -3966,6 +4352,11 @@ function renderStartDraft(): string {
       eyebrow: "Local Preflight",
       title: "Check readiness before provider setup.",
       body: "Archetype validates the intake locally and tells you whether it is ready, warning-only, or missing required context."
+    },
+    provider: {
+      eyebrow: "Provider Setup",
+      title: "Review what will be sent before generation.",
+      body: "Choose a provider, keep the key session-only, redact risky evidence, and run diagnostics before architecture generation starts."
     }
   };
   const copy = stepCopy[state.startMode === "hub" ? "intent" : state.startMode];
@@ -3984,14 +4375,16 @@ function renderStartDraft(): string {
       <div class="start-proof" aria-label="Draft status">
         ${badge(summary.label, summary.tone)}
         ${badge(`${state.startSourceMaterials.length} evidence`, state.startSourceMaterials.length ? "success" : "warning")}
+        ${state.startMode === "provider" ? badge(providerDetail().label, state.startProvider === "local" ? "success" : "neutral") : ""}
         ${badge(state.startDraftSavedAt ? "draft saved" : "local draft", state.startDraftSavedAt ? "success" : "neutral")}
-        ${badge("no API key needed", "success")}
+        ${badge(state.startMode === "provider" && providerRequiresKey() ? "session key only" : "no API key needed", "success")}
       </div>
     </section>
     ${renderStartStepper()}
     ${state.startMode === "intent" ? renderStartIntentStep(checks, summary) : ""}
     ${state.startMode === "evidence" ? renderStartEvidenceStep() : ""}
     ${state.startMode === "preflight" ? renderStartPreflightStep(checks, summary) : ""}
+    ${state.startMode === "provider" ? renderStartProviderStep() : ""}
   `;
 }
 
@@ -4186,6 +4579,24 @@ function bindStartHubEvents(): void {
     state.startMessage = "";
     render();
   });
+  document.querySelector<HTMLButtonElement>("#start-generate-architecture")?.addEventListener("click", () => {
+    const checks = startPreflightChecks();
+    if (requiredContextBlockers(checks) > 0) {
+      state.startMessage = "Resolve required context before provider setup.";
+      render();
+      return;
+    }
+    persistStartDraft();
+    state.startMode = "provider";
+    state.startProviderDiagnosticsRan = false;
+    state.startProviderMessage = "Provider setup opened. Review evidence before entering a session key.";
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#back-start-preflight")?.addEventListener("click", () => {
+    state.startMode = "preflight";
+    state.startProviderMessage = "";
+    render();
+  });
   document.querySelector<HTMLButtonElement>("#toggle-start-examples")?.addEventListener("click", () => {
     state.startExamplesVisible = !state.startExamplesVisible;
     render();
@@ -4284,6 +4695,104 @@ function bindStartHubEvents(): void {
   };
   document.querySelector<HTMLButtonElement>("#download-start-draft")?.addEventListener("click", downloadStartDraft);
   document.querySelector<HTMLButtonElement>("#download-start-draft-preflight")?.addEventListener("click", downloadStartDraft);
+  document.querySelector<HTMLButtonElement>("#download-provider-payload")?.addEventListener("click", () => {
+    const payload = providerPayloadPreview();
+    downloadText(`${intakeFileName(payload).replace("-intake.json", "")}-provider-payload.json`, `${pretty(payload)}\n`, "application/json");
+    state.startProviderMessage = "Provider payload preview prepared.";
+    render();
+  });
+  document.querySelector<HTMLSelectElement>("#start-provider")?.addEventListener("change", (event) => {
+    const provider = (event.target as HTMLSelectElement).value;
+    if (!isProviderId(provider)) return;
+    state.startProvider = provider;
+    if (!providerRequiresKey(provider)) state.startApiKey = "";
+    state.startProviderDiagnosticsRan = false;
+    persistStartDraft();
+    render();
+  });
+  document.querySelectorAll<HTMLButtonElement>("[data-start-provider-option]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const provider = button.dataset.startProviderOption;
+      if (!isProviderId(provider)) return;
+      state.startProvider = provider;
+      if (!providerRequiresKey(provider)) state.startApiKey = "";
+      state.startProviderDiagnosticsRan = false;
+      persistStartDraft();
+      render();
+    });
+  });
+  document.querySelector<HTMLInputElement>("#start-api-key")?.addEventListener("input", (event) => {
+    state.startApiKey = (event.target as HTMLInputElement).value;
+    state.startProviderDiagnosticsRan = false;
+  });
+  document.querySelector<HTMLButtonElement>("#start-use-local-mode")?.addEventListener("click", () => {
+    state.startProvider = "local";
+    state.startApiKey = "";
+    state.startProviderDiagnosticsRan = false;
+    state.startProviderMessage = "Local deterministic mode selected. No provider key is required.";
+    persistStartDraft();
+    render();
+  });
+  document.querySelector<HTMLButtonElement>("#start-run-provider-diagnostics")?.addEventListener("click", () => {
+    const diagnostics = providerDiagnostics();
+    const failures = diagnostics.filter((diagnostic) => diagnostic.status === "fail").length;
+    const warnings = diagnostics.filter((diagnostic) => diagnostic.status === "warning").length;
+    state.startProviderDiagnosticsRan = true;
+    state.startProviderMessage = failures
+      ? `Diagnostics found ${failures} blocker${failures === 1 ? "" : "s"}.`
+      : warnings
+        ? `Diagnostics passed with ${warnings} warning${warnings === 1 ? "" : "s"}.`
+        : "Diagnostics passed. Provider setup is ready.";
+    render();
+  });
+  document.querySelector<HTMLInputElement>("#start-send-summaries-only")?.addEventListener("change", (event) => {
+    state.startSendSummariesOnly = (event.target as HTMLInputElement).checked;
+    state.startProviderDiagnosticsRan = false;
+    persistStartDraft();
+    render();
+  });
+  document.querySelector<HTMLInputElement>("#start-provider-consent")?.addEventListener("change", (event) => {
+    state.startProviderConsent = (event.target as HTMLInputElement).checked;
+    state.startProviderDiagnosticsRan = false;
+    render();
+  });
+  document.querySelectorAll<HTMLInputElement>("[data-start-evidence-include]").forEach((input) => {
+    input.addEventListener("change", () => {
+      const id = input.dataset.startEvidenceInclude;
+      if (!id) return;
+      state.startEvidenceReview[id] = {
+        ...state.startEvidenceReview[id],
+        included: input.checked,
+        redaction: state.startEvidenceReview[id]?.redaction ?? ""
+      };
+      state.startProviderDiagnosticsRan = false;
+      persistStartDraft();
+      render();
+    });
+  });
+  document.querySelectorAll<HTMLTextAreaElement>("[data-start-evidence-redaction]").forEach((textarea) => {
+    textarea.addEventListener("input", () => {
+      const id = textarea.dataset.startEvidenceRedaction;
+      if (!id) return;
+      state.startEvidenceReview[id] = {
+        ...state.startEvidenceReview[id],
+        included: state.startEvidenceReview[id]?.included !== false,
+        redaction: textarea.value
+      };
+      state.startProviderDiagnosticsRan = false;
+      persistStartDraft();
+    });
+  });
+  document.querySelector<HTMLButtonElement>("#final-start-generate-architecture")?.addEventListener("click", () => {
+    const diagnostics = providerDiagnostics();
+    if (!providerSetupReady(diagnostics)) {
+      state.startProviderMessage = "Run diagnostics and resolve provider setup blockers before generation.";
+      render();
+      return;
+    }
+    state.startProviderMessage = "Provider setup complete. Generation progress begins in Phase 4.";
+    render();
+  });
   const startSourceBindings: Array<[keyof SourceMaterialDraft, string]> = [
     ["label", "#start-source-label"],
     ["type", "#start-source-type"],
@@ -4307,6 +4816,7 @@ function bindStartHubEvents(): void {
       return;
     }
     state.startSourceMaterials = [...state.startSourceMaterials, material];
+    evidenceReviewFor(material);
     state.startSourceDraft = blankSourceDraft();
     saveStartDraft("Evidence record saved locally.");
     state.startSourceMessage = "Evidence record added to the intake draft.";
@@ -4333,6 +4843,7 @@ function bindStartHubEvents(): void {
       path: file.name
     } satisfies SourceMaterialDraft)));
     state.startSourceMaterials = [...state.startSourceMaterials, ...imported];
+    imported.forEach(evidenceReviewFor);
     saveStartDraft(`Imported ${imported.length} evidence file${imported.length === 1 ? "" : "s"} locally.`);
     state.startSourceMessage = `Imported ${imported.length} evidence file${imported.length === 1 ? "" : "s"}.`;
     input.value = "";
@@ -4340,6 +4851,7 @@ function bindStartHubEvents(): void {
   });
   document.querySelector<HTMLButtonElement>("#clear-start-sources")?.addEventListener("click", () => {
     state.startSourceMaterials = [];
+    state.startEvidenceReview = {};
     state.startSourceDraft = blankSourceDraft();
     saveStartDraft("Evidence records cleared from the local draft.");
     state.startSourceMessage = "Evidence records cleared.";
@@ -4350,6 +4862,7 @@ function bindStartHubEvents(): void {
       const id = button.dataset.startSourceRemove;
       if (!id) return;
       state.startSourceMaterials = state.startSourceMaterials.filter((material) => material.id !== id);
+      delete state.startEvidenceReview[id];
       saveStartDraft("Evidence record removed from the local draft.");
       state.startSourceMessage = "Evidence record removed.";
       render();

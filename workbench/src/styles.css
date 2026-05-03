@@ -69,7 +69,8 @@
   .nav-item:focus-visible,
   .list-button:focus-visible,
   .step-card:focus-visible,
-  .mode-card:focus-visible {
+  .mode-card:focus-visible,
+  .provider-card:focus-visible {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }
@@ -110,17 +111,16 @@
 
 @layer components {
   .skip-link {
-    @apply fixed left-3 top-3 z-50 -translate-y-20 rounded-md border bg-card px-3 py-2 text-sm font-semibold text-card-foreground shadow-premium transition-transform;
-    transform: translateY(-6rem);
+    @apply fixed left-3 z-50 rounded-md border bg-card px-3 py-2 text-sm font-semibold text-card-foreground shadow-premium transition-[top];
+    top: -9999px;
   }
 
   .skip-link:focus-visible {
-    @apply translate-y-0;
-    transform: translateY(0);
+    top: 0.75rem;
   }
 
   .skip-link:focus:not(:focus-visible) {
-    transform: translateY(-6rem);
+    top: -9999px;
   }
 
   .shell {
@@ -443,15 +443,21 @@
 
   .mode-grid,
   .example-shelf,
-  .preflight-list {
+  .preflight-list,
+  .provider-grid,
+  .diagnostic-list,
+  .evidence-review-list,
+  .payload-scope {
     @apply grid gap-2;
   }
 
-  .mode-grid {
+  .mode-grid,
+  .provider-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .mode-card {
+  .mode-card,
+  .provider-card {
     @apply cursor-pointer rounded-md border p-3 text-left;
     min-height: 8.25rem;
     background: hsl(224 8% 9%);
@@ -463,14 +469,22 @@
   }
 
   .mode-card:hover,
-  .mode-card.active {
+  .mode-card.active,
+  .provider-card:hover,
+  .provider-card.active {
     background: hsl(224 8% 14%);
     border-color: hsl(220 7% 33%);
     transform: translateY(-1px);
   }
 
-  .mode-card em {
+  .mode-card em,
+  .provider-card em {
     color: hsl(220 8% 74%);
+  }
+
+  .provider-key-grid {
+    @apply mt-3 grid gap-3;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
   }
 
   .quality-meter {
@@ -494,7 +508,8 @@
     margin-top: 0.625rem;
   }
 
-  .preflight-row {
+  .preflight-row,
+  .diagnostic-row {
     @apply grid items-start gap-3 rounded-md border p-3;
     grid-template-columns: auto minmax(0, 1fr);
     background: hsl(224 8% 9%);
@@ -502,22 +517,28 @@
   }
 
   .preflight-row.warning,
-  .preflight-row.blocker {
+  .preflight-row.blocker,
+  .diagnostic-row.warning,
+  .diagnostic-row.fail {
     background: hsl(224 8% 10%);
     border-color: hsl(220 6% 29%);
   }
 
-  .preflight-row strong {
+  .preflight-row strong,
+  .diagnostic-row strong {
     @apply block text-sm font-semibold text-foreground;
   }
 
-  .preflight-row span {
+  .preflight-row span,
+  .diagnostic-row span {
     @apply mt-1 block text-xs leading-5 text-muted-foreground;
   }
 
   .preflight-summary,
   .source-empty,
-  .example-shelf > div {
+  .example-shelf > div,
+  .payload-scope > div,
+  .consent-box {
     @apply rounded-md border p-3;
     background: hsl(224 8% 9%);
     border-color: hsl(224 7% 19%);
@@ -526,6 +547,53 @@
   .preflight-summary.warning,
   .preflight-summary.danger {
     border-color: hsl(220 6% 30%);
+  }
+
+  .review-row {
+    @apply grid gap-3 rounded-md border p-3;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr);
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+  }
+
+  .review-row-main {
+    min-width: 0;
+  }
+
+  .checkbox-row {
+    @apply flex items-start gap-2 rounded-md border px-3 py-2 text-sm;
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+    color: hsl(220 8% 84%);
+  }
+
+  .checkbox-row.compact {
+    @apply border-0 bg-transparent p-0;
+  }
+
+  .checkbox-row input {
+    margin-top: 0.15rem;
+  }
+
+  .checkbox-row span {
+    @apply font-medium text-foreground;
+  }
+
+  .checkbox-row small,
+  .consent-box small {
+    @apply block text-xs leading-5 text-muted-foreground;
+  }
+
+  .payload-scope strong,
+  .provider-card strong {
+    @apply block text-sm font-semibold text-foreground;
+  }
+
+  .payload-scope span,
+  .provider-card span,
+  .provider-card em {
+    @apply mt-1 block text-xs leading-5 text-muted-foreground;
+    font-style: normal;
   }
 
   .launch-score .badge,
@@ -884,6 +952,11 @@
     max-height: 190px;
   }
 
+  .textarea.compact {
+    min-height: 86px;
+    max-height: 140px;
+  }
+
   .form-grid {
     @apply grid gap-3;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -920,6 +993,10 @@
     @apply mt-3 rounded-md border px-3 py-2 text-sm text-muted-foreground;
     background: hsl(224 8% 10%);
     border-color: hsl(224 7% 20%);
+  }
+
+  .notice.compact {
+    @apply mt-2 px-2 py-1.5 text-xs leading-5;
   }
 
   .snapshot-line,
@@ -1060,6 +1137,10 @@
   .grid.cols-3,
   .intake-stepper,
   .mode-grid,
+  .provider-grid,
+  .provider-key-grid,
+  .review-row,
+  .payload-scope,
   .status-grid,
   .split,
   .form-grid,
@@ -1091,7 +1172,8 @@
   .workflow-step,
   .issue-row,
   .step-card,
-  .preflight-row {
+  .preflight-row,
+  .diagnostic-row {
     grid-template-columns: 1fr;
   }
 
