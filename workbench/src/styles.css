@@ -827,6 +827,21 @@
     @apply mt-1 block text-xs leading-5 text-muted-foreground;
   }
 
+  .onboarding-event-list {
+    @apply mt-3 grid gap-2;
+  }
+
+  .onboarding-event {
+    @apply grid items-start gap-2 rounded-md border px-3 py-2.5;
+    grid-template-columns: auto minmax(0, 1fr);
+    background: hsl(224 8% 9%);
+    border-color: hsl(224 7% 19%);
+  }
+
+  .onboarding-event span {
+    @apply text-xs leading-5 text-muted-foreground;
+  }
+
   .panel {
     @apply overflow-hidden rounded-lg border bg-card text-card-foreground shadow-premium;
     border-color: hsl(224 7% 20%);

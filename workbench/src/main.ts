@@ -30,6 +30,14 @@ type ProviderDiagnosticStatus = "pass" | "warning" | "fail";
 type StartGenerationRunStatus = "idle" | "running" | "blocked" | "complete";
 type StartGenerationPhaseStatus = "queued" | "running" | "pass" | "warning" | "blocked";
 type BundleActivationSource = "workspace" | "sample" | "import" | "generated" | "restore";
+type OnboardingMetricEventType =
+  | "onboarding_completed"
+  | "onboarding_skipped"
+  | "provider_setup_success"
+  | "generation_success"
+  | "first_save"
+  | "first_handoff_export"
+  | "reset_used";
 type OnboardingStateFlag =
   | "start_hub_seen"
   | "first_package_created"
@@ -37,6 +45,13 @@ type OnboardingStateFlag =
   | "provider_connected"
   | "launch_review_completed"
   | "handoff_exported";
+
+interface OnboardingMetricEvent {
+  id: string;
+  type: OnboardingMetricEventType;
+  detail: string;
+  created_at: string;
+}
 
 interface ArtifactDigest {
   path: string;
@@ -187,7 +202,17 @@ interface OnboardingLocalState {
   provider_connected: boolean;
   launch_review_completed: boolean;
   handoff_exported: boolean;
+  onboarding_completed_at: string;
+  skip_count: number;
+  provider_setup_success_count: number;
+  generation_success_count: number;
+  first_save_at: string;
+  first_save_count: number;
+  first_handoff_export_at: string;
+  first_handoff_export_count: number;
+  reset_usage_count: number;
   dismissed_contextual_hints: string[];
+  metric_events: OnboardingMetricEvent[];
   updated_at: string;
 }
 
@@ -488,7 +513,17 @@ function blankOnboardingState(): OnboardingLocalState {
     provider_connected: false,
     launch_review_completed: false,
     handoff_exported: false,
+    onboarding_completed_at: "",
+    skip_count: 0,
+    provider_setup_success_count: 0,
+    generation_success_count: 0,
+    first_save_at: "",
+    first_save_count: 0,
+    first_handoff_export_at: "",
+    first_handoff_export_count: 0,
+    reset_usage_count: 0,
     dismissed_contextual_hints: [],
+    metric_events: [],
     updated_at: ""
   };
 }
@@ -2192,7 +2227,7 @@ async function activateBundle(bundle: Bundle, packageName: string, view: ViewId 
   loadBaselineSnapshot();
   await refreshWorkspaceEntries();
   if (view === "overview" && (source === "generated" || source === "import")) {
-    markOnboardingFlag("launch_review_completed");
+    completeOnboarding(source === "generated" ? "Generated package reached Launch Review." : "Imported package reached Launch Review.");
     state.launchReviewMessage = source === "generated"
       ? "Launch Review reached from generation. The package is ready for readiness, proof, and handoff review."
       : "Imported package opened in Launch Review. Review readiness, proof, and handoff before exporting.";
@@ -2205,6 +2240,7 @@ async function activateBundleFromFiles(files: FileList | File[]): Promise<void> 
   const bundle = await bundleFromFiles(fileList);
   const packageName = fileList[0]?.webkitRelativePath?.split("/")[0] || "imported-package";
   await activateBundle(bundle, packageName, "overview", "import");
+  recordSkipUsage("Imported package path opened.");
 }
 
 async function refreshWorkspaceEntries(): Promise<void> {
@@ -2986,6 +3022,18 @@ function normalizeOnboardingState(value: unknown): OnboardingLocalState {
     : Array.isArray(record.dismissedHints)
       ? record.dismissedHints.map(String).filter(Boolean)
       : [];
+  const rawEvents = Array.isArray(record.metric_events) ? record.metric_events : [];
+  const metricEvents = rawEvents.map((event, index) => {
+    const eventRecord = typeof event === "object" && event && !Array.isArray(event) ? event as Record<string, unknown> : {};
+    const type = String(eventRecord.type ?? "");
+    if (!isOnboardingMetricEventType(type)) return null;
+    return {
+      id: String(eventRecord.id ?? `event_${index + 1}`),
+      type,
+      detail: String(eventRecord.detail ?? ""),
+      created_at: typeof eventRecord.created_at === "string" ? eventRecord.created_at : ""
+    } satisfies OnboardingMetricEvent;
+  }).filter((event): event is OnboardingMetricEvent => Boolean(event)).slice(-80);
   return {
     start_hub_seen: Boolean(record.start_hub_seen ?? record.startHubSeen ?? blank.start_hub_seen),
     first_package_created: Boolean(record.first_package_created ?? record.firstPackageCreated ?? blank.first_package_created),
@@ -2993,9 +3041,35 @@ function normalizeOnboardingState(value: unknown): OnboardingLocalState {
     provider_connected: Boolean(record.provider_connected ?? record.providerConnected ?? blank.provider_connected),
     launch_review_completed: Boolean(record.launch_review_completed ?? record.launchReviewCompleted ?? blank.launch_review_completed),
     handoff_exported: Boolean(record.handoff_exported ?? record.handoffExported ?? blank.handoff_exported),
+    onboarding_completed_at: typeof record.onboarding_completed_at === "string" ? record.onboarding_completed_at : "",
+    skip_count: safeCount(record.skip_count),
+    provider_setup_success_count: safeCount(record.provider_setup_success_count),
+    generation_success_count: safeCount(record.generation_success_count),
+    first_save_at: typeof record.first_save_at === "string" ? record.first_save_at : "",
+    first_save_count: safeCount(record.first_save_count),
+    first_handoff_export_at: typeof record.first_handoff_export_at === "string" ? record.first_handoff_export_at : "",
+    first_handoff_export_count: safeCount(record.first_handoff_export_count),
+    reset_usage_count: safeCount(record.reset_usage_count),
     dismissed_contextual_hints: [...new Set(hints)].slice(0, 80),
+    metric_events: metricEvents,
     updated_at: typeof record.updated_at === "string" ? record.updated_at : typeof record.updatedAt === "string" ? record.updatedAt : ""
   };
+}
+
+function safeCount(value: unknown): number {
+  return Math.max(0, Math.floor(Number(value) || 0));
+}
+
+function isOnboardingMetricEventType(value: string): value is OnboardingMetricEventType {
+  return [
+    "onboarding_completed",
+    "onboarding_skipped",
+    "provider_setup_success",
+    "generation_success",
+    "first_save",
+    "first_handoff_export",
+    "reset_used"
+  ].includes(value);
 }
 
 function loadOnboardingState(): void {
@@ -3021,6 +3095,75 @@ function markOnboardingFlag(flag: OnboardingStateFlag, value = true): void {
   if (state.onboardingState[flag] === value) return;
   state.onboardingState = { ...state.onboardingState, [flag]: value };
   persistOnboardingState();
+}
+
+function recordOnboardingMetric(type: OnboardingMetricEventType, detail: string): void {
+  const now = new Date().toISOString();
+  const next: OnboardingLocalState = {
+    ...state.onboardingState,
+    metric_events: [
+      ...state.onboardingState.metric_events,
+      { id: `onboarding_event_${Date.now().toString(36)}`, type, detail, created_at: now }
+    ].slice(-80)
+  };
+  if (type === "onboarding_completed") {
+    next.onboarding_completed_at ||= now;
+  }
+  if (type === "onboarding_skipped") {
+    next.skip_count += 1;
+  }
+  if (type === "provider_setup_success") {
+    next.provider_setup_success_count += 1;
+  }
+  if (type === "generation_success") {
+    next.generation_success_count += 1;
+  }
+  if (type === "first_save") {
+    next.first_save_at ||= now;
+    next.first_save_count += 1;
+  }
+  if (type === "first_handoff_export") {
+    next.first_handoff_export_at ||= now;
+    next.first_handoff_export_count += 1;
+  }
+  if (type === "reset_used") {
+    next.reset_usage_count += 1;
+  }
+  state.onboardingState = next;
+  persistOnboardingState();
+}
+
+function completeOnboarding(detail: string): void {
+  markOnboardingFlag("launch_review_completed");
+  if (!state.onboardingState.onboarding_completed_at) {
+    recordOnboardingMetric("onboarding_completed", detail);
+  }
+}
+
+function recordProviderSetupSuccess(detail: string): void {
+  markOnboardingFlag("provider_connected");
+  recordOnboardingMetric("provider_setup_success", detail);
+}
+
+function recordGenerationSuccess(detail: string): void {
+  recordOnboardingMetric("generation_success", detail);
+}
+
+function recordFirstSave(detail: string): void {
+  recordOnboardingMetric("first_save", detail);
+}
+
+function recordFirstHandoffExport(detail: string): void {
+  markOnboardingFlag("handoff_exported");
+  recordOnboardingMetric("first_handoff_export", detail);
+}
+
+function recordResetUsage(detail: string): void {
+  recordOnboardingMetric("reset_used", detail);
+}
+
+function recordSkipUsage(detail: string): void {
+  recordOnboardingMetric("onboarding_skipped", detail);
 }
 
 function dismissOnboardingHint(id: string): void {
@@ -3681,6 +3824,7 @@ function runNextStartGenerationPhase(): void {
     state.startGenerationRun.status = "complete";
     state.startGenerationRun.completedAt = new Date().toISOString();
     state.startGenerationRun.message = completeStartGenerationMessage();
+    recordGenerationSuccess("Generation completed all compiler phases.");
   } else {
     state.startGenerationRun.status = "running";
     state.startGenerationRun.message = `${phase.label} created ${phase.artifact}. ${startGenerationPhaseDefinitions[nextIndex].label} is running.`;
@@ -4460,6 +4604,7 @@ function renderExport(bundle: Bundle): string {
   const approved = gates.filter((gate: any) => approvalStateForGate(gate) === "approved").length;
   const commands = handoffCommands();
   return `
+    <section data-agent-landmark="handoff" data-agent-section="handoff">
     <div class="grid cols-3">
       ${metric("Readiness", bundle.readiness.score, bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
       ${metric("Required files", `${present}/${required.length}`, present === required.length ? "success" : "danger")}
@@ -4475,9 +4620,9 @@ function renderExport(bundle: Bundle): string {
           ${badge(bundle.readiness.readyForFrontendAgent ? "ready" : "hold", bundle.readiness.readyForFrontendAgent ? "success" : "danger")}
         </div>
         <div class="control-row">
-          <button class="button primary" id="download-handoff-md" type="button">Download handoff</button>
-          <button class="button" id="download-handoff-json" type="button">Download handoff JSON</button>
-          <button class="button" id="copy-handoff-prompt" type="button">Copy agent prompt</button>
+          <button class="button primary" id="download-handoff-md" data-agent-action="export-handoff" type="button">Download handoff</button>
+          <button class="button" id="download-handoff-json" data-agent-action="export-handoff" type="button">Download handoff JSON</button>
+          <button class="button" id="copy-handoff-prompt" data-agent-action="export-handoff" type="button">Copy agent prompt</button>
           <button class="button" id="copy-validate-command" type="button">Copy validation command</button>
         </div>
         ${state.handoffMessage ? `<div class="notice" role="status">${esc(state.handoffMessage)}</div>` : ""}
@@ -4506,6 +4651,7 @@ function renderExport(bundle: Bundle): string {
       ${panel("Frontend Agent Prompt", code(handoffPrompt(bundle)))}
       ${panel("Readiness Report", code(bundle.reports.readiness))}
     </div>
+    </section>
   `;
 }
 
@@ -4683,6 +4829,62 @@ function renderRecentPackages(): string {
 
 function returningUserActive(): boolean {
   return !state.replayingOnboarding && (state.onboardingState.launch_review_completed || state.workspaceEntries.some((entry) => !entry.archivedAt));
+}
+
+function startAgentLandmark(): string {
+  const landmarks: Record<StartMode, string> = {
+    hub: "start-hub",
+    intent: "intake",
+    evidence: "evidence",
+    preflight: "preflight",
+    provider: "provider-setup",
+    progress: "generation-progress"
+  };
+  return landmarks[state.startMode];
+}
+
+function viewAgentLandmark(view: ViewId): string {
+  if (view === "overview") return "launch-review";
+  if (view === "export") return "handoff";
+  return view;
+}
+
+function activeOnboardingState(): string {
+  if (state.view === "overview") return state.onboardingState.launch_review_completed ? "launch-review" : "sample-review";
+  if (state.view === "export") return "handoff";
+  return state.onboardingState.launch_review_completed ? "workspace-active" : "package-active";
+}
+
+function providerSetupRequired(): boolean {
+  return state.startMode === "provider" && providerRequiresKey();
+}
+
+function generationBlocked(): boolean {
+  return state.startGenerationRun.status === "blocked" || requiredContextBlockers() > 0;
+}
+
+function renderOnboardingSignals(): string {
+  const metrics = state.onboardingState;
+  return `
+    <div class="onboarding-signals" data-agent-onboarding-metrics="true">
+      <div class="mini-metrics">
+        <div><strong>${esc(metrics.onboarding_completed_at ? "yes" : "no")}</strong><span>completed</span></div>
+        <div><strong>${esc(metrics.provider_setup_success_count)}</strong><span>provider success</span></div>
+        <div><strong>${esc(metrics.generation_success_count)}</strong><span>generation success</span></div>
+        <div><strong>${esc(metrics.first_save_count)}</strong><span>package saves</span></div>
+        <div><strong>${esc(metrics.first_handoff_export_count)}</strong><span>handoff exports</span></div>
+        <div><strong>${esc(metrics.reset_usage_count)}</strong><span>resets</span></div>
+      </div>
+      <div class="onboarding-event-list">
+        ${metrics.metric_events.slice(-4).reverse().map((event) => `
+          <div class="onboarding-event" data-agent-onboarding-event="${esc(event.type)}">
+            ${badge(event.type, event.type === "reset_used" || event.type === "onboarding_skipped" ? "warning" : "success")}
+            <span>${esc(event.detail || humanLabel(event.type))}</span>
+          </div>
+        `).join("") || `<div class="empty">Onboarding signals appear here after setup, generation, save, handoff, reset, or replay events.</div>`}
+      </div>
+    </div>
+  `;
 }
 
 function renderReturningWorkspaceHealth(): string {
@@ -4875,7 +5077,7 @@ function renderStartEvidenceStep(): string {
         </div>
         <div class="control-row">
           <button class="button subtle" id="back-start-intent" data-agent-action="back-to-intent" type="button">Back to intent</button>
-          <button class="button primary" id="continue-start-preflight" data-agent-action="continue-to-local-preflight" type="button">Continue to preflight</button>
+          <button class="button primary" id="continue-start-preflight" data-agent-action="run-local-preflight" type="button">Continue to preflight</button>
         </div>
       `)}
     </div>
@@ -4927,7 +5129,7 @@ function renderStartPreflightStep(checks: StartPreflightCheck[], summary: Return
         <div class="control-row">
           <button class="button subtle" id="back-start-evidence" data-agent-action="back-to-evidence" type="button">Back to evidence</button>
           <button class="button" id="download-start-draft-preflight" data-agent-action="download-project-draft" type="button">Download intake JSON</button>
-          <button class="button primary" id="start-generate-architecture" data-agent-action="open-provider-setup" type="button" ${canOpenProvider ? "" : "disabled"} aria-describedby="phase3-provider-note">Generate architecture</button>
+          <button class="button primary" id="start-generate-architecture" data-agent-action="connect-provider" type="button" ${canOpenProvider ? "" : "disabled"} aria-describedby="phase3-provider-note">Generate architecture</button>
         </div>
         <div class="notice" id="phase3-provider-note" role="note">${canOpenProvider ? "Next you will review exactly what will be sent, redact or exclude risky evidence, choose a provider, and enter a session-only key if needed." : "Resolve required context before provider setup. No API key is requested during local preflight."}</div>
       `)}
@@ -4977,43 +5179,45 @@ function renderProviderSelection(diagnostics: ProviderDiagnostic[]): string {
 
 function renderEvidenceReview(): string {
   return panel("Evidence Review Before Generation", `
-    <div class="checkbox-row">
-      <label>
-        <input id="start-send-summaries-only" type="checkbox" ${state.startSendSummariesOnly ? "checked" : ""} />
-        <span>Send summaries only</span>
-      </label>
-      <small>Default. Raw files and hidden app state are excluded from the provider payload.</small>
-    </div>
-    <div class="evidence-review-list">
-      ${state.startSourceMaterials.length ? state.startSourceMaterials.map((material) => {
-        const review = evidenceReviewFor(material);
-        const findings = findingsForMaterial(material);
-        const suggestions = redactionSuggestions(material);
-        return `
-          <div class="review-row" data-agent-evidence-id="${esc(material.id)}">
-            <div class="review-row-main">
-              <label class="checkbox-row compact">
-                <input type="checkbox" data-start-evidence-include="${esc(material.id)}" ${review.included ? "checked" : ""} />
-                <span>${esc(material.label || material.path || "Untitled evidence")}</span>
-              </label>
-              <div class="muted">${esc(humanLabel(material.type))} · ${esc(material.path || "local draft evidence")}</div>
-              <div class="tag-row">
-                ${badge(review.included ? "included" : "excluded", review.included ? "success" : "neutral")}
-                ${badge(state.startSendSummariesOnly ? "summary only" : "approved excerpt", state.startSendSummariesOnly ? "success" : "warning")}
-                ${badge(findings.length ? `${findings.length} safety` : "clear", sourceTone(findings))}
+    <div data-agent-action="review-evidence" data-agent-section="provider-evidence-review">
+      <div class="checkbox-row">
+        <label>
+          <input id="start-send-summaries-only" type="checkbox" ${state.startSendSummariesOnly ? "checked" : ""} />
+          <span>Send summaries only</span>
+        </label>
+        <small>Default. Raw files and hidden app state are excluded from the provider payload.</small>
+      </div>
+      <div class="evidence-review-list">
+        ${state.startSourceMaterials.length ? state.startSourceMaterials.map((material) => {
+          const review = evidenceReviewFor(material);
+          const findings = findingsForMaterial(material);
+          const suggestions = redactionSuggestions(material);
+          return `
+            <div class="review-row" data-agent-evidence-id="${esc(material.id)}">
+              <div class="review-row-main">
+                <label class="checkbox-row compact">
+                  <input type="checkbox" data-start-evidence-include="${esc(material.id)}" ${review.included ? "checked" : ""} />
+                  <span>${esc(material.label || material.path || "Untitled evidence")}</span>
+                </label>
+                <div class="muted">${esc(humanLabel(material.type))} · ${esc(material.path || "local draft evidence")}</div>
+                <div class="tag-row">
+                  ${badge(review.included ? "included" : "excluded", review.included ? "success" : "neutral")}
+                  ${badge(state.startSendSummariesOnly ? "summary only" : "approved excerpt", state.startSendSummariesOnly ? "success" : "warning")}
+                  ${badge(findings.length ? `${findings.length} safety` : "clear", sourceTone(findings))}
+                </div>
+                ${suggestions.length ? `<div class="notice compact" role="note">${esc(suggestions.join(" "))}</div>` : ""}
               </div>
-              ${suggestions.length ? `<div class="notice compact" role="note">${esc(suggestions.join(" "))}</div>` : ""}
+              <label class="field">
+                <span>Redaction note</span>
+                <textarea class="textarea compact" data-start-evidence-redaction="${esc(material.id)}" spellcheck="false">${esc(review.redaction)}</textarea>
+              </label>
             </div>
-            <label class="field">
-              <span>Redaction note</span>
-              <textarea class="textarea compact" data-start-evidence-redaction="${esc(material.id)}" spellcheck="false">${esc(review.redaction)}</textarea>
-            </label>
-          </div>
-        `;
-      }).join("") : `<div class="source-empty">
-        <strong>No evidence included.</strong>
-        <span>The provider payload can still use normalized product context, but architecture quality improves when source material is reviewed and included.</span>
-      </div>`}
+          `;
+        }).join("") : `<div class="source-empty">
+          <strong>No evidence included.</strong>
+          <span>The provider payload can still use normalized product context, but architecture quality improves when source material is reviewed and included.</span>
+        </div>`}
+      </div>
     </div>
   `);
 }
@@ -5329,7 +5533,7 @@ function renderStartHub(): string {
         </div>
         ${state.startMessage ? `<div class="notice" role="status">${esc(state.startMessage)}</div>` : ""}
       `)}
-      ${panel("What You Get", `
+      ${panel(returning ? "Onboarding Signals" : "What You Get", returning ? renderOnboardingSignals() : `
         <div class="start-output-list">
           <span>Evidence Ledger</span>
           <span>Product Model</span>
@@ -5343,7 +5547,7 @@ function renderStartHub(): string {
   `;
   return `
     <a class="skip-link" href="#main-content">Skip to content</a>
-    <main class="start-main" id="main-content" data-agent-current-view="start" data-agent-onboarding-state="${esc(startOnboardingState())}" tabindex="-1">
+    <main class="start-main" id="main-content" data-agent-current-view="start" data-agent-landmark="${esc(startAgentLandmark())}" data-agent-package-exists="false" data-agent-provider-required="${providerSetupRequired() ? "true" : "false"}" data-agent-generation-blocked="${generationBlocked() ? "true" : "false"}" data-agent-onboarding-complete="${state.onboardingState.launch_review_completed ? "true" : "false"}" data-agent-onboarding-state="${esc(startOnboardingState())}" tabindex="-1">
       <header class="start-header">
         <div class="brand">
           <div class="mark">A</div>
@@ -5384,8 +5588,8 @@ function render(): void {
         <div class="package-tools" aria-label="Package actions">
           <button class="button subtle" id="reset-active-package" data-agent-action="reset-workspace" type="button">New Project</button>
           <button class="button" id="replay-onboarding" data-agent-action="replay-onboarding" type="button">Replay Onboarding</button>
-          <button class="button primary" id="load-sample" data-agent-action="Load sample package" type="button">Load Sample Package</button>
-          <button class="button" id="import-folder" data-agent-action="Import package folder" type="button">Import Package Folder</button>
+          <button class="button primary" id="load-sample" data-agent-action="explore-sample" type="button">Load Sample Package</button>
+          <button class="button" id="import-folder" data-agent-action="import-package" type="button">Import Package Folder</button>
           <input id="folder-input" type="file" webkitdirectory multiple hidden />
         </div>
         <nav class="nav" aria-label="Workbench views">
@@ -5406,7 +5610,7 @@ function render(): void {
         </nav>
         <div class="footer-note">${esc(state.packageName)} · ${esc(bundle.manifest.project_slug ?? "package")}</div>
       </aside>
-      <main class="main" id="main-content" data-agent-current-view="${esc(state.view)}" tabindex="-1">
+      <main class="main" id="main-content" data-agent-current-view="${esc(state.view)}" data-agent-landmark="${esc(viewAgentLandmark(state.view))}" data-agent-package-exists="true" data-agent-provider-required="false" data-agent-generation-blocked="false" data-agent-onboarding-complete="${state.onboardingState.launch_review_completed ? "true" : "false"}" data-agent-onboarding-state="${esc(activeOnboardingState())}" tabindex="-1">
         <div class="topbar" role="region" aria-label="Current package status">
           <div>
             <div class="eyebrow">${esc(viewLabel)}</div>
@@ -5559,6 +5763,7 @@ function bindStartHubEvents(): void {
   });
   document.querySelector<HTMLButtonElement>("#start-reset-fresh")?.addEventListener("click", () => {
     clearStartDraftStorage();
+    recordResetUsage("Start Hub reset to fresh state.");
     enterFreshState("Fresh state reset. Saved packages are still available.");
     render();
   });
@@ -5648,6 +5853,7 @@ function bindStartHubEvents(): void {
     state.startApiKey = "";
     state.startProviderDiagnosticsRan = false;
     state.startProviderMessage = "Local deterministic mode selected. No provider key is required.";
+    recordSkipUsage("Provider-backed generation skipped for local deterministic mode.");
     persistStartDraft();
     render();
   });
@@ -5661,7 +5867,7 @@ function bindStartHubEvents(): void {
       : warnings
         ? `Diagnostics passed with ${warnings} warning${warnings === 1 ? "" : "s"}.`
         : "Diagnostics passed. Provider setup is ready.";
-    if (!failures) markOnboardingFlag("provider_connected");
+    if (!failures) recordProviderSetupSuccess(`${providerDetail().label} diagnostics passed.`);
     render();
   });
   document.querySelector<HTMLInputElement>("#start-send-summaries-only")?.addEventListener("change", (event) => {
@@ -5841,6 +6047,7 @@ function bindStartHubEvents(): void {
 
 function bindEvents(): void {
   document.querySelector<HTMLButtonElement>("#reset-active-package")?.addEventListener("click", () => {
+    recordResetUsage("Active package reset to Start Hub.");
     enterFreshState("Fresh state ready. Saved packages are still available.");
     render();
   });
@@ -5853,6 +6060,7 @@ function bindEvents(): void {
     const entry = await saveWorkspaceBundle(state.bundle, state.packageName);
     await refreshWorkspaceEntries();
     recordWorkspaceActivity("save", `Saved ${entry.name} from Launch Review.`, entry.id);
+    recordFirstSave("Package saved from Launch Review.");
     state.launchReviewMessage = `Saved ${entry.name} to workspace.`;
     render();
   });
@@ -6175,6 +6383,7 @@ function bindEvents(): void {
     if (!state.bundle) return;
     const entry = await saveWorkspaceBundle(state.bundle, state.packageName);
     await refreshWorkspaceEntries();
+    recordFirstSave("Package saved from Workspace.");
     recordWorkspaceActivity("save", `Saved ${entry.name}.`, entry.id);
     state.workspaceMessage = `Saved ${entry.name}.`;
     render();
@@ -6801,7 +7010,7 @@ function bindEvents(): void {
     if (!state.bundle) return;
     const slug = String(state.bundle.manifest.project_slug ?? "archetype-package");
     downloadText(`${slug}-handoff.md`, `${handoffMarkdown(state.bundle)}\n`, "text/markdown");
-    markOnboardingFlag("handoff_exported");
+    recordFirstHandoffExport("Handoff markdown exported.");
     state.handoffMessage = "Handoff markdown prepared.";
     render();
   });
@@ -6809,14 +7018,14 @@ function bindEvents(): void {
     if (!state.bundle) return;
     const slug = String(state.bundle.manifest.project_slug ?? "archetype-package");
     downloadText(`${slug}-handoff.json`, `${pretty(handoffJson(state.bundle))}\n`, "application/json");
-    markOnboardingFlag("handoff_exported");
+    recordFirstHandoffExport("Handoff JSON exported.");
     state.handoffMessage = "Handoff JSON prepared.";
     render();
   });
   document.querySelector<HTMLButtonElement>("#copy-handoff-prompt")?.addEventListener("click", async () => {
     if (!state.bundle) return;
     await copyTextToClipboard(handoffPrompt(state.bundle));
-    markOnboardingFlag("handoff_exported");
+    recordFirstHandoffExport("Frontend agent prompt copied.");
     state.handoffMessage = "Frontend agent prompt copied.";
     render();
   });
@@ -6842,6 +7051,7 @@ function bindEvents(): void {
 async function loadSample(): Promise<void> {
   const response = await fetch("/sample-package.json");
   markOnboardingFlag("sample_explored");
+  recordSkipUsage("Sample package path opened.");
   await activateBundle(await response.json() as Bundle, "sample-package", "overview", "sample");
   render();
 }

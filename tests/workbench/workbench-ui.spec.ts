@@ -12,6 +12,11 @@ interface MalformedScenario {
   risk: string;
 }
 
+interface OnboardingStateSnapshot {
+  [key: string]: unknown;
+  metric_events?: Array<{ type?: string; detail?: string; created_at?: string }>;
+}
+
 type ViewId =
   | "overview"
   | "workspace"
@@ -67,9 +72,16 @@ test.beforeEach(async ({ page }) => {
 
 test("fresh Start Hub renders before any package is loaded", async ({ page }) => {
   await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "fresh-start");
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-landmark", "start-hub");
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-provider-required", "false");
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-generation-blocked", "true");
   await expect(page.getByRole("button", { name: "Create a package" }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Explore sample package" }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Import existing package" }).first()).toBeVisible();
+  await expect(page.locator("[data-agent-action='create-package']")).toHaveCount(2);
+  await expect(page.locator("[data-agent-action='explore-sample']")).toHaveCount(2);
+  await expect(page.locator("[data-agent-action='import-package']")).toHaveCount(2);
+  await expect(page.locator("[data-agent-action='reset-workspace']")).toHaveCount(1);
   await expect(page.locator("[data-agent-view='overview']")).toHaveCount(0);
   await expect(page.getByText("no API key needed").first()).toBeVisible();
 });
@@ -157,12 +169,14 @@ test("provider setup asks for a session key only after generation is requested",
   await page.locator("#start-provider-consent").check();
   await page.locator("#start-run-provider-diagnostics").click();
   await expect(page.getByText("Key format does not match OpenAI.")).toBeVisible();
+  await expectOnboardingState(page, (state) => !hasMetricEvent(state, "provider_setup_success"));
 
   const sessionKey = "sk-1234567890abcdefghijklmnop";
   await page.locator("#start-api-key").fill(sessionKey);
   await page.locator("#start-run-provider-diagnostics").click();
   await expect(page.getByText("Diagnostics passed. Provider setup is ready.")).toBeVisible();
   await expect(page.locator("#final-start-generate-architecture")).toBeEnabled();
+  await expectOnboardingState(page, (state) => Number(state.provider_setup_success_count ?? 0) >= 1 && hasMetricEvent(state, "provider_setup_success"));
   await page.locator("#final-start-generate-architecture").click();
   await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "generation-progress");
   await expect(page.getByText("Generation started. Normalize evidence is running.")).toBeVisible();
@@ -176,10 +190,12 @@ test("local deterministic provider mode runs diagnostics without an API key", as
 
   await expect(page.locator("#start-api-key")).toBeDisabled();
   await expect(page.getByText("Local deterministic mode selected. No provider key is required.")).toBeVisible();
+  await expectOnboardingState(page, (state) => Number(state.skip_count ?? 0) >= 1 && hasMetricEvent(state, "onboarding_skipped", /local deterministic/i));
   await page.locator("#start-provider-consent").check();
   await page.locator("#start-run-provider-diagnostics").click();
   await expect(page.getByText("Diagnostics passed. Provider setup is ready.")).toBeVisible();
   await expect(page.locator("#final-start-generate-architecture")).toBeEnabled();
+  await expectOnboardingState(page, (state) => Number(state.provider_setup_success_count ?? 0) >= 1);
 });
 
 test("provider evidence review supports summaries, exclusion, redaction, and payload preview", async ({ page }) => {
@@ -207,6 +223,7 @@ test("provider evidence review supports summaries, exclusion, redaction, and pay
   await expect(page.locator("#final-start-generate-architecture")).toBeEnabled();
   await expect(page.locator(".code").filter({ hasText: "Remove prompt-injection instruction" }).first()).toBeVisible();
   await expect(page.locator(".code").filter({ hasText: "[redacted credential]" }).first()).toBeVisible();
+  await expectOnboardingState(page, (state) => Number(state.provider_setup_success_count ?? 0) >= 1 && hasMetricEvent(state, "provider_setup_success"));
 });
 
 test("generation progress runs compiler phases and exposes created artifacts", async ({ page }) => {
@@ -228,6 +245,7 @@ test("generation progress runs compiler phases and exposes created artifacts", a
   await expect(page.getByText("10/10")).toBeVisible();
   await expect(page.locator("[data-start-generation-phase='prepare-launch-review']")).toContainText("00-launch-review/launch-review-brief.md");
   await expect(page.locator("#run-next-generation-phase")).toBeDisabled();
+  await expectOnboardingState(page, (state) => Number(state.generation_success_count ?? 0) >= 1 && hasMetricEvent(state, "generation_success"));
 });
 
 test("generation progress graduates to Launch Review and completes onboarding", async ({ page }) => {
@@ -235,8 +253,8 @@ test("generation progress graduates to Launch Review and completes onboarding", 
   await page.locator("#run-all-generation-phases").click();
   await page.locator("#open-generated-launch-review").click();
 
-  await expect(page.locator("[data-agent-landmark='launch-review']")).toBeVisible();
   await expect(page.locator("#main-content")).toHaveAttribute("data-agent-current-view", "overview");
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-landmark", "launch-review");
   await expect(page.locator("[data-agent-section='launch-review-answers']")).toContainText("Is this package ready for frontend agent?");
   await expect(page.locator("[data-agent-section='launch-review-answers']")).toContainText("What is trusted?");
   await expect(page.locator("[data-agent-section='launch-review-answers']")).toContainText("What is missing?");
@@ -247,13 +265,16 @@ test("generation progress graduates to Launch Review and completes onboarding", 
     const state = JSON.parse(localStorage.getItem("archetype:onboarding-state:v1") ?? "{}");
     return Boolean(state.first_package_created && state.provider_connected && state.launch_review_completed);
   })).toBe(true);
+  await expectOnboardingState(page, (state) => Boolean(state.onboarding_completed_at) && hasMetricEvent(state, "onboarding_completed", /Generated package/i));
 
   await page.locator("#save-launch-package").click();
   await expect(page.getByRole("status").filter({ hasText: /Saved/i })).toBeVisible();
+  await expectOnboardingState(page, (state) => Number(state.first_save_count ?? 0) >= 1 && hasMetricEvent(state, "first_save", /Launch Review/i));
   await page.locator("#reset-active-package").click();
   await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "fresh-start");
   await expect(page.locator(".eyebrow").filter({ hasText: "Returning Workspace" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Replay onboarding" }).first()).toBeVisible();
+  await expectOnboardingState(page, (state) => Number(state.reset_usage_count ?? 0) >= 1 && hasMetricEvent(state, "reset_used", /Active package/i));
 });
 
 test("Launch Review callouts can be dismissed and onboarding can be replayed", async ({ page }) => {
@@ -343,9 +364,28 @@ test("malformed local intake storage is normalized instead of breaking onboardin
 test("sample exploration and reset return to a fresh Start Hub", async ({ page }) => {
   await ensureWorkbenchPackage(page);
   await expect(page.locator("[data-agent-view='overview']")).toBeVisible();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "sample-review");
+  await expectOnboardingState(page, (state) => Boolean(state.sample_explored) && Number(state.skip_count ?? 0) >= 1 && hasMetricEvent(state, "onboarding_skipped", /Sample package/i));
   await page.locator("#reset-active-package").click();
   await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "fresh-start");
   await expect(page.locator("[data-agent-view='overview']")).toHaveCount(0);
+  await expectOnboardingState(page, (state) => Number(state.reset_usage_count ?? 0) >= 1 && hasMetricEvent(state, "reset_used"));
+});
+
+test("import path reaches Launch Review and records completion metrics", async ({ page }) => {
+  const packageDir = path.join(process.cwd(), "tmp", "archetype-output");
+  test.skip(!fs.existsSync(path.join(packageDir, "00-manifest", "manifest.json")), "Generated package fixture is required for directory import.");
+
+  await page.locator("#start-folder-input").setInputFiles(packageDir);
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-landmark", "launch-review");
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "launch-review");
+  await expectOnboardingState(page, (state) => {
+    return Boolean(state.launch_review_completed)
+      && Boolean(state.onboarding_completed_at)
+      && Number(state.skip_count ?? 0) >= 1
+      && hasMetricEvent(state, "onboarding_skipped", /Imported package/i)
+      && hasMetricEvent(state, "onboarding_completed", /Imported package/i);
+  });
 });
 
 test("recent package recovery opens a saved package from the Start Hub", async ({ page }) => {
@@ -353,6 +393,7 @@ test("recent package recovery opens a saved package from the Start Hub", async (
   await openView(page, "workspace");
   await page.locator("#save-workspace-package").click();
   await expect(page.getByRole("status").filter({ hasText: /Saved/i })).toBeVisible();
+  await expectOnboardingState(page, (state) => Number(state.first_save_count ?? 0) >= 1 && hasMetricEvent(state, "first_save", /Workspace/i));
 
   await page.locator("#reset-active-package").click();
   await expect(page.locator("#main-content")).toHaveAttribute("data-agent-onboarding-state", "fresh-start");
@@ -367,12 +408,54 @@ test("whole app navigation and AI-readable UI contract render across every view"
   await expect(page.locator("[data-agent-view]")).toHaveCount(allViews.length);
   const overviewActionCount = await page.locator("[data-agent-action]").count();
   expect(overviewActionCount).toBeGreaterThanOrEqual(5);
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-package-exists", "true");
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-provider-required", "false");
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-generation-blocked", "false");
 
   for (const view of allViews) {
     await openView(page, view);
     await expect(page.locator("#main-content")).toHaveAttribute("data-agent-current-view", view);
+    await expect(page.locator("#main-content")).toHaveAttribute("data-agent-landmark", view === "overview" ? "launch-review" : view === "export" ? "handoff" : view);
     await expect(page.locator("#main-content")).not.toContainText("Package unavailable");
   }
+});
+
+test("onboarding keyboard path, status announcements, and AI action hooks are accessible", async ({ page }) => {
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-landmark", "start-hub");
+  await page.keyboard.press("Tab");
+  await expect(page.locator(".skip-link")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#main-content")).toBeFocused();
+
+  await page.locator("#start-create-package").click();
+  await page.locator("#start-project-name").fill("AI Action Hooks QA");
+  await page.locator("#start-context").fill("A production operations console for support leads who review failed customer workflows, assign repair tasks, and validate recovery proof before closing an incident.");
+  await page.locator("#start-goals").fill("Review failed workflows\nAssign repair tasks\nValidate recovery proof");
+  await page.locator("#start-users").fill("Support lead\nOperations manager");
+  await page.locator("#start-constraints").fill("Backend API endpoints, auth roles, production copy, WCAG accessibility, and compliance audit notes are available.");
+  await page.locator("#continue-start-evidence").click();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-landmark", "evidence");
+  await expect(page.locator("[data-agent-action='run-local-preflight']")).toBeVisible();
+  await page.locator("#start-source-label").fill("Backend API note");
+  await page.locator("#start-source-content").fill("REST API provides incident list, repair task assignment, auth roles, localized empty states, and audit log fields.");
+  await page.locator("#add-start-source").click();
+  await page.locator("#continue-start-preflight").click();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-landmark", "preflight");
+  await expect(page.locator("[data-agent-action='connect-provider']")).toBeVisible();
+  await page.locator("#start-generate-architecture").click();
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-landmark", "provider-setup");
+  await expect(page.locator("[data-agent-action='review-evidence']")).toBeVisible();
+  await expect(page.locator("[data-agent-action='generate-architecture']")).toBeVisible();
+  await expect(page.locator("[role='status'], [aria-live='polite']").first()).toBeVisible();
+
+  const unnamedControls = await unnamedInteractiveControls(page);
+  expect(unnamedControls).toEqual([]);
+
+  await page.goto("/");
+  await ensureWorkbenchPackage(page);
+  await openView(page, "export");
+  await expect(page.locator("#main-content")).toHaveAttribute("data-agent-landmark", "handoff");
+  await expect(page.locator("[data-agent-action='export-handoff']")).toHaveCount(3);
 });
 
 test("primary human workflow can save, validate, compose, and export without breaking the shell", async ({ page }) => {
@@ -415,6 +498,7 @@ test("primary human workflow can save, validate, compose, and export without bre
     const state = JSON.parse(localStorage.getItem("archetype:onboarding-state:v1") ?? "{}");
     return Boolean(state.handoff_exported);
   })).toBe(true);
+  await expectOnboardingState(page, (state) => Number(state.first_handoff_export_count ?? 0) >= 1 && hasMetricEvent(state, "first_handoff_export", /JSON/i));
   await page.locator("#copy-validate-command").click();
   await expect(page.getByText("Validation command copied.")).toBeVisible();
 });
@@ -439,6 +523,54 @@ async function openView(page: Page, view: ViewId): Promise<void> {
   await ensureWorkbenchPackage(page);
   await page.locator(`[data-agent-view='${view}']`).click();
   await expect(page.locator("#main-content")).toHaveAttribute("data-agent-current-view", view);
+}
+
+async function readOnboardingState(page: Page): Promise<OnboardingStateSnapshot> {
+  return page.evaluate(() => JSON.parse(localStorage.getItem("archetype:onboarding-state:v1") ?? "{}"));
+}
+
+async function expectOnboardingState(page: Page, predicate: (state: OnboardingStateSnapshot) => boolean): Promise<void> {
+  await expect.poll(async () => predicate(await readOnboardingState(page))).toBe(true);
+}
+
+function hasMetricEvent(state: OnboardingStateSnapshot, type: string, detail?: RegExp): boolean {
+  return (state.metric_events ?? []).some((event) => {
+    if (event.type !== type) return false;
+    return detail ? detail.test(String(event.detail ?? "")) : true;
+  });
+}
+
+async function unnamedInteractiveControls(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const selectors = "button, input:not([type='hidden']), select, textarea, a[href]";
+    const controls = [...document.querySelectorAll<HTMLElement>(selectors)];
+    const isVisible = (element: HTMLElement): boolean => {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+    };
+    const nameFor = (element: HTMLElement): string => {
+      const labelledBy = element.getAttribute("aria-labelledby");
+      const labelledByText = labelledBy
+        ? labelledBy.split(/\s+/).map((id) => document.getElementById(id)?.textContent ?? "").join(" ")
+        : "";
+      const explicitLabel = element.id
+        ? document.querySelector(`label[for='${CSS.escape(element.id)}']`)?.textContent ?? ""
+        : "";
+      const wrappedLabel = element.closest("label")?.textContent ?? "";
+      return [
+        element.getAttribute("aria-label") ?? "",
+        labelledByText,
+        explicitLabel,
+        wrappedLabel,
+        element.getAttribute("title") ?? "",
+        element.textContent ?? ""
+      ].join(" ").replace(/\s+/g, " ").trim();
+    };
+    return controls
+      .filter((element) => isVisible(element) && !nameFor(element))
+      .map((element) => `${element.tagName.toLowerCase()}#${element.id || "no-id"}`);
+  });
 }
 
 async function ensureWorkbenchPackage(page: Page): Promise<void> {

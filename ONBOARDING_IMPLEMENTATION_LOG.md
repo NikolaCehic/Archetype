@@ -943,3 +943,192 @@ Phase 6: Measurement and Hardening.
 Why this is next:
 
 Launch Review now completes onboarding and gives the user the first real handoff moment. The next product risk is confidence at scale: the app should measure completion, reset, skip, provider, generation, save, and handoff events, then harden accessibility and edge-case coverage around those flows.
+
+## Phase 6: Measurement and Hardening
+
+Status: complete
+
+Date: 2026-05-03
+
+Source plan: `ONBOARDING_PLAN.md`
+
+## Phase Goal
+
+Implement the sixth onboarding phase fully:
+
+- Track onboarding completion, skip, provider setup success, generation success, first save, first handoff export, and reset usage.
+- Add Playwright E2E scenarios for fresh state, sample path, import path, provider-required path, skipped provider path, failed key path, redaction path, and reset path.
+- Add accessibility checks for keyboard navigation, focus order, status announcements, and screen-reader names.
+
+## Changes Made
+
+### Onboarding Measurement
+
+- Extended `archetype:onboarding-state:v1` with durable counters and timestamps for:
+  - `onboarding_completed_at`
+  - `skip_count`
+  - `provider_setup_success_count`
+  - `generation_success_count`
+  - `first_save_at`
+  - `first_save_count`
+  - `first_handoff_export_at`
+  - `first_handoff_export_count`
+  - `reset_usage_count`
+  - `metric_events`
+- Added normalized loading for malformed, old, or partial onboarding state so existing users are upgraded safely.
+- Added bounded metric history under `metric_events` so the Start Hub and tests can inspect recent onboarding outcomes without sending analytics externally.
+- Added event writers for:
+  - Onboarding completion.
+  - Onboarding skipped.
+  - Provider setup success.
+  - Generation success.
+  - First save.
+  - First handoff export.
+  - Reset usage.
+
+### Flow Instrumentation
+
+- Marked sample exploration as an onboarding skip event while preserving `sample_explored`.
+- Marked package folder import as both an imported Launch Review completion and a skip event.
+- Marked successful provider diagnostics as provider setup success.
+- Marked failed provider diagnostics as non-success so invalid keys do not inflate setup metrics.
+- Marked local deterministic mode as a provider-backed-generation skip.
+- Marked compiler completion as generation success.
+- Marked Launch Review and Workspace saves as first-save events.
+- Marked handoff markdown, handoff JSON, and frontend-agent prompt copy as first-handoff-export events.
+- Marked Start Hub reset and active package reset as reset usage.
+
+### AI-Agent Accessibility Hooks
+
+- Added `data-agent-onboarding-state` to the active Workbench shell, not only the Start Hub.
+- Added deterministic shell attributes for:
+  - Package existence.
+  - Provider requirement.
+  - Generation blocked state.
+  - Onboarding completion.
+  - Current landmark.
+- Verified required action hooks are present across the workflow:
+  - `create-package`
+  - `explore-sample`
+  - `import-package`
+  - `reset-workspace`
+  - `connect-provider`
+  - `run-local-preflight`
+  - `generate-architecture`
+  - `review-evidence`
+  - `export-handoff`
+- Normalized loaded Workbench sample/import actions to the same `explore-sample` and `import-package` hook names used by the Start Hub.
+
+### Returning User Signals
+
+- Added an `Onboarding Signals` panel for returning users.
+- Exposed recent metric counters and the last four metric events in the Start Hub.
+- Styled metric event rows so the signal surface is readable and consistent with the premium dark Workbench UI.
+
+### E2E and Accessibility Hardening
+
+- Added onboarding-state helpers to the Playwright suite so tests validate persisted metrics, not only visible copy.
+- Expanded E2E coverage for the required Phase 6 paths:
+  - Fresh state.
+  - Sample path.
+  - Import path.
+  - Provider-required path.
+  - Skipped provider path.
+  - Failed key path.
+  - Redaction path.
+  - Reset path.
+- Added handoff export metric assertions.
+- Added first-save metric assertions for Launch Review and Workspace saves.
+- Added accessibility checks for:
+  - Skip-link keyboard navigation.
+  - Focus movement to `#main-content`.
+  - Landmark changes through onboarding.
+  - Status/live-region availability.
+  - Screen-reader names for visible interactive controls.
+  - Required AI action hooks on the correct screens.
+
+### Iteration During Validation
+
+- First full E2E run exposed an ambiguous strict Playwright locator because both the page shell and Launch Review section correctly carried the `launch-review` landmark.
+- Tightened the test to assert the shell landmark directly.
+- The import-path scenario initially skipped because the generated package manifest lives at `00-manifest/manifest.json`, not at the package root.
+- Corrected the fixture check and reran the focused generation/import scenarios before rerunning the full suite.
+
+## Validation Against ONBOARDING_PLAN.md
+
+### Phase 6 Requirement: Track Completion, Skip, Provider, Generation, Save, Handoff, Reset
+
+Result: pass
+
+All required events now persist into `archetype:onboarding-state:v1` with counters, timestamps where useful, and recent metric event details. Existing boolean completion flags remain intact for compatibility.
+
+### Phase 6 Requirement: Fresh, Sample, Import, Provider, Skipped Provider, Failed Key, Redaction, Reset E2E
+
+Result: pass
+
+The Playwright suite now covers each required path and validates both human-visible results and persisted metric state.
+
+### Phase 6 Requirement: Accessibility Checks
+
+Result: pass
+
+The E2E suite checks keyboard skip-link behavior, focus order into the main landmark, live/status regions, visible control names, shell landmarks, and required AI-agent action hooks.
+
+### Success Metric: No API Key Before the User Understands Why
+
+Result: pass
+
+The key field remains absent through Start Hub, Project Intent, Evidence, and Local Preflight. Provider setup appears only after `Generate architecture` is requested.
+
+### Success Metric: Deterministic Handoff Discovery
+
+Result: pass
+
+The Handoff view exposes `data-agent-landmark="handoff"` on the shell and `data-agent-action="export-handoff"` on the three handoff actions.
+
+## Test Evidence
+
+- Unit/type test: `npm run build` passed through `npm run workbench:build`, `npm run workbench:e2e`, and `npm run check`.
+- Smoke test: `npm run smoke` passed inside `npm run check`.
+- Focused Phase 6 E2E/UI regression: `npx playwright test --config playwright.config.ts tests/workbench/workbench-ui.spec.ts --grep "generation progress graduates|import path reaches"` passed with 2 passed, 0 failed.
+- Full E2E/UI test: `npm run workbench:e2e` passed with 39 passed, 0 failed.
+- Malformed-data E2E regression: 20 passed, 0 failed.
+- E2E report generation: `npm run workbench:e2e:report` passed and wrote `tmp/workbench-ui-e2e`.
+- Integration test: `npm run check` passed.
+- Generated frontend integration inside `npm run check`:
+  - `npm install` passed in `tmp/generated-frontend`.
+  - `npm run typecheck` passed in `tmp/generated-frontend`.
+  - `npm run build` passed in `tmp/generated-frontend`.
+- Golden regression: `npm run golden` passed inside `npm run check` for fintech, healthcare, logistics, and web3 examples.
+- Root dependency audit: `npm audit --json` reports 0 vulnerabilities.
+- Generated target dependency audit: `npm audit --json` in `tmp/generated-frontend` reports 0 vulnerabilities.
+- Diff hygiene: `git diff --check` passed.
+
+## Self-Critique and Iteration Decision
+
+Question: Is this implementation the most optimal and correct Phase 6 solution?
+
+Answer: Yes, for Phase 6.
+
+Reasoning:
+
+- It measures the exact lifecycle events named in the onboarding plan without introducing external analytics, network calls, or privacy ambiguity.
+- It keeps old onboarding flags compatible while adding richer metric events.
+- It validates metrics at the persistence boundary, so the tests prove behavior that can be consumed by both the human UI and an AI agent.
+- It covers every required Phase 6 path with Playwright and closes the import-path gap that the first run revealed.
+- It adds accessibility checks that fail on practical product defects: broken keyboard entry, missing live regions, unnamed controls, and missing deterministic action hooks.
+- It keeps measurement separate from product decisioning, so users are not blocked by analytics state.
+
+I do not see a better Phase 6 solution inside the current ONBOARDING_PLAN.md scope. The only remaining concerns are not Phase 6 defects: production telemetry transport, real provider execution, and account-level analytics belong to a later productization phase once backend identity, privacy policy, and deployment architecture exist.
+
+## Exit Condition
+
+I dont know any better solution for this nor do I see anything worng with the current one.
+
+## Next Phase
+
+Onboarding plan implementation is complete through Phase 6.
+
+Why this is next:
+
+The remaining work is no longer another onboarding phase from `ONBOARDING_PLAN.md`. The next product decision should be a productization plan for backend-backed accounts, optional telemetry transport, provider execution, and deployment operations, while preserving the local-first onboarding contract implemented here.
