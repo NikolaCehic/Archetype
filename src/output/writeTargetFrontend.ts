@@ -80,6 +80,9 @@ function packageJson(): string {
       "@types/react-dom": "19.2.3",
       "tailwindcss": "4.2.4",
       "typescript": "5.9.3"
+    },
+    overrides: {
+      "postcss": "8.5.10"
     }
   }, null, 2);
 }
