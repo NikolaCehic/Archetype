@@ -117,7 +117,8 @@ try {
     "archetype_validate_package",
     "archetype_summarize_package",
     "archetype_read_artifact",
-    "archetype_verify_target"
+    "archetype_verify_target",
+    "archetype_plan_repair"
   ]) {
     assert(names.has(required), `tools/list is missing ${required}.`);
   }
@@ -186,6 +187,7 @@ try {
   assert(summarize.screens > 0, "summarize should include screen count.");
   assert(summarize.entrypoints.includes("test-first/test-first-contract.json"), "summarize should include test-first contract entrypoint.");
   assert(summarize.entrypoints.includes("verification/playwright-verification-contract.json"), "summarize should include Playwright verification entrypoint.");
+  assert(summarize.entrypoints.includes("10-revision/repair-task-queue.json"), "summarize should include repair task queue entrypoint.");
 
   const artifact = await callTool("archetype_read_artifact", {
     outputDir,
@@ -207,6 +209,14 @@ try {
   assert(verify.summary?.typecheck === "pass", "verify target should typecheck.");
   assert(verify.summary?.build === "pass", "verify target should build.");
   assert(verify.summary?.playwright === "pass", "verify target should run Playwright verification.");
+  assert(verify.repair?.status === "pass", "verify target should write passing repair status.");
+
+  const repair = await callTool("archetype_plan_repair", {
+    outputDir,
+    targetDir
+  });
+  assert(repair.status === "pass", "repair planning should pass after successful verification.");
+  assert(repair.taskCount === 0, "repair planning should have no tasks after successful verification.");
 
   const summary = {
     status: "pass",

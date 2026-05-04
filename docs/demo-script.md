@@ -2,7 +2,7 @@
 
 ## Thesis
 
-Brief -> Archetype contract -> coding agent implementation -> verification.
+Brief -> Archetype contract -> coding agent implementation -> verification -> repair tasks when needed.
 
 The coding agent no longer has to guess the frontend architecture.
 
@@ -33,18 +33,19 @@ The demo writes:
 3. Show `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, and `design-system/tokens.json`.
 4. Materialize the target frontend scaffold.
 5. Run verification against the generated contract.
-6. Explain warnings as production integration gaps, not compiler failure.
+6. Show `10-revision/repair-task-queue.json` and explain that failures become concrete patch or revise tasks.
+7. Explain warnings as production integration gaps, not compiler failure.
 
 ## Agent Prompt
 
 For Codex:
 
 ```txt
-Use ./archetype-output to implement the frontend. Follow AGENTS.md and implementation-contract.md. Do not invent routes, states, tokens, or product copy outside the contract.
+Use ./archetype-output to implement the frontend. Follow AGENTS.md and implementation-contract.md. Do not invent routes, states, tokens, or product copy outside the contract. If verification fails, patch tasks from 10-revision/repair-task-queue.json first.
 ```
 
 For Claude Code:
 
 ```txt
-Use ./archetype-output to implement the frontend. Follow CLAUDE.md and implementation-contract.md. Run verification before declaring completion.
+Use ./archetype-output to implement the frontend. Follow CLAUDE.md and implementation-contract.md. Run verification before declaring completion. If verification fails, patch tasks from 10-revision/repair-task-queue.json first.
 ```

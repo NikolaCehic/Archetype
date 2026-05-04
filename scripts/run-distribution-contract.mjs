@@ -27,6 +27,7 @@ for (const file of [
   "scripts/run-spec-contract.mjs",
   "scripts/run-test-first-contract.mjs",
   "scripts/run-playwright-verification-contract.mjs",
+  "scripts/run-repair-contract.mjs",
   "mcp.example.json",
   "plugins/claude-code/.mcp.json",
   "plugins/codex/.mcp.json"
@@ -45,6 +46,7 @@ assert(pkg.scripts?.["lifecycle:contract"], "package must expose lifecycle:contr
 assert(pkg.scripts?.["spec:contract"], "package must expose spec:contract.");
 assert(pkg.scripts?.["test-first:contract"], "package must expose test-first:contract.");
 assert(pkg.scripts?.["playwright:contract"], "package must expose playwright:contract.");
+assert(pkg.scripts?.["repair:contract"], "package must expose repair:contract.");
 assert((pkg.files ?? []).includes("plugins"), "package files must include plugin wrappers.");
 assert((pkg.files ?? []).includes("scripts"), "package files must include demo and contract scripts.");
 
@@ -62,6 +64,7 @@ for (const expected of [
   "test-first/",
   "verification/playwright-verification-contract.json",
   "verification/playwright-evidence.json",
+  "10-revision/repair-task-queue.json",
   "docs/install.md",
   "docs/demo-script.md",
   "plugins/claude-code",
@@ -99,5 +102,5 @@ console.log(JSON.stringify({
     "docs/demo-script.md",
     "RELEASE_NOTES.md"
   ],
-  scripts: ["demo:run", "distribution:contract", "install:contract", "lifecycle:contract", "spec:contract", "test-first:contract", "playwright:contract"]
+  scripts: ["demo:run", "distribution:contract", "install:contract", "lifecycle:contract", "spec:contract", "test-first:contract", "playwright:contract", "repair:contract"]
 }, null, 2));

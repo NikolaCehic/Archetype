@@ -52,6 +52,7 @@ const requiredHarnessPaths = [
   "RELEASE_NOTES.md",
   "archetype-plugin-pivot-md/START_HERE.md",
   "archetype-plugin-pivot-md/scopes/15-playwright-verification.md",
+  "archetype-plugin-pivot-md/scopes/16-revision-repair-loop.md",
   "src/cli.ts",
   "src/mcp/server.ts",
   "plugins/claude-code/.claude-plugin/plugin.json",
@@ -67,7 +68,8 @@ const requiredHarnessPaths = [
   "scripts/run-lifecycle-contract.mjs",
   "scripts/run-spec-contract.mjs",
   "scripts/run-test-first-contract.mjs",
-  "scripts/run-playwright-verification-contract.mjs"
+  "scripts/run-playwright-verification-contract.mjs",
+  "scripts/run-repair-contract.mjs"
 ];
 
 for (const file of requiredHarnessPaths) {

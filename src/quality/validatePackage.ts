@@ -40,6 +40,11 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   const playwrightSpecPath = path.join(outputDir, "verification", "playwright-verification.spec.ts");
   const playwrightEvidencePath = path.join(outputDir, "verification", "playwright-evidence.json");
   const playwrightEvidenceMarkdownPath = path.join(outputDir, "verification", "playwright-evidence.md");
+  const repairContractPath = path.join(outputDir, "10-revision", "verification-repair-contract.json");
+  const repairTaskQueuePath = path.join(outputDir, "10-revision", "repair-task-queue.json");
+  const repairPlanPath = path.join(outputDir, "10-revision", "repair-plan.md");
+  const driftReportPath = path.join(outputDir, "10-revision", "drift-report.json");
+  const driftReportMarkdownPath = path.join(outputDir, "10-revision", "drift-report.md");
   const implementationContractPath = path.join(outputDir, "implementation-contract.md");
   const verificationPlanPath = path.join(outputDir, "verification-plan.md");
   const lifecycleStateMachinePath = path.join(outputDir, "lifecycle", "state-machine.json");
@@ -79,6 +84,11 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   if (!existsSync(playwrightSpecPath)) blockers.push("Missing verification/playwright-verification.spec.ts.");
   if (!existsSync(playwrightEvidencePath)) blockers.push("Missing verification/playwright-evidence.json.");
   if (!existsSync(playwrightEvidenceMarkdownPath)) blockers.push("Missing verification/playwright-evidence.md.");
+  if (!existsSync(repairContractPath)) blockers.push("Missing 10-revision/verification-repair-contract.json.");
+  if (!existsSync(repairTaskQueuePath)) blockers.push("Missing 10-revision/repair-task-queue.json.");
+  if (!existsSync(repairPlanPath)) blockers.push("Missing 10-revision/repair-plan.md.");
+  if (!existsSync(driftReportPath)) blockers.push("Missing 10-revision/drift-report.json.");
+  if (!existsSync(driftReportMarkdownPath)) blockers.push("Missing 10-revision/drift-report.md.");
   if (!existsSync(implementationContractPath)) blockers.push("Missing implementation-contract.md.");
   if (!existsSync(verificationPlanPath)) blockers.push("Missing verification-plan.md.");
   if (!existsSync(lifecycleStateMachinePath)) blockers.push("Missing lifecycle/state-machine.json.");
@@ -191,6 +201,43 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
     summary?: { total?: number };
     proof_artifacts?: unknown[];
   }>(playwrightEvidencePath, blockers, "Playwright evidence");
+  const repairContract = readJsonSafe<{
+    lifecycle_gate?: string;
+    source_spec_path?: string;
+    source_test_first_contract_path?: string;
+    source_playwright_contract_path?: string;
+    source_playwright_evidence_path?: string;
+    source_target_execution_path?: string;
+    output_paths?: { task_queue?: string; plan?: string; drift_report?: string };
+    policy?: { default_action?: string; contract_revision_allowed_when?: unknown[]; forbidden_behavior?: unknown[] };
+    classifiers?: unknown[];
+  }>(repairContractPath, blockers, "Verification repair contract");
+  const repairTaskQueue = readJsonSafe<{
+    status?: string;
+    source_contract?: string;
+    source_target_execution?: string;
+    source_playwright_evidence?: string;
+    next_lifecycle_state?: string;
+    task_count?: number;
+    tasks?: unknown[];
+    traceability?: {
+      canonical_spec?: string;
+      test_first_contract?: string;
+      playwright_contract?: string;
+      playwright_evidence?: string;
+      target_execution?: string;
+    };
+    completion_gate?: string;
+  }>(repairTaskQueuePath, blockers, "Repair task queue");
+  const driftReport = readJsonSafe<{
+    status?: string;
+    source_task_queue?: string;
+    drift_count?: number;
+    implementation_patch_count?: number;
+    contract_revision_review_count?: number;
+    drifts?: unknown[];
+    traceability?: unknown;
+  }>(driftReportPath, blockers, "Drift report");
   const lifecycleStateMachine = readJsonSafe<{
     states?: Array<{ state?: string }>;
     default_entrypoint?: string;
@@ -203,7 +250,7 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
     questions?: unknown[];
   }>(contextCompletionPath, blockers, "Context completion");
 
-  if (!topManifest || !manifest || !readiness || !schemaReport || !dsag || !routeMap || !screenInventory || !screenSpecs || !componentContracts || !implementationRules || !canonicalSpec || !testFirstContract || !playwrightContract || !playwrightEvidence || !lifecycleStateMachine || !contextCompletion) {
+  if (!topManifest || !manifest || !readiness || !schemaReport || !dsag || !routeMap || !screenInventory || !screenSpecs || !componentContracts || !implementationRules || !canonicalSpec || !testFirstContract || !playwrightContract || !playwrightEvidence || !repairContract || !repairTaskQueue || !driftReport || !lifecycleStateMachine || !contextCompletion) {
     return { status: "fail", outputDir, checkedFiles: 0, blockers, warnings };
   }
 
@@ -333,6 +380,66 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   }
   if (playwrightEvidence.coverage?.route_count !== routes.length || playwrightEvidence.coverage?.screen_count !== specs.length) {
     blockers.push("Playwright evidence coverage must match route and screen counts.");
+  }
+  if (repairContract.lifecycle_gate !== "revising") {
+    blockers.push("Verification repair contract must bind to the revising lifecycle gate.");
+  }
+  if (repairContract.source_spec_path !== "spec/archetype-spec.json" || repairContract.source_test_first_contract_path !== "test-first/test-first-contract.json") {
+    blockers.push("Verification repair contract must trace canonical spec and test-first contract.");
+  }
+  if (repairContract.source_playwright_contract_path !== "verification/playwright-verification-contract.json" || repairContract.source_playwright_evidence_path !== "verification/playwright-evidence.json") {
+    blockers.push("Verification repair contract must trace Playwright contract and evidence.");
+  }
+  if (repairContract.source_target_execution_path !== "14-target-execution/target-execution-report.json") {
+    blockers.push("Verification repair contract must trace target execution proof.");
+  }
+  if (repairContract.output_paths?.task_queue !== "10-revision/repair-task-queue.json" || repairContract.output_paths?.plan !== "10-revision/repair-plan.md") {
+    blockers.push("Verification repair contract must name the repair task queue and plan outputs.");
+  }
+  if (!String(repairContract.policy?.default_action ?? "").includes("Patch implementation first")) {
+    blockers.push("Verification repair contract must require implementation patching before contract revision.");
+  }
+  if (!Array.isArray(repairContract.classifiers) || repairContract.classifiers.length < 8) {
+    blockers.push("Verification repair contract must include repair classifiers for command and Playwright failures.");
+  }
+  if (!["pending", "pass", "fail", "warning"].includes(String(repairTaskQueue.status))) {
+    blockers.push("Repair task queue status must be pending, pass, warning, or fail.");
+  }
+  if (repairTaskQueue.source_contract !== "10-revision/verification-repair-contract.json") {
+    blockers.push("Repair task queue must point to the repair contract.");
+  }
+  if (repairTaskQueue.source_target_execution !== "14-target-execution/target-execution-report.json" || repairTaskQueue.source_playwright_evidence !== "verification/playwright-evidence.json") {
+    blockers.push("Repair task queue must point to target execution and Playwright evidence.");
+  }
+  if (repairTaskQueue.traceability?.canonical_spec !== "spec/archetype-spec.json" || repairTaskQueue.traceability?.test_first_contract !== "test-first/test-first-contract.json") {
+    blockers.push("Repair task queue must trace spec and test-first artifacts.");
+  }
+  if (repairTaskQueue.traceability?.playwright_contract !== "verification/playwright-verification-contract.json" || repairTaskQueue.traceability?.playwright_evidence !== "verification/playwright-evidence.json") {
+    blockers.push("Repair task queue must trace Playwright artifacts.");
+  }
+  if (!Array.isArray(repairTaskQueue.tasks) || repairTaskQueue.tasks.length !== repairTaskQueue.task_count) {
+    blockers.push("Repair task queue task_count must match tasks length.");
+  }
+  if (repairTaskQueue.status === "fail" && (repairTaskQueue.task_count ?? 0) === 0) {
+    blockers.push("Failed repair queue must contain concrete repair tasks.");
+  }
+  if (repairTaskQueue.status === "fail" && repairTaskQueue.next_lifecycle_state !== "revising") {
+    blockers.push("Failed repair queue must move lifecycle to revising.");
+  }
+  if (repairTaskQueue.status === "pass" && repairTaskQueue.next_lifecycle_state !== "done") {
+    blockers.push("Passing repair queue must move lifecycle to done.");
+  }
+  if (!String(repairTaskQueue.completion_gate ?? "").includes("verify-target")) {
+    blockers.push("Repair task queue must define a verify-target completion gate.");
+  }
+  if (driftReport.source_task_queue !== "10-revision/repair-task-queue.json") {
+    blockers.push("Drift report must point to the repair task queue.");
+  }
+  if (driftReport.status !== repairTaskQueue.status || driftReport.drift_count !== repairTaskQueue.task_count) {
+    blockers.push("Drift report status and drift count must match repair task queue.");
+  }
+  if (!Array.isArray(driftReport.drifts)) {
+    blockers.push("Drift report must expose drift entries.");
   }
   const lifecycleStates = new Set((lifecycleStateMachine.states ?? []).map((item) => item.state));
   for (const requiredState of ["clarifying", "waiting_for_optional_materials", "spec_generating", "test_generating", "implementing_tests_first", "verifying_with_playwright", "revising", "done"]) {

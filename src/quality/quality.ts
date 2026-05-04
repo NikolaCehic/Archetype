@@ -378,6 +378,9 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   checks.push(check("revision.invalidation_rules.present", Array.isArray((input.revision.invalidationRules.rules as unknown[] | undefined)) && (input.revision.invalidationRules.rules as unknown[]).length > 0, "Invalidation rules exist."));
   checks.push(check("revision.change_set.present", Object.keys(input.revision.initialChangeSet).length > 0, "Initial change set exists."));
   checks.push(check("revision.approval_gates.present", Array.isArray((input.revision.approvalGates.gates as unknown[] | undefined)) && (input.revision.approvalGates.gates as unknown[]).length > 0, "Approval gates exist."));
+  checks.push(check("revision.repair_contract.present", input.revision.repairContract.source_playwright_evidence_path === "verification/playwright-evidence.json", "Verification repair contract traces Playwright evidence."));
+  checks.push(check("revision.repair_task_queue.present", input.revision.repairTaskQueue.source_contract === "10-revision/verification-repair-contract.json", "Repair task queue exists and points to the repair contract."));
+  checks.push(check("revision.drift_report.present", input.revision.driftReport.source_task_queue === "10-revision/repair-task-queue.json", "Drift report exists and points to the repair task queue."));
   checks.push(check("build_simulation.present", input.buildSimulation.status !== undefined, "Frontend build simulation exists."));
   checks.push(check("build_simulation.passable", input.buildSimulation.status !== "fail", "Frontend build simulation has no blockers."));
 

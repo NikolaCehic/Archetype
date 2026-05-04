@@ -6,13 +6,14 @@ import { runArchetypeCompiler } from "./core/pipeline";
 import { exportPackage } from "./output/exportPackage";
 import { writeTargetFrontendSource } from "./output/writeTargetFrontend";
 import { verifyTargetFrontendExecution } from "./output/verifyTargetFrontend";
+import { updateRepairArtifactsFromLatest } from "./modules/revisionProtocol";
 import { validateExportedPackage } from "./quality/validatePackage";
 import { simulateExportedPackage } from "./quality/simulatePackage";
 import type { ArchetypeInput } from "./core/types";
 
 type CommandStatus = "success" | "warning" | "error";
 
-const VALID_COMMANDS = new Set(["init", "generate", "validate", "summarize", "simulate", "write-target", "verify-target"]);
+const VALID_COMMANDS = new Set(["init", "generate", "validate", "summarize", "simulate", "write-target", "verify-target", "repair"]);
 const TEMPLATE_FILES: Record<string, string> = {
   "saas-dashboard": "saas-dashboard-intake.json",
   fintech: "fintech-intake.json",
@@ -30,6 +31,7 @@ function usage(exitCode = 1): never {
   console.log("  archetype simulate --out <output-dir>");
   console.log("  archetype write-target --out <output-dir> --target <target-dir> [--force]");
   console.log("  archetype verify-target --out <output-dir> --target <target-dir> [--skip-install]");
+  console.log("  archetype repair --out <output-dir> [--target <target-dir>]");
   console.log("");
   console.log("Add --json to return parseable command results.");
   process.exit(exitCode);
@@ -212,6 +214,8 @@ function summarizePackage(outputDir: string): Record<string, unknown> {
       "test-first/test-first-plan.md",
       "verification/playwright-verification-contract.json",
       "verification/playwright-evidence.json",
+      "10-revision/repair-task-queue.json",
+      "10-revision/repair-plan.md",
       "AGENTS.md",
       "CLAUDE.md",
       "implementation-contract.md",
@@ -286,6 +290,18 @@ async function main(): Promise<void> {
     });
     writeJson(result);
     if (result.status === "fail") process.exit(1);
+    return;
+  }
+
+  if (command === "repair") {
+    const outDir = getArg("--out");
+    if (!outDir) usage();
+    const targetDir = getArg("--target");
+    const result = updateRepairArtifactsFromLatest(
+      path.resolve(outDir),
+      targetDir ? path.resolve(targetDir) : null
+    );
+    writeJson(result);
     return;
   }
 

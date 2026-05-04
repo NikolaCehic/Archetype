@@ -117,7 +117,7 @@ async function handleRequest(request: JsonRpcRequest): Promise<void> {
         name: "archetype-mcp",
         version: packageVersion()
       },
-      instructions: "Archetype exposes deterministic tools for creating intakes, generating frontend implementation contracts, validating packages, reading artifacts, summarizing packages, and verifying target frontends."
+      instructions: "Archetype exposes deterministic tools for creating intakes, generating frontend implementation contracts, validating packages, reading artifacts, summarizing packages, verifying target frontends, and planning repair tasks from verification evidence."
     });
     return;
   }

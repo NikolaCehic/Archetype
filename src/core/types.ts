@@ -460,6 +460,11 @@ export interface RevisionArtifacts {
   approvalGates: Record<string, unknown>;
   decisionDiffPolicy: string;
   artifactInvalidationReport: string;
+  repairContract: Record<string, unknown>;
+  repairTaskQueue: Record<string, unknown>;
+  repairPlan: string;
+  driftReport: Record<string, unknown>;
+  driftReportMarkdown: string;
 }
 
 export interface FrontendBuildSimulationArtifacts {

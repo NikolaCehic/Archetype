@@ -29,11 +29,13 @@ When implementation starts, Codex reads `lifecycle/context-completion.json`, `sp
 
 Codex creates the smoke, E2E, UI, integration, and unit tests declared in `test-first/test-first-contract.json` before product UI implementation, preserves the initial red result, then implements until the same tests pass.
 
-After implementation, Codex runs Playwright-backed verification through `archetype verify-target` and checks `verification/playwright-evidence.json` plus `verification/playwright-evidence.md`. A completion report must name the Playwright status, route/state/flow/responsive/accessibility/visual-smoke coverage, and any remaining warning.
+After implementation, Codex runs Playwright-backed verification through `archetype verify-target` and checks `verification/playwright-evidence.json`, `verification/playwright-evidence.md`, `10-revision/repair-task-queue.json`, and `10-revision/repair-plan.md`. A completion report must name the Playwright status, route/state/flow/responsive/accessibility/visual-smoke coverage, repair task count, and any remaining warning.
+
+If verification fails, Codex calls `archetype_plan_repair` or `archetype repair --out archetype-output --target . --json`, patches implementation tasks first, and revises the contract only when user-approved source evidence proves the canonical spec is wrong.
 
 ## Use The MCP Server
 
-For MCP-capable Codex workflows, use `docs/use-with-mcp.md` and `mcp.example.json`. The server exposes `archetype_generate_package`, `archetype_validate_package`, `archetype_summarize_package`, `archetype_read_artifact`, and `archetype_verify_target`.
+For MCP-capable Codex workflows, use `docs/use-with-mcp.md` and `mcp.example.json`. The server exposes `archetype_generate_package`, `archetype_validate_package`, `archetype_summarize_package`, `archetype_read_artifact`, `archetype_verify_target`, and `archetype_plan_repair`.
 
 ## Verify Before Completion
 
@@ -41,6 +43,7 @@ For MCP-capable Codex workflows, use `docs/use-with-mcp.md` and `mcp.example.jso
 npx . summarize --out archetype-output --json
 npx . validate --out archetype-output --json
 npx . verify-target --out archetype-output --target . --json
+npx . repair --out archetype-output --target . --json
 ```
 
 Codex plugin work is tracked in `archetype-plugin-pivot-md/scopes/08-codex-plugin.md`.

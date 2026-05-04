@@ -49,4 +49,5 @@ For a generated target frontend:
 ```bash
 npx . write-target --out archetype-output --target tmp/generated-frontend --force --json
 npx . verify-target --out archetype-output --target tmp/generated-frontend --json
+npx . repair --out archetype-output --target tmp/generated-frontend --json
 ```

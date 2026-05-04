@@ -177,3 +177,40 @@ Rule:
 Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
+## Scope 5 Review
+
+Context:
+
+- Scope 4 proved target implementations with Playwright, but failed evidence still required an agent to manually infer what to fix from logs.
+- The pivot requires a self-contained harness loop: failed verification should become implementation patch tasks or explicit contract revision review tasks.
+- The repair loop must stay local and deterministic. It must not become a hosted repair service or an auto-rewriter hidden inside the compiler.
+
+Implementation:
+
+- Added `10-revision/verification-repair-contract.json`.
+- Added `10-revision/repair-task-queue.json`.
+- Added `10-revision/repair-plan.md`.
+- Added `10-revision/drift-report.json`.
+- Added `10-revision/drift-report.md`.
+- Added `archetype repair --out <output-dir> [--target <target-dir>]`.
+- Added MCP tool `archetype_plan_repair`.
+- Updated `verify-target` so target execution and Playwright evidence refresh repair artifacts.
+- Classified install, typecheck, build, Playwright, route, state, flow, responsive, accessibility, visual-smoke, and target blockers into repair tasks.
+- Updated generated `AGENTS.md`, `CLAUDE.md`, implementation rules, README, CLI/MCP summaries, plugin skills, docs, schema index, validation gates, distribution checks, install checks, and pivot docs.
+- Added `scripts/run-repair-contract.mjs` and wired it into the check suite.
+
+Self-review:
+
+- The implementation adheres to Scope 5 because every generated package now contains repair policy, task queue, repair plan, and drift report artifacts; `verify-target` updates them from real evidence; CLI and MCP expose repair planning; validation accepts failed verification only when concrete repair tasks exist; and plugin skills tell Claude Code and Codex to patch implementation drift before revising contracts.
+- Self-review caught one technical issue during the contract test: the Playwright result walker recursed forever on missing nested keys, causing repair planning to return an error after evidence was written. The walker now exits on non-object values, and the repair contract proves failed evidence generates tasks and clean regeneration clears them.
+- Remaining behavior is intentionally advisory: Archetype plans repairs and gates completion, while Claude Code or Codex patches the target implementation. This preserves the pivot boundary.
+- Review answer: YES for Scope 5. The scope is fully implemented according to the current context.
+
+Rule:
+
+- Do not claim verification failure handling is complete unless `10-revision/repair-task-queue.json` names concrete blocker tasks or `verify-target` has written a passing empty repair queue.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation

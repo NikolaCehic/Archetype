@@ -126,7 +126,7 @@ try {
 
   const mcpTools = await requestMcp(mcpBin, [], "tools/list");
   const toolNames = new Set((mcpTools.tools ?? []).map((tool) => tool.name));
-  for (const toolName of ["archetype_generate_package", "archetype_validate_package", "archetype_summarize_package", "archetype_read_artifact", "archetype_verify_target"]) {
+  for (const toolName of ["archetype_generate_package", "archetype_validate_package", "archetype_summarize_package", "archetype_read_artifact", "archetype_verify_target", "archetype_plan_repair"]) {
     assert(toolNames.has(toolName), `Installed MCP server missing ${toolName}.`);
   }
 
@@ -141,7 +141,8 @@ try {
     "scripts/run-lifecycle-contract.mjs",
     "scripts/run-spec-contract.mjs",
     "scripts/run-test-first-contract.mjs",
-    "scripts/run-playwright-verification-contract.mjs"
+    "scripts/run-playwright-verification-contract.mjs",
+    "scripts/run-repair-contract.mjs"
   ]) {
     assert(existsSync(path.join(packageRoot, pluginFile)), `Installed package missing ${pluginFile}.`);
   }

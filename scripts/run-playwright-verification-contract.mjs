@@ -90,6 +90,8 @@ assert(verify.summary.install === "pass", "verify-target should install dependen
 assert(verify.summary.typecheck === "pass", "verify-target should typecheck.");
 assert(verify.summary.build === "pass", "verify-target should build.");
 assert(verify.summary.playwright === "pass", "verify-target should pass Playwright verification.");
+assert(verify.repair.status === "pass", "verify-target should mark repair queue pass when Playwright passes.");
+assert(verify.repair.taskCount === 0, "verify-target should not leave repair tasks when Playwright passes.");
 
 const evidence = readJson(evidencePath);
 assert(evidence.status === "pass", "Playwright evidence should be pass after verify-target.");
@@ -97,6 +99,9 @@ assert(evidence.summary.passed === contract.coverage.total_scenarios, "Playwrigh
 assert(evidence.summary.failed === 0, "Playwright evidence should have zero failures.");
 assert(evidence.coverage.total_scenarios === contract.coverage.total_scenarios, "Playwright evidence coverage should match contract.");
 assert(existsSync(path.join(targetDir, "test-results", "archetype-playwright-results.json")), "target should contain Playwright JSON results.");
+const repairQueue = readJson(path.join(outputDir, "10-revision", "repair-task-queue.json"));
+assert(repairQueue.status === "pass", "repair task queue should be pass after Playwright verification.");
+assert(repairQueue.task_count === 0, "repair task queue should be empty after passing verification.");
 const screenshots = execFileSync("find", [path.join(targetDir, "test-results", "archetype-visual-smoke"), "-type", "f"], { encoding: "utf8" }).trim().split("\n").filter(Boolean);
 assert(screenshots.length === contract.coverage.visual_smoke_scenarios, "visual-smoke screenshot count should match contract.");
 

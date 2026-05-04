@@ -54,7 +54,8 @@ If the answer is obvious from the attached material, infer it and state the assu
 13. Preserve the initial red test result.
 14. Continue with implementation workflow from `archetype-implement`.
 15. Verify the target with `archetype-verify`.
-16. Check `verification/playwright-evidence.json` and `verification/playwright-evidence.md`; if verification fails, patch the implementation or revise the contract, then verify again.
+16. Check `verification/playwright-evidence.json`, `verification/playwright-evidence.md`, and `10-revision/repair-task-queue.json`.
+17. If verification fails, call `archetype_plan_repair`, patch implementation tasks first, revise the contract only when user-approved evidence proves the spec is wrong, then verify again.
 
 ## Fallback
 

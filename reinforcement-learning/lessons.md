@@ -73,6 +73,30 @@ Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
 
+## Revision Repair Loop
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/16-revision-repair-loop.md`
+- `reinforcement-learning/lifecycle-loop-log.md`
+
+Lesson:
+
+- A failed Playwright run is useful evidence, but it is not yet a usable agent instruction. The harness must convert failed evidence into a repair queue, repair plan, and drift report.
+- Failed verification is a valid package state only when concrete repair tasks exist. Validation should pass for failed evidence with tasks because that is the correct `revising` lifecycle state.
+- The default policy must be patch implementation first. Contract revision is only allowed when approved source evidence proves the generated spec or contract is wrong.
+- `verify-target` should refresh repair artifacts automatically so agents do not need a separate prompt to discover the next step.
+- A standalone `archetype repair` command and `archetype_plan_repair` MCP tool are still needed because agents may need to re-plan repairs from existing evidence without rerunning expensive browser checks.
+- Recursive evidence walkers must treat missing nested keys as terminal values. Otherwise one malformed or absent Playwright branch can prevent repair artifacts from being written after a legitimate failure.
+
+Deviation review:
+
+- No pivot-plan deviation was accepted. Scope 5 adds local deterministic repair planning, not hosted repair orchestration, project history, cloud storage, or compiler-side source rewriting.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
 ## Installability Certainty Audit
 
 Scope reference:

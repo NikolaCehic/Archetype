@@ -101,6 +101,11 @@ function buildTopLevelManifest(pkg: ArchetypePackage): Record<string, unknown> {
     { id: "playwright-verification-spec", path: "verification/playwright-verification.spec.ts", type: "text", required: true },
     { id: "playwright-evidence", path: "verification/playwright-evidence.json", type: "json", required: true },
     { id: "playwright-evidence-report", path: "verification/playwright-evidence.md", type: "markdown", required: true },
+    { id: "verification-repair-contract", path: "10-revision/verification-repair-contract.json", type: "json", required: true },
+    { id: "repair-task-queue", path: "10-revision/repair-task-queue.json", type: "json", required: true },
+    { id: "repair-plan", path: "10-revision/repair-plan.md", type: "markdown", required: true },
+    { id: "drift-report", path: "10-revision/drift-report.json", type: "json", required: true },
+    { id: "drift-report-markdown", path: "10-revision/drift-report.md", type: "markdown", required: true },
     { id: "implementation-contract", path: "implementation-contract.md", type: "markdown", required: true },
     { id: "verification-plan", path: "verification-plan.md", type: "markdown", required: true },
     { id: "readiness-report", path: "readiness-report.md", type: "markdown", required: true },
@@ -147,12 +152,13 @@ function buildPackageReadme(pkg: ArchetypePackage): string {
     "2. Read `spec/archetype-spec.json` for machine-readable source of truth.",
     "3. Read `test-first/test-first-contract.json`.",
     "4. Read `verification/playwright-verification-contract.json`.",
-    "5. Create the required tests before product UI implementation.",
-    "6. Read `implementation-contract.md`.",
-    "7. Read `AGENTS.md` or `CLAUDE.md` depending on the agent host.",
-    "8. Read `lifecycle/lifecycle-report.md` to understand the current lifecycle state.",
-    "9. Read route, screen, and design-system artifacts before implementation.",
-    "10. Run the checks in `verification-plan.md` before declaring completion.",
+    "5. Read `10-revision/repair-task-queue.json` before deciding whether to patch or revise.",
+    "6. Create the required tests before product UI implementation.",
+    "7. Read `implementation-contract.md`.",
+    "8. Read `AGENTS.md` or `CLAUDE.md` depending on the agent host.",
+    "9. Read `lifecycle/lifecycle-report.md` to understand the current lifecycle state.",
+    "10. Read route, screen, and design-system artifacts before implementation.",
+    "11. Run the checks in `verification-plan.md` before declaring completion.",
     "",
     "## Readiness",
     "",
@@ -179,13 +185,15 @@ function buildGeneratedAgentsMd(): string {
     "3. `test-first/test-first-contract.json`",
     "4. `test-first/test-first-plan.md`",
     "5. `verification/playwright-verification-contract.json`",
-    "6. `implementation-contract.md`",
-    "7. `frontend-agent-contract/frontend-agent-instructions.md`",
-    "8. `experience/route-map.json`",
-    "9. `screens/screen-inventory.json`",
-    "10. `design-system/tokens.json`",
-    "11. `design-system/component-contracts.json`",
-    "12. `verification-plan.md`",
+    "6. `10-revision/repair-task-queue.json`",
+    "7. `10-revision/repair-plan.md`",
+    "8. `implementation-contract.md`",
+    "9. `frontend-agent-contract/frontend-agent-instructions.md`",
+    "10. `experience/route-map.json`",
+    "11. `screens/screen-inventory.json`",
+    "12. `design-system/tokens.json`",
+    "13. `design-system/component-contracts.json`",
+    "14. `verification-plan.md`",
     "",
     "## Rules",
     "",
@@ -200,6 +208,7 @@ function buildGeneratedAgentsMd(): string {
     "- Treat the agent phase as test-driven development: create the tests declared in `test-first/test-first-contract.json` before product UI code.",
     "- Preserve the initial red test result before implementing, then drive the same tests green.",
     "- Run Playwright-backed verification and attach `verification/playwright-evidence.json` before declaring completion.",
+    "- If verification fails, read `10-revision/repair-task-queue.json` and patch listed implementation drift before revising the contract.",
     "- After implementation, run the verification commands in `verification-plan.md`.",
     "",
     "## Completion Standard",
@@ -222,6 +231,8 @@ function buildGeneratedClaudeMd(): string {
     "- `test-first/test-first-contract.json`",
     "- `test-first/test-first-plan.md`",
     "- `verification/playwright-verification-contract.json`",
+    "- `10-revision/repair-task-queue.json`",
+    "- `10-revision/repair-plan.md`",
     "- `implementation-contract.md`",
     "- `frontend-agent-contract/frontend-agent-instructions.md`",
     "- `experience/route-map.json`",
@@ -239,6 +250,7 @@ function buildGeneratedClaudeMd(): string {
     "- Create the tests from `test-first/test-first-contract.json` before product UI code.",
     "- Preserve the initial red test result before implementing, then drive the same tests green.",
     "- Run Playwright-backed verification and attach `verification/playwright-evidence.json` before declaring completion.",
+    "- If verification fails, read `10-revision/repair-task-queue.json` and patch listed implementation drift before revising the contract.",
     "- Run validation before declaring completion.",
     "",
     "## Completion Standard",
@@ -412,6 +424,13 @@ function buildImplementationRules(pkg: ArchetypePackage): Record<string, unknown
       required_before_completion: true,
       coverage: asRecord(pkg.playwright.contractJson.coverage)
     },
+    repairLoop: {
+      contract_path: "10-revision/verification-repair-contract.json",
+      task_queue_path: "10-revision/repair-task-queue.json",
+      plan_path: "10-revision/repair-plan.md",
+      drift_report_path: "10-revision/drift-report.json",
+      required_on_verification_failure: true
+    },
     verificationContracts: pkg.frontendContract.verificationContracts,
     forbiddenBehavior: [
       "Do not invent routes outside experience/route-map.json.",
@@ -420,6 +439,7 @@ function buildImplementationRules(pkg: ArchetypePackage): Record<string, unknown
       "Do not create ad hoc tokens before reading design-system/tokens.json.",
       "Do not implement product UI before creating the tests declared in test-first/test-first-contract.json.",
       "Do not claim completion before Playwright evidence is generated by verify-target.",
+      "Do not claim completion while 10-revision/repair-task-queue.json contains blocker tasks.",
       "Do not claim production integration until verification-plan.md has passed."
     ]
   };
@@ -598,6 +618,11 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeJson(outDir, "10-revision/approval-gates.json", pkg.revision.approvalGates);
   writeText(outDir, "10-revision/decision-diff-policy.md", pkg.revision.decisionDiffPolicy);
   writeText(outDir, "10-revision/artifact-invalidation-report.md", pkg.revision.artifactInvalidationReport);
+  writeJson(outDir, "10-revision/verification-repair-contract.json", pkg.revision.repairContract);
+  writeJson(outDir, "10-revision/repair-task-queue.json", pkg.revision.repairTaskQueue);
+  writeText(outDir, "10-revision/repair-plan.md", pkg.revision.repairPlan);
+  writeJson(outDir, "10-revision/drift-report.json", pkg.revision.driftReport);
+  writeText(outDir, "10-revision/drift-report.md", pkg.revision.driftReportMarkdown);
 
   writeJson(outDir, "11-build-simulation/build-plan.json", pkg.buildSimulation.buildPlan);
   writeJson(outDir, "11-build-simulation/route-simulation.json", pkg.buildSimulation.routeSimulation);

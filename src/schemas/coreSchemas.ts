@@ -128,6 +128,21 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Playwright Evidence",
       ["evidence_version", "status", "source_contract", "command", "coverage", "summary", "proof_artifacts", "blockers", "warnings"]
     ),
+    "verification-repair-contract.schema.json": objectSchema(
+      "verification-repair-contract.schema.json",
+      "Verification Repair Contract",
+      ["contract_version", "lifecycle_gate", "source_spec_path", "source_test_first_contract_path", "source_playwright_contract_path", "source_playwright_evidence_path", "source_target_execution_path", "output_paths", "policy", "classifiers", "evidence_paths", "blockers", "warnings"]
+    ),
+    "repair-task-queue.schema.json": objectSchema(
+      "repair-task-queue.schema.json",
+      "Repair Task Queue",
+      ["queue_version", "status", "source_contract", "source_target_execution", "source_playwright_evidence", "next_lifecycle_state", "task_count", "tasks", "traceability", "completion_gate", "blockers", "warnings"]
+    ),
+    "drift-report.schema.json": objectSchema(
+      "drift-report.schema.json",
+      "Drift Report",
+      ["drift_report_version", "status", "source_task_queue", "next_lifecycle_state", "drift_count", "implementation_patch_count", "contract_revision_review_count", "drifts", "traceability", "blockers", "warnings"]
+    ),
     "production-integration-contracts.schema.json": objectSchema(
       "production-integration-contracts.schema.json",
       "Production Integration Contracts",
@@ -220,6 +235,9 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "test-first/test-first-contract.json", schema_file: "test-first-contract.schema.json", description: "Spec-derived smoke, E2E, UI, integration, unit, and accessibility test-first contract." },
       { artifact: "verification/playwright-verification-contract.json", schema_file: "playwright-verification-contract.schema.json", description: "Browser-observable route, state, flow, responsive, accessibility, and visual-smoke verification contract." },
       { artifact: "verification/playwright-evidence.json", schema_file: "playwright-evidence.schema.json", description: "Pending or completed Playwright evidence written by verify-target." },
+      { artifact: "10-revision/verification-repair-contract.json", schema_file: "verification-repair-contract.schema.json", description: "Repair classification and revision policy for verification failures." },
+      { artifact: "10-revision/repair-task-queue.json", schema_file: "repair-task-queue.schema.json", description: "Concrete implementation patch or contract revision tasks derived from verification evidence." },
+      { artifact: "10-revision/drift-report.json", schema_file: "drift-report.schema.json", description: "Traceable implementation drift summary generated from repair tasks." },
       { artifact: "06-frontend-agent-contract/production-integration-contracts.json", schema_file: "production-integration-contracts.schema.json", description: "Backend, auth, copy, review, and target-stack confirmation contract." },
       { artifact: "04-design-system/tokens/token-contracts.json", schema_file: "token-contracts.schema.json", description: "Deterministic token layer and usage contract." },
       { artifact: "04-design-system/tokens/typography-system.json", schema_file: "typography-system.schema.json", description: "Typography roles, scale, and CSS contract." },

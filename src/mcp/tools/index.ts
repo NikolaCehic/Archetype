@@ -1,5 +1,6 @@
 import { createIntakeTool } from "./createIntake";
 import { generatePackageTool } from "./generatePackage";
+import { planRepairTool } from "./planRepair";
 import { readArtifactTool } from "./readArtifact";
 import { summarizePackageTool } from "./summarizePackage";
 import { validatePackageTool } from "./validatePackage";
@@ -12,7 +13,8 @@ export const archetypeMcpTools: McpToolDefinition[] = [
   validatePackageTool,
   summarizePackageTool,
   readArtifactTool,
-  verifyTargetTool
+  verifyTargetTool,
+  planRepairTool
 ];
 
 export const archetypeMcpToolNames = archetypeMcpTools.map((tool) => tool.name);

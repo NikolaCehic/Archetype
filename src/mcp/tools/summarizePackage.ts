@@ -57,6 +57,8 @@ function summarizePackage(outputDir: string): JsonRecord {
       "test-first/test-first-plan.md",
       "verification/playwright-verification-contract.json",
       "verification/playwright-evidence.json",
+      "10-revision/repair-task-queue.json",
+      "10-revision/repair-plan.md",
       "AGENTS.md",
       "CLAUDE.md",
       "implementation-contract.md",

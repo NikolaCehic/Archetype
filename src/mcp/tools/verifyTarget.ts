@@ -47,6 +47,7 @@ export const verifyTargetTool: McpToolDefinition = {
         message: command.status === "pass" ? "passed" : command.stderr || command.stdout || "failed"
       })),
       summary: result.summary,
+      repair: result.repair,
       blockers: result.blockers,
       warnings: result.warnings,
       proofArtifacts: result.proof_artifacts

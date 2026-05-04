@@ -6,6 +6,10 @@ import type {
   ProductArtifacts,
   RevisionArtifacts
 } from "../core/types";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
+
+type JsonRecord = Record<string, unknown>;
 
 const ARTIFACTS = {
   evidence: "01-evidence/evidence-ledger.json",
@@ -33,6 +37,431 @@ const ARTIFACTS = {
   dsag: "03-experience-architecture/dsag.json",
   readiness: "00-manifest/implementation-readiness.json"
 } as const;
+
+const REPAIR_CONTRACT_PATH = "10-revision/verification-repair-contract.json";
+const REPAIR_TASK_QUEUE_PATH = "10-revision/repair-task-queue.json";
+const REPAIR_PLAN_PATH = "10-revision/repair-plan.md";
+const DRIFT_REPORT_PATH = "10-revision/drift-report.json";
+const DRIFT_REPORT_MARKDOWN_PATH = "10-revision/drift-report.md";
+
+function asRecord(value: unknown): JsonRecord {
+  return typeof value === "object" && value !== null ? value as JsonRecord : {};
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values.filter((value) => value.trim().length > 0))];
+}
+
+function routeToAppPath(route: string): string {
+  const routePath = route.split("?")[0]?.split("#")[0] ?? route;
+  const parts = routePath
+    .split("/")
+    .filter(Boolean)
+    .map((part) => part.startsWith(":") ? `[${part.slice(1)}]` : part);
+  return `src/app/${parts.join("/") || "(home)"}/page.tsx`;
+}
+
+function readJsonSafe(filePath: string): JsonRecord {
+  if (!existsSync(filePath)) return {};
+  try {
+    return JSON.parse(readFileSync(filePath, "utf8")) as JsonRecord;
+  } catch {
+    return {};
+  }
+}
+
+function writeJson(filePath: string, value: unknown): void {
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function writeText(filePath: string, value: string): void {
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  writeFileSync(filePath, `${value.trimEnd()}\n`);
+}
+
+function buildRepairContract(): JsonRecord {
+  return {
+    contract_version: "1.0",
+    lifecycle_gate: "revising",
+    source_spec_path: "spec/archetype-spec.json",
+    source_test_first_contract_path: "test-first/test-first-contract.json",
+    source_playwright_contract_path: "verification/playwright-verification-contract.json",
+    source_playwright_evidence_path: "verification/playwright-evidence.json",
+    source_target_execution_path: "14-target-execution/target-execution-report.json",
+    output_paths: {
+      task_queue: REPAIR_TASK_QUEUE_PATH,
+      plan: REPAIR_PLAN_PATH,
+      drift_report: DRIFT_REPORT_PATH,
+      drift_report_markdown: DRIFT_REPORT_MARKDOWN_PATH
+    },
+    policy: {
+      default_action: "Patch implementation first.",
+      contract_revision_allowed_when: [
+        "The canonical spec is contradicted by new user-approved evidence.",
+        "A generated route, screen, state, flow, data contract, or acceptance criterion is proven wrong.",
+        "The target stack cannot support a generated obligation without changing the spec."
+      ],
+      forbidden_behavior: [
+        "Do not delete failing tests to make verification pass.",
+        "Do not revise the spec to hide implementation drift.",
+        "Do not claim completion while repair-task-queue.json contains unresolved blocker tasks."
+      ],
+      rerun_commands: [
+        "npm run typecheck",
+        "npm run build",
+        "npm run archetype:playwright",
+        "archetype verify-target --out <archetype-output> --target <target-frontend>"
+      ]
+    },
+    classifiers: [
+      { match: "install", classification: "dependency_or_install_failure", default_owner: "implementation_agent" },
+      { match: "typecheck", classification: "type_contract_drift", default_owner: "implementation_agent" },
+      { match: "build", classification: "build_runtime_drift", default_owner: "implementation_agent" },
+      { match: "PW-ROUTE", classification: "route_rendering_drift", default_owner: "implementation_agent" },
+      { match: "PW-STATE", classification: "screen_state_drift", default_owner: "implementation_agent" },
+      { match: "PW-FLOW", classification: "flow_traceability_drift", default_owner: "implementation_agent" },
+      { match: "PW-RESP", classification: "responsive_drift", default_owner: "implementation_agent" },
+      { match: "PW-A11Y", classification: "accessibility_drift", default_owner: "implementation_agent" },
+      { match: "PW-VISUAL", classification: "visual_smoke_drift", default_owner: "implementation_agent" },
+      { match: "contract", classification: "contract_revision_review", default_owner: "human_or_architect" }
+    ],
+    evidence_paths: [
+      "verification/playwright-evidence.json",
+      "verification/playwright-evidence.md",
+      "14-target-execution/target-execution-report.json",
+      "target:test-results/archetype-playwright-results.json",
+      "target:playwright-report"
+    ],
+    blockers: [],
+    warnings: ["Repair tasks are pending until target verification runs."]
+  };
+}
+
+function scenarioById(contract: JsonRecord): Map<string, JsonRecord> {
+  return new Map(asArray(contract.scenarios).map((scenario) => {
+    const record = asRecord(scenario);
+    return [String(record.scenario_id ?? ""), record] as const;
+  }).filter(([id]) => id.length > 0));
+}
+
+function classificationForScenario(scenarioId: string): string {
+  if (scenarioId.startsWith("PW-ROUTE")) return "route_rendering_drift";
+  if (scenarioId.startsWith("PW-STATE")) return "screen_state_drift";
+  if (scenarioId.startsWith("PW-FLOW")) return "flow_traceability_drift";
+  if (scenarioId.startsWith("PW-RESP")) return "responsive_drift";
+  if (scenarioId.startsWith("PW-A11Y")) return "accessibility_drift";
+  if (scenarioId.startsWith("PW-VISUAL")) return "visual_smoke_drift";
+  return "playwright_drift";
+}
+
+function actionForClassification(classification: string): string {
+  const actions: Record<string, string> = {
+    dependency_or_install_failure: "Repair target dependencies or package metadata, then rerun installation.",
+    type_contract_drift: "Patch TypeScript/component/data contract drift in the target implementation.",
+    build_runtime_drift: "Patch production build or runtime assumptions without weakening generated contracts.",
+    route_rendering_drift: "Patch the route file so the declared screen renders at the declared route.",
+    screen_state_drift: "Patch state rendering so the required state is browser-observable.",
+    flow_traceability_drift: "Patch referenced routes/screens so the generated user flow is complete.",
+    responsive_drift: "Patch layout constraints so the screen has no horizontal overflow at required viewports.",
+    accessibility_drift: "Patch headings and accessible names without removing the declared UI.",
+    visual_smoke_drift: "Patch rendering so the screen has a non-empty visual surface and screenshot proof.",
+    contract_revision_review: "Review whether new user-approved evidence requires regenerating the contract package."
+  };
+  return actions[classification] ?? "Patch implementation drift first; revise the contract only with approved source evidence.";
+}
+
+function targetFilesForScenario(scenario: JsonRecord): string[] {
+  const route = String(scenario.route ?? asArray(scenario.route_refs)[0] ?? "");
+  const routes = unique([
+    route,
+    ...asArray(scenario.route_refs).map(String),
+    ...asArray(scenario.resolved_routes).map(String)
+  ]);
+  const routeFiles = routes.filter(Boolean).map(routeToAppPath);
+  const screenId = String(scenario.screen_id ?? "");
+  const screenFiles = screenId ? [`05-screen-specs/${screenId.replace(/[.]/g, "-")}.yaml`] : [];
+  return unique([...routeFiles, ...screenFiles]);
+}
+
+function collectFailedPlaywrightTests(
+  value: unknown,
+  failures: Array<{ title: string; message: string }> = [],
+  inheritedTitle = ""
+): Array<{ title: string; message: string }> {
+  if (Array.isArray(value)) {
+    for (const item of value) collectFailedPlaywrightTests(item, failures, inheritedTitle);
+    return failures;
+  }
+  if (typeof value !== "object" || value === null) return failures;
+  const record = asRecord(value);
+  const title = typeof record.title === "string" ? record.title : inheritedTitle;
+  const results = asArray(record.results).map(asRecord);
+  const failedResults = results.filter((result) => {
+    const status = String(result.status ?? "");
+    return status && !["passed", "skipped", "expected"].includes(status);
+  });
+  if (failedResults.length > 0 && title) {
+    const errorMessages = failedResults.flatMap((result) =>
+      asArray(result.errors).map((error) => String(asRecord(error).message ?? "")).filter(Boolean)
+    );
+    failures.push({
+      title,
+      message: errorMessages[0] ?? "Playwright scenario failed."
+    });
+  }
+  for (const key of ["suites", "specs", "tests"]) collectFailedPlaywrightTests(record[key], failures, title);
+  return failures;
+}
+
+function commandRepairTasks(report: JsonRecord): JsonRecord[] {
+  const commands = asArray(report.commands).map(asRecord);
+  return commands
+    .filter((command) => command.status === "fail")
+    .map((command, index) => {
+      const id = String(command.id ?? `command_${index + 1}`);
+      const classification = id === "install"
+        ? "dependency_or_install_failure"
+        : id === "typecheck"
+          ? "type_contract_drift"
+          : id === "build"
+            ? "build_runtime_drift"
+            : id === "playwright"
+              ? "playwright_drift"
+              : "target_execution_failure";
+      return {
+        task_id: `REPAIR-CMD-${String(index + 1).padStart(3, "0")}`,
+        severity: "blocker",
+        source: "target_execution",
+        classification,
+        action_type: "implementation_patch",
+        summary: `${String(command.command ?? id)} failed.`,
+        evidence: {
+          command: command.command,
+          exit_code: command.exit_code,
+          stdout_tail: command.stdout,
+          stderr_tail: command.stderr
+        },
+        source_artifacts: ["14-target-execution/target-execution-report.json"],
+        target_files: id === "install" ? ["package.json", "package-lock.json"] : ["target implementation files named in the command output"],
+        recommended_action: actionForClassification(classification),
+        rerun_commands: ["npm run typecheck", "npm run build", "npm run archetype:playwright", "archetype verify-target --out <archetype-output> --target <target-frontend>"]
+      };
+    });
+}
+
+function playwrightRepairTasks(targetDir: string | null, contract: JsonRecord): JsonRecord[] {
+  if (!targetDir) return [];
+  const resultPath = path.join(targetDir, "test-results", "archetype-playwright-results.json");
+  if (!existsSync(resultPath)) return [];
+  const failures = collectFailedPlaywrightTests(readJsonSafe(resultPath));
+  const scenarios = scenarioById(contract);
+  return failures.map((failure, index) => {
+    const scenarioId = failure.title.match(/PW-[A-Z]+-[A-Za-z0-9-]+/)?.[0] ?? failure.title;
+    const scenario = scenarios.get(scenarioId) ?? {};
+    const classification = classificationForScenario(scenarioId);
+    return {
+      task_id: `REPAIR-PW-${String(index + 1).padStart(3, "0")}`,
+      severity: "blocker",
+      source: "playwright",
+      classification,
+      action_type: "implementation_patch",
+      scenario_id: scenarioId,
+      summary: `${scenarioId} failed browser verification.`,
+      evidence: {
+        title: failure.title,
+        message: failure.message,
+        route: scenario.route ?? scenario.resolved_route ?? null,
+        screen_id: scenario.screen_id ?? null,
+        state: scenario.state ?? null
+      },
+      source_artifacts: [
+        "verification/playwright-verification-contract.json",
+        "verification/playwright-evidence.json",
+        "target:test-results/archetype-playwright-results.json"
+      ],
+      target_files: targetFilesForScenario(scenario),
+      recommended_action: actionForClassification(classification),
+      rerun_commands: ["npm run archetype:playwright", "archetype verify-target --out <archetype-output> --target <target-frontend>"]
+    };
+  });
+}
+
+function blockerRepairTasks(report: JsonRecord, existingCount: number): JsonRecord[] {
+  return asArray(report.blockers).map(String).filter(Boolean).map((blocker, index) => {
+    const lower = blocker.toLowerCase();
+    const missingScript = lower.includes("archetype:playwright");
+    const classification = missingScript ? "playwright_script_missing" : "target_execution_blocker";
+    return {
+      task_id: `REPAIR-BLOCKER-${String(existingCount + index + 1).padStart(3, "0")}`,
+      severity: "blocker",
+      source: "target_execution",
+      classification,
+      action_type: "implementation_patch",
+      summary: blocker,
+      evidence: { blocker },
+      source_artifacts: ["14-target-execution/target-execution-report.json"],
+      target_files: missingScript ? ["package.json"] : ["target implementation files named by blocker"],
+      recommended_action: missingScript
+        ? "Add the generated npm script `archetype:playwright` and keep it mapped to `playwright test --config=playwright.config.ts`."
+        : "Patch the named target blocker, then rerun verification.",
+      rerun_commands: ["archetype repair --out <archetype-output> --target <target-frontend>", "archetype verify-target --out <archetype-output> --target <target-frontend>"]
+    };
+  });
+}
+
+function buildRepairTaskQueue(input: {
+  status: "pending" | "pass" | "fail" | "warning";
+  generatedAt: string | null;
+  outputDir: string | null;
+  targetDir: string | null;
+  targetExecution: JsonRecord;
+  playwrightEvidence: JsonRecord;
+  playwrightContract: JsonRecord;
+}): JsonRecord {
+  const tasks = input.status === "fail"
+    ? [
+        ...commandRepairTasks(input.targetExecution),
+        ...playwrightRepairTasks(input.targetDir, input.playwrightContract)
+      ]
+    : [];
+  if (input.status === "fail") tasks.push(...blockerRepairTasks(input.targetExecution, tasks.length));
+  const dedupedTasks = tasks.filter((task, index, list) => {
+    const key = JSON.stringify([task.source, task.classification, task.summary, task.scenario_id ?? ""]);
+    return list.findIndex((candidate) => JSON.stringify([candidate.source, candidate.classification, candidate.summary, candidate.scenario_id ?? ""]) === key) === index;
+  });
+  const nextState = input.status === "fail" ? "revising" : input.status === "pass" ? "done" : "verifying_with_playwright";
+  return {
+    queue_version: "1.0",
+    status: input.status,
+    generated_at: input.generatedAt,
+    output_dir: input.outputDir,
+    target_dir: input.targetDir,
+    source_contract: REPAIR_CONTRACT_PATH,
+    source_target_execution: "14-target-execution/target-execution-report.json",
+    source_playwright_evidence: "verification/playwright-evidence.json",
+    next_lifecycle_state: nextState,
+    task_count: dedupedTasks.length,
+    tasks: dedupedTasks,
+    traceability: {
+      canonical_spec: "spec/archetype-spec.json",
+      test_first_contract: "test-first/test-first-contract.json",
+      playwright_contract: "verification/playwright-verification-contract.json",
+      playwright_evidence: "verification/playwright-evidence.json",
+      target_execution: "14-target-execution/target-execution-report.json"
+    },
+    completion_gate: input.status === "fail"
+      ? "Do not declare completion until every blocker task is resolved and verify-target writes passing evidence."
+      : input.status === "pass"
+        ? "No repair tasks remain. Completion may proceed if external production warnings are named."
+        : "Run verify-target to produce repair tasks or completion evidence.",
+    blockers: input.status === "fail" && dedupedTasks.length === 0 ? ["Verification failed but no repair tasks could be classified. Inspect target execution and Playwright evidence manually."] : [],
+    warnings: input.status === "pass"
+      ? ["Production backend, auth, compliance, and final content review remain external confirmations."]
+      : input.status === "pending"
+        ? ["Repair queue is pending until target verification runs."]
+        : []
+  };
+}
+
+function driftReportMarkdown(report: JsonRecord): string {
+  const drifts = asArray(report.drifts).map(asRecord);
+  return [
+    "# Drift Report",
+    "",
+    `Status: ${String(report.status ?? "pending")}`,
+    `Generated: ${String(report.generated_at ?? "pending")}`,
+    `Next lifecycle state: ${String(report.next_lifecycle_state ?? "verifying_with_playwright")}`,
+    "",
+    "## Drift Summary",
+    "",
+    `- Drift count: ${String(report.drift_count ?? 0)}`,
+    `- Implementation patch count: ${String(report.implementation_patch_count ?? 0)}`,
+    `- Contract revision review count: ${String(report.contract_revision_review_count ?? 0)}`,
+    "",
+    "## Drifts",
+    "",
+    drifts.length > 0
+      ? drifts.map((drift) => `- ${String(drift.task_id)}: ${String(drift.classification)} - ${String(drift.summary)}`).join("\n")
+      : "None.",
+    "",
+    "## Rule",
+    "",
+    "Patch implementation drift first. Revise the contract only when approved source evidence proves the canonical spec is wrong."
+  ].join("\n");
+}
+
+function buildDriftReport(queue: JsonRecord): JsonRecord {
+  const tasks = asArray(queue.tasks).map(asRecord);
+  const implementationTasks = tasks.filter((task) => task.action_type === "implementation_patch");
+  const contractTasks = tasks.filter((task) => task.action_type === "contract_revision_review");
+  return {
+    drift_report_version: "1.0",
+    status: queue.status,
+    generated_at: queue.generated_at,
+    source_task_queue: REPAIR_TASK_QUEUE_PATH,
+    next_lifecycle_state: queue.next_lifecycle_state,
+    drift_count: tasks.length,
+    implementation_patch_count: implementationTasks.length,
+    contract_revision_review_count: contractTasks.length,
+    drifts: tasks.map((task) => ({
+      task_id: task.task_id,
+      classification: task.classification,
+      action_type: task.action_type,
+      summary: task.summary,
+      source_artifacts: task.source_artifacts,
+      target_files: task.target_files
+    })),
+    traceability: queue.traceability,
+    blockers: queue.blockers ?? [],
+    warnings: queue.warnings ?? []
+  };
+}
+
+function repairPlanMarkdown(queue: JsonRecord): string {
+  const tasks = asArray(queue.tasks).map(asRecord);
+  return [
+    "# Repair Plan",
+    "",
+    `Status: ${String(queue.status ?? "pending")}`,
+    `Generated: ${String(queue.generated_at ?? "pending")}`,
+    `Next lifecycle state: ${String(queue.next_lifecycle_state ?? "verifying_with_playwright")}`,
+    "",
+    "## Policy",
+    "",
+    "- Patch implementation first.",
+    "- Revise the canonical spec only when user-approved evidence proves the contract is wrong.",
+    "- Keep failing tests and Playwright evidence until the same checks pass.",
+    "",
+    "## Tasks",
+    "",
+    tasks.length > 0
+      ? tasks.map((task) => [
+          `### ${String(task.task_id)} - ${String(task.classification)}`,
+          "",
+          `Severity: ${String(task.severity ?? "blocker")}`,
+          `Action type: ${String(task.action_type ?? "implementation_patch")}`,
+          `Summary: ${String(task.summary ?? "")}`,
+          "",
+          "Target files:",
+          ...asArray(task.target_files).map((file) => `- ${String(file)}`),
+          "",
+          `Recommended action: ${String(task.recommended_action ?? "")}`,
+          "",
+          "Rerun:",
+          ...asArray(task.rerun_commands).map((command) => `- \`${String(command)}\``)
+        ].join("\n")).join("\n\n")
+      : "No repair tasks.",
+    "",
+    "## Completion Gate",
+    "",
+    String(queue.completion_gate ?? "Run verify-target before completion.")
+  ].join("\n");
+}
 
 export function buildRevisionArtifacts(input: {
   evidence: EvidenceLedger;
@@ -199,6 +628,17 @@ export function buildRevisionArtifacts(input: {
       }
     ]
   };
+  const repairContract = buildRepairContract();
+  const repairTaskQueue = buildRepairTaskQueue({
+    status: "pending",
+    generatedAt: null,
+    outputDir: null,
+    targetDir: null,
+    targetExecution: {},
+    playwrightEvidence: {},
+    playwrightContract: {}
+  });
+  const driftReport = buildDriftReport(repairTaskQueue);
 
   return {
     revisionProtocol: [
@@ -237,6 +677,63 @@ export function buildRevisionArtifacts(input: {
       "No stale artifacts exist in the initial generated package.",
       "",
       "Future revisions must apply invalidation rules before export."
-    ].join("\n")
+    ].join("\n"),
+    repairContract,
+    repairTaskQueue,
+    repairPlan: repairPlanMarkdown(repairTaskQueue),
+    driftReport,
+    driftReportMarkdown: driftReportMarkdown(driftReport)
+  };
+}
+
+export function updateRepairArtifactsFromLatest(outputDir: string, targetDir?: string | null): {
+  status: "pending" | "pass" | "fail" | "warning";
+  outputDir: string;
+  targetDir: string | null;
+  taskCount: number;
+  artifacts: string[];
+  blockers: string[];
+  warnings: string[];
+} {
+  const targetExecutionPath = path.join(outputDir, "14-target-execution", "target-execution-report.json");
+  const playwrightEvidencePath = path.join(outputDir, "verification", "playwright-evidence.json");
+  const playwrightContractPath = path.join(outputDir, "verification", "playwright-verification-contract.json");
+  const targetExecution = readJsonSafe(targetExecutionPath);
+  const playwrightEvidence = readJsonSafe(playwrightEvidencePath);
+  const playwrightContract = readJsonSafe(playwrightContractPath);
+  const reportStatus = String(targetExecution.status ?? playwrightEvidence.status ?? "pending");
+  const status: "pending" | "pass" | "fail" | "warning" =
+    reportStatus === "pass" ? "pass" : reportStatus === "fail" ? "fail" : reportStatus === "warning" ? "warning" : "pending";
+  const generatedAt = status === "pending" ? null : new Date().toISOString();
+  const queue = buildRepairTaskQueue({
+    status,
+    generatedAt,
+    outputDir,
+    targetDir: targetDir ?? (typeof targetExecution.target_dir === "string" ? targetExecution.target_dir : null),
+    targetExecution,
+    playwrightEvidence,
+    playwrightContract
+  });
+  const drift = buildDriftReport(queue);
+  const artifacts = [
+    REPAIR_CONTRACT_PATH,
+    REPAIR_TASK_QUEUE_PATH,
+    REPAIR_PLAN_PATH,
+    DRIFT_REPORT_PATH,
+    DRIFT_REPORT_MARKDOWN_PATH
+  ];
+  writeJson(path.join(outputDir, REPAIR_CONTRACT_PATH), buildRepairContract());
+  writeJson(path.join(outputDir, REPAIR_TASK_QUEUE_PATH), queue);
+  writeText(path.join(outputDir, REPAIR_PLAN_PATH), repairPlanMarkdown(queue));
+  writeJson(path.join(outputDir, DRIFT_REPORT_PATH), drift);
+  writeText(path.join(outputDir, DRIFT_REPORT_MARKDOWN_PATH), driftReportMarkdown(drift));
+  return {
+    status,
+    outputDir,
+    targetDir: targetDir ?? (typeof targetExecution.target_dir === "string" ? targetExecution.target_dir : null),
+    taskCount: Number(queue.task_count ?? 0),
+    artifacts,
+    blockers: asArray(queue.blockers).map(String),
+    warnings: asArray(queue.warnings).map(String)
   };
 }

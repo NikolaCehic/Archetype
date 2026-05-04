@@ -84,6 +84,11 @@ for (const requiredArtifact of [
   "verification/playwright-verification.spec.ts",
   "verification/playwright-evidence.json",
   "verification/playwright-evidence.md",
+  "10-revision/verification-repair-contract.json",
+  "10-revision/repair-task-queue.json",
+  "10-revision/repair-plan.md",
+  "10-revision/drift-report.json",
+  "10-revision/drift-report.md",
   "experience/route-map.json",
   "design-system/tokens.json",
   "design-system/component-contracts.json",
@@ -107,6 +112,7 @@ assert(summarize.entrypoints.includes("lifecycle/context-completion.json"), "sum
 assert(summarize.entrypoints.includes("spec/archetype-spec.json"), "summarize should include canonical spec entrypoint.");
 assert(summarize.entrypoints.includes("test-first/test-first-contract.json"), "summarize should include test-first contract entrypoint.");
 assert(summarize.entrypoints.includes("verification/playwright-verification-contract.json"), "summarize should include Playwright verification entrypoint.");
+assert(summarize.entrypoints.includes("10-revision/repair-task-queue.json"), "summarize should include repair task queue entrypoint.");
 
 const validate = runJson(["validate", "--out", outputDir]);
 assert(validate.status === "pass", "validate --json should pass.");
@@ -138,6 +144,12 @@ assert(verifyTarget.summary.install === "pass", "verify-target should install de
 assert(verifyTarget.summary.typecheck === "pass", "verify-target should typecheck.");
 assert(verifyTarget.summary.build === "pass", "verify-target should build.");
 assert(verifyTarget.summary.playwright === "pass", "verify-target should run Playwright verification.");
+assert(verifyTarget.repair.status === "pass", "verify-target should write passing repair status.");
+assert(verifyTarget.repair.taskCount === 0, "verify-target should have no repair tasks after passing verification.");
+
+const repair = runJson(["repair", "--out", outputDir, "--target", targetDir]);
+assert(repair.status === "pass", "repair --json should report pass after successful verification.");
+assert(repair.taskCount === 0, "repair --json should report no tasks after successful verification.");
 
 const summary = {
   status: "pass",

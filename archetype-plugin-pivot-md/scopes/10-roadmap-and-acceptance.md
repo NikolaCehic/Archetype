@@ -225,6 +225,28 @@ Pass condition:
 Archetype can prove browser-observable contract adherence with Playwright evidence, not only generated test intentions.
 ```
 
+## Phase 12 — Revision Repair Loop
+
+Tasks:
+
+```txt
+[ ] Generate 10-revision/verification-repair-contract.json.
+[ ] Generate 10-revision/repair-task-queue.json.
+[ ] Generate 10-revision/repair-plan.md.
+[ ] Generate 10-revision/drift-report.json.
+[ ] Generate 10-revision/drift-report.md.
+[ ] Make verify-target update repair artifacts from command and Playwright evidence.
+[ ] Add CLI repair command.
+[ ] Add MCP archetype_plan_repair tool.
+[ ] Validate repair traceability and task coverage.
+```
+
+Pass condition:
+
+```txt
+Verification failures produce concrete fix/revise tasks, and passing verification clears the repair queue.
+```
+
 ## Final Acceptance Criteria
 
 ```txt
@@ -243,7 +265,9 @@ Archetype can prove browser-observable contract adherence with Playwright eviden
 [ ] Generated output includes spec-derived test-first contracts for smoke, E2E, UI, integration, and unit tests.
 [ ] Generated output includes Playwright verification contracts, config, browser test spec, and evidence artifacts.
 [ ] verify-target runs install, typecheck, production build, Playwright browser checks, and writes evidence.
-[ ] MCP server exposes generate/validate/read/verify tools.
+[ ] Generated output includes repair contract, repair task queue, repair plan, and drift report.
+[ ] Verification failures produce repair tasks before agents revise the spec.
+[ ] MCP server exposes generate/validate/read/verify/repair tools.
 [ ] Generated output includes AGENTS.md.
 [ ] Generated output includes CLAUDE.md.
 [ ] Demo app can be generated, implemented, and verified.

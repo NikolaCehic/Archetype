@@ -37,6 +37,7 @@ Archetype compiles product intent into a frontend implementation package:
 - acceptance criteria
 - test-first contracts
 - Playwright-backed verification contract and evidence
+- revision and repair task queue
 - verification plan
 - readiness report
 
@@ -100,6 +101,12 @@ Verify a target frontend:
 npx . verify-target --out archetype-output --target tmp/generated-frontend --json
 ```
 
+Plan repair tasks from the latest verification evidence:
+
+```bash
+npx . repair --out archetype-output --target tmp/generated-frontend --json
+```
+
 ## MCP
 
 Start the local MCP server:
@@ -117,6 +124,7 @@ The server exposes deterministic tools for agent hosts:
 - `archetype_summarize_package`
 - `archetype_read_artifact`
 - `archetype_verify_target`
+- `archetype_plan_repair`
 
 See `docs/use-with-mcp.md` and `mcp.example.json`.
 
@@ -134,6 +142,8 @@ Installation details are in `docs/install.md`.
 - `verification/playwright-verification-plan.md` - human-readable browser verification plan
 - `verification/playwright-verification.spec.ts` - generated Playwright browser checks
 - `verification/playwright-evidence.json` - pending or completed Playwright evidence
+- `10-revision/repair-task-queue.json` - concrete fix or revise tasks from verification evidence
+- `10-revision/repair-plan.md` - human-readable repair plan
 - `lifecycle/` - state machine, context completion, and clarification questions
 - `AGENTS.md` - instructions for Codex and agentic coding tools
 - `CLAUDE.md` - instructions for Claude Code

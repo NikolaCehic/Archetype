@@ -75,12 +75,12 @@ for (const expected of ["spec/archetype-spec.json", "test-first/test-first-contr
 assert(implement.includes("Preserve the initial red test result"), "Claude implement skill must enforce red-first TDD.");
 
 const verify = readText("skills/verify/SKILL.md");
-for (const expected of ["archetype_validate_package", "archetype_verify_target", "skipInstall: false", "verify-target", "verification/playwright-verification-contract.json", "verification/playwright-evidence.json", "visual-smoke"]) {
+for (const expected of ["archetype_validate_package", "archetype_verify_target", "archetype_plan_repair", "skipInstall: false", "verify-target", "verification/playwright-verification-contract.json", "verification/playwright-evidence.json", "10-revision/repair-task-queue.json", "visual-smoke"]) {
   assert(verify.includes(expected), `Verify skill missing ${expected}.`);
 }
 
 const revise = readText("skills/revise/SKILL.md");
-for (const expected of ["archetype.intake.json", "archetype_generate_package", "archetype_summarize_package"]) {
+for (const expected of ["archetype.intake.json", "archetype_generate_package", "archetype_summarize_package", "archetype_plan_repair", "10-revision/repair-task-queue.json"]) {
   assert(revise.includes(expected), `Revise skill missing ${expected}.`);
 }
 

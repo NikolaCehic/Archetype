@@ -34,6 +34,7 @@
     "simulate": "node dist/cli.js simulate --out tmp/archetype-output",
     "write-target": "node dist/cli.js write-target --out tmp/archetype-output --target tmp/generated-frontend --force",
     "verify-target": "node dist/cli.js verify-target --out tmp/archetype-output --target tmp/generated-frontend",
+    "repair": "node dist/cli.js repair --out tmp/archetype-output --target tmp/generated-frontend",
     "smoke": "npm run build && node dist/cli.js generate --input examples/saas-dashboard-intake.json --out tmp/archetype-output",
     "cli:contract": "npm run build && node scripts/run-cli-contract.mjs",
     "mcp": "node dist/mcp/server.js",
@@ -47,13 +48,14 @@
     "spec:contract": "npm run build && node scripts/run-spec-contract.mjs",
     "test-first:contract": "npm run build && node scripts/run-test-first-contract.mjs",
     "playwright:contract": "npm run build && node scripts/run-playwright-verification-contract.mjs",
+    "repair:contract": "npm run build && node scripts/run-repair-contract.mjs",
     "golden": "npm run build && node scripts/run-golden.mjs",
     "demo:run": "npm run build && node scripts/run-demo.mjs",
     "demo:generate": "npm run build && node dist/cli.js generate --input examples/saas-dashboard-intake.json --out tmp/archetype-output",
     "demo:verify": "npm run validate && npm run simulate && npm run write-target && npm run verify-target",
-    "test": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run plugin:codex:contract && npm run distribution:contract && npm run pivot:audit && npm run lifecycle:contract && npm run spec:contract && npm run test-first:contract && npm run playwright:contract && npm run install:contract && npm run golden",
-    "check": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run plugin:codex:contract && npm run distribution:contract && npm run pivot:audit && npm run lifecycle:contract && npm run spec:contract && npm run test-first:contract && npm run playwright:contract && npm run install:contract && npm run golden",
-    "clean": "rm -rf dist tmp/archetype-output tmp/generated-frontend tmp/golden tmp/cli-contract tmp/mcp-contract tmp/lifecycle-contract tmp/spec-contract tmp/test-first-contract tmp/playwright-contract tmp/install-contract tmp/demo tmp/scope4-smoke"
+    "test": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run plugin:codex:contract && npm run distribution:contract && npm run pivot:audit && npm run lifecycle:contract && npm run spec:contract && npm run test-first:contract && npm run playwright:contract && npm run repair:contract && npm run install:contract && npm run golden",
+    "check": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run plugin:codex:contract && npm run distribution:contract && npm run pivot:audit && npm run lifecycle:contract && npm run spec:contract && npm run test-first:contract && npm run playwright:contract && npm run repair:contract && npm run install:contract && npm run golden",
+    "clean": "rm -rf dist tmp/archetype-output tmp/generated-frontend tmp/golden tmp/cli-contract tmp/mcp-contract tmp/lifecycle-contract tmp/spec-contract tmp/test-first-contract tmp/playwright-contract tmp/repair-contract tmp/install-contract tmp/demo tmp/scope4-smoke"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",

@@ -66,7 +66,10 @@ Published package form:
 - `archetype_summarize_package`
 - `archetype_read_artifact`
 - `archetype_verify_target`
+- `archetype_plan_repair`
 
-The tools are deterministic wrappers around the compiler, package validation, artifact reading, and target verification. They do not run a general-purpose agent.
+The tools are deterministic wrappers around the compiler, package validation, artifact reading, target verification, and repair-task planning. They do not run a general-purpose agent.
 
 `archetype_verify_target` defaults `skipInstall` to `true` for MCP safety. Pass `skipInstall: false` only when the user or host explicitly allows dependency installation in the target frontend.
+
+Use `archetype_plan_repair` after target verification to write `10-revision/repair-task-queue.json` and `10-revision/repair-plan.md` from the latest evidence.

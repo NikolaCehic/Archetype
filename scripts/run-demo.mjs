@@ -26,6 +26,7 @@ const validate = runJson(["validate", "--out", outputDir]);
 const summarize = runJson(["summarize", "--out", outputDir]);
 const writeTarget = runJson(["write-target", "--out", outputDir, "--target", targetDir, "--force"]);
 const verifyTarget = runJson(["verify-target", "--out", outputDir, "--target", targetDir]);
+const repair = runJson(["repair", "--out", outputDir, "--target", targetDir]);
 
 const blockers = [...new Set([...(generate.blockers ?? []), ...(validate.blockers ?? []), ...(verifyTarget.blockers ?? [])])];
 const warnings = [...new Set([...(generate.warnings ?? []), ...(validate.warnings ?? []), ...(verifyTarget.warnings ?? [])])];
@@ -47,7 +48,12 @@ const summary = {
     validate: validate.status,
     summarize: summarize.status,
     writeTarget: writeTarget.status,
-    verifyTarget: verifyTarget.status
+    verifyTarget: verifyTarget.status,
+    repair: repair.status
+  },
+  repair: {
+    taskCount: repair.taskCount,
+    artifacts: repair.artifacts
   }
 };
 

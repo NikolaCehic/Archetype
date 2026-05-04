@@ -33,6 +33,7 @@ export function targetExecutionMarkdown(report: Record<string, unknown>): string
   const blockers = Array.isArray(report.blockers) ? report.blockers.map(String) : [];
   const warnings = Array.isArray(report.warnings) ? report.warnings.map(String) : [];
   const proofArtifacts = Array.isArray(report.proof_artifacts) ? report.proof_artifacts.map(String) : [];
+  const repair = typeof report.repair === "object" && report.repair !== null ? report.repair as Record<string, unknown> : {};
   return [
     "# Target Frontend Execution Report",
     "",
@@ -56,7 +57,12 @@ export function targetExecutionMarkdown(report: Record<string, unknown>): string
     "",
     "## Proof Artifacts",
     "",
-    proofArtifacts.length > 0 ? proofArtifacts.map((item) => `- ${item}`).join("\n") : "None."
+    proofArtifacts.length > 0 ? proofArtifacts.map((item) => `- ${item}`).join("\n") : "None.",
+    "",
+    "## Repair",
+    "",
+    `Status: ${String(repair.status ?? "pending")}`,
+    `Task count: ${String(repair.taskCount ?? 0)}`
   ].join("\n");
 }
 

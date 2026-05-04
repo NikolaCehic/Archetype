@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { targetExecutionMarkdown } from "../modules/targetExecution";
 import { playwrightEvidenceMarkdown } from "../modules/playwrightVerification";
+import { updateRepairArtifactsFromLatest } from "../modules/revisionProtocol";
 
 interface TargetVerifyOptions {
   skipInstall?: boolean;
@@ -34,6 +35,11 @@ export interface TargetVerificationResult {
   blockers: string[];
   warnings: string[];
   proof_artifacts: string[];
+  repair: {
+    status: "pending" | "pass" | "fail" | "warning";
+    taskCount: number;
+    artifacts: string[];
+  };
 }
 
 function ensureDir(filePath: string): void {
@@ -348,7 +354,18 @@ export function verifyTargetFrontendExecution(outputDir: string, targetDir: stri
       "target:test-results/archetype-visual-smoke",
       "target:playwright-report",
       "target:.next"
-    ]
+    ],
+    repair: {
+      status: "pending",
+      taskCount: 0,
+      artifacts: [
+        "10-revision/verification-repair-contract.json",
+        "10-revision/repair-task-queue.json",
+        "10-revision/repair-plan.md",
+        "10-revision/drift-report.json",
+        "10-revision/drift-report.md"
+      ]
+    }
   };
 
   const reportPath = path.join(outputDir, "14-target-execution", "target-execution-report.json");
@@ -356,6 +373,14 @@ export function verifyTargetFrontendExecution(outputDir: string, targetDir: stri
   writeJson(reportPath, report);
   writeText(markdownPath, targetExecutionMarkdown(report as unknown as Record<string, unknown>));
   writePlaywrightEvidence(outputDir, targetDir, report);
+  const repair = updateRepairArtifactsFromLatest(outputDir, targetDir);
+  report.repair = {
+    status: repair.status,
+    taskCount: repair.taskCount,
+    artifacts: repair.artifacts
+  };
+  writeJson(reportPath, report);
+  writeText(markdownPath, targetExecutionMarkdown(report as unknown as Record<string, unknown>));
   updateE2ETargetExecutionProof(outputDir, report);
   return report;
 }
