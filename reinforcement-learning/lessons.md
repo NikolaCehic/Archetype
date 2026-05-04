@@ -95,3 +95,27 @@ Deviation review:
 Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
+## Phase 5 - Claude Code Plugin
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/07-claude-code-plugin.md`
+- `archetype-plugin-pivot-md/scopes/10-roadmap-and-acceptance.md`
+- `archetype-plugin-pivot-md/prompts/codex-phase-05-plugins.md`
+
+Lesson:
+
+- The Claude Code plugin should be a wrapper and workflow guide, not a compiler fork. The skills point to MCP tools first and CLI fallback second.
+- The plugin needs four separate workflows because blueprint, implement, verify, and revise have different entry criteria and failure modes. Combining them would make Claude blur contract generation with implementation.
+- Subagents are useful as written policy roles only when they stay bounded: product architect structures messy context; frontend contract reviewer checks implementability and verification gaps.
+- The package must ship plugin wrapper files in `plugins/` so local and published installs can reference the same `.mcp.json`, skills, and agent docs.
+- A plugin contract test is necessary because plugin files are mostly markdown and JSON. The test validates manifest shape, MCP command wiring, required skill/tool references, fallback CLI commands, subagent scope, and forbidden product-scope drift.
+
+Deviation review:
+
+- No pivot-plan deviation was accepted. The combined Phase 05 prompt mentions both Claude and Codex plugin wrappers, but the roadmap defines Phase 5 as Claude Code and Phase 6 as Codex. I kept Phase 5 scoped to Claude Code so each phase stays independently testable.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation

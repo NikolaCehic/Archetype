@@ -147,6 +147,13 @@ Use ./archetype-output to implement the frontend. Follow CLAUDE.md, implementati
 
 Plugin support is tracked in `archetype-plugin-pivot-md/scopes/07-claude-code-plugin.md`.
 
+Local Claude Code plugin wrapper:
+
+- `plugins/claude-code/.claude-plugin/plugin.json`
+- `plugins/claude-code/skills/`
+- `plugins/claude-code/agents/`
+- `plugins/claude-code/.mcp.json`
+
 ## Use With Codex
 
 Generate an Archetype package:
@@ -176,6 +183,7 @@ npm run build
 npm run smoke
 npm run cli:contract
 npm run mcp:contract
+npm run plugin:claude:contract
 npm run check
 ```
 
