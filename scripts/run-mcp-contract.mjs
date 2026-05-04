@@ -126,7 +126,7 @@ try {
 
   const releaseDoctor = await callTool("archetype_release_doctor", {});
   assert(releaseDoctor.status === "pass", "release doctor should pass through MCP.");
-  assert(releaseDoctor.quickstart?.published_package?.some((command) => String(command).includes("archetype doctor --json")), "release doctor should expose doctor quickstart.");
+  assert(releaseDoctor.quickstart?.published_package?.some((command) => String(command).includes("archetype install --target all --json")), "release doctor should expose one-command plugin install.");
   assert(releaseDoctor.docs?.some((doc) => doc.path === "docs/agent-lifecycle.md"), "release doctor should expose lifecycle docs.");
 
   const createIntake = await callTool("archetype_create_intake", {

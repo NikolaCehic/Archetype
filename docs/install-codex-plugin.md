@@ -1,33 +1,31 @@
 # Install The Codex Plugin
 
-The Codex plugin wrapper lives at `plugins/codex/`.
+Install Archetype into Codex with one command:
 
-## Local Plugin Path
-
-Point Codex at:
-
-```txt
-plugins/codex/
+```bash
+npx -y -p @nikolacehic/archetype archetype install --target codex --json
 ```
 
-Required files:
+The installer writes:
 
-- `plugins/codex/.codex-plugin/plugin.json`
-- `plugins/codex/.mcp.json`
-- `plugins/codex/skills/archetype/SKILL.md`
-- `plugins/codex/skills/archetype-blueprint/SKILL.md`
-- `plugins/codex/skills/archetype-implement/SKILL.md`
-- `plugins/codex/skills/archetype-verify/SKILL.md`
-- `plugins/codex/skills/archetype-revise/SKILL.md`
+- `~/plugins/archetype/.codex-plugin/plugin.json`
+- `~/plugins/archetype/.mcp.json`
+- `~/plugins/archetype/skills/archetype/SKILL.md`
+- `~/plugins/archetype/skills/blueprint/SKILL.md`
+- `~/plugins/archetype/skills/implement/SKILL.md`
+- `~/plugins/archetype/skills/verify/SKILL.md`
+- `~/plugins/archetype/skills/revise/SKILL.md`
+- `~/.agents/plugins/marketplace.json`
 
-Before loading the plugin, verify the release surface:
+For local source testing:
 
 ```bash
 npm run build
+npx . install --target codex --json
 npx . doctor --json
 ```
 
-## MCP
+## Use
 
 The natural front door is:
 
@@ -50,6 +48,7 @@ Codex can still use generated `AGENTS.md` without the plugin.
 ## Validate
 
 ```bash
+npm run plugin-install:contract
 npm run plugin:codex:contract
 npm run release:contract
 ```

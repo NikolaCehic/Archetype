@@ -1,35 +1,33 @@
 # Install The Claude Code Plugin
 
-The Claude Code plugin wrapper lives at `plugins/claude-code/`.
+Install Archetype into Claude Code with one command:
 
-## Local Plugin Path
-
-Point Claude Code at:
-
-```txt
-plugins/claude-code/
+```bash
+npx -y -p @nikolacehic/archetype archetype install --target claude --json
 ```
 
-Required files:
+The installer writes a local Claude Code marketplace plus the plugin surface:
 
-- `plugins/claude-code/.claude-plugin/plugin.json`
-- `plugins/claude-code/.mcp.json`
-- `plugins/claude-code/skills/archetype/SKILL.md`
-- `plugins/claude-code/skills/blueprint/SKILL.md`
-- `plugins/claude-code/skills/implement/SKILL.md`
-- `plugins/claude-code/skills/verify/SKILL.md`
-- `plugins/claude-code/skills/revise/SKILL.md`
-- `plugins/claude-code/agents/product-architect.md`
-- `plugins/claude-code/agents/frontend-contract-reviewer.md`
+- `~/.claude/plugins/marketplaces/archetype-local/.claude-plugin/marketplace.json`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/.claude-plugin/plugin.json`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/.mcp.json`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/skills/archetype/SKILL.md`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/skills/blueprint/SKILL.md`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/skills/implement/SKILL.md`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/skills/verify/SKILL.md`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/skills/revise/SKILL.md`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/agents/product-architect.md`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/agents/frontend-contract-reviewer.md`
 
-Before loading the plugin, verify the release surface:
+For local source testing:
 
 ```bash
 npm run build
+npx . install --target claude --json
 npx . doctor --json
 ```
 
-## MCP
+## Use
 
 The natural front door is:
 
@@ -58,6 +56,7 @@ npm run mcp
 ## Validate
 
 ```bash
+npm run plugin-install:contract
 npm run plugin:claude:contract
 npm run release:contract
 ```

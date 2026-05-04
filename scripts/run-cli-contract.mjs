@@ -54,11 +54,18 @@ assert(
   "CLI help must use pivot positioning."
 );
 assert(help.includes("archetype doctor"), "CLI help must expose doctor command.");
+assert(help.includes("archetype install"), "CLI help must expose install command.");
 
 const doctor = runJson(["doctor"]);
 assert(doctor.status === "pass", "doctor --json should pass.");
-assert(doctor.quickstart.published_package.some((command) => command.includes("archetype doctor --json")), "doctor should expose published package doctor command.");
+assert(doctor.quickstart.published_package.some((command) => command.includes("archetype install --target all --json")), "doctor should expose one-command plugin install.");
 assert(doctor.docs.some((doc) => doc.path === "docs/agent-lifecycle.md"), "doctor should expose agent lifecycle docs.");
+
+const install = runJson(["install", "--target", "all", "--home", path.join(workspace, "dry-home"), "--dry-run"]);
+assert(install.status === "warning", "install dry-run should warn that no files were written.");
+assert(install.actions.every((action) => action.status === "planned"), "install dry-run should only plan actions.");
+assert(install.front_doors.codex.startsWith("@Archetype"), "install should expose Codex front door.");
+assert(install.front_doors.claude_code.startsWith("/archetype"), "install should expose Claude Code front door.");
 
 const init = runJson(["init", "--template", "saas-dashboard", "--out", intakePath]);
 assert(init.status === "success", "init --json should succeed.");

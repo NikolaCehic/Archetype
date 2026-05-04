@@ -76,6 +76,39 @@ Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
 
+## Scope 7 Review - One-Command Plugin Install
+
+Context:
+
+- The release/readiness scope proved package health, but it still described agent-host setup through nested repo plugin folders.
+- The user correctly identified this as a product gap: a 60-second setup cannot require users to know where Codex or Claude Code should point inside the source tree.
+- Superpowers showed the better packaging pattern: repo-root plugin manifests and root skills/agents that make the repository itself the plugin surface.
+
+Implementation:
+
+- Added root `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`, and `.mcp.json`.
+- Added root `skills/` and `agents/` copied from the Claude Code harness surface so the package itself can be installed as a plugin.
+- Added `archetype install --target codex|claude|all --home <dir> --dry-run --json`.
+- Added deterministic install logic that writes Codex plugin files to `~/plugins/archetype/`, Codex marketplace metadata to `~/.agents/plugins/marketplace.json`, Claude Code local marketplace metadata to `~/.claude/plugins/marketplaces/archetype-local/.claude-plugin/marketplace.json`, and Claude Code plugin files to `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/`.
+- Added `scripts/run-plugin-install-contract.mjs` and wired it into `npm run check`.
+- Updated README, quickstart, install docs, plugin docs, release readiness docs, release doctor, distribution contract, install contract, CLI contract, MCP contract, and pivot docs.
+
+Self-review:
+
+- The implementation adheres to the current scope because the primary setup path is now one install command followed by the natural front door, not folder-path choreography.
+- The source install, dry-run install, packed package install, `npx -p <tarball>` install, doctor, package dry-run, smoke, audit, and full check all pass.
+- The nested `plugins/codex/` and `plugins/claude-code/` wrappers remain as compatibility fixtures because existing host-specific contract tests still validate them. They are no longer the user-facing install path.
+- The limitation is host activation semantics: the installer writes the marketplace/plugin surfaces deterministically, but users may still need to start a fresh Codex or Claude Code session for the host to reload plugins. That is acceptable for this scope because the command owns all repository/plugin file wiring.
+- Review answer: YES for Scope 7. The scope is fully implemented according to the current context.
+
+Rule:
+
+- Do not claim 60-second agent-host setup unless `archetype install --target all --json`, `npm run plugin-install:contract`, `npm run install:contract`, `npm pack --dry-run --json`, and `npm run check` all pass.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
 ## Scope 2 Review
 
 Context:

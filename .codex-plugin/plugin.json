@@ -1,0 +1,27 @@
+{
+  "name": "archetype",
+  "version": "0.1.0",
+  "description": "Spec-driven frontend agent harness for Codex and Claude Code.",
+  "author": {
+    "name": "Nikola Cehic",
+    "url": "https://github.com/NikolaCehic"
+  },
+  "homepage": "https://github.com/NikolaCehic/Archetype",
+  "repository": "https://github.com/NikolaCehic/Archetype",
+  "license": "MIT",
+  "keywords": ["frontend", "design-system", "agents", "codex", "claude-code", "tdd"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Archetype",
+    "shortDescription": "Spec-driven frontend contracts for coding agents",
+    "longDescription": "Turn product intent, screenshots, specs, and repo context into deterministic frontend contracts, tests-first implementation guidance, Playwright verification, and repair loops.",
+    "developerName": "Nikola Cehic",
+    "category": "Coding",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "defaultPrompt": [
+      "I want to build a polished frontend from a product idea.",
+      "Generate a frontend contract from my screenshots and context."
+    ]
+  }
+}

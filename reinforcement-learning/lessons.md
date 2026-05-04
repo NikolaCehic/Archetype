@@ -25,6 +25,29 @@ Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
 
+## One-Command Plugin Install
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/17-release-readiness-hardening.md`
+- `archetype-plugin-pivot-md/scopes/18-one-command-plugin-install.md`
+
+Lesson:
+
+- A release-ready package is not the same as a product-ready plugin install. If the docs say "point Codex/Claude at this nested folder," the product still has developer setup friction.
+- Root-level plugin surfaces are the right default for an agent harness: `.codex-plugin`, `.claude-plugin`, `.mcp.json`, `skills/`, and `agents/` should exist at the package root.
+- The install command must write home-local host metadata and plugin files, and the contract test must use `--home` with temp directories so it never mutates a real user home during verification.
+- Dry-run output is a useful user and test surface; it proves what would be written without creating plugin host state.
+- Keep nested plugin wrappers only as compatibility fixtures. They should no longer be the primary setup story.
+
+Deviation review:
+
+- The previous release-readiness implementation missed the product install expectation. I corrected it by making `archetype install --target all --json` the first quickstart step and adding source, dry-run, packed package, and `npx -p <tarball>` installer contracts.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
 ## Test-First Contracts
 
 Scope reference:

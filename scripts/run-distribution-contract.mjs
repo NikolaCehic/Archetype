@@ -26,12 +26,19 @@ for (const file of [
   "RELEASE_NOTES.md",
   "scripts/run-demo.mjs",
   "scripts/run-install-contract.mjs",
+  "scripts/run-plugin-install-contract.mjs",
   "scripts/run-release-readiness-contract.mjs",
   "scripts/run-lifecycle-contract.mjs",
   "scripts/run-spec-contract.mjs",
   "scripts/run-test-first-contract.mjs",
   "scripts/run-playwright-verification-contract.mjs",
   "scripts/run-repair-contract.mjs",
+  ".codex-plugin/plugin.json",
+  ".claude-plugin/plugin.json",
+  ".agents/plugins/marketplace.json",
+  ".mcp.json",
+  "skills/archetype/SKILL.md",
+  "agents/product-architect.md",
   "mcp.example.json",
   "plugins/claude-code/.mcp.json",
   "plugins/codex/.mcp.json"
@@ -46,6 +53,7 @@ assert(pkg.scripts?.prepare === "npm run build", "package must build for git ins
 assert(pkg.scripts?.["demo:run"], "package must expose demo:run.");
 assert(pkg.scripts?.["distribution:contract"], "package must expose distribution:contract.");
 assert(pkg.scripts?.["release:contract"], "package must expose release:contract.");
+assert(pkg.scripts?.["plugin-install:contract"], "package must expose plugin-install:contract.");
 assert(pkg.scripts?.["install:contract"], "package must expose install:contract.");
 assert(pkg.scripts?.["lifecycle:contract"], "package must expose lifecycle:contract.");
 assert(pkg.scripts?.["spec:contract"], "package must expose spec:contract.");
@@ -53,6 +61,10 @@ assert(pkg.scripts?.["test-first:contract"], "package must expose test-first:con
 assert(pkg.scripts?.["playwright:contract"], "package must expose playwright:contract.");
 assert(pkg.scripts?.["repair:contract"], "package must expose repair:contract.");
 assert((pkg.files ?? []).includes("plugins"), "package files must include plugin wrappers.");
+assert((pkg.files ?? []).includes(".codex-plugin"), "package files must include root Codex plugin manifest.");
+assert((pkg.files ?? []).includes(".claude-plugin"), "package files must include root Claude plugin manifest.");
+assert((pkg.files ?? []).includes("skills"), "package files must include root skills.");
+assert((pkg.files ?? []).includes("agents"), "package files must include root agents.");
 assert((pkg.files ?? []).includes("scripts"), "package files must include demo and contract scripts.");
 
 for (const deadFile of ["dist/llm/provider.js", "dist/llm/structuredOutput.js", "dist/llm/types.js"]) {
@@ -62,6 +74,7 @@ for (const deadFile of ["dist/llm/provider.js", "dist/llm/structuredOutput.js", 
 const readme = readText("README.md");
 for (const expected of [
   "npx -y -p @nikolacehic/archetype archetype init",
+  "npx -y -p @nikolacehic/archetype archetype install --target all --json",
   "npx -y -p @nikolacehic/archetype archetype doctor",
   "npx -y -p @nikolacehic/archetype archetype generate",
   "@Archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
@@ -76,18 +89,18 @@ for (const expected of [
   "10-revision/repair-task-queue.json",
   "docs/install.md",
   "docs/demo-script.md",
-  "plugins/claude-code",
-  "plugins/codex"
+  "~/plugins/archetype",
+  "~/.claude/plugins/marketplaces/archetype-local/plugins/archetype"
 ]) {
   assert(readme.includes(expected), `README missing ${expected}.`);
 }
 
 const install = readText("docs/install.md");
-for (const expected of ["archetype doctor", "archetype init", "archetype generate", "archetype-mcp", "Local Source Install", "release:contract"]) {
+for (const expected of ["archetype install --target all --json", "archetype doctor", "archetype init", "archetype generate", "archetype-mcp", "Local Source Install", "plugin-install:contract", "release:contract"]) {
   assert(install.includes(expected), `install docs missing ${expected}.`);
 }
 const quickstart = readText("docs/quickstart.md");
-for (const expected of ["60 seconds", "archetype doctor --json", "archetype generate", "/archetype", "@Archetype"]) {
+for (const expected of ["60 seconds", "archetype install --target all --json", "archetype doctor --json", "archetype generate", "/archetype", "@Archetype"]) {
   assert(quickstart.includes(expected), `quickstart docs missing ${expected}.`);
 }
 const lifecycle = readText("docs/agent-lifecycle.md");
@@ -95,7 +108,7 @@ for (const expected of ["clarify missing context", "optional materials", "canoni
   assert(lifecycle.includes(expected), `agent lifecycle docs missing ${expected}.`);
 }
 const releaseReadiness = readText("docs/release-readiness.md");
-for (const expected of ["archetype doctor", "npm run release:contract", "npm run install:contract", "npm pack --dry-run --json"]) {
+for (const expected of ["archetype install --target all --json", "archetype doctor", "npm run release:contract", "npm run plugin-install:contract", "npm run install:contract", "npm pack --dry-run --json"]) {
   assert(releaseReadiness.includes(expected), `release readiness docs missing ${expected}.`);
 }
 
@@ -109,7 +122,7 @@ for (const expected of ["0.1.0", "Agent Harness Pivot", "MCP stdio server", "Cla
   assert(releaseNotes.includes(expected), `release notes missing ${expected}.`);
 }
 
-for (const config of ["mcp.example.json", "plugins/claude-code/.mcp.json", "plugins/codex/.mcp.json"]) {
+for (const config of [".mcp.json", "mcp.example.json", "plugins/claude-code/.mcp.json", "plugins/codex/.mcp.json"]) {
   const json = readJson(config);
   assert(json.mcpServers?.archetype?.args?.includes("archetype-mcp"), `${config} must launch archetype-mcp.`);
 }
@@ -126,5 +139,5 @@ console.log(JSON.stringify({
     "docs/demo-script.md",
     "RELEASE_NOTES.md"
   ],
-  scripts: ["demo:run", "distribution:contract", "release:contract", "install:contract", "lifecycle:contract", "spec:contract", "test-first:contract", "playwright:contract", "repair:contract"]
+  scripts: ["demo:run", "distribution:contract", "release:contract", "plugin-install:contract", "install:contract", "lifecycle:contract", "spec:contract", "test-first:contract", "playwright:contract", "repair:contract"]
 }, null, 2));

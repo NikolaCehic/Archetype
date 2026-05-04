@@ -7,6 +7,7 @@ import { exportPackage } from "./output/exportPackage";
 import { writeTargetFrontendSource } from "./output/writeTargetFrontend";
 import { verifyTargetFrontendExecution } from "./output/verifyTargetFrontend";
 import { updateRepairArtifactsFromLatest } from "./modules/revisionProtocol";
+import { installAgentPlugins, type InstallTarget } from "./install/pluginInstaller";
 import { runReleaseDoctor } from "./release/doctor";
 import { validateExportedPackage } from "./quality/validatePackage";
 import { simulateExportedPackage } from "./quality/simulatePackage";
@@ -14,7 +15,7 @@ import type { ArchetypeInput } from "./core/types";
 
 type CommandStatus = "success" | "warning" | "error";
 
-const VALID_COMMANDS = new Set(["doctor", "init", "generate", "validate", "summarize", "simulate", "write-target", "verify-target", "repair"]);
+const VALID_COMMANDS = new Set(["doctor", "install", "init", "generate", "validate", "summarize", "simulate", "write-target", "verify-target", "repair"]);
 const TEMPLATE_FILES: Record<string, string> = {
   "saas-dashboard": "saas-dashboard-intake.json",
   fintech: "fintech-intake.json",
@@ -26,6 +27,7 @@ function usage(exitCode = 1): never {
   console.log("");
   console.log("Usage:");
   console.log("  archetype doctor");
+  console.log("  archetype install [--target codex|claude|all] [--home <dir>] [--dry-run] [--json]");
   console.log("  archetype init --out <intake.json> [--template saas-dashboard|fintech|marketplace-admin] [--force]");
   console.log("  archetype generate --input <intake.json> --out <output-dir>");
   console.log("  archetype validate --out <output-dir>");
@@ -70,6 +72,12 @@ function artifactType(filePath: string): "json" | "markdown" | "text" {
 
 function packageRoot(): string {
   return path.resolve(__dirname, "..");
+}
+
+function installTarget(): InstallTarget {
+  const target = getArg("--target") ?? "all";
+  if (target === "codex" || target === "claude" || target === "all") return target;
+  throw new Error(`Unknown install target "${target}". Expected codex, claude, or all.`);
 }
 
 function templatePath(template: string): string {
@@ -252,6 +260,31 @@ async function main(): Promise<void> {
       `- Codex: ${result.plugin_setup.codex.front_door}`,
       ...(result.blockers.length > 0 ? ["Blockers:", ...result.blockers.map((blocker) => `- ${blocker}`)] : []),
       ...(result.warnings.length > 0 ? ["Warnings:", ...result.warnings.map((warning) => `- ${warning}`)] : [])
+    ]);
+    if (result.status === "fail") process.exit(1);
+    return;
+  }
+
+  if (command === "install") {
+    const result = installAgentPlugins({
+      target: installTarget(),
+      packageRoot: packageRoot(),
+      homeDir: getArg("--home"),
+      dryRun: hasFlag("--dry-run"),
+      force: hasFlag("--force")
+    });
+    resultOutput(result, jsonMode, [
+      `Archetype plugin install: ${result.status}`,
+      `Targets: ${result.targets.join(", ")}`,
+      `Home: ${result.home_dir}`,
+      ...(result.dry_run ? ["Dry run: no files were written."] : []),
+      "Front doors:",
+      `- Codex: ${result.front_doors.codex}`,
+      `- Claude Code: ${result.front_doors.claude_code}`,
+      ...(result.blockers.length > 0 ? ["Blockers:", ...result.blockers.map((blocker) => `- ${blocker}`)] : []),
+      ...(result.warnings.length > 0 ? ["Warnings:", ...result.warnings.map((warning) => `- ${warning}`)] : []),
+      "Next:",
+      ...result.next_steps.map((step) => `- ${step}`)
     ]);
     if (result.status === "fail") process.exit(1);
     return;

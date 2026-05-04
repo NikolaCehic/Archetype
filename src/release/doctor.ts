@@ -160,14 +160,29 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     [pkgPath]
   );
 
-  const requiredFiles = ["dist", "examples", "docs", "archetype-plugin-pivot-md", "plugins", "scripts", "README.md", "LICENSE"];
+  const requiredFiles = [
+    "dist",
+    "examples",
+    "docs",
+    "archetype-plugin-pivot-md",
+    ".codex-plugin",
+    ".claude-plugin",
+    ".agents",
+    ".mcp.json",
+    "skills",
+    "agents",
+    "plugins",
+    "scripts",
+    "README.md",
+    "LICENSE"
+  ];
   const files = pkg.files ?? [];
   check(
     checks,
     "package.files",
     "Published file allowlist",
     requiredFiles.every((item) => files.includes(item)),
-    "Package file allowlist includes dist, docs, examples, plugins, scripts, pivot docs, README, and LICENSE.",
+    "Package file allowlist includes dist, docs, examples, root plugin surfaces, plugins, scripts, pivot docs, README, and LICENSE.",
     `package.json files must include: ${requiredFiles.join(", ")}.`,
     [pkgPath]
   );
@@ -183,6 +198,18 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     "docs/install-claude-code-plugin.md",
     "docs/install-codex-plugin.md",
     "docs/use-with-mcp.md",
+    ".codex-plugin/plugin.json",
+    ".claude-plugin/plugin.json",
+    ".claude-plugin/marketplace.json",
+    ".agents/plugins/marketplace.json",
+    ".mcp.json",
+    "skills/archetype/SKILL.md",
+    "skills/blueprint/SKILL.md",
+    "skills/implement/SKILL.md",
+    "skills/verify/SKILL.md",
+    "skills/revise/SKILL.md",
+    "agents/product-architect.md",
+    "agents/frontend-contract-reviewer.md",
     "plugins/claude-code/.claude-plugin/plugin.json",
     "plugins/claude-code/.mcp.json",
     "plugins/claude-code/skills/archetype/SKILL.md",
@@ -190,7 +217,9 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     "plugins/codex/.mcp.json",
     "plugins/codex/skills/archetype/SKILL.md",
     "examples/saas-dashboard-intake.json",
+    "archetype-plugin-pivot-md/scopes/18-one-command-plugin-install.md",
     "scripts/run-install-contract.mjs",
+    "scripts/run-plugin-install-contract.mjs",
     "scripts/run-release-readiness-contract.mjs"
   ];
   const missingPaths = requiredPaths.filter((relativePath) => !existsSync(path.join(root, relativePath)));
@@ -209,10 +238,12 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     "docs/quickstart.md",
     "docs/agent-lifecycle.md",
     "docs/release-readiness.md",
+    "archetype install --target all --json",
     "@Archetype \"I want to build a premium B2B analytics app for marketing teams.\""
   ]);
   checkTextIncludes(checks, "docs.quickstart", "Quickstart docs", path.join(root, "docs", "quickstart.md"), [
     "60 seconds",
+    "archetype install --target all --json",
     "archetype doctor --json",
     "archetype generate",
     "archetype-output"
@@ -228,10 +259,12 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
   checkTextIncludes(checks, "docs.release_readiness", "Release readiness docs", path.join(root, "docs", "release-readiness.md"), [
     "archetype doctor",
     "npm run release:contract",
+    "npm run plugin-install:contract",
     "npm run install:contract",
     "npm pack --dry-run --json"
   ]);
 
+  checkMcpConfig(checks, root, ".mcp.json");
   checkMcpConfig(checks, root, "mcp.example.json");
   checkMcpConfig(checks, root, "plugins/claude-code/.mcp.json");
   checkMcpConfig(checks, root, "plugins/codex/.mcp.json");
@@ -253,9 +286,9 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     warnings,
     quickstart: {
       published_package: [
-        "npx -y -p @nikolacehic/archetype archetype doctor --json",
-        "npx -y -p @nikolacehic/archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json",
-        "npx -y -p @nikolacehic/archetype archetype generate --input archetype.intake.json --out archetype-output --json"
+        "npx -y -p @nikolacehic/archetype archetype install --target all --json",
+        "@Archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
+        "/archetype \"I want to build a premium B2B analytics app for marketing teams.\""
       ],
       local_source: [
         "npm install",
@@ -271,12 +304,12 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     plugin_setup: {
       claude_code: {
         front_door: "/archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
-        plugin_path: "plugins/claude-code/",
+        plugin_path: "~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/",
         mcp_command: "npx -y -p @nikolacehic/archetype archetype-mcp"
       },
       codex: {
         front_door: "@Archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
-        plugin_path: "plugins/codex/",
+        plugin_path: "~/plugins/archetype/",
         mcp_command: "npx -y -p @nikolacehic/archetype archetype-mcp"
       }
     },
@@ -311,6 +344,6 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
       "archetype_verify_target",
       "archetype_plan_repair"
     ],
-    completion_gate: "Release readiness is pass only when doctor, release:contract, install:contract, npm pack dry-run, and full check pass."
+    completion_gate: "Release readiness is pass only when doctor, release:contract, plugin-install:contract, install:contract, npm pack dry-run, and full check pass."
   };
 }

@@ -90,6 +90,7 @@ scopes/14-test-first-contracts.md
 scopes/15-playwright-verification.md
 scopes/16-revision-repair-loop.md
 scopes/17-release-readiness-hardening.md
+scopes/18-one-command-plugin-install.md
 ```
 
 ## Build Order
@@ -111,6 +112,7 @@ scopes/17-release-readiness-hardening.md
 14. Playwright-backed verification
 15. Revision repair loop
 16. Release readiness hardening
+17. One-command plugin install
 ```
 
 ## MVP Definition

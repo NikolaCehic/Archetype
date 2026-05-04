@@ -1,0 +1,12 @@
+{
+  "name": "archetype",
+  "description": "Spec-driven frontend agent harness for Claude Code and Codex.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Nikola Cehic",
+    "url": "https://github.com/NikolaCehic"
+  },
+  "homepage": "https://github.com/NikolaCehic/Archetype",
+  "repository": "https://github.com/NikolaCehic/Archetype",
+  "license": "MIT"
+}

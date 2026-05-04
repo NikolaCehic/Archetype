@@ -98,16 +98,17 @@ function packTarball() {
 const sourceDoctor = runJson("node", ["dist/cli.js", "doctor", "--json"]);
 assert(sourceDoctor.status === "pass", "source doctor should pass.");
 assert(sourceDoctor.quickstart.published_package.length === 3, "doctor should expose a three-command published quickstart.");
+assert(sourceDoctor.quickstart.published_package[0].includes("archetype install --target all --json"), "doctor should expose one-command plugin install.");
 assert(sourceDoctor.plugin_setup.claude_code.front_door.includes("/archetype"), "doctor should expose Claude Code front door.");
 assert(sourceDoctor.plugin_setup.codex.front_door.includes("@Archetype"), "doctor should expose Codex front door.");
 assert(sourceDoctor.lifecycle.includes("Clarify missing context"), "doctor should expose lifecycle steps.");
 assert(sourceDoctor.mcp_tools.includes("archetype_release_doctor"), "doctor should name release doctor MCP tool.");
 
 for (const [file, expected] of [
-  ["README.md", ["archetype doctor --json", "docs/quickstart.md", "docs/agent-lifecycle.md", "docs/release-readiness.md"]],
-  ["docs/quickstart.md", ["60 seconds", "archetype doctor --json", "archetype generate"]],
+  ["README.md", ["archetype install --target all --json", "docs/quickstart.md", "docs/agent-lifecycle.md", "docs/release-readiness.md"]],
+  ["docs/quickstart.md", ["60 seconds", "archetype install --target all --json", "archetype doctor --json", "archetype generate"]],
   ["docs/agent-lifecycle.md", ["clarify missing context", "optional materials", "canonical spec", "tests first", "Playwright", "repair"]],
-  ["docs/release-readiness.md", ["archetype doctor", "npm run release:contract", "npm run install:contract", "npm pack --dry-run --json"]]
+  ["docs/release-readiness.md", ["archetype doctor", "npm run release:contract", "npm run plugin-install:contract", "npm run install:contract", "npm pack --dry-run --json"]]
 ]) {
   const text = readText(file);
   for (const value of expected) {
@@ -122,12 +123,21 @@ try {
   const packedPaths = new Set(packed.files.map((file) => file.path));
   for (const required of [
     "dist/release/doctor.js",
+    "dist/install/pluginInstaller.js",
     "dist/mcp/tools/releaseDoctor.js",
+    ".codex-plugin/plugin.json",
+    ".claude-plugin/plugin.json",
+    ".mcp.json",
+    ".agents/plugins/marketplace.json",
+    "skills/archetype/SKILL.md",
+    "agents/product-architect.md",
     "docs/quickstart.md",
     "docs/agent-lifecycle.md",
     "docs/release-readiness.md",
     "scripts/run-release-readiness-contract.mjs",
-    "archetype-plugin-pivot-md/scopes/17-release-readiness-hardening.md"
+    "scripts/run-plugin-install-contract.mjs",
+    "archetype-plugin-pivot-md/scopes/17-release-readiness-hardening.md",
+    "archetype-plugin-pivot-md/scopes/18-one-command-plugin-install.md"
   ]) {
     assert(packedPaths.has(required), `packed package missing ${required}.`);
   }

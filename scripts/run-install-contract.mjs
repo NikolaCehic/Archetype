@@ -134,6 +134,15 @@ try {
   }
 
   for (const pluginFile of [
+    ".codex-plugin/plugin.json",
+    ".claude-plugin/plugin.json",
+    ".claude-plugin/marketplace.json",
+    ".agents/plugins/marketplace.json",
+    ".mcp.json",
+    "skills/archetype/SKILL.md",
+    "skills/implement/SKILL.md",
+    "agents/product-architect.md",
+    "dist/install/pluginInstaller.js",
     "plugins/claude-code/.claude-plugin/plugin.json",
     "plugins/claude-code/.mcp.json",
     "plugins/claude-code/skills/archetype/SKILL.md",
@@ -149,6 +158,7 @@ try {
     "scripts/run-test-first-contract.mjs",
     "scripts/run-playwright-verification-contract.mjs",
     "scripts/run-repair-contract.mjs",
+    "scripts/run-plugin-install-contract.mjs",
     "scripts/run-release-readiness-contract.mjs"
   ]) {
     assert(existsSync(path.join(packageRoot, pluginFile)), `Installed package missing ${pluginFile}.`);

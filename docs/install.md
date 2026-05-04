@@ -1,10 +1,34 @@
 # Install Archetype
 
-Archetype is a CLI, MCP server, and plugin wrapper package for AI coding agents.
+Archetype is a CLI, MCP server, and installable plugin package for AI coding agents.
 
-## Published Package
+## One-Command Agent Install
 
-After the package is published, generate a demo contract without cloning the repo:
+Install Archetype into Codex and Claude Code:
+
+```bash
+npx -y -p @nikolacehic/archetype archetype install --target all --json
+```
+
+This registers the Codex home-local marketplace and a Claude Code local marketplace, then copies the root plugin surface into the locations those hosts can discover.
+
+Use one host at a time when needed:
+
+```bash
+npx -y -p @nikolacehic/archetype archetype install --target codex --json
+npx -y -p @nikolacehic/archetype archetype install --target claude --json
+```
+
+After install, start a fresh Codex or Claude Code session:
+
+```txt
+@Archetype "I want to build a premium B2B analytics app for marketing teams."
+/archetype "I want to build a premium B2B analytics app for marketing teams."
+```
+
+## CLI Fallback
+
+Generate a demo contract without cloning the repo:
 
 ```bash
 npx -y -p @nikolacehic/archetype archetype doctor --json
@@ -28,6 +52,7 @@ git clone https://github.com/NikolaCehic/Archetype.git
 cd Archetype
 npm install
 npm run build
+npx . install --target all --json
 npx . doctor --json
 npx . init --template saas-dashboard --out archetype.intake.json --force --json
 npx . generate --input archetype.intake.json --out archetype-output --json
@@ -35,9 +60,10 @@ npx . generate --input archetype.intake.json --out archetype-output --json
 
 ## Verify
 
-Prove the clean packaged install path, installed CLI, installed MCP server, plugin files, and 60-second setup contract:
+Prove the clean packaged install path, installed CLI, installed MCP server, plugin files, plugin host installer, and 60-second setup contract:
 
 ```bash
+npm run plugin-install:contract
 npm run install:contract
 npm run release:contract
 ```

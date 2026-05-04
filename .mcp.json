@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "archetype": {
+      "command": "npx",
+      "args": ["-y", "-p", "@nikolacehic/archetype", "archetype-mcp"]
+    }
+  }
+}

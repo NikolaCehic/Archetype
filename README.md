@@ -8,15 +8,22 @@ Instead of asking an agent to guess routes, screens, states, design tokens, data
 
 ## Quickstart
 
-With the Codex or Claude Code plugin installed, use Archetype as one natural-language workflow:
+Install Archetype into Codex and Claude Code:
+
+```bash
+npx -y -p @nikolacehic/archetype archetype install --target all --json
+```
+
+Then start a fresh agent session and use Archetype as one natural-language workflow:
 
 ```txt
 @Archetype "I want to build a premium B2B analytics app for marketing teams."
+/archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
 
 Archetype should then ask any needed clarification questions, invite optional materials such as designs, screenshots, wireframes, `SPEC.md`, or `PRD.md`, generate the spec and agent contract, drive tests-first implementation, verify the target, and patch or revise without making you learn internal commands.
 
-CLI fallback:
+CLI fallback and diagnostics:
 
 ```bash
 npx -y -p @nikolacehic/archetype archetype doctor --json
@@ -61,6 +68,12 @@ Archetype verifies the implementation against the contract
 ## CLI
 
 Install paths are in `docs/install.md`.
+
+Install the agent-host plugin surfaces:
+
+```bash
+npx -y -p @nikolacehic/archetype archetype install --target all --json
+```
 
 Check package, plugin, MCP, and lifecycle readiness:
 
@@ -170,22 +183,38 @@ Installation details are in `docs/install.md`.
 
 ## Use With Claude Code
 
+Install:
+
+```bash
+npx -y -p @nikolacehic/archetype archetype install --target claude --json
+```
+
+Then use:
+
 ```txt
 /archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
 
 Plugin support is tracked in `archetype-plugin-pivot-md/scopes/07-claude-code-plugin.md`.
 
-Local Claude Code plugin wrapper:
+Installed Claude Code plugin surface:
 
-- `plugins/claude-code/.claude-plugin/plugin.json`
-- `plugins/claude-code/skills/`
-- `plugins/claude-code/agents/`
-- `plugins/claude-code/.mcp.json`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/.claude-plugin/plugin.json`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/skills/`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/agents/`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/.mcp.json`
 
 Install notes: `docs/install-claude-code-plugin.md`.
 
 ## Use With Codex
+
+Install:
+
+```bash
+npx -y -p @nikolacehic/archetype archetype install --target codex --json
+```
+
+Then use:
 
 ```txt
 @Archetype "I want to build a premium B2B analytics app for marketing teams."
@@ -193,11 +222,12 @@ Install notes: `docs/install-claude-code-plugin.md`.
 
 Plugin support is tracked in `archetype-plugin-pivot-md/scopes/08-codex-plugin.md`.
 
-Local Codex plugin wrapper:
+Installed Codex plugin surface:
 
-- `plugins/codex/.codex-plugin/plugin.json`
-- `plugins/codex/skills/`
-- `plugins/codex/.mcp.json`
+- `~/plugins/archetype/.codex-plugin/plugin.json`
+- `~/plugins/archetype/skills/`
+- `~/plugins/archetype/.mcp.json`
+- `~/.agents/plugins/marketplace.json`
 
 Install notes: `docs/install-codex-plugin.md`.
 
@@ -229,6 +259,7 @@ npm run plugin:claude:contract
 npm run plugin:codex:contract
 npm run distribution:contract
 npm run release:contract
+npm run plugin-install:contract
 npm run lifecycle:contract
 npm run spec:contract
 npm run test-first:contract
