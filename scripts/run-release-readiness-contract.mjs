@@ -108,7 +108,7 @@ for (const [file, expected] of [
   ["README.md", ["archetype install --target all --json", "docs/quickstart.md", "docs/agent-lifecycle.md", "docs/release-readiness.md"]],
   ["docs/quickstart.md", ["60 seconds", "archetype install --target all --json", "archetype doctor --json", "archetype generate"]],
   ["docs/agent-lifecycle.md", ["clarify missing context", "optional materials", "canonical spec", "tests first", "Playwright", "repair"]],
-  ["docs/release-readiness.md", ["archetype doctor", "npm run release:contract", "npm run plugin-install:contract", "npm run install:contract", "npm pack --dry-run --json"]]
+  ["docs/release-readiness.md", ["archetype doctor", "npm run release:contract", "npm run plugin-install:contract", "npm run repo:audit", "npm run install:contract", "npm pack --dry-run --json"]]
 ]) {
   const text = readText(file);
   for (const value of expected) {
@@ -136,10 +136,12 @@ try {
     "docs/release-readiness.md",
     "scripts/run-release-readiness-contract.mjs",
     "scripts/run-plugin-install-contract.mjs",
-    "archetype-plugin-pivot-md/scopes/17-release-readiness-hardening.md",
-    "archetype-plugin-pivot-md/scopes/18-one-command-plugin-install.md"
+    "scripts/run-repository-audit.mjs"
   ]) {
     assert(packedPaths.has(required), `packed package missing ${required}.`);
+  }
+  for (const forbidden of ["iterations/iteration-index.md", "reinforcement-learning/lessons.md", "archetype-plugin-pivot-md/START_HERE.md"]) {
+    assert(!packedPaths.has(forbidden), `packed package includes non-publishable internal artifact ${forbidden}.`);
   }
 
   writeFileSync(path.join(installDir, "package.json"), `${JSON.stringify({ private: true, type: "module" }, null, 2)}\n`);

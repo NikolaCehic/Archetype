@@ -1,22 +1,14 @@
 # Archetype Repository Instructions
 
-This repository is being pivoted into an agent harness for frontend implementation.
+This repository contains the Archetype agent harness for frontend implementation contracts.
 
 ## Product Category
 
 Frontend implementation contracts for AI coding agents.
 
-## Canonical Pivot Reference
+## Product Scope
 
-Read these files before changing product scope:
-
-1. `archetype-plugin-pivot-md/START_HERE.md`
-2. `archetype-plugin-pivot-md/AGENTS.md`
-3. The relevant scope file in `archetype-plugin-pivot-md/scopes/`
-
-## Current Direction
-
-Archetype should provide:
+Archetype provides:
 
 - deterministic core compiler behavior
 - public CLI commands
@@ -34,10 +26,17 @@ Keep the compiler framework-agnostic. Keep Claude-specific and Codex-specific be
 
 ## Completion Standard
 
-Every pivot phase should preserve or improve the CLI path:
+Every product change should preserve or improve the CLI path:
 
 ```bash
 npm run build
 npx . generate --input examples/saas-dashboard-intake.json --out archetype-output
 npx . validate --out archetype-output
+```
+
+Before publishing-facing changes are complete, run:
+
+```bash
+npm run repo:audit
+npm run check
 ```

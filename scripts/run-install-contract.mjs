@@ -159,6 +159,7 @@ try {
     "scripts/run-playwright-verification-contract.mjs",
     "scripts/run-repair-contract.mjs",
     "scripts/run-plugin-install-contract.mjs",
+    "scripts/run-repository-audit.mjs",
     "scripts/run-release-readiness-contract.mjs"
   ]) {
     assert(existsSync(path.join(packageRoot, pluginFile)), `Installed package missing ${pluginFile}.`);

@@ -164,7 +164,6 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     "dist",
     "examples",
     "docs",
-    "archetype-plugin-pivot-md",
     ".codex-plugin",
     ".claude-plugin",
     ".agents",
@@ -182,7 +181,7 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     "package.files",
     "Published file allowlist",
     requiredFiles.every((item) => files.includes(item)),
-    "Package file allowlist includes dist, docs, examples, root plugin surfaces, plugins, scripts, pivot docs, README, and LICENSE.",
+    "Package file allowlist includes dist, docs, examples, root plugin surfaces, plugins, scripts, README, and LICENSE.",
     `package.json files must include: ${requiredFiles.join(", ")}.`,
     [pkgPath]
   );
@@ -217,9 +216,9 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     "plugins/codex/.mcp.json",
     "plugins/codex/skills/archetype/SKILL.md",
     "examples/saas-dashboard-intake.json",
-    "archetype-plugin-pivot-md/scopes/18-one-command-plugin-install.md",
     "scripts/run-install-contract.mjs",
     "scripts/run-plugin-install-contract.mjs",
+    "scripts/run-repository-audit.mjs",
     "scripts/run-release-readiness-contract.mjs"
   ];
   const missingPaths = requiredPaths.filter((relativePath) => !existsSync(path.join(root, relativePath)));
@@ -260,6 +259,7 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     "archetype doctor",
     "npm run release:contract",
     "npm run plugin-install:contract",
+    "npm run repo:audit",
     "npm run install:contract",
     "npm pack --dry-run --json"
   ]);
@@ -344,6 +344,6 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
       "archetype_verify_target",
       "archetype_plan_repair"
     ],
-    completion_gate: "Release readiness is pass only when doctor, release:contract, plugin-install:contract, install:contract, npm pack dry-run, and full check pass."
+    completion_gate: "Release readiness is pass only when doctor, release:contract, plugin-install:contract, repo:audit, install:contract, npm pack dry-run, and full check pass."
   };
 }

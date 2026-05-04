@@ -195,8 +195,6 @@ Then use:
 /archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
 
-Plugin support is tracked in `archetype-plugin-pivot-md/scopes/07-claude-code-plugin.md`.
-
 Installed Claude Code plugin surface:
 
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/.claude-plugin/plugin.json`
@@ -219,8 +217,6 @@ Then use:
 ```txt
 @Archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
-
-Plugin support is tracked in `archetype-plugin-pivot-md/scopes/08-codex-plugin.md`.
 
 Installed Codex plugin surface:
 
@@ -260,6 +256,7 @@ npm run plugin:codex:contract
 npm run distribution:contract
 npm run release:contract
 npm run plugin-install:contract
+npm run repo:audit
 npm run lifecycle:contract
 npm run spec:contract
 npm run test-first:contract
@@ -269,5 +266,3 @@ npm run check
 ```
 
 Release notes live in `RELEASE_NOTES.md`.
-
-The pivot reference lives in `archetype-plugin-pivot-md/`. That folder is the source of truth for the agent-harness direction.

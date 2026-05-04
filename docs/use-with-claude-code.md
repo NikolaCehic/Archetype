@@ -49,4 +49,4 @@ npx . verify-target --out archetype-output --target . --json
 npx . repair --out archetype-output --target . --json
 ```
 
-Claude Code plugin work is tracked in `archetype-plugin-pivot-md/scopes/07-claude-code-plugin.md`.
+Claude Code plugin installation details live in `docs/install-claude-code-plugin.md`.

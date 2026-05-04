@@ -1,8 +1,8 @@
 # Release Notes
 
-## 0.1.0 - Agent Harness Pivot
+## 0.1.0 - Agent Harness
 
-This release pivots Archetype into an agent harness for Claude Code, Codex, and MCP-capable agent hosts.
+This release packages Archetype as an agent harness for Claude Code, Codex, and MCP-capable agent hosts.
 
 ### Added
 
@@ -17,12 +17,12 @@ This release pivots Archetype into an agent harness for Claude Code, Codex, and 
 
 ### Distribution
 
-- Published package command after release:
+- Current GitHub package command:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype doctor --json
-npx -y -p @nikolacehic/archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
-npx -y -p @nikolacehic/archetype archetype generate --input archetype.intake.json --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype doctor --json
+npx --yes --package github:NikolaCehic/Archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output --json
 ```
 
 - Local source path:

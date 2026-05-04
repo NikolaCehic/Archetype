@@ -49,4 +49,4 @@ npx . verify-target --out archetype-output --target . --json
 npx . repair --out archetype-output --target . --json
 ```
 
-Codex plugin work is tracked in `archetype-plugin-pivot-md/scopes/08-codex-plugin.md`.
+Codex plugin installation details live in `docs/install-codex-plugin.md`.

@@ -1,6 +1,46 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
 dist-workbench/
+coverage/
+.nyc_output/
+
+# Generated harness/test output
 tmp/
-workbench/public/sample-package.json
+playwright-report/
+test-results/
+*.trace.zip
+
+# Local frontend/dev caches
+.next/
+.vite/
+.turbo/
+.cache/
+
+# Local agent/host state
+.codex/
+.claude/
+
+# Logs and package artifacts
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tgz
+
+# Local environment and editor files
+.env
+.env.*
+!.env.example
 .DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Legacy local workbench residue
+workbench/
+workbench/public/sample-package.json

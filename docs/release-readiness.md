@@ -33,12 +33,13 @@ The doctor checks package metadata, CLI and MCP bins, packaged file allowlist, r
 ```bash
 npm run release:contract
 npm run plugin-install:contract
+npm run repo:audit
 npm run install:contract
 npm pack --dry-run --json
 npm run check
 ```
 
-`release:contract` validates the source and packed package readiness surface. `plugin-install:contract` proves the host installer writes Codex and Claude Code plugin surfaces from source and packed `npx`. `install:contract` proves a clean consumer install, `npx` setup, MCP startup, plugin files, and the 60-second setup contract.
+`release:contract` validates the source and packed package readiness surface. `plugin-install:contract` proves the host installer writes Codex and Claude Code plugin surfaces from source and packed `npx`. `repo:audit` blocks internal logs, generated outputs, private env files, and package tarballs from the tracked repository. `install:contract` proves a clean consumer install, `npx` setup, MCP startup, plugin files, and the 60-second setup contract.
 
 ## Completion Gate
 
@@ -48,6 +49,7 @@ Do not claim release readiness unless all of these pass:
 archetype doctor --json
 npm run release:contract
 npm run plugin-install:contract
+npm run repo:audit
 npm run install:contract
 npm pack --dry-run --json
 npm run check

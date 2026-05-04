@@ -3,6 +3,29 @@
   "version": "0.1.0",
   "description": "Frontend implementation contracts for AI coding agents.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NikolaCehic/Archetype.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NikolaCehic/Archetype/issues"
+  },
+  "homepage": "https://github.com/NikolaCehic/Archetype#readme",
+  "keywords": [
+    "ai-agents",
+    "frontend",
+    "design-system",
+    "mcp",
+    "codex",
+    "claude-code",
+    "playwright"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "main": "./dist/index.js",
   "bin": {
     "archetype": "./dist/cli.js",
@@ -17,7 +40,6 @@
     "dist",
     "examples",
     "docs",
-    "archetype-plugin-pivot-md",
     ".codex-plugin",
     ".claude-plugin",
     ".agents",
@@ -52,7 +74,7 @@
     "release:contract": "npm run build && node scripts/run-release-readiness-contract.mjs",
     "plugin-install:contract": "npm run build && node scripts/run-plugin-install-contract.mjs",
     "install:contract": "npm run build && node scripts/run-install-contract.mjs",
-    "pivot:audit": "node scripts/run-pivot-convergence-audit.mjs",
+    "repo:audit": "node scripts/run-repository-audit.mjs",
     "lifecycle:contract": "npm run build && node scripts/run-lifecycle-contract.mjs",
     "spec:contract": "npm run build && node scripts/run-spec-contract.mjs",
     "test-first:contract": "npm run build && node scripts/run-test-first-contract.mjs",
@@ -62,8 +84,8 @@
     "demo:run": "npm run build && node scripts/run-demo.mjs",
     "demo:generate": "npm run build && node dist/cli.js generate --input examples/saas-dashboard-intake.json --out tmp/archetype-output",
     "demo:verify": "npm run validate && npm run simulate && npm run write-target && npm run verify-target",
-    "test": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run plugin:codex:contract && npm run distribution:contract && npm run release:contract && npm run plugin-install:contract && npm run pivot:audit && npm run lifecycle:contract && npm run spec:contract && npm run test-first:contract && npm run playwright:contract && npm run repair:contract && npm run install:contract && npm run golden",
-    "check": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run plugin:codex:contract && npm run distribution:contract && npm run release:contract && npm run plugin-install:contract && npm run pivot:audit && npm run lifecycle:contract && npm run spec:contract && npm run test-first:contract && npm run playwright:contract && npm run repair:contract && npm run install:contract && npm run golden",
+    "test": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run plugin:codex:contract && npm run distribution:contract && npm run release:contract && npm run plugin-install:contract && npm run repo:audit && npm run lifecycle:contract && npm run spec:contract && npm run test-first:contract && npm run playwright:contract && npm run repair:contract && npm run install:contract && npm run golden",
+    "check": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run plugin:codex:contract && npm run distribution:contract && npm run release:contract && npm run plugin-install:contract && npm run repo:audit && npm run lifecycle:contract && npm run spec:contract && npm run test-first:contract && npm run playwright:contract && npm run repair:contract && npm run install:contract && npm run golden",
     "clean": "rm -rf dist tmp/archetype-output tmp/generated-frontend tmp/golden tmp/cli-contract tmp/mcp-contract tmp/release-readiness-contract tmp/plugin-install-contract tmp/lifecycle-contract tmp/spec-contract tmp/test-first-contract tmp/playwright-contract tmp/repair-contract tmp/install-contract tmp/demo tmp/scope4-smoke"
   },
   "devDependencies": {
