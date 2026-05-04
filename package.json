@@ -5,17 +5,20 @@
   "license": "MIT",
   "main": "./dist/index.js",
   "bin": {
-    "archetype": "./dist/cli.js"
+    "archetype": "./dist/cli.js",
+    "archetype-mcp": "./dist/mcp/server.js"
   },
   "exports": {
     ".": "./dist/index.js",
-    "./cli": "./dist/cli.js"
+    "./cli": "./dist/cli.js",
+    "./mcp": "./dist/mcp/server.js"
   },
   "files": [
     "dist",
     "examples",
     "docs",
     "archetype-plugin-pivot-md",
+    "mcp.example.json",
     "README.md",
     "LICENSE"
   ],
@@ -30,12 +33,14 @@
     "verify-target": "node dist/cli.js verify-target --out tmp/archetype-output --target tmp/generated-frontend",
     "smoke": "npm run build && node dist/cli.js generate --input examples/saas-dashboard-intake.json --out tmp/archetype-output",
     "cli:contract": "npm run build && node scripts/run-cli-contract.mjs",
+    "mcp": "node dist/mcp/server.js",
+    "mcp:contract": "npm run build && node scripts/run-mcp-contract.mjs",
     "golden": "npm run build && node scripts/run-golden.mjs",
     "demo:generate": "npm run build && node dist/cli.js generate --input examples/saas-dashboard-intake.json --out tmp/archetype-output",
     "demo:verify": "npm run validate && npm run simulate && npm run write-target && npm run verify-target",
-    "test": "npm run cli:contract && npm run golden",
-    "check": "npm run cli:contract && npm run golden",
-    "clean": "rm -rf dist tmp/archetype-output tmp/generated-frontend tmp/golden tmp/cli-contract"
+    "test": "npm run cli:contract && npm run mcp:contract && npm run golden",
+    "check": "npm run cli:contract && npm run mcp:contract && npm run golden",
+    "clean": "rm -rf dist tmp/archetype-output tmp/generated-frontend tmp/golden tmp/cli-contract tmp/mcp-contract"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",

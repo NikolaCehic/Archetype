@@ -93,6 +93,26 @@ Verify a target frontend:
 npx . verify-target --out archetype-output --target tmp/generated-frontend --json
 ```
 
+## MCP
+
+Start the local MCP server:
+
+```bash
+npm run build
+npm run mcp
+```
+
+The server exposes deterministic tools for agent hosts:
+
+- `archetype_create_intake`
+- `archetype_generate_package`
+- `archetype_validate_package`
+- `archetype_summarize_package`
+- `archetype_read_artifact`
+- `archetype_verify_target`
+
+See `docs/use-with-mcp.md` and `mcp.example.json`.
+
 ## What Archetype Generates
 
 `archetype-output/` includes:
@@ -155,6 +175,7 @@ Plugin support is tracked in `archetype-plugin-pivot-md/scopes/08-codex-plugin.m
 npm run build
 npm run smoke
 npm run cli:contract
+npm run mcp:contract
 npm run check
 ```
 

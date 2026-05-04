@@ -71,3 +71,27 @@ Deviation review:
 Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
+## Phase 4 - MCP Server
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/06-mcp-server.md`
+- `archetype-plugin-pivot-md/scopes/10-roadmap-and-acceptance.md`
+- `archetype-plugin-pivot-md/prompts/codex-phase-04-mcp.md`
+
+Lesson:
+
+- The MCP surface must stay a tool harness, not a reasoning agent. The server only exposes deterministic wrappers for intake creation, package generation, validation, summarization, artifact reads, and target verification.
+- A manual stdio JSON-RPC server is sufficient for this phase when it follows MCP initialization, tool listing, tool calling, newline-delimited messages, and JSON Schema input definitions. This keeps the package dependency-free and avoids pulling SDK/runtime churn into the compiler.
+- MCP generation needs stricter path safety than the CLI. A coding agent can accidentally pass `outputDir: "."`; the MCP tool now rejects filesystem roots, the repo cwd, home, and existing project-like directories before calling the exporter.
+- Target verification can install dependencies only with explicit permission. The MCP tool defaults `skipInstall` to true and documents that `skipInstall: false` is an intentional host/user permission.
+- The MCP contract test has to exercise the actual server over stdio, not imported functions. It now covers initialize, tools/list, unsafe output rejection, intake creation, generation, validation, summarize, read artifact, write-target setup, and verify-target.
+
+Deviation review:
+
+- No pivot-plan deviation was accepted. The MCP implementation lives as a module and package bin in the current single package rather than a separate `packages/mcp` workspace because the Phase 1 package decision kept a single package until splitting adds real distribution value. The plugin templates and docs point to the local `archetype-mcp` bin.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation

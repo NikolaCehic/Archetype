@@ -16,6 +16,10 @@ Use ./archetype-output to implement the frontend. Follow AGENTS.md, implementati
 
 Codex should read `experience/route-map.json`, `screens/screen-inventory.json`, `design-system/tokens.json`, and `frontend-agent-contract/implementation-rules.json` before writing UI code.
 
+## Use The MCP Server
+
+For MCP-capable Codex workflows, use `docs/use-with-mcp.md` and `mcp.example.json`. The server exposes `archetype_generate_package`, `archetype_validate_package`, `archetype_summarize_package`, `archetype_read_artifact`, and `archetype_verify_target`.
+
 ## Verify Before Completion
 
 ```bash

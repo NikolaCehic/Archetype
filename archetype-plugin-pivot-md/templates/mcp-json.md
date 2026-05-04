@@ -14,7 +14,7 @@ Template:
   "mcpServers": {
     "archetype": {
       "command": "npx",
-      "args": ["-y", "@nikolacehic/archetype-mcp"]
+      "args": ["-y", "-p", "@nikolacehic/archetype", "archetype-mcp"]
     }
   }
 }
@@ -27,7 +27,7 @@ Local development variant:
   "mcpServers": {
     "archetype": {
       "command": "node",
-      "args": ["./packages/mcp/dist/server.js"]
+      "args": ["./dist/mcp/server.js"]
     }
   }
 }

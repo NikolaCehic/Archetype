@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "archetype": {
+      "command": "node",
+      "args": ["/absolute/path/to/Archetype/dist/mcp/server.js"]
+    }
+  }
+}
