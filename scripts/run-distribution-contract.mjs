@@ -23,6 +23,7 @@ for (const file of [
   "RELEASE_NOTES.md",
   "scripts/run-demo.mjs",
   "scripts/run-install-contract.mjs",
+  "scripts/run-lifecycle-contract.mjs",
   "mcp.example.json",
   "plugins/claude-code/.mcp.json",
   "plugins/codex/.mcp.json"
@@ -37,6 +38,7 @@ assert(pkg.scripts?.prepare === "npm run build", "package must build for git ins
 assert(pkg.scripts?.["demo:run"], "package must expose demo:run.");
 assert(pkg.scripts?.["distribution:contract"], "package must expose distribution:contract.");
 assert(pkg.scripts?.["install:contract"], "package must expose install:contract.");
+assert(pkg.scripts?.["lifecycle:contract"], "package must expose lifecycle:contract.");
 assert((pkg.files ?? []).includes("plugins"), "package files must include plugin wrappers.");
 assert((pkg.files ?? []).includes("scripts"), "package files must include demo and contract scripts.");
 
@@ -48,6 +50,8 @@ const readme = readText("README.md");
 for (const expected of [
   "npx -y -p @nikolacehic/archetype archetype init",
   "npx -y -p @nikolacehic/archetype archetype generate",
+  "@Archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
+  "lifecycle/",
   "docs/install.md",
   "docs/demo-script.md",
   "plugins/claude-code",
@@ -85,5 +89,5 @@ console.log(JSON.stringify({
     "docs/demo-script.md",
     "RELEASE_NOTES.md"
   ],
-  scripts: ["demo:run", "distribution:contract", "install:contract"]
+  scripts: ["demo:run", "distribution:contract", "install:contract", "lifecycle:contract"]
 }, null, 2));

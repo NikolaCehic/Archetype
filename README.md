@@ -11,10 +11,10 @@ Instead of asking an agent to guess routes, screens, states, design tokens, data
 With the Codex or Claude Code plugin installed, use Archetype as one natural-language workflow:
 
 ```txt
-@Archetype @docs/product-brief.md @screens/dashboard.png Build this frontend. Ask me what is missing, then implement and verify.
+@Archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
 
-The agent should read imported `@` files, ask only missing-context questions, generate the contract, implement from it, verify the target, and patch or revise without making you learn internal commands.
+Archetype should then ask any needed clarification questions, invite optional materials such as designs, screenshots, wireframes, `SPEC.md`, or `PRD.md`, generate the spec and agent contract, drive tests-first implementation, verify the target, and patch or revise without making you learn internal commands.
 
 CLI fallback:
 
@@ -43,11 +43,11 @@ Archetype compiles product intent into a frontend implementation package:
 ```txt
 Product brief / screenshots / brand notes / repo context
         ↓
-Archetype plugin reads @files, asks missing questions, and calls CLI/MCP internally
+Archetype clarifies context and optionally ingests files
         ↓
 archetype-output contract package
         ↓
-Claude Code / Codex implements from the contract
+Claude Code / Codex writes tests first and implements from the contract
         ↓
 Archetype verifies the implementation against the contract
 ```
@@ -125,6 +125,7 @@ Installation details are in `docs/install.md`.
 `archetype-output/` includes:
 
 - `implementation-contract.md` - the main frontend build contract
+- `lifecycle/` - state machine, context completion, and clarification questions
 - `AGENTS.md` - instructions for Codex and agentic coding tools
 - `CLAUDE.md` - instructions for Claude Code
 - `manifest.json` - machine-readable artifact map
@@ -141,7 +142,7 @@ Installation details are in `docs/install.md`.
 ## Use With Claude Code
 
 ```txt
-/archetype @docs/product-brief.md @screens/dashboard.png Build this frontend. Ask me what is missing, then implement and verify.
+/archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
 
 Plugin support is tracked in `archetype-plugin-pivot-md/scopes/07-claude-code-plugin.md`.
@@ -158,7 +159,7 @@ Install notes: `docs/install-claude-code-plugin.md`.
 ## Use With Codex
 
 ```txt
-@Archetype @docs/product-brief.md @screens/dashboard.png Build this frontend. Ask me what is missing, then implement and verify.
+@Archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
 
 Plugin support is tracked in `archetype-plugin-pivot-md/scopes/08-codex-plugin.md`.
@@ -197,6 +198,7 @@ npm run mcp:contract
 npm run plugin:claude:contract
 npm run plugin:codex:contract
 npm run distribution:contract
+npm run lifecycle:contract
 npm run install:contract
 npm run check
 ```

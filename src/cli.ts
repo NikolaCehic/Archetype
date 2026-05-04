@@ -204,6 +204,8 @@ function summarizePackage(outputDir: string): Record<string, unknown> {
     blockers: topManifest.blockers ?? [],
     warnings: topManifest.warnings ?? [],
     entrypoints: [
+      "lifecycle/context-completion.json",
+      "lifecycle/lifecycle-report.md",
       "AGENTS.md",
       "CLAUDE.md",
       "implementation-contract.md",

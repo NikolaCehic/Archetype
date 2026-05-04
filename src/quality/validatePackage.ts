@@ -30,6 +30,10 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   const claudePath = path.join(outputDir, "CLAUDE.md");
   const implementationContractPath = path.join(outputDir, "implementation-contract.md");
   const verificationPlanPath = path.join(outputDir, "verification-plan.md");
+  const lifecycleStateMachinePath = path.join(outputDir, "lifecycle", "state-machine.json");
+  const contextCompletionPath = path.join(outputDir, "lifecycle", "context-completion.json");
+  const clarificationQuestionsPath = path.join(outputDir, "lifecycle", "clarification-questions.json");
+  const lifecycleReportPath = path.join(outputDir, "lifecycle", "lifecycle-report.md");
   const manifestPath = path.join(outputDir, "00-manifest", "manifest.json");
   const readinessPath = path.join(outputDir, "00-manifest", "implementation-readiness.json");
   const schemaReportPath = path.join(outputDir, "00-manifest", "schema-validation-report.json");
@@ -53,6 +57,10 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   if (!existsSync(claudePath)) blockers.push("Missing CLAUDE.md.");
   if (!existsSync(implementationContractPath)) blockers.push("Missing implementation-contract.md.");
   if (!existsSync(verificationPlanPath)) blockers.push("Missing verification-plan.md.");
+  if (!existsSync(lifecycleStateMachinePath)) blockers.push("Missing lifecycle/state-machine.json.");
+  if (!existsSync(contextCompletionPath)) blockers.push("Missing lifecycle/context-completion.json.");
+  if (!existsSync(clarificationQuestionsPath)) blockers.push("Missing lifecycle/clarification-questions.json.");
+  if (!existsSync(lifecycleReportPath)) blockers.push("Missing lifecycle/lifecycle-report.md.");
   if (!existsSync(manifestPath)) blockers.push("Missing 00-manifest/manifest.json.");
   if (!existsSync(readinessPath)) blockers.push("Missing 00-manifest/implementation-readiness.json.");
   if (!existsSync(schemaReportPath)) blockers.push("Missing 00-manifest/schema-validation-report.json.");
@@ -104,8 +112,19 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   const screenSpecs = readJsonSafe<{ screens?: unknown[] }>(screenSpecsPath, blockers, "Screen specs");
   const componentContracts = readJsonSafe<{ contracts?: unknown[] }>(componentContractsPath, blockers, "Component contracts");
   const implementationRules = readJsonSafe<Record<string, unknown>>(implementationRulesPath, blockers, "Implementation rules");
+  const lifecycleStateMachine = readJsonSafe<{
+    states?: Array<{ state?: string }>;
+    default_entrypoint?: string;
+    principle?: string;
+  }>(lifecycleStateMachinePath, blockers, "Lifecycle state machine");
+  const contextCompletion = readJsonSafe<{
+    status?: string;
+    current_state?: string;
+    next_state?: string;
+    questions?: unknown[];
+  }>(contextCompletionPath, blockers, "Context completion");
 
-  if (!topManifest || !manifest || !readiness || !schemaReport || !dsag || !routeMap || !screenInventory || !screenSpecs || !componentContracts || !implementationRules) {
+  if (!topManifest || !manifest || !readiness || !schemaReport || !dsag || !routeMap || !screenInventory || !screenSpecs || !componentContracts || !implementationRules || !lifecycleStateMachine || !contextCompletion) {
     return { status: "fail", outputDir, checkedFiles: 0, blockers, warnings };
   }
 
@@ -123,6 +142,22 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   }
   if (!implementationRules.routing || !implementationRules.dataContracts || !implementationRules.actionContracts || !implementationRules.formContracts) {
     blockers.push("Implementation rules must expose routing, data, action, and form contracts.");
+  }
+  const lifecycleStates = new Set((lifecycleStateMachine.states ?? []).map((item) => item.state));
+  for (const requiredState of ["clarifying", "waiting_for_optional_materials", "spec_generating", "test_generating", "implementing_tests_first", "verifying_with_playwright", "revising", "done"]) {
+    if (!lifecycleStates.has(requiredState)) blockers.push(`Lifecycle state machine missing ${requiredState}.`);
+  }
+  if (lifecycleStateMachine.default_entrypoint !== "/archetype \"project idea\"") {
+    blockers.push("Lifecycle state machine must define /archetype natural-language default entrypoint.");
+  }
+  if (!String(lifecycleStateMachine.principle ?? "").includes("No code before contract")) {
+    blockers.push("Lifecycle state machine must include the spec/test/verification principle.");
+  }
+  if (!["complete", "needs_clarification"].includes(String(contextCompletion.status))) {
+    blockers.push("Context completion status must be complete or needs_clarification.");
+  }
+  if (!Array.isArray(contextCompletion.questions)) {
+    blockers.push("Context completion must expose clarification questions.");
   }
 
   const artifactIndex = manifest.artifact_index ?? [];

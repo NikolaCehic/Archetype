@@ -92,6 +92,10 @@ function buildTopLevelManifest(pkg: ArchetypePackage): Record<string, unknown> {
     { id: "implementation-contract", path: "implementation-contract.md", type: "markdown", required: true },
     { id: "verification-plan", path: "verification-plan.md", type: "markdown", required: true },
     { id: "readiness-report", path: "readiness-report.md", type: "markdown", required: true },
+    { id: "lifecycle-state-machine", path: "lifecycle/state-machine.json", type: "json", required: true },
+    { id: "context-completion", path: "lifecycle/context-completion.json", type: "json", required: true },
+    { id: "clarification-questions", path: "lifecycle/clarification-questions.json", type: "json", required: true },
+    { id: "lifecycle-report", path: "lifecycle/lifecycle-report.md", type: "markdown", required: true },
     { id: "product-model", path: "product/product-model.json", type: "json", required: true },
     { id: "user-roles", path: "product/user-roles.json", type: "json", required: true },
     { id: "route-map", path: "experience/route-map.json", type: "json", required: true },
@@ -132,7 +136,8 @@ function buildPackageReadme(pkg: ArchetypePackage): string {
     "3. Read `experience/route-map.json` before creating routes.",
     "4. Read `screens/screen-inventory.json` before creating screens.",
     "5. Read `design-system/tokens.json` before styling.",
-    "6. Run the checks in `verification-plan.md` before declaring completion.",
+    "6. Read `lifecycle/lifecycle-report.md` to understand the current lifecycle state.",
+    "7. Run the checks in `verification-plan.md` before declaring completion.",
     "",
     "## Readiness",
     "",
@@ -153,6 +158,7 @@ function buildGeneratedAgentsMd(): string {
     "",
     "Before implementing UI, read:",
     "",
+    "0. `lifecycle/context-completion.json`",
     "1. `implementation-contract.md`",
     "2. `frontend-agent-contract/frontend-agent-instructions.md`",
     "3. `experience/route-map.json`",
@@ -169,6 +175,8 @@ function buildGeneratedAgentsMd(): string {
     "- Do not change product copy in ways that conflict with the contract.",
     "- Use the design-system tokens before creating ad hoc styling.",
     "- Follow data, action, and form contracts.",
+    "- Treat Archetype as spec-driven development: no implementation before the generated contract is understood.",
+    "- Treat the agent phase as test-driven development: write tests from the contract before product UI code.",
     "- After implementation, run the verification commands in `verification-plan.md`.",
     "",
     "## Completion Standard",
@@ -185,6 +193,7 @@ function buildGeneratedClaudeMd(): string {
     "",
     "## Primary Files",
     "",
+    "- `lifecycle/context-completion.json`",
     "- `implementation-contract.md`",
     "- `frontend-agent-contract/frontend-agent-instructions.md`",
     "- `experience/route-map.json`",
@@ -199,6 +208,7 @@ function buildGeneratedClaudeMd(): string {
     "- Use the design-system tokens.",
     "- Follow the data/action/form contracts.",
     "- Do not invent product behavior outside the contract.",
+    "- Write tests from the contract before product UI code.",
     "- Run validation before declaring completion.",
     "",
     "## Completion Standard",
@@ -381,6 +391,10 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeText(outDir, "readiness-report.md", buildReadinessReport(pkg));
   writeText(outDir, "implementation-contract.md", buildImplementationContract(pkg));
   writeText(outDir, "verification-plan.md", pkg.frontendContract.verificationPlan);
+  writeJson(outDir, "lifecycle/state-machine.json", pkg.lifecycle.stateMachine);
+  writeJson(outDir, "lifecycle/context-completion.json", pkg.lifecycle.contextCompletion);
+  writeJson(outDir, "lifecycle/clarification-questions.json", pkg.lifecycle.clarificationQuestions);
+  writeText(outDir, "lifecycle/lifecycle-report.md", pkg.lifecycle.lifecycleReport);
 
   writeJson(outDir, "product/product-model.json", pkg.product.productModel);
   writeJson(outDir, "product/user-roles.json", buildUserRoles(pkg));

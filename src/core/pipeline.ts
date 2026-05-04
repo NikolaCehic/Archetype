@@ -17,6 +17,7 @@ import { buildFrontendBuildSimulationArtifacts } from "../modules/frontendBuildS
 import { buildTargetFrontendArtifacts } from "../modules/targetFrontend";
 import { buildPendingTargetExecutionArtifacts } from "../modules/targetExecution";
 import { buildE2EScenarioArtifacts } from "../modules/e2eScenarios";
+import { buildLifecycleArtifacts } from "../modules/lifecycle";
 
 const ARTIFACT_INDEX = [
   "README.md",
@@ -26,6 +27,10 @@ const ARTIFACT_INDEX = [
   "readiness-report.md",
   "implementation-contract.md",
   "verification-plan.md",
+  "lifecycle/state-machine.json",
+  "lifecycle/context-completion.json",
+  "lifecycle/clarification-questions.json",
+  "lifecycle/lifecycle-report.md",
   "product/product-model.json",
   "product/user-roles.json",
   "experience/route-map.json",
@@ -274,6 +279,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     e2e,
     dsag
   });
+  const lifecycle = buildLifecycleArtifacts(input, evidence, quality.readiness);
 
   const manifest: Manifest = {
     package_id: stableId("package", projectSlug, sourceHash),
@@ -296,6 +302,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
 
   return {
     manifest,
+    lifecycle,
     ingestion,
     evidence,
     product,

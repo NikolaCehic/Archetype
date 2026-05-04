@@ -27,10 +27,10 @@ Required files:
 The natural front door is:
 
 ```txt
-/archetype @docs/product-brief.md @screens/dashboard.png Build the frontend. Ask me what is missing, then implement and verify.
+/archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
 
-Claude Code should read the imported `@` files, ask only missing product questions, generate the contract, implement from it, and verify without asking the user to run CLI commands.
+Claude Code should ask needed clarification questions, invite optional materials, generate the contract, write tests first, implement from the contract, and verify without asking the user to run CLI commands.
 
 The plugin `.mcp.json` launches:
 

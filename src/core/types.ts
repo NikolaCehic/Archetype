@@ -530,6 +530,60 @@ export interface QualityArtifacts {
   specCoverageReport: string;
 }
 
+export type LifecycleState =
+  | "start"
+  | "clarifying"
+  | "waiting_for_optional_materials"
+  | "intaking"
+  | "spec_generating"
+  | "test_generating"
+  | "implementing_tests_first"
+  | "verifying_with_playwright"
+  | "revising"
+  | "done";
+
+export interface LifecycleArtifacts {
+  stateMachine: {
+    lifecycle_version: string;
+    default_entrypoint: string;
+    principle: string;
+    states: Array<{
+      state: LifecycleState;
+      purpose: string;
+      entry_condition: string;
+      exit_condition: string;
+      owner: "archetype" | "agent" | "user";
+      next_states: LifecycleState[];
+    }>;
+    rules: string[];
+  };
+  contextCompletion: {
+    status: "complete" | "needs_clarification";
+    current_state: LifecycleState;
+    next_state: LifecycleState;
+    confidence_score: number;
+    known_facts: string[];
+    missing_decisions: string[];
+    assumptions: string[];
+    optional_material_prompt: string;
+    questions: Array<{
+      id: string;
+      question: string;
+      reason: string;
+      required: boolean;
+      answered_by: string[];
+    }>;
+  };
+  clarificationQuestions: Array<{
+    id: string;
+    question: string;
+    reason: string;
+    required: boolean;
+    answered_by: string[];
+  }>;
+  lifecycleReport: string;
+}
+
 export interface Manifest {
   package_id: string;
   project_slug: string;
@@ -548,6 +602,7 @@ export interface Manifest {
 
 export interface ArchetypePackage {
   manifest: Manifest;
+  lifecycle: LifecycleArtifacts;
   ingestion: IngestionArtifacts;
   evidence: EvidenceLedger;
   product: ProductArtifacts;

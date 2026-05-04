@@ -5,15 +5,18 @@ Archetype should feel like one Claude Code workflow, not a sequence of user-mana
 ## Natural Front Door
 
 ```txt
-/archetype @docs/product-brief.md @screens/dashboard.png Build this frontend. Ask me what is missing, then implement and verify.
+/archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
 
 Claude Code should:
 
+- treat `/archetype` as the full lifecycle by default
+- ask clarification questions when product context is incomplete
+- invite optional `@` files, screenshots, wireframes, `SPEC.md`, `PRD.md`, brand notes, or repo context
 - read the imported `@` files itself
-- ask one compact set of missing-context questions only when needed
 - create `archetype.intake.json`
 - generate `archetype-output`
+- create executable tests from the generated contract before implementation
 - implement from the generated contract
 - verify the target frontend
 - patch or revise until verification is acceptable
@@ -22,7 +25,7 @@ The user should not need to know `generate`, `validate`, `verify-target`, or whi
 
 ## Internal Contract Files
 
-When implementation starts, Claude Code reads `CLAUDE.md`, `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, `design-system/tokens.json`, and `frontend-agent-contract/implementation-rules.json`.
+When implementation starts, Claude Code reads `lifecycle/context-completion.json`, `CLAUDE.md`, `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, `design-system/tokens.json`, and `frontend-agent-contract/implementation-rules.json`.
 
 ## Use The MCP Server
 

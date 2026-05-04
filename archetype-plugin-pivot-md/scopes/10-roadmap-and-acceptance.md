@@ -147,6 +147,25 @@ Pass condition:
 Users can install/use Archetype without cloning and reverse-engineering the repo.
 ```
 
+## Phase 8 — Lifecycle Orchestrator
+
+Tasks:
+
+```txt
+[ ] Add lifecycle state machine.
+[ ] Define clarify as context completion.
+[ ] Ask for optional materials after the initial idea.
+[ ] Generate lifecycle artifacts into archetype-output.
+[ ] Update agent instructions to read lifecycle context before implementation.
+[ ] Add lifecycle contract tests.
+```
+
+Pass condition:
+
+```txt
+/archetype "project idea" implies the full lifecycle without extra user prompt choreography.
+```
+
 ## Final Acceptance Criteria
 
 ```txt
@@ -159,6 +178,8 @@ Users can install/use Archetype without cloning and reverse-engineering the repo
 [ ] Codex implement skill works.
 [ ] Codex verify skill works.
 [ ] Natural-language `@Archetype @file...` flow works without user command choreography.
+[ ] Natural-language `/archetype "project idea"` flow asks clarifying questions and optional material prompts by default.
+[ ] Generated output includes lifecycle state machine and context completion artifacts.
 [ ] MCP server exposes generate/validate/read/verify tools.
 [ ] Generated output includes AGENTS.md.
 [ ] Generated output includes CLAUDE.md.

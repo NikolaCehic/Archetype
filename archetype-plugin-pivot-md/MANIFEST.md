@@ -22,6 +22,7 @@ Generated Markdown doc pack for the Archetype plugin pivot.
 - `scopes/09-demo-and-examples.md`
 - `scopes/10-roadmap-and-acceptance.md`
 - `scopes/11-readme-rewrite.md`
+- `scopes/12-lifecycle-orchestrator.md`
 - `templates/claude-plugin-json.md`
 - `templates/codex-plugin-json.md`
 - `templates/generated-agents-md.md`

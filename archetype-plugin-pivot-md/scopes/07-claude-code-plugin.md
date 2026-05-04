@@ -62,11 +62,12 @@ Natural-language front door that accepts user direction plus @imported files and
 
 Workflow:
 
-1. Read all `@` imported files, folders, screenshots, and design notes.
+1. Accept `/archetype "project idea"` as enough to start.
 2. Ask one compact set of missing-context questions only when essential product, stack, flow, visual, backend, or verification facts are absent.
-3. Create or update `archetype.intake.json` with imported materials.
-4. Generate the contract package.
-5. Continue into implementation and verification without asking the user to choose internal commands.
+3. Ask the user to optionally provide `@` imported files, folders, screenshots, wireframes, specs, PRDs, brand notes, and design notes.
+4. Create or update `archetype.intake.json` with imported materials.
+5. Generate the contract package.
+6. Continue into tests-first implementation and verification without asking the user to choose internal commands.
 
 ### `/archetype:blueprint`
 

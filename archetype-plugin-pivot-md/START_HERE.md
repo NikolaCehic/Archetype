@@ -10,6 +10,14 @@ The product should be positioned as:
 
 The compiler remains the engine. The plugin layer becomes the product surface.
 
+The default user interaction is:
+
+```txt
+/archetype "project idea"
+```
+
+Archetype then clarifies context, asks for optional materials, generates the spec and contract, drives tests-first implementation, verifies, and revises.
+
 ## Core Thesis
 
 Coding agents can write code, but they often guess product architecture. Archetype should reduce guessing by generating a deterministic contract that contains:
@@ -30,11 +38,11 @@ Coding agents can write code, but they often guess product architecture. Archety
 ```txt
 Product brief / screenshots / brand notes / existing repo context
         ↓
-Archetype plugin or CLI
+Archetype lifecycle: clarify → optional materials → intake → spec
         ↓
 archetype-output contract package
         ↓
-Claude Code / Codex implements from the contract
+Claude Code / Codex writes tests first and implements from the contract
         ↓
 Archetype verification checks implementation against contract
 ```
@@ -74,6 +82,7 @@ scopes/08-codex-plugin.md
 scopes/09-demo-and-examples.md
 scopes/10-roadmap-and-acceptance.md
 scopes/11-readme-rewrite.md
+scopes/12-lifecycle-orchestrator.md
 ```
 
 ## Build Order
@@ -89,6 +98,7 @@ scopes/11-readme-rewrite.md
 8. Codex plugin
 9. Demo project
 10. Distribution docs
+11. Lifecycle orchestrator
 ```
 
 ## MVP Definition

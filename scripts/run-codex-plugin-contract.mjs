@@ -54,9 +54,10 @@ assert(mcp.mcpServers?.archetype?.command === "npx", "Codex plugin MCP config mu
 assert(mcp.mcpServers.archetype.args.includes("archetype-mcp"), "Codex plugin MCP config must launch archetype-mcp.");
 
 const frontDoor = readText("skills/archetype/SKILL.md");
-for (const expected of ["@file", "Self-Contained Pipeline", "archetype_create_intake", "materials", "Ask at most six", "Do not end by telling the user what to tell Codex next"]) {
+for (const expected of ["project idea", "Self-Contained Pipeline", "archetype_create_intake", "materials", "Ask at most six", "Do not require the user", "tests first", "Do not end by telling the user what to tell Codex next"]) {
   assert(frontDoor.includes(expected), `Codex front-door skill missing ${expected}.`);
 }
+assert(!frontDoor.includes("Ask me what is missing, then build and verify"), "Codex front-door skill must not require prompt choreography.");
 
 const blueprint = readText("skills/archetype-blueprint/SKILL.md");
 for (const expected of ["archetype_create_intake", "archetype_generate_package", "archetype_summarize_package", "archetype_read_artifact", "npx -y -p @nikolacehic/archetype"]) {

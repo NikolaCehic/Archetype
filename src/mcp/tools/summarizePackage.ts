@@ -49,6 +49,8 @@ function summarizePackage(outputDir: string): JsonRecord {
     blockers,
     warnings,
     entrypoints: [
+      "lifecycle/context-completion.json",
+      "lifecycle/lifecycle-report.md",
       "AGENTS.md",
       "CLAUDE.md",
       "implementation-contract.md",

@@ -72,6 +72,28 @@ Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
 
+## Lifecycle And Context Completion
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/12-lifecycle-orchestrator.md`
+- `reinforcement-learning/lifecycle-loop-log.md`
+
+Lesson:
+
+- `/archetype "project idea"` must imply the lifecycle. The user should not have to say "ask me questions", "ask for materials", "implement", or "verify".
+- Clarify is context completion. The generated package now records known facts, missing decisions, assumptions, optional material prompt, focused questions, confidence, current state, and next state.
+- Lifecycle artifacts must be generated into every package and validated like route maps, screen inventories, and contracts.
+- The lifecycle state machine is the spine for upcoming canonical spec, test-first contract, Playwright verification, and revision scopes.
+
+Deviation review:
+
+- No scope deviation was accepted. Canonical spec files, executable test contracts, and Playwright-backed verification are intentionally next scopes, not hidden inside Scope 1.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
 ## Phase 2 - CLI Contract
 
 Scope reference:

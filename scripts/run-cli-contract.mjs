@@ -68,6 +68,10 @@ assert(
 );
 for (const requiredArtifact of [
   "product/product-model.json",
+  "lifecycle/state-machine.json",
+  "lifecycle/context-completion.json",
+  "lifecycle/clarification-questions.json",
+  "lifecycle/lifecycle-report.md",
   "experience/route-map.json",
   "design-system/tokens.json",
   "design-system/component-contracts.json",
@@ -87,6 +91,7 @@ assert(summarize.product === "SignalDesk", "summarize should report the product 
 assert(summarize.routes === 6, "summarize should report route count.");
 assert(summarize.screens === 6, "summarize should report screen count.");
 assert(summarize.requiredStates.includes("loading"), "summarize should include required states.");
+assert(summarize.entrypoints.includes("lifecycle/context-completion.json"), "summarize should include lifecycle context entrypoint.");
 
 const validate = runJson(["validate", "--out", outputDir]);
 assert(validate.status === "pass", "validate --json should pass.");
