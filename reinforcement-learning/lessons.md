@@ -94,6 +94,28 @@ Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
 
+## Canonical Spec Artifacts
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/13-canonical-spec-artifacts.md`
+- `reinforcement-learning/lifecycle-loop-log.md`
+
+Lesson:
+
+- Archetype cannot claim spec-driven development from scattered route, screen, token, and contract artifacts alone. It needs a named canonical spec.
+- `spec/archetype-spec.json` is the machine-readable source of truth and `spec/archetype-spec.md` is the human-readable source of truth.
+- Agent instructions, summarize entrypoints, manifests, validation, and contract tests must all point to the canonical spec first.
+- Test-first contracts must derive from this spec in the next scope.
+
+Deviation review:
+
+- No scope deviation was accepted. Executable test-contract generation remains next because Scope 2 is only the canonical spec layer.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
 ## Phase 2 - CLI Contract
 
 Scope reference:

@@ -125,6 +125,8 @@ Installation details are in `docs/install.md`.
 `archetype-output/` includes:
 
 - `implementation-contract.md` - the main frontend build contract
+- `spec/archetype-spec.md` - canonical human-readable source of truth
+- `spec/archetype-spec.json` - canonical machine-readable source of truth
 - `lifecycle/` - state machine, context completion, and clarification questions
 - `AGENTS.md` - instructions for Codex and agentic coding tools
 - `CLAUDE.md` - instructions for Claude Code
@@ -199,6 +201,7 @@ npm run plugin:claude:contract
 npm run plugin:codex:contract
 npm run distribution:contract
 npm run lifecycle:contract
+npm run spec:contract
 npm run install:contract
 npm run check
 ```

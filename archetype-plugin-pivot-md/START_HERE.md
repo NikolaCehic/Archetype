@@ -83,6 +83,7 @@ scopes/09-demo-and-examples.md
 scopes/10-roadmap-and-acceptance.md
 scopes/11-readme-rewrite.md
 scopes/12-lifecycle-orchestrator.md
+scopes/13-canonical-spec-artifacts.md
 ```
 
 ## Build Order
@@ -99,6 +100,7 @@ scopes/12-lifecycle-orchestrator.md
 9. Demo project
 10. Distribution docs
 11. Lifecycle orchestrator
+12. Canonical spec artifacts
 ```
 
 ## MVP Definition

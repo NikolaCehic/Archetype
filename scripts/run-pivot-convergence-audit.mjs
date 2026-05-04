@@ -63,7 +63,8 @@ const requiredHarnessPaths = [
   "scripts/run-mcp-contract.mjs",
   "scripts/run-distribution-contract.mjs",
   "scripts/run-install-contract.mjs",
-  "scripts/run-lifecycle-contract.mjs"
+  "scripts/run-lifecycle-contract.mjs",
+  "scripts/run-spec-contract.mjs"
 ];
 
 for (const file of requiredHarnessPaths) {

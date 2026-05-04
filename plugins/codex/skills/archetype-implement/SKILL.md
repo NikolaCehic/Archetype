@@ -12,6 +12,8 @@ Implement from the generated contract. Do not guess.
 Read these before writing UI code:
 
 - `archetype-output/AGENTS.md`
+- `archetype-output/spec/archetype-spec.md`
+- `archetype-output/spec/archetype-spec.json`
 - `archetype-output/implementation-contract.md`
 - `archetype-output/experience/route-map.json`
 - `archetype-output/screens/screen-inventory.json`
@@ -27,6 +29,7 @@ Prefer MCP tool `archetype_read_artifact` for targeted artifact reads. If MCP is
 ## Rules
 
 - Create only routes present in the route map.
+- Treat `spec/archetype-spec.json` as the canonical source of truth.
 - Implement every required screen state.
 - Use declared tokens and component contracts.
 - Follow data, action, and form contracts.

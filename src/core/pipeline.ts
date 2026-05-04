@@ -18,6 +18,7 @@ import { buildTargetFrontendArtifacts } from "../modules/targetFrontend";
 import { buildPendingTargetExecutionArtifacts } from "../modules/targetExecution";
 import { buildE2EScenarioArtifacts } from "../modules/e2eScenarios";
 import { buildLifecycleArtifacts } from "../modules/lifecycle";
+import { buildSpecArtifacts } from "../modules/spec";
 
 const ARTIFACT_INDEX = [
   "README.md",
@@ -27,6 +28,8 @@ const ARTIFACT_INDEX = [
   "readiness-report.md",
   "implementation-contract.md",
   "verification-plan.md",
+  "spec/archetype-spec.md",
+  "spec/archetype-spec.json",
   "lifecycle/state-machine.json",
   "lifecycle/context-completion.json",
   "lifecycle/clarification-questions.json",
@@ -300,7 +303,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     ].sort()
   };
 
-  return {
+  const packageWithoutSpec: Omit<ArchetypePackage, "spec"> = {
     manifest,
     lifecycle,
     ingestion,
@@ -319,5 +322,11 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     targetExecution,
     e2e,
     quality
+  };
+  const spec = buildSpecArtifacts(packageWithoutSpec);
+
+  return {
+    ...packageWithoutSpec,
+    spec
   };
 }

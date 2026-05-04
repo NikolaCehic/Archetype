@@ -166,6 +166,25 @@ Pass condition:
 /archetype "project idea" implies the full lifecycle without extra user prompt choreography.
 ```
 
+## Phase 9 — Canonical Spec Artifacts
+
+Tasks:
+
+```txt
+[ ] Generate spec/archetype-spec.md.
+[ ] Generate spec/archetype-spec.json.
+[ ] Mark the canonical spec as source of truth.
+[ ] Include lifecycle, product, experience, design-system, frontend contract, verification, and traceability.
+[ ] Validate route/screen count consistency against canonical artifacts.
+[ ] Update agent instructions to read the spec before implementation.
+```
+
+Pass condition:
+
+```txt
+Archetype can truthfully claim spec-driven development because every generated package contains a canonical source-of-truth spec.
+```
+
 ## Final Acceptance Criteria
 
 ```txt
@@ -180,6 +199,7 @@ Pass condition:
 [ ] Natural-language `@Archetype @file...` flow works without user command choreography.
 [ ] Natural-language `/archetype "project idea"` flow asks clarifying questions and optional material prompts by default.
 [ ] Generated output includes lifecycle state machine and context completion artifacts.
+[ ] Generated output includes canonical source-of-truth spec markdown and JSON.
 [ ] MCP server exposes generate/validate/read/verify tools.
 [ ] Generated output includes AGENTS.md.
 [ ] Generated output includes CLAUDE.md.

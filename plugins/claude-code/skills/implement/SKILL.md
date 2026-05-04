@@ -17,6 +17,8 @@ Read these files before writing UI code:
 
 - `archetype-output/AGENTS.md`
 - `archetype-output/CLAUDE.md`
+- `archetype-output/spec/archetype-spec.md`
+- `archetype-output/spec/archetype-spec.json`
 - `archetype-output/implementation-contract.md`
 - `archetype-output/experience/route-map.json`
 - `archetype-output/screens/screen-inventory.json`
@@ -31,6 +33,7 @@ Use MCP tool `archetype_read_artifact` when available. If MCP is unavailable, re
 ## Implementation Rules
 
 - Implement only routes declared in `experience/route-map.json`.
+- Treat `spec/archetype-spec.json` as the canonical source of truth.
 - Implement all required screens and states from `screens/screen-inventory.json`.
 - Use only tokens and component contracts declared in `design-system/`.
 - Follow data, action, and form contracts from `frontend-agent-contract/implementation-rules.json`.

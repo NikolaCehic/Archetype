@@ -45,12 +45,13 @@ If the answer is obvious from the attached material, infer it and state the assu
 4. Prefer MCP tool `archetype_create_intake`. Pass imported materials through the `materials` array with labels, paths, content excerpts, and source types.
 5. Generate `archetype-output` with MCP tool `archetype_generate_package`.
 6. Read `lifecycle/context-completion.json` and `lifecycle/lifecycle-report.md`.
-7. Summarize readiness with `archetype_summarize_package`.
-8. If blockers exist, ask for only the missing evidence needed to unblock the contract.
-9. If ready or warning-only, create tests from the generated contract before writing product UI.
-10. Continue with implementation workflow from `archetype-implement`.
-11. Verify the target with `archetype-verify`.
-12. If verification fails, patch the implementation or revise the contract, then verify again.
+7. Read `spec/archetype-spec.md` and `spec/archetype-spec.json` as the canonical source of truth.
+8. Summarize readiness with `archetype_summarize_package`.
+9. If blockers exist, ask for only the missing evidence needed to unblock the contract.
+10. If ready or warning-only, create tests from the generated spec and contract before writing product UI.
+11. Continue with implementation workflow from `archetype-implement`.
+12. Verify the target with `archetype-verify`.
+13. If verification fails, patch the implementation or revise the contract, then verify again.
 
 ## Fallback
 
@@ -70,7 +71,7 @@ The user should experience Archetype as one guided agent workflow:
 natural-language /archetype idea
         -> clarification and optional material request
         -> context completion
-        -> contract generation
+        -> canonical spec and contract generation
         -> tests first
         -> frontend implementation
         -> Playwright-backed verification

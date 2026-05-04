@@ -25,7 +25,7 @@ The user should not need to know `generate`, `validate`, `verify-target`, or whi
 
 ## Internal Contract Files
 
-When implementation starts, Codex reads `lifecycle/context-completion.json`, `AGENTS.md`, `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, `design-system/tokens.json`, and `frontend-agent-contract/implementation-rules.json`.
+When implementation starts, Codex reads `lifecycle/context-completion.json`, `spec/archetype-spec.md`, `spec/archetype-spec.json`, `AGENTS.md`, `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, `design-system/tokens.json`, and `frontend-agent-contract/implementation-rules.json`.
 
 ## Use The MCP Server
 

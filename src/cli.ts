@@ -206,6 +206,8 @@ function summarizePackage(outputDir: string): Record<string, unknown> {
     entrypoints: [
       "lifecycle/context-completion.json",
       "lifecycle/lifecycle-report.md",
+      "spec/archetype-spec.md",
+      "spec/archetype-spec.json",
       "AGENTS.md",
       "CLAUDE.md",
       "implementation-contract.md",

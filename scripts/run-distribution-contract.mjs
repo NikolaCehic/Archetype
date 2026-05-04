@@ -24,6 +24,7 @@ for (const file of [
   "scripts/run-demo.mjs",
   "scripts/run-install-contract.mjs",
   "scripts/run-lifecycle-contract.mjs",
+  "scripts/run-spec-contract.mjs",
   "mcp.example.json",
   "plugins/claude-code/.mcp.json",
   "plugins/codex/.mcp.json"
@@ -39,6 +40,7 @@ assert(pkg.scripts?.["demo:run"], "package must expose demo:run.");
 assert(pkg.scripts?.["distribution:contract"], "package must expose distribution:contract.");
 assert(pkg.scripts?.["install:contract"], "package must expose install:contract.");
 assert(pkg.scripts?.["lifecycle:contract"], "package must expose lifecycle:contract.");
+assert(pkg.scripts?.["spec:contract"], "package must expose spec:contract.");
 assert((pkg.files ?? []).includes("plugins"), "package files must include plugin wrappers.");
 assert((pkg.files ?? []).includes("scripts"), "package files must include demo and contract scripts.");
 
@@ -52,6 +54,7 @@ for (const expected of [
   "npx -y -p @nikolacehic/archetype archetype generate",
   "@Archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
   "lifecycle/",
+  "spec/archetype-spec.json",
   "docs/install.md",
   "docs/demo-script.md",
   "plugins/claude-code",
@@ -89,5 +92,5 @@ console.log(JSON.stringify({
     "docs/demo-script.md",
     "RELEASE_NOTES.md"
   ],
-  scripts: ["demo:run", "distribution:contract", "install:contract", "lifecycle:contract"]
+  scripts: ["demo:run", "distribution:contract", "install:contract", "lifecycle:contract", "spec:contract"]
 }, null, 2));

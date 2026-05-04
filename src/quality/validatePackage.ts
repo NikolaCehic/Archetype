@@ -28,6 +28,8 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   const topManifestPath = path.join(outputDir, "manifest.json");
   const agentsPath = path.join(outputDir, "AGENTS.md");
   const claudePath = path.join(outputDir, "CLAUDE.md");
+  const canonicalSpecMarkdownPath = path.join(outputDir, "spec", "archetype-spec.md");
+  const canonicalSpecJsonPath = path.join(outputDir, "spec", "archetype-spec.json");
   const implementationContractPath = path.join(outputDir, "implementation-contract.md");
   const verificationPlanPath = path.join(outputDir, "verification-plan.md");
   const lifecycleStateMachinePath = path.join(outputDir, "lifecycle", "state-machine.json");
@@ -55,6 +57,8 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   if (!existsSync(topManifestPath)) blockers.push("Missing manifest.json.");
   if (!existsSync(agentsPath)) blockers.push("Missing AGENTS.md.");
   if (!existsSync(claudePath)) blockers.push("Missing CLAUDE.md.");
+  if (!existsSync(canonicalSpecMarkdownPath)) blockers.push("Missing spec/archetype-spec.md.");
+  if (!existsSync(canonicalSpecJsonPath)) blockers.push("Missing spec/archetype-spec.json.");
   if (!existsSync(implementationContractPath)) blockers.push("Missing implementation-contract.md.");
   if (!existsSync(verificationPlanPath)) blockers.push("Missing verification-plan.md.");
   if (!existsSync(lifecycleStateMachinePath)) blockers.push("Missing lifecycle/state-machine.json.");
@@ -112,6 +116,15 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   const screenSpecs = readJsonSafe<{ screens?: unknown[] }>(screenSpecsPath, blockers, "Screen specs");
   const componentContracts = readJsonSafe<{ contracts?: unknown[] }>(componentContractsPath, blockers, "Component contracts");
   const implementationRules = readJsonSafe<Record<string, unknown>>(implementationRulesPath, blockers, "Implementation rules");
+  const canonicalSpec = readJsonSafe<{
+    source_of_truth?: boolean;
+    lifecycle?: { default_entrypoint?: string };
+    product?: unknown;
+    experience?: { route_count?: number; screen_count?: number; routes?: unknown[]; screens?: unknown[] };
+    design_system?: unknown;
+    frontend_contract?: unknown;
+    verification?: { required_evidence?: unknown[] };
+  }>(canonicalSpecJsonPath, blockers, "Canonical spec");
   const lifecycleStateMachine = readJsonSafe<{
     states?: Array<{ state?: string }>;
     default_entrypoint?: string;
@@ -124,17 +137,20 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
     questions?: unknown[];
   }>(contextCompletionPath, blockers, "Context completion");
 
-  if (!topManifest || !manifest || !readiness || !schemaReport || !dsag || !routeMap || !screenInventory || !screenSpecs || !componentContracts || !implementationRules || !lifecycleStateMachine || !contextCompletion) {
+  if (!topManifest || !manifest || !readiness || !schemaReport || !dsag || !routeMap || !screenInventory || !screenSpecs || !componentContracts || !implementationRules || !canonicalSpec || !lifecycleStateMachine || !contextCompletion) {
     return { status: "fail", outputDir, checkedFiles: 0, blockers, warnings };
   }
 
-  if (!Array.isArray(routeMap.routes) || routeMap.routes.length === 0) {
+  const routes = Array.isArray(routeMap.routes) ? routeMap.routes : [];
+  const screens = Array.isArray(screenInventory.screens) ? screenInventory.screens : [];
+  const specs = Array.isArray(screenSpecs.screens) ? screenSpecs.screens : [];
+  if (routes.length === 0) {
     blockers.push("Route map has no parseable routes.");
   }
-  if (!Array.isArray(screenInventory.screens) || screenInventory.screens.length === 0) {
+  if (screens.length === 0) {
     blockers.push("Screen inventory has no parseable screens.");
   }
-  if (!Array.isArray(screenSpecs.screens) || screenSpecs.screens.length === 0) {
+  if (specs.length === 0) {
     blockers.push("Screen specs have no parseable screens.");
   }
   if (!Array.isArray(componentContracts.contracts) || componentContracts.contracts.length === 0) {
@@ -142,6 +158,24 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   }
   if (!implementationRules.routing || !implementationRules.dataContracts || !implementationRules.actionContracts || !implementationRules.formContracts) {
     blockers.push("Implementation rules must expose routing, data, action, and form contracts.");
+  }
+  if (canonicalSpec.source_of_truth !== true) {
+    blockers.push("Canonical spec must declare source_of_truth: true.");
+  }
+  if (canonicalSpec.lifecycle?.default_entrypoint !== "/archetype \"project idea\"") {
+    blockers.push("Canonical spec must include the /archetype natural-language default entrypoint.");
+  }
+  if (!canonicalSpec.product || !canonicalSpec.experience || !canonicalSpec.design_system || !canonicalSpec.frontend_contract) {
+    blockers.push("Canonical spec must include product, experience, design_system, and frontend_contract sections.");
+  }
+  if (canonicalSpec.experience?.route_count !== routes.length) {
+    blockers.push("Canonical spec route count must match route map.");
+  }
+  if (canonicalSpec.experience?.screen_count !== specs.length) {
+    blockers.push("Canonical spec screen count must match screen specs.");
+  }
+  if (!Array.isArray(canonicalSpec.verification?.required_evidence) || canonicalSpec.verification.required_evidence.length === 0) {
+    blockers.push("Canonical spec must define required verification evidence.");
   }
   const lifecycleStates = new Set((lifecycleStateMachine.states ?? []).map((item) => item.state));
   for (const requiredState of ["clarifying", "waiting_for_optional_materials", "spec_generating", "test_generating", "implementing_tests_first", "verifying_with_playwright", "revising", "done"]) {

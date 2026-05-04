@@ -72,6 +72,8 @@ for (const requiredArtifact of [
   "lifecycle/context-completion.json",
   "lifecycle/clarification-questions.json",
   "lifecycle/lifecycle-report.md",
+  "spec/archetype-spec.md",
+  "spec/archetype-spec.json",
   "experience/route-map.json",
   "design-system/tokens.json",
   "design-system/component-contracts.json",
@@ -92,6 +94,7 @@ assert(summarize.routes === 6, "summarize should report route count.");
 assert(summarize.screens === 6, "summarize should report screen count.");
 assert(summarize.requiredStates.includes("loading"), "summarize should include required states.");
 assert(summarize.entrypoints.includes("lifecycle/context-completion.json"), "summarize should include lifecycle context entrypoint.");
+assert(summarize.entrypoints.includes("spec/archetype-spec.json"), "summarize should include canonical spec entrypoint.");
 
 const validate = runJson(["validate", "--out", outputDir]);
 assert(validate.status === "pass", "validate --json should pass.");

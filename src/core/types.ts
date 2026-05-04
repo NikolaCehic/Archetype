@@ -584,6 +584,11 @@ export interface LifecycleArtifacts {
   lifecycleReport: string;
 }
 
+export interface SpecArtifacts {
+  specJson: Record<string, unknown>;
+  specMarkdown: string;
+}
+
 export interface Manifest {
   package_id: string;
   project_slug: string;
@@ -603,6 +608,7 @@ export interface Manifest {
 export interface ArchetypePackage {
   manifest: Manifest;
   lifecycle: LifecycleArtifacts;
+  spec: SpecArtifacts;
   ingestion: IngestionArtifacts;
   evidence: EvidenceLedger;
   product: ProductArtifacts;

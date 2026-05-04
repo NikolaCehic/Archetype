@@ -75,3 +75,34 @@ Rule:
 Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
+## Scope 2 Review
+
+Context:
+
+- The product claim is spec-driven development.
+- Scope 1 created the lifecycle spine, but the generated package still needed an explicit canonical source-of-truth spec.
+- The spec must be produced before test-first contracts because tests should derive from the spec.
+
+Implementation:
+
+- Added `spec/archetype-spec.md`.
+- Added `spec/archetype-spec.json`.
+- Added source-of-truth, lifecycle, product, experience, design-system, frontend contract, verification, and traceability sections.
+- Updated generated `AGENTS.md` and `CLAUDE.md` to read the canonical spec before implementation.
+- Added package validation for canonical spec presence, source-of-truth flag, lifecycle entrypoint, core sections, route count, screen count, and verification evidence.
+- Added `scripts/run-spec-contract.mjs` and wired it into `npm run check`.
+
+Self-review:
+
+- The implementation adheres to Scope 2 because the canonical spec is generated, listed in manifests, surfaced through summarize entrypoints, validated for coherence, and covered by a dedicated contract test.
+- It does not yet create executable E2E/UI/smoke/integration/unit test contracts. That is intentionally Scope 3.
+- Review answer: YES for Scope 2. The scope is fully implemented according to the current context.
+
+Rule:
+
+- Do not claim test-driven implementation until test contracts are generated. The correct claim after Scope 2 is: Archetype is spec-driven; test-driven agent implementation is the next scope.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
