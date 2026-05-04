@@ -247,6 +247,27 @@ Pass condition:
 Verification failures produce concrete fix/revise tasks, and passing verification clears the repair queue.
 ```
 
+## Phase 13 — Release Readiness Hardening
+
+Tasks:
+
+```txt
+[ ] Add archetype doctor CLI command.
+[ ] Add MCP archetype_release_doctor tool.
+[ ] Add docs/quickstart.md.
+[ ] Add docs/agent-lifecycle.md.
+[ ] Add docs/release-readiness.md.
+[ ] Align README, install docs, plugin docs, and MCP docs around the same setup path.
+[ ] Add release readiness contract tests.
+[ ] Prove doctor works in source, packed install, and npx package flows.
+```
+
+Pass condition:
+
+```txt
+The source package, packed package, installed package, npx package, MCP server, plugin wrappers, docs, and lifecycle setup path all report release readiness without hidden manual steps.
+```
+
 ## Final Acceptance Criteria
 
 ```txt
@@ -267,7 +288,9 @@ Verification failures produce concrete fix/revise tasks, and passing verificatio
 [ ] verify-target runs install, typecheck, production build, Playwright browser checks, and writes evidence.
 [ ] Generated output includes repair contract, repair task queue, repair plan, and drift report.
 [ ] Verification failures produce repair tasks before agents revise the spec.
-[ ] MCP server exposes generate/validate/read/verify/repair tools.
+[ ] MCP server exposes doctor/generate/validate/read/verify/repair tools.
+[ ] `archetype doctor --json` reports pass for source and installed package surfaces.
+[ ] README, quickstart, install, lifecycle, and release-readiness docs share one setup path.
 [ ] Generated output includes AGENTS.md.
 [ ] Generated output includes CLAUDE.md.
 [ ] Demo app can be generated, implemented, and verified.

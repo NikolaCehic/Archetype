@@ -53,6 +53,12 @@ assert(
   help.includes("Archetype generates frontend implementation contracts for AI coding agents."),
   "CLI help must use pivot positioning."
 );
+assert(help.includes("archetype doctor"), "CLI help must expose doctor command.");
+
+const doctor = runJson(["doctor"]);
+assert(doctor.status === "pass", "doctor --json should pass.");
+assert(doctor.quickstart.published_package.some((command) => command.includes("archetype doctor --json")), "doctor should expose published package doctor command.");
+assert(doctor.docs.some((doc) => doc.path === "docs/agent-lifecycle.md"), "doctor should expose agent lifecycle docs.");
 
 const init = runJson(["init", "--template", "saas-dashboard", "--out", intakePath]);
 assert(init.status === "success", "init --json should succeed.");
@@ -154,6 +160,7 @@ assert(repair.taskCount === 0, "repair --json should report no tasks after succe
 const summary = {
   status: "pass",
   commands: {
+    doctor: doctor.status,
     init: init.status,
     generate: generate.status,
     summarize: summarize.status,

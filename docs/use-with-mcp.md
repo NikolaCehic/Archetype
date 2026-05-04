@@ -61,6 +61,7 @@ Published package form:
 ## Tools
 
 - `archetype_create_intake`
+- `archetype_release_doctor`
 - `archetype_generate_package`
 - `archetype_validate_package`
 - `archetype_summarize_package`
@@ -71,5 +72,7 @@ Published package form:
 The tools are deterministic wrappers around the compiler, package validation, artifact reading, target verification, and repair-task planning. They do not run a general-purpose agent.
 
 `archetype_verify_target` defaults `skipInstall` to `true` for MCP safety. Pass `skipInstall: false` only when the user or host explicitly allows dependency installation in the target frontend.
+
+Use `archetype_release_doctor` before setup demos or plugin install support to verify the package, docs, plugin wrappers, MCP configs, and lifecycle readiness surface.
 
 Use `archetype_plan_repair` after target verification to write `10-revision/repair-task-queue.json` and `10-revision/repair-plan.md` from the latest evidence.

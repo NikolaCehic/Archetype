@@ -7,6 +7,7 @@ Archetype is a CLI, MCP server, and plugin wrapper package for AI coding agents.
 After the package is published, generate a demo contract without cloning the repo:
 
 ```bash
+npx -y -p @nikolacehic/archetype archetype doctor --json
 npx -y -p @nikolacehic/archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
 npx -y -p @nikolacehic/archetype archetype generate --input archetype.intake.json --out archetype-output --json
 npx -y -p @nikolacehic/archetype archetype validate --out archetype-output --json
@@ -27,6 +28,7 @@ git clone https://github.com/NikolaCehic/Archetype.git
 cd Archetype
 npm install
 npm run build
+npx . doctor --json
 npx . init --template saas-dashboard --out archetype.intake.json --force --json
 npx . generate --input archetype.intake.json --out archetype-output --json
 ```
@@ -37,6 +39,7 @@ Prove the clean packaged install path, installed CLI, installed MCP server, plug
 
 ```bash
 npm run install:contract
+npm run release:contract
 ```
 
 ```bash

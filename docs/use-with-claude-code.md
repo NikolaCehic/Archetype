@@ -2,6 +2,8 @@
 
 Archetype should feel like one Claude Code workflow, not a sequence of user-managed commands.
 
+Setup and lifecycle references: `docs/quickstart.md`, `docs/agent-lifecycle.md`, and `docs/release-readiness.md`.
+
 ## Natural Front Door
 
 ```txt
@@ -35,12 +37,13 @@ If verification fails, Claude Code calls `archetype_plan_repair` or `archetype r
 
 ## Use The MCP Server
 
-For MCP-capable Claude Code workflows, use `docs/use-with-mcp.md` and `mcp.example.json`. The server exposes `archetype_generate_package`, `archetype_validate_package`, `archetype_summarize_package`, `archetype_read_artifact`, `archetype_verify_target`, and `archetype_plan_repair`.
+For MCP-capable Claude Code workflows, use `docs/use-with-mcp.md` and `mcp.example.json`. The server exposes `archetype_release_doctor`, `archetype_generate_package`, `archetype_validate_package`, `archetype_summarize_package`, `archetype_read_artifact`, `archetype_verify_target`, and `archetype_plan_repair`.
 
 ## Verify Before Completion
 
 ```bash
 npx . summarize --out archetype-output --json
+npx . doctor --json
 npx . validate --out archetype-output --json
 npx . verify-target --out archetype-output --target . --json
 npx . repair --out archetype-output --target . --json

@@ -214,3 +214,38 @@ Rule:
 Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
+## Scope 6 Review
+
+Context:
+
+- The internal harness loop was strong after Scope 5, but the outer release surface still required users and agents to infer setup from README, install docs, plugin docs, MCP docs, and contract tests.
+- Release readiness for this pivot means install, plugin setup, MCP startup, lifecycle understanding, and first contract generation are all verifiable without reverse-engineering the repository.
+- This scope must not publish, create hosted docs, or rebuild product surfaces. It should harden local deterministic readiness only.
+
+Implementation:
+
+- Added package-level release doctor in `src/release/doctor.ts`.
+- Added CLI command `archetype doctor --json`.
+- Added MCP tool `archetype_release_doctor`.
+- Added `docs/quickstart.md`, `docs/agent-lifecycle.md`, and `docs/release-readiness.md`.
+- Updated README, install docs, Claude Code docs, Codex docs, MCP docs, demo docs, release notes, plugin skills, pivot docs, and roadmap acceptance.
+- Added `scripts/run-release-readiness-contract.mjs`.
+- Updated CLI, MCP, plugin, distribution, install, pivot audit, demo, package scripts, and check suite contracts.
+
+Self-review:
+
+- The implementation adheres to Scope 6 because a human or agent can now call one readiness command and receive the exact published quickstart, local-source quickstart, plugin front doors, MCP tools, lifecycle sequence, docs, blockers, warnings, and completion gate.
+- The release contract proves source doctor, packed tarball contents, installed package doctor, npx doctor, and MCP `archetype_release_doctor`.
+- The install contract now proves installed and npx doctor status while preserving the 60-second setup guarantee.
+- The full check, demo, smoke, audit, diff whitespace, and package dry-run passed after the change.
+- Remaining publication itself is intentionally external. This scope proves the package artifact and setup path that would be published, but does not run `npm publish`.
+- Review answer: YES for Scope 6. The scope is fully implemented according to the current context.
+
+Rule:
+
+- Do not claim release readiness unless `archetype doctor --json`, `npm run release:contract`, `npm run install:contract`, `npm pack --dry-run --json`, and `npm run check` all pass.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation

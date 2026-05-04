@@ -20,6 +20,7 @@ function runJson(args) {
   return JSON.parse(stdout);
 }
 
+const doctor = runJson(["doctor"]);
 const init = runJson(["init", "--template", "saas-dashboard", "--out", intakePath, "--force"]);
 const generate = runJson(["generate", "--input", intakePath, "--out", outputDir]);
 const validate = runJson(["validate", "--out", outputDir]);
@@ -43,6 +44,7 @@ const summary = {
   blockers,
   warnings,
   commands: {
+    doctor: doctor.status,
     init: init.status,
     generate: generate.status,
     validate: validate.status,

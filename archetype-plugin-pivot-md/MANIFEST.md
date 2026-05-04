@@ -27,6 +27,7 @@ Generated Markdown doc pack for the Archetype plugin pivot.
 - `scopes/14-test-first-contracts.md`
 - `scopes/15-playwright-verification.md`
 - `scopes/16-revision-repair-loop.md`
+- `scopes/17-release-readiness-hardening.md`
 - `templates/claude-plugin-json.md`
 - `templates/codex-plugin-json.md`
 - `templates/generated-agents-md.md`

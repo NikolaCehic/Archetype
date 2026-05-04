@@ -11,6 +11,7 @@ The coding agent no longer has to guess the frontend architecture.
 ```bash
 npm install
 npm run build
+npx . doctor --json
 ```
 
 ## Run The Demo
@@ -29,12 +30,13 @@ The demo writes:
 ## Narration
 
 1. Start from the SaaS dashboard brief.
-2. Generate `archetype-output`.
-3. Show `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, and `design-system/tokens.json`.
-4. Materialize the target frontend scaffold.
-5. Run verification against the generated contract.
-6. Show `10-revision/repair-task-queue.json` and explain that failures become concrete patch or revise tasks.
-7. Explain warnings as production integration gaps, not compiler failure.
+2. Show `archetype doctor --json` as the setup proof.
+3. Generate `archetype-output`.
+4. Show `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, and `design-system/tokens.json`.
+5. Materialize the target frontend scaffold.
+6. Run verification against the generated contract.
+7. Show `10-revision/repair-task-queue.json` and explain that failures become concrete patch or revise tasks.
+8. Explain warnings as production integration gaps, not compiler failure.
 
 ## Agent Prompt
 

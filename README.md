@@ -19,9 +19,12 @@ Archetype should then ask any needed clarification questions, invite optional ma
 CLI fallback:
 
 ```bash
+npx -y -p @nikolacehic/archetype archetype doctor --json
 npx -y -p @nikolacehic/archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
 npx -y -p @nikolacehic/archetype archetype generate --input archetype.intake.json --out archetype-output --json
 ```
+
+See `docs/quickstart.md`, `docs/agent-lifecycle.md`, and `docs/release-readiness.md`.
 
 ## What It Does
 
@@ -58,6 +61,12 @@ Archetype verifies the implementation against the contract
 ## CLI
 
 Install paths are in `docs/install.md`.
+
+Check package, plugin, MCP, and lifecycle readiness:
+
+```bash
+npx . doctor --json
+```
 
 Create a starter intake:
 
@@ -118,6 +127,7 @@ npm run mcp
 
 The server exposes deterministic tools for agent hosts:
 
+- `archetype_release_doctor`
 - `archetype_create_intake`
 - `archetype_generate_package`
 - `archetype_validate_package`
@@ -211,12 +221,14 @@ Narration and expected artifacts are in `docs/demo-script.md`.
 
 ```bash
 npm run build
+npm run doctor
 npm run smoke
 npm run cli:contract
 npm run mcp:contract
 npm run plugin:claude:contract
 npm run plugin:codex:contract
 npm run distribution:contract
+npm run release:contract
 npm run lifecycle:contract
 npm run spec:contract
 npm run test-first:contract

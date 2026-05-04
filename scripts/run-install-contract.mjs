@@ -99,6 +99,9 @@ try {
 
   const version = run(cliBin, ["--version"]).trim();
   assert(version === "0.1.0", `Unexpected installed CLI version: ${version}`);
+  const doctor = runJson(cliBin, ["doctor", "--json"]);
+  assert(doctor.status === "pass", "Installed CLI doctor should pass.");
+  assert(doctor.package_mode === "installed_package", "Installed CLI doctor should report installed package mode.");
 
   const intakePath = path.join(installDir, "archetype.intake.json");
   const outputDir = path.join(installDir, "archetype-output");
@@ -126,7 +129,7 @@ try {
 
   const mcpTools = await requestMcp(mcpBin, [], "tools/list");
   const toolNames = new Set((mcpTools.tools ?? []).map((tool) => tool.name));
-  for (const toolName of ["archetype_generate_package", "archetype_validate_package", "archetype_summarize_package", "archetype_read_artifact", "archetype_verify_target", "archetype_plan_repair"]) {
+  for (const toolName of ["archetype_release_doctor", "archetype_generate_package", "archetype_validate_package", "archetype_summarize_package", "archetype_read_artifact", "archetype_verify_target", "archetype_plan_repair"]) {
     assert(toolNames.has(toolName), `Installed MCP server missing ${toolName}.`);
   }
 
@@ -137,12 +140,16 @@ try {
     "plugins/codex/.codex-plugin/plugin.json",
     "plugins/codex/.mcp.json",
     "plugins/codex/skills/archetype/SKILL.md",
+    "docs/quickstart.md",
+    "docs/agent-lifecycle.md",
+    "docs/release-readiness.md",
     "scripts/run-demo.mjs",
     "scripts/run-lifecycle-contract.mjs",
     "scripts/run-spec-contract.mjs",
     "scripts/run-test-first-contract.mjs",
     "scripts/run-playwright-verification-contract.mjs",
-    "scripts/run-repair-contract.mjs"
+    "scripts/run-repair-contract.mjs",
+    "scripts/run-release-readiness-contract.mjs"
   ]) {
     assert(existsSync(path.join(packageRoot, pluginFile)), `Installed package missing ${pluginFile}.`);
   }
@@ -155,6 +162,8 @@ try {
   const npxOutputDir = path.join(installDir, "npx-output");
   const npxVersion = run("npx", ["-y", "-p", tarballPath, "archetype", "--version"]).trim();
   assert(npxVersion === "0.1.0", `Unexpected npx CLI version: ${npxVersion}`);
+  const npxDoctor = runJson("npx", ["-y", "-p", tarballPath, "archetype", "doctor", "--json"]);
+  assert(npxDoctor.status === "pass", "npx CLI doctor should pass.");
 
   const npxInit = runJson("npx", ["-y", "-p", tarballPath, "archetype", "init", "--template", "saas-dashboard", "--out", npxIntakePath, "--force", "--json"]);
   assert(npxInit.status === "success", "npx CLI init should succeed.");
@@ -181,6 +190,8 @@ try {
     durationMs,
     version,
     npxVersion,
+    doctorStatus: doctor.status,
+    npxDoctorStatus: npxDoctor.status,
     outputDir,
     npxOutputDir,
     product: summarize.product,

@@ -97,6 +97,30 @@ Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
 
+## Release Readiness Hardening
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/17-release-readiness-hardening.md`
+- `reinforcement-learning/lifecycle-loop-log.md`
+
+Lesson:
+
+- A passing install contract is necessary but not sufficient for a frictionless release. Humans and agents need a single readiness surface that names setup commands, plugin front doors, MCP tools, lifecycle docs, blockers, and completion gates.
+- `archetype doctor --json` is the right first command because it works before a product contract exists and verifies the package itself.
+- The same readiness surface must be available through MCP as `archetype_release_doctor`, so plugin hosts can check setup without shell choreography.
+- Quickstart, install docs, plugin docs, MCP docs, demo docs, and release notes must all point to the same lifecycle path. Divergent setup docs become product friction.
+- Release readiness should be proved in source, packed tarball, clean installed package, npx package, and MCP tool paths.
+- Publishing remains an external action. The harness should prove the package artifact and setup path, not silently publish from an agent loop.
+
+Deviation review:
+
+- No pivot-plan deviation was accepted. Scope 6 added local deterministic release readiness checks and docs, not hosted docs, telemetry, cloud setup, account surfaces, or the old workbench.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
 ## Installability Certainty Audit
 
 Scope reference:

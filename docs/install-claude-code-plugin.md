@@ -22,6 +22,13 @@ Required files:
 - `plugins/claude-code/agents/product-architect.md`
 - `plugins/claude-code/agents/frontend-contract-reviewer.md`
 
+Before loading the plugin, verify the release surface:
+
+```bash
+npm run build
+npx . doctor --json
+```
+
 ## MCP
 
 The natural front door is:
@@ -31,6 +38,8 @@ The natural front door is:
 ```
 
 Claude Code should ask needed clarification questions, invite optional materials, generate the contract, write tests first, implement from the contract, and verify without asking the user to run CLI commands.
+
+Lifecycle details live in `docs/agent-lifecycle.md`.
 
 The plugin `.mcp.json` launches:
 
@@ -50,4 +59,5 @@ npm run mcp
 
 ```bash
 npm run plugin:claude:contract
+npm run release:contract
 ```

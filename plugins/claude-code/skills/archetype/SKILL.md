@@ -40,28 +40,30 @@ If the answer is obvious from the attached material, infer it and state the assu
 ## Self-Contained Pipeline
 
 1. Treat the initial idea as `start`.
-2. Clarify missing context and ask for optional materials.
-3. Normalize the user's natural language and `@` imported context into `archetype.intake.json`.
-4. Prefer MCP tool `archetype_create_intake`. Pass imported materials through the `materials` array with labels, paths, content excerpts, and source types.
-5. Generate `archetype-output` with MCP tool `archetype_generate_package`.
-6. Read `lifecycle/context-completion.json` and `lifecycle/lifecycle-report.md`.
-7. Read `spec/archetype-spec.md` and `spec/archetype-spec.json` as the canonical source of truth.
-8. Summarize readiness with `archetype_summarize_package`.
-9. If blockers exist, ask for only the missing evidence needed to unblock the contract.
-10. If ready or warning-only, read `test-first/test-first-contract.json` and `test-first/test-first-plan.md`.
-11. Read `verification/playwright-verification-contract.json` and `verification/playwright-verification-plan.md` before implementation so browser proof obligations are known up front.
-12. Create the smoke, E2E, UI, integration, and unit tests declared in the test-first contract before writing product UI.
-13. Preserve the initial red test result.
-14. Continue with implementation workflow from `implement`.
-15. Verify the target with `verify`.
-16. Check `verification/playwright-evidence.json`, `verification/playwright-evidence.md`, and `10-revision/repair-task-queue.json`.
-17. If verification fails, call `archetype_plan_repair`, patch implementation tasks first, revise the contract only when user-approved evidence proves the spec is wrong, then verify again.
+2. If setup is uncertain, call MCP tool `archetype_release_doctor` and continue only if the package, plugin, MCP, docs, and lifecycle readiness surface is pass.
+3. Clarify missing context and ask for optional materials.
+4. Normalize the user's natural language and `@` imported context into `archetype.intake.json`.
+5. Prefer MCP tool `archetype_create_intake`. Pass imported materials through the `materials` array with labels, paths, content excerpts, and source types.
+6. Generate `archetype-output` with MCP tool `archetype_generate_package`.
+7. Read `lifecycle/context-completion.json` and `lifecycle/lifecycle-report.md`.
+8. Read `spec/archetype-spec.md` and `spec/archetype-spec.json` as the canonical source of truth.
+9. Summarize readiness with `archetype_summarize_package`.
+10. If blockers exist, ask for only the missing evidence needed to unblock the contract.
+11. If ready or warning-only, read `test-first/test-first-contract.json` and `test-first/test-first-plan.md`.
+12. Read `verification/playwright-verification-contract.json` and `verification/playwright-verification-plan.md` before implementation so browser proof obligations are known up front.
+13. Create the smoke, E2E, UI, integration, and unit tests declared in the test-first contract before writing product UI.
+14. Preserve the initial red test result.
+15. Continue with implementation workflow from `implement`.
+16. Verify the target with `verify`.
+17. Check `verification/playwright-evidence.json`, `verification/playwright-evidence.md`, and `10-revision/repair-task-queue.json`.
+18. If verification fails, call `archetype_plan_repair`, patch implementation tasks first, revise the contract only when user-approved evidence proves the spec is wrong, then verify again.
 
 ## Fallback
 
 If MCP is unavailable, use the CLI internally. Do not make the user run these commands manually.
 
 ```bash
+npx -y -p @nikolacehic/archetype archetype doctor --json
 npx -y -p @nikolacehic/archetype archetype generate --input archetype.intake.json --out archetype-output --json
 npx -y -p @nikolacehic/archetype archetype validate --out archetype-output --json
 npx -y -p @nikolacehic/archetype archetype verify-target --out archetype-output --target . --skip-install --json

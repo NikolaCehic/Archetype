@@ -7,13 +7,14 @@ import { exportPackage } from "./output/exportPackage";
 import { writeTargetFrontendSource } from "./output/writeTargetFrontend";
 import { verifyTargetFrontendExecution } from "./output/verifyTargetFrontend";
 import { updateRepairArtifactsFromLatest } from "./modules/revisionProtocol";
+import { runReleaseDoctor } from "./release/doctor";
 import { validateExportedPackage } from "./quality/validatePackage";
 import { simulateExportedPackage } from "./quality/simulatePackage";
 import type { ArchetypeInput } from "./core/types";
 
 type CommandStatus = "success" | "warning" | "error";
 
-const VALID_COMMANDS = new Set(["init", "generate", "validate", "summarize", "simulate", "write-target", "verify-target", "repair"]);
+const VALID_COMMANDS = new Set(["doctor", "init", "generate", "validate", "summarize", "simulate", "write-target", "verify-target", "repair"]);
 const TEMPLATE_FILES: Record<string, string> = {
   "saas-dashboard": "saas-dashboard-intake.json",
   fintech: "fintech-intake.json",
@@ -24,6 +25,7 @@ function usage(exitCode = 1): never {
   console.log("Archetype generates frontend implementation contracts for AI coding agents.");
   console.log("");
   console.log("Usage:");
+  console.log("  archetype doctor");
   console.log("  archetype init --out <intake.json> [--template saas-dashboard|fintech|marketplace-admin] [--force]");
   console.log("  archetype generate --input <intake.json> --out <output-dir>");
   console.log("  archetype validate --out <output-dir>");
@@ -236,6 +238,24 @@ async function main(): Promise<void> {
   const command = process.argv[2];
   const jsonMode = hasFlag("--json");
   if (!command || !VALID_COMMANDS.has(command)) usage();
+
+  if (command === "doctor") {
+    const result = runReleaseDoctor(packageRoot());
+    resultOutput(result, jsonMode, [
+      `Archetype release readiness: ${result.status}`,
+      `Package: ${result.package_name}@${result.package_version}`,
+      `Mode: ${result.package_mode}`,
+      "Published package quickstart:",
+      ...result.quickstart.published_package.map((line) => `- ${line}`),
+      "Plugin front doors:",
+      `- Claude Code: ${result.plugin_setup.claude_code.front_door}`,
+      `- Codex: ${result.plugin_setup.codex.front_door}`,
+      ...(result.blockers.length > 0 ? ["Blockers:", ...result.blockers.map((blocker) => `- ${blocker}`)] : []),
+      ...(result.warnings.length > 0 ? ["Warnings:", ...result.warnings.map((warning) => `- ${warning}`)] : [])
+    ]);
+    if (result.status === "fail") process.exit(1);
+    return;
+  }
 
   if (command === "init") {
     initCommand(jsonMode);

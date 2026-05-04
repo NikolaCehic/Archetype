@@ -112,6 +112,7 @@ try {
   const listed = await request("tools/list");
   const names = new Set((listed.tools ?? []).map((tool) => tool.name));
   for (const required of [
+    "archetype_release_doctor",
     "archetype_create_intake",
     "archetype_generate_package",
     "archetype_validate_package",
@@ -122,6 +123,11 @@ try {
   ]) {
     assert(names.has(required), `tools/list is missing ${required}.`);
   }
+
+  const releaseDoctor = await callTool("archetype_release_doctor", {});
+  assert(releaseDoctor.status === "pass", "release doctor should pass through MCP.");
+  assert(releaseDoctor.quickstart?.published_package?.some((command) => String(command).includes("archetype doctor --json")), "release doctor should expose doctor quickstart.");
+  assert(releaseDoctor.docs?.some((doc) => doc.path === "docs/agent-lifecycle.md"), "release doctor should expose lifecycle docs.");
 
   const createIntake = await callTool("archetype_create_intake", {
     projectName: "SignalDesk",
