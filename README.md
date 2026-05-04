@@ -103,10 +103,13 @@ npx . verify-target --out archetype-output --target tmp/generated-frontend --jso
 - `manifest.json` - machine-readable artifact map
 - `readiness-report.md` - blockers, warnings, assumptions, readiness score
 - `verification-plan.md` - checks required before completion
-- `03-experience-architecture/route-map.json` - app routes and navigation structure
-- `03-experience-architecture/screen-inventory.json` - required screens and states
-- `04-design-system/tokens/` - design-system constraints
-- `06-frontend-agent-contract/` - implementation rules and acceptance criteria
+- `product/product-model.json` - product summary and core entities
+- `experience/route-map.json` - app routes and navigation structure
+- `screens/screen-inventory.json` - required screens and states
+- `design-system/tokens.json` - design-system constraints
+- `design-system/component-contracts.json` - reusable component contracts
+- `frontend-agent-contract/` - implementation rules and acceptance criteria
+- `validation/` - package validation and simulation reports
 
 ## Use With Claude Code
 

@@ -88,16 +88,23 @@ function buildTopLevelManifest(pkg: ArchetypePackage): Record<string, unknown> {
     { id: "package-readme", path: "README.md", type: "markdown", required: true },
     { id: "agent-instructions", path: "AGENTS.md", type: "markdown", required: true },
     { id: "claude-instructions", path: "CLAUDE.md", type: "markdown", required: true },
+    { id: "manifest", path: "manifest.json", type: "json", required: true },
     { id: "implementation-contract", path: "implementation-contract.md", type: "markdown", required: true },
     { id: "verification-plan", path: "verification-plan.md", type: "markdown", required: true },
     { id: "readiness-report", path: "readiness-report.md", type: "markdown", required: true },
-    { id: "legacy-manifest", path: "00-manifest/manifest.json", type: "json", required: true },
-    { id: "route-map", path: "03-experience-architecture/route-map.json", type: "json", required: true },
-    { id: "screen-inventory", path: "03-experience-architecture/screen-inventory.json", type: "json", required: true },
-    { id: "design-tokens", path: "04-design-system/tokens/token-contracts.json", type: "json", required: true },
-    { id: "component-contracts", path: "04-design-system/components/component-contracts.json", type: "json", required: true },
-    { id: "frontend-agent-instructions", path: "06-frontend-agent-contract/frontend-agent-instructions.md", type: "markdown", required: true },
-    { id: "acceptance-criteria", path: "06-frontend-agent-contract/acceptance-criteria.json", type: "json", required: true }
+    { id: "product-model", path: "product/product-model.json", type: "json", required: true },
+    { id: "user-roles", path: "product/user-roles.json", type: "json", required: true },
+    { id: "route-map", path: "experience/route-map.json", type: "json", required: true },
+    { id: "user-flows", path: "experience/user-flows.json", type: "json", required: true },
+    { id: "design-tokens", path: "design-system/tokens.json", type: "json", required: true },
+    { id: "component-contracts", path: "design-system/component-contracts.json", type: "json", required: true },
+    { id: "screen-inventory", path: "screens/screen-inventory.json", type: "json", required: true },
+    { id: "screen-specs", path: "screens/screen-specs.json", type: "json", required: true },
+    { id: "frontend-agent-instructions", path: "frontend-agent-contract/frontend-agent-instructions.md", type: "markdown", required: true },
+    { id: "acceptance-criteria", path: "frontend-agent-contract/acceptance-criteria.json", type: "json", required: true },
+    { id: "implementation-rules", path: "frontend-agent-contract/implementation-rules.json", type: "json", required: true },
+    { id: "package-validation", path: "validation/package-validation.json", type: "json", required: true },
+    { id: "simulation-report", path: "validation/simulation-report.md", type: "markdown", required: true }
   ];
 
   return {
@@ -122,9 +129,9 @@ function buildPackageReadme(pkg: ArchetypePackage): string {
     "",
     "1. Read `implementation-contract.md`.",
     "2. Read `AGENTS.md` or `CLAUDE.md` depending on the agent host.",
-    "3. Read `03-experience-architecture/route-map.json` before creating routes.",
-    "4. Read `03-experience-architecture/screen-inventory.json` before creating screens.",
-    "5. Read `04-design-system/tokens/token-contracts.json` before styling.",
+    "3. Read `experience/route-map.json` before creating routes.",
+    "4. Read `screens/screen-inventory.json` before creating screens.",
+    "5. Read `design-system/tokens.json` before styling.",
     "6. Run the checks in `verification-plan.md` before declaring completion.",
     "",
     "## Readiness",
@@ -147,11 +154,11 @@ function buildGeneratedAgentsMd(): string {
     "Before implementing UI, read:",
     "",
     "1. `implementation-contract.md`",
-    "2. `06-frontend-agent-contract/frontend-agent-instructions.md`",
-    "3. `03-experience-architecture/route-map.json`",
-    "4. `03-experience-architecture/screen-inventory.json`",
-    "5. `04-design-system/tokens/token-contracts.json`",
-    "6. `04-design-system/components/component-contracts.json`",
+    "2. `frontend-agent-contract/frontend-agent-instructions.md`",
+    "3. `experience/route-map.json`",
+    "4. `screens/screen-inventory.json`",
+    "5. `design-system/tokens.json`",
+    "6. `design-system/component-contracts.json`",
     "7. `verification-plan.md`",
     "",
     "## Rules",
@@ -179,10 +186,10 @@ function buildGeneratedClaudeMd(): string {
     "## Primary Files",
     "",
     "- `implementation-contract.md`",
-    "- `06-frontend-agent-contract/frontend-agent-instructions.md`",
-    "- `03-experience-architecture/route-map.json`",
-    "- `03-experience-architecture/screen-inventory.json`",
-    "- `04-design-system/tokens/token-contracts.json`",
+    "- `frontend-agent-contract/frontend-agent-instructions.md`",
+    "- `experience/route-map.json`",
+    "- `screens/screen-inventory.json`",
+    "- `design-system/tokens.json`",
     "- `verification-plan.md`",
     "",
     "## Implementation Discipline",
@@ -218,7 +225,11 @@ function buildImplementationContract(pkg: ArchetypePackage): string {
       )
     )
   ].sort();
-  const components = asArray(asRecord(pkg.designSystem.componentContracts).components).map((component) => {
+  const componentContractRecord = asRecord(pkg.designSystem.componentContracts);
+  const components = [
+    ...asArray(componentContractRecord.contracts),
+    ...asArray(componentContractRecord.components)
+  ].map((component) => {
     const record = asRecord(component);
     return String(record.name ?? record.id ?? "Unnamed component");
   });
@@ -238,7 +249,7 @@ function buildImplementationContract(pkg: ArchetypePackage): string {
     "",
     "## 2. User Roles",
     "",
-    "See `02-product-model/role-model.json` and `02-product-model/permission-matrix.json`.",
+    "See `product/user-roles.json`.",
     "",
     "## 3. Route Map Summary",
     "",
@@ -256,7 +267,7 @@ function buildImplementationContract(pkg: ArchetypePackage): string {
     "",
     pkg.designSystem.visualDirection,
     "",
-    "Read `04-design-system/tokens/token-contracts.json` and `04-design-system/components/component-contracts.json` before styling or creating components.",
+    "Read `design-system/tokens.json` and `design-system/component-contracts.json` before styling or creating components.",
     "",
     "## 7. Component Contract Summary",
     "",
@@ -264,9 +275,8 @@ function buildImplementationContract(pkg: ArchetypePackage): string {
     "",
     "## 8. Data, Action, And Form Contracts",
     "",
-    "- Data contracts: `06-frontend-agent-contract/data-contracts.json`",
-    "- Action contracts: `06-frontend-agent-contract/action-contracts.json`",
-    "- Form contracts: `06-frontend-agent-contract/form-contracts.json`",
+    "- Data, action, and form rules: `frontend-agent-contract/implementation-rules.json`",
+    "- Detailed source contracts remain in `06-frontend-agent-contract/` for advanced audit.",
     "",
     "## 9. Acceptance Criteria",
     "",
@@ -281,6 +291,9 @@ function buildImplementationContract(pkg: ArchetypePackage): string {
 }
 
 function buildReadinessReport(pkg: ArchetypePackage): string {
+  const missingEvidence = pkg.evidence.missing_information;
+  const assumptions = pkg.evidence.assumptions.map((item) => item.claim ?? item.value ?? item.id);
+  const risks = pkg.evidence.risks.map((item) => item.claim ?? item.value ?? item.id);
   return [
     "# Readiness Report",
     "",
@@ -295,12 +308,66 @@ function buildReadinessReport(pkg: ArchetypePackage): string {
     "",
     ...linesForList(pkg.quality.readiness.warnings),
     "",
+    "## Inferred Assumptions",
+    "",
+    ...linesForList(assumptions),
+    "",
+    "## Missing Evidence",
+    "",
+    ...linesForList(missingEvidence),
+    "",
+    "## Implementation Risks",
+    "",
+    ...linesForList(risks),
+    "",
     "## Recommended Next Action",
     "",
     pkg.quality.readiness.readyForFrontendAgent
       ? "Implement from the contract, then run validation and target verification."
       : "Resolve blockers before asking a coding agent to implement the frontend."
   ].join("\n");
+}
+
+function buildUserRoles(pkg: ArchetypePackage): Record<string, unknown> {
+  return {
+    roleModel: pkg.product.roleModel,
+    permissionMatrix: pkg.product.permissionMatrix,
+    userModel: pkg.product.userModel
+  };
+}
+
+function buildCanonicalTokens(pkg: ArchetypePackage): Record<string, unknown> {
+  return {
+    primitive: pkg.designSystem.primitiveTokens,
+    semantic: pkg.designSystem.semanticTokens,
+    component: pkg.designSystem.componentTokens,
+    contracts: pkg.designSystem.tokenContracts,
+    typography: pkg.designSystem.typographySystem,
+    cssVariables: "04-design-system/tokens/css-variables.css"
+  };
+}
+
+function buildImplementationRules(pkg: ArchetypePackage): Record<string, unknown> {
+  return {
+    buildManifest: pkg.frontendContract.buildManifest,
+    routing: pkg.frontendContract.routingContract,
+    layout: pkg.frontendContract.layoutRules,
+    responsive: pkg.frontendContract.responsiveRules,
+    interaction: pkg.frontendContract.interactionRules,
+    forms: pkg.frontendContract.formRules,
+    dataContracts: pkg.frontendContract.dataContracts,
+    dataOperations: pkg.frontendContract.dataOperationContracts,
+    actionContracts: pkg.frontendContract.actionContracts,
+    formContracts: pkg.frontendContract.formContracts,
+    verificationContracts: pkg.frontendContract.verificationContracts,
+    forbiddenBehavior: [
+      "Do not invent routes outside experience/route-map.json.",
+      "Do not invent screens outside screens/screen-inventory.json.",
+      "Do not skip required screen states.",
+      "Do not create ad hoc tokens before reading design-system/tokens.json.",
+      "Do not claim production integration until verification-plan.md has passed."
+    ]
+  };
 }
 
 export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
@@ -314,6 +381,20 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeText(outDir, "readiness-report.md", buildReadinessReport(pkg));
   writeText(outDir, "implementation-contract.md", buildImplementationContract(pkg));
   writeText(outDir, "verification-plan.md", pkg.frontendContract.verificationPlan);
+
+  writeJson(outDir, "product/product-model.json", pkg.product.productModel);
+  writeJson(outDir, "product/user-roles.json", buildUserRoles(pkg));
+  writeJson(outDir, "experience/route-map.json", pkg.experience.routeMap);
+  writeJson(outDir, "experience/user-flows.json", pkg.experience.flowSpecs);
+  writeJson(outDir, "design-system/tokens.json", buildCanonicalTokens(pkg));
+  writeJson(outDir, "design-system/component-contracts.json", pkg.designSystem.componentContracts);
+  writeJson(outDir, "screens/screen-inventory.json", pkg.experience.screenInventory);
+  writeJson(outDir, "screens/screen-specs.json", { screens: pkg.experience.screenSpecs });
+  writeText(outDir, "frontend-agent-contract/frontend-agent-instructions.md", pkg.frontendContract.frontendAgentInstructions);
+  writeJson(outDir, "frontend-agent-contract/acceptance-criteria.json", pkg.frontendContract.acceptanceCriteria);
+  writeJson(outDir, "frontend-agent-contract/implementation-rules.json", buildImplementationRules(pkg));
+  writeJson(outDir, "validation/package-validation.json", pkg.quality.validation);
+  writeText(outDir, "validation/simulation-report.md", pkg.buildSimulation.simulationReport);
 
   writeJson(outDir, "00-manifest/manifest.json", pkg.manifest);
   writeText(outDir, "00-manifest/package-summary.md", [

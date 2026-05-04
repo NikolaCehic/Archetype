@@ -48,3 +48,26 @@ Deviation review:
 Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
+## Phase 3 - Generated Agent-Readable Output
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/05-output-contract.md`
+- `archetype-plugin-pivot-md/scopes/10-roadmap-and-acceptance.md`
+- `archetype-plugin-pivot-md/prompts/codex-phase-03-output-contract.md`
+
+Lesson:
+
+- The generated package must expose canonical, shallow paths for agents first. Deep numbered internals can remain for audit, but `manifest.json`, `AGENTS.md`, `CLAUDE.md`, `implementation-contract.md`, and CLI summarize/validate must point to `product/`, `experience/`, `screens/`, `design-system/`, `frontend-agent-contract/`, and `validation/`.
+- Agent readability is a contract, not just file existence. The implementation contract originally listed no components because it read the older `components` key instead of the canonical `contracts` array; validation has to parse canonical files and the human-readable contract has to summarize them correctly.
+- `frontend-agent-contract/implementation-rules.json` is the right canonical merge point for routing, layout, responsive, interaction, data, action, and form rules. This gives Claude Code and Codex one deterministic file to load after the route, screen, and design-system files.
+- CLI contract tests need to assert the canonical output shape directly, otherwise the generator can pass with legacy nested artifacts while failing the pivot adoption layer.
+
+Deviation review:
+
+- No pivot-plan deviation was accepted. The numbered source folders remain in generated output as advanced audit material, but every required agent entrypoint and primary artifact path now uses the Phase 3 canonical output contract.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation

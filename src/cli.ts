@@ -175,13 +175,13 @@ function summarizePackage(outputDir: string): Record<string, unknown> {
     product_name?: string;
     product_type?: string;
     product_category?: string;
-  }>(path.join(outputDir, "02-product-model", "product-model.json"));
+  }>(path.join(outputDir, "product", "product-model.json"));
   const routeMap = readJson<{ routes?: Array<{ route?: string; screen_id?: string }> }>(
-    path.join(outputDir, "03-experience-architecture", "route-map.json")
+    path.join(outputDir, "experience", "route-map.json")
   );
   const screenInventory = readJson<{
     screens?: Array<{ screen_id?: string; route?: string; required_states?: string[] }>;
-  }>(path.join(outputDir, "03-experience-architecture", "screen-inventory.json"));
+  }>(path.join(outputDir, "screens", "screen-inventory.json"));
 
   const routes = routeMap.routes ?? [];
   const screens = screenInventory.screens ?? [];

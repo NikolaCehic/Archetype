@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
@@ -66,6 +66,20 @@ assert(
   generate.artifacts.some((artifact) => artifact.id === "implementation-contract"),
   "generate result should include implementation-contract artifact."
 );
+for (const requiredArtifact of [
+  "product/product-model.json",
+  "experience/route-map.json",
+  "design-system/tokens.json",
+  "design-system/component-contracts.json",
+  "screens/screen-inventory.json",
+  "screens/screen-specs.json",
+  "frontend-agent-contract/frontend-agent-instructions.md",
+  "frontend-agent-contract/implementation-rules.json",
+  "validation/package-validation.json",
+  "validation/simulation-report.md"
+]) {
+  assert(existsSync(path.join(outputDir, requiredArtifact)), `Generated package is missing ${requiredArtifact}.`);
+}
 
 const summarize = runJson(["summarize", "--out", outputDir]);
 assert(["success", "warning"].includes(summarize.status), "summarize --json should return success or warning.");
