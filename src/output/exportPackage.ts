@@ -67,9 +67,253 @@ function listMarkdown(title: string, values: Array<string | { claim?: string; de
   return lines.join("\n");
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function linesForList(values: string[]): string[] {
+  return values.length > 0 ? values.map((value) => `- ${value}`) : ["- None."];
+}
+
+function productName(pkg: ArchetypePackage): string {
+  return String(pkg.product.productModel.product_name ?? pkg.manifest.project_slug);
+}
+
+function buildTopLevelManifest(pkg: ArchetypePackage): Record<string, unknown> {
+  const artifacts = [
+    { id: "package-readme", path: "README.md", type: "markdown", required: true },
+    { id: "agent-instructions", path: "AGENTS.md", type: "markdown", required: true },
+    { id: "claude-instructions", path: "CLAUDE.md", type: "markdown", required: true },
+    { id: "implementation-contract", path: "implementation-contract.md", type: "markdown", required: true },
+    { id: "verification-plan", path: "verification-plan.md", type: "markdown", required: true },
+    { id: "readiness-report", path: "readiness-report.md", type: "markdown", required: true },
+    { id: "legacy-manifest", path: "00-manifest/manifest.json", type: "json", required: true },
+    { id: "route-map", path: "03-experience-architecture/route-map.json", type: "json", required: true },
+    { id: "screen-inventory", path: "03-experience-architecture/screen-inventory.json", type: "json", required: true },
+    { id: "design-tokens", path: "04-design-system/tokens/token-contracts.json", type: "json", required: true },
+    { id: "component-contracts", path: "04-design-system/components/component-contracts.json", type: "json", required: true },
+    { id: "frontend-agent-instructions", path: "06-frontend-agent-contract/frontend-agent-instructions.md", type: "markdown", required: true },
+    { id: "acceptance-criteria", path: "06-frontend-agent-contract/acceptance-criteria.json", type: "json", required: true }
+  ];
+
+  return {
+    schemaVersion: "0.1.0",
+    generatedAt: pkg.manifest.generated_at,
+    productName: productName(pkg),
+    readinessScore: pkg.quality.readiness.score,
+    readyForFrontendAgent: pkg.quality.readiness.readyForFrontendAgent,
+    blockers: pkg.quality.readiness.blockers,
+    warnings: pkg.quality.readiness.warnings,
+    artifacts
+  };
+}
+
+function buildPackageReadme(pkg: ArchetypePackage): string {
+  return [
+    `# ${productName(pkg)} Archetype Package`,
+    "",
+    "This folder is a frontend implementation contract for AI coding agents.",
+    "",
+    "## Start Here",
+    "",
+    "1. Read `implementation-contract.md`.",
+    "2. Read `AGENTS.md` or `CLAUDE.md` depending on the agent host.",
+    "3. Read `03-experience-architecture/route-map.json` before creating routes.",
+    "4. Read `03-experience-architecture/screen-inventory.json` before creating screens.",
+    "5. Read `04-design-system/tokens/token-contracts.json` before styling.",
+    "6. Run the checks in `verification-plan.md` before declaring completion.",
+    "",
+    "## Readiness",
+    "",
+    `- Score: ${pkg.quality.readiness.score}`,
+    `- Ready for frontend agent: ${pkg.quality.readiness.readyForFrontendAgent}`,
+    `- Blockers: ${pkg.quality.readiness.blockers.length}`,
+    `- Warnings: ${pkg.quality.readiness.warnings.length}`
+  ].join("\n");
+}
+
+function buildGeneratedAgentsMd(): string {
+  return [
+    "# Archetype Agent Instructions",
+    "",
+    "This project uses an Archetype frontend implementation contract.",
+    "",
+    "## Start Here",
+    "",
+    "Before implementing UI, read:",
+    "",
+    "1. `implementation-contract.md`",
+    "2. `06-frontend-agent-contract/frontend-agent-instructions.md`",
+    "3. `03-experience-architecture/route-map.json`",
+    "4. `03-experience-architecture/screen-inventory.json`",
+    "5. `04-design-system/tokens/token-contracts.json`",
+    "6. `04-design-system/components/component-contracts.json`",
+    "7. `verification-plan.md`",
+    "",
+    "## Rules",
+    "",
+    "- Do not invent routes not present in the route map.",
+    "- Do not invent screens not present in the screen inventory.",
+    "- Do not skip loading, empty, error, success, and permission states when required.",
+    "- Do not change product copy in ways that conflict with the contract.",
+    "- Use the design-system tokens before creating ad hoc styling.",
+    "- Follow data, action, and form contracts.",
+    "- After implementation, run the verification commands in `verification-plan.md`.",
+    "",
+    "## Completion Standard",
+    "",
+    "Do not declare completion until verification has passed or all remaining warnings are explicitly listed."
+  ].join("\n");
+}
+
+function buildGeneratedClaudeMd(): string {
+  return [
+    "# Archetype Claude Instructions",
+    "",
+    "Use the Archetype package as the source of truth for frontend implementation.",
+    "",
+    "## Primary Files",
+    "",
+    "- `implementation-contract.md`",
+    "- `06-frontend-agent-contract/frontend-agent-instructions.md`",
+    "- `03-experience-architecture/route-map.json`",
+    "- `03-experience-architecture/screen-inventory.json`",
+    "- `04-design-system/tokens/token-contracts.json`",
+    "- `verification-plan.md`",
+    "",
+    "## Implementation Discipline",
+    "",
+    "- Preserve the route map.",
+    "- Implement all required screen states.",
+    "- Use the design-system tokens.",
+    "- Follow the data/action/form contracts.",
+    "- Do not invent product behavior outside the contract.",
+    "- Run validation before declaring completion.",
+    "",
+    "## Completion Standard",
+    "",
+    "Return a final summary with:",
+    "",
+    "- implemented routes",
+    "- implemented screens",
+    "- implemented required states",
+    "- verification results",
+    "- unresolved warnings or blockers"
+  ].join("\n");
+}
+
+function buildImplementationContract(pkg: ArchetypePackage): string {
+  const routes = pkg.experience.routeMap.routes.map((route) => `${route.route} -> ${route.screen_id} (${route.layout})`);
+  const screens = pkg.experience.screenSpecs.map((screen) => `${screen.screen_id}: ${screen.name}`);
+  const requiredStates = [
+    ...new Set(
+      pkg.experience.screenSpecs.flatMap((screen) =>
+        Object.entries(screen.states)
+          .filter(([, state]) => asRecord(state).required === true)
+          .map(([state]) => state)
+      )
+    )
+  ].sort();
+  const components = asArray(asRecord(pkg.designSystem.componentContracts).components).map((component) => {
+    const record = asRecord(component);
+    return String(record.name ?? record.id ?? "Unnamed component");
+  });
+  const acceptance = asArray(asRecord(pkg.frontendContract.acceptanceCriteria).criteria).map((criterion) => {
+    const record = asRecord(criterion);
+    return String(record.id ?? record.subject ?? JSON.stringify(record));
+  });
+
+  return [
+    "# Implementation Contract",
+    "",
+    "## 1. Product Summary",
+    "",
+    `- Product: ${productName(pkg)}`,
+    `- Type: ${String(pkg.product.productModel.product_type ?? "Unknown")}`,
+    `- Primary goal: ${String(pkg.product.productModel.primary_goal ?? "Unknown")}`,
+    "",
+    "## 2. User Roles",
+    "",
+    "See `02-product-model/role-model.json` and `02-product-model/permission-matrix.json`.",
+    "",
+    "## 3. Route Map Summary",
+    "",
+    ...linesForList(routes),
+    "",
+    "## 4. Required Screens",
+    "",
+    ...linesForList(screens),
+    "",
+    "## 5. Required States",
+    "",
+    ...linesForList(requiredStates),
+    "",
+    "## 6. Design-System Rules",
+    "",
+    pkg.designSystem.visualDirection,
+    "",
+    "Read `04-design-system/tokens/token-contracts.json` and `04-design-system/components/component-contracts.json` before styling or creating components.",
+    "",
+    "## 7. Component Contract Summary",
+    "",
+    ...linesForList(components.slice(0, 20)),
+    "",
+    "## 8. Data, Action, And Form Contracts",
+    "",
+    "- Data contracts: `06-frontend-agent-contract/data-contracts.json`",
+    "- Action contracts: `06-frontend-agent-contract/action-contracts.json`",
+    "- Form contracts: `06-frontend-agent-contract/form-contracts.json`",
+    "",
+    "## 9. Acceptance Criteria",
+    "",
+    ...linesForList(acceptance.slice(0, 30)),
+    "",
+    "## 10. Verification Checklist",
+    "",
+    "- Run `archetype validate --out <archetype-output>`.",
+    "- Run `archetype verify-target --out <archetype-output> --target <frontend-app>`.",
+    "- Report unresolved blockers and warnings before claiming completion."
+  ].join("\n");
+}
+
+function buildReadinessReport(pkg: ArchetypePackage): string {
+  return [
+    "# Readiness Report",
+    "",
+    `- Readiness score: ${pkg.quality.readiness.score}`,
+    `- Ready for frontend agent: ${pkg.quality.readiness.readyForFrontendAgent}`,
+    "",
+    "## Blockers",
+    "",
+    ...linesForList(pkg.quality.readiness.blockers),
+    "",
+    "## Warnings",
+    "",
+    ...linesForList(pkg.quality.readiness.warnings),
+    "",
+    "## Recommended Next Action",
+    "",
+    pkg.quality.readiness.readyForFrontendAgent
+      ? "Implement from the contract, then run validation and target verification."
+      : "Resolve blockers before asking a coding agent to implement the frontend."
+  ].join("\n");
+}
+
 export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
+
+  writeText(outDir, "README.md", buildPackageReadme(pkg));
+  writeText(outDir, "AGENTS.md", buildGeneratedAgentsMd());
+  writeText(outDir, "CLAUDE.md", buildGeneratedClaudeMd());
+  writeJson(outDir, "manifest.json", buildTopLevelManifest(pkg));
+  writeText(outDir, "readiness-report.md", buildReadinessReport(pkg));
+  writeText(outDir, "implementation-contract.md", buildImplementationContract(pkg));
+  writeText(outDir, "verification-plan.md", pkg.frontendContract.verificationPlan);
 
   writeJson(outDir, "00-manifest/manifest.json", pkg.manifest);
   writeText(outDir, "00-manifest/package-summary.md", [
@@ -224,53 +468,6 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
 
   writeJson(outDir, "14-target-execution/target-execution-report.json", pkg.targetExecution.executionReport);
   writeText(outDir, "14-target-execution/target-execution-report.md", pkg.targetExecution.executionMarkdown);
-
-  writeJson(outDir, "15-productization/productization-readiness.json", {
-    productization_version: pkg.productization.productization_version,
-    product_name: pkg.productization.product_name,
-    summary: pkg.productization.summary,
-    runtime_boundary: pkg.productization.runtime_boundary,
-    gates: pkg.productization.gates,
-    launch_blockers: pkg.productization.launch_blockers,
-    preserved_onboarding_contracts: pkg.productization.preserved_onboarding_contracts,
-    account_workspace_contract: {
-      implementation_status: pkg.productization.accountWorkspace.contract.implementation_status,
-      implementable_without_invention: pkg.productization.accountWorkspace.contract.readiness.implementable_without_invention,
-      backend_implemented: pkg.productization.accountWorkspace.contract.readiness.backend_implemented,
-      artifact: "15-productization/account-workspace-contract.json"
-    },
-    provider_execution_contract: {
-      implementation_status: pkg.productization.providerExecution.contract.implementation_status,
-      implementable_without_invention: pkg.productization.providerExecution.contract.readiness.implementable_without_invention,
-      service_implemented: pkg.productization.providerExecution.contract.readiness.service_implemented,
-      session_keys_persisted: pkg.productization.providerExecution.contract.readiness.session_keys_persisted,
-      artifact: "15-productization/provider-execution-contract.json"
-    },
-    telemetry_audit_contract: {
-      implementation_status: pkg.productization.telemetryAudit.contract.implementation_status,
-      implementable_without_invention: pkg.productization.telemetryAudit.contract.readiness.implementable_without_invention,
-      transport_implemented: pkg.productization.telemetryAudit.contract.readiness.transport_implemented,
-      telemetry_default_enabled: pkg.productization.telemetryAudit.contract.readiness.telemetry_default_enabled,
-      artifact: "15-productization/telemetry-audit-contract.json"
-    },
-    deployment_operations_contract: {
-      implementation_status: pkg.productization.deploymentOperations.contract.implementation_status,
-      implementable_without_invention: pkg.productization.deploymentOperations.contract.readiness.implementable_without_invention,
-      deployment_implemented: pkg.productization.deploymentOperations.contract.readiness.deployment_implemented,
-      launch_ready: pkg.productization.deploymentOperations.contract.readiness.launch_ready,
-      artifact: "15-productization/deployment-operations-contract.json"
-    },
-    next_phase: pkg.productization.next_phase
-  });
-  writeText(outDir, "15-productization/productization-readiness.md", pkg.productization.readinessReport);
-  writeJson(outDir, "15-productization/account-workspace-contract.json", pkg.productization.accountWorkspace.contract);
-  writeText(outDir, "15-productization/account-workspace-contract.md", pkg.productization.accountWorkspace.report);
-  writeJson(outDir, "15-productization/provider-execution-contract.json", pkg.productization.providerExecution.contract);
-  writeText(outDir, "15-productization/provider-execution-contract.md", pkg.productization.providerExecution.report);
-  writeJson(outDir, "15-productization/telemetry-audit-contract.json", pkg.productization.telemetryAudit.contract);
-  writeText(outDir, "15-productization/telemetry-audit-contract.md", pkg.productization.telemetryAudit.report);
-  writeJson(outDir, "15-productization/deployment-operations-contract.json", pkg.productization.deploymentOperations.contract);
-  writeText(outDir, "15-productization/deployment-operations-contract.md", pkg.productization.deploymentOperations.report);
 
   writeText(outDir, "08-quality/consistency-report.md", pkg.quality.consistencyReport);
   writeText(outDir, "08-quality/accessibility-report.md", pkg.quality.accessibilityReport);

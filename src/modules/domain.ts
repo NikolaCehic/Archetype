@@ -30,7 +30,48 @@ export function inferDomainProfile(input: ArchetypeInput): DomainProfile {
     };
   }
 
-  if (includesAny(text, ["logistics", "shipment", "fleet", "delivery", "route"])) {
+  if (includesAny(text, ["saas", "marketing", "campaign", "report builder", "workspace", "analytics dashboard", "growth analyst"])) {
+    return {
+      domain: "saas",
+      productType: "B2B SaaS analytics dashboard",
+      category: "marketing analytics",
+      entities: ["Workspace", "Campaign", "Report", "BillingPlan", "User"],
+      workflows: ["complete_onboarding", "select_workspace", "review_campaigns", "build_report", "manage_billing", "configure_settings"],
+      routes: [
+        { route: "/onboarding", screen_id: "onboarding.start", layout: "OnboardingShell", nav_label: "Onboarding", nav_group: "setup", priority: "primary", auth_requirement: "authenticated", role_requirement: ["admin", "member"], deep_linking: true, evidence_refs: ["decision_onboarding_required"] },
+        { route: "/workspaces", screen_id: "workspaces.select", layout: "WorkspaceShell", nav_label: "Workspaces", nav_group: "setup", priority: "primary", auth_requirement: "authenticated", role_requirement: ["admin", "member"], deep_linking: true, evidence_refs: ["decision_workspace_selection_required"] },
+        { route: "/campaigns", screen_id: "campaigns.overview", layout: "DashboardShell", nav_label: "Campaigns", nav_group: "core", priority: "primary", auth_requirement: "authenticated", role_requirement: ["admin", "analyst", "member"], deep_linking: true, evidence_refs: ["decision_campaign_overview_required"] },
+        { route: "/reports/builder", screen_id: "reports.builder", layout: "BuilderShell", nav_label: "Report Builder", nav_group: "analysis", priority: "primary", auth_requirement: "authenticated", role_requirement: ["admin", "analyst"], deep_linking: true, evidence_refs: ["decision_report_builder_required"] },
+        { route: "/billing", screen_id: "billing.overview", layout: "SettingsShell", nav_label: "Billing", nav_group: "admin", priority: "secondary", auth_requirement: "authenticated", role_requirement: ["admin"], deep_linking: true, evidence_refs: ["decision_billing_required"] },
+        { route: "/settings", screen_id: "settings.workspace", layout: "SettingsShell", nav_label: "Settings", nav_group: "admin", priority: "utility", auth_requirement: "authenticated", role_requirement: ["admin"], deep_linking: true, evidence_refs: ["decision_settings_required"] }
+      ],
+      patterns: ["MetricCard", "CampaignStatusBadge", "CampaignTable", "ReportBuilderPanel", "WorkspaceSwitcher", "BillingSummaryPanel", "SettingsSection"],
+      riskFlags: [],
+      visualDirection: "Premium, dense, dark, enterprise-grade, table-forward, with restrained monochrome surfaces and precise analytics hierarchy."
+    };
+  }
+
+  if (includesAny(text, ["marketplace", "seller", "listing", "dispute", "payout", "trust and safety"])) {
+    return {
+      domain: "marketplace",
+      productType: "Marketplace admin console",
+      category: "marketplace operations",
+      entities: ["Seller", "Listing", "Dispute", "Payout", "Case"],
+      workflows: ["review_operations_queue", "inspect_seller", "moderate_listing", "resolve_dispute", "review_payout"],
+      routes: [
+        { route: "/queue", screen_id: "queue.operations", layout: "AdminShell", nav_label: "Queue", nav_group: "core", priority: "primary", auth_requirement: "authenticated", role_requirement: ["operator", "lead"], deep_linking: true, evidence_refs: ["decision_operations_queue_required"] },
+        { route: "/sellers", screen_id: "sellers.list", layout: "AdminShell", nav_label: "Sellers", nav_group: "core", priority: "primary", auth_requirement: "authenticated", role_requirement: ["operator", "lead"], deep_linking: true, evidence_refs: ["decision_seller_review_required"] },
+        { route: "/listings", screen_id: "listings.moderation", layout: "AdminShell", nav_label: "Listings", nav_group: "core", priority: "primary", auth_requirement: "authenticated", role_requirement: ["operator", "lead"], deep_linking: true, evidence_refs: ["decision_listing_moderation_required"] },
+        { route: "/disputes", screen_id: "disputes.list", layout: "CaseShell", nav_label: "Disputes", nav_group: "trust", priority: "primary", auth_requirement: "authenticated", role_requirement: ["operator", "lead"], deep_linking: true, evidence_refs: ["decision_dispute_workflow_required"] },
+        { route: "/payouts", screen_id: "payouts.review", layout: "FinanceShell", nav_label: "Payouts", nav_group: "finance", priority: "secondary", auth_requirement: "authenticated", role_requirement: ["finance_reviewer", "lead"], deep_linking: true, evidence_refs: ["decision_payout_review_required"] }
+      ],
+      patterns: ["OperationsQueue", "StatusBadge", "CaseTimeline", "EvidencePanel", "BulkActionBar", "PayoutReviewPanel"],
+      riskFlags: ["finance"],
+      visualDirection: "Structured, operational, calm, dense, and audit-friendly with clear escalation and decision states."
+    };
+  }
+
+  if (includesAny(text, ["logistics", "shipment", "fleet", "delivery", "vehicle route", "route optimization"])) {
     return {
       domain: "logistics",
       productType: "Logistics operations platform",

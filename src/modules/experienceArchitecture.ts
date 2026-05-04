@@ -215,6 +215,13 @@ function buildScreenStates(route: RouteSpec, subject: string, screenName: string
 
 function inferPrimaryPattern(screenId: string, profile: DomainProfile): string[] {
   if (screenId.includes("settings")) return [];
+  if (profile.domain === "marketplace") {
+    if (screenId.includes("queue")) return ["OperationsQueue", "BulkActionBar", "StatusBadge"];
+    if (screenId.includes("seller")) return ["OperationsQueue", "BulkActionBar", "StatusBadge"];
+    if (screenId.includes("listing")) return ["OperationsQueue", "BulkActionBar", "StatusBadge"];
+    if (screenId.includes("dispute")) return ["CaseTimeline", "EvidencePanel", "StatusBadge"];
+    if (screenId.includes("payout")) return ["PayoutReviewPanel", "StatusBadge"];
+  }
   if (profile.domain === "healthcare" && screenId.includes("patients")) return profile.patterns;
   if (screenId.includes("report")) return ["ReportSummaryPanel", "DateRangeFilter"].filter((pattern) => profile.patterns.includes(pattern));
   if (screenId.includes("dashboard") || screenId.includes("overview")) {

@@ -1,0 +1,46 @@
+{
+  "projectName": "SignalDesk",
+  "context": "I am building a B2B SaaS analytics dashboard for marketing teams. It needs onboarding, workspace selection, campaign overview, report builder, billing, and settings. The style should be dense, premium, dark, and enterprise-grade.",
+  "goals": [
+    "Help marketing teams understand campaign performance quickly.",
+    "Make report creation predictable and repeatable.",
+    "Expose billing and workspace settings without hiding account state.",
+    "Give a coding agent enough structure to implement the frontend without guessing routes or states."
+  ],
+  "businessGoals": [
+    "Reduce time from product brief to frontend scaffold.",
+    "Improve consistency across agent-built screens.",
+    "Make implementation coverage auditable before handoff."
+  ],
+  "users": [
+    "Marketing manager",
+    "Growth analyst",
+    "Workspace admin"
+  ],
+  "referenceImages": [
+    {
+      "id": "dashboard_reference",
+      "label": "analytics dashboard",
+      "type": "dashboard screenshot",
+      "notes": "Dense dark dashboard with left navigation, KPI rows, campaign table, and chart panels."
+    },
+    {
+      "id": "report_builder_reference",
+      "label": "report builder",
+      "type": "builder interface screenshot",
+      "notes": "Multi-step report builder with filters, preview, saved views, and export action."
+    }
+  ],
+  "brand": {
+    "attributes": ["premium", "dense", "enterprise", "precise"],
+    "primaryColor": "#A3A3A3",
+    "tone": "Direct, confident, operational, and low-noise."
+  },
+  "stack": {
+    "framework": "React",
+    "language": "TypeScript",
+    "styling": "Tailwind CSS + CSS variables",
+    "routing": "Next.js App Router"
+  },
+  "operatingMode": "full_architecture"
+}

@@ -163,31 +163,6 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Target Frontend Execution Report",
       ["report_version", "status", "commands", "summary", "blockers", "warnings", "proof_artifacts"]
     ),
-    "productization-readiness.schema.json": objectSchema(
-      "productization-readiness.schema.json",
-      "Productization Readiness",
-      ["productization_version", "product_name", "summary", "runtime_boundary", "gates", "launch_blockers", "preserved_onboarding_contracts", "next_phase"]
-    ),
-    "account-workspace-contract.schema.json": objectSchema(
-      "account-workspace-contract.schema.json",
-      "Account and Workspace Backend Contract",
-      ["contract_version", "product_name", "implementation_status", "purpose", "onboarding_guarantees", "account_model", "workspace_model", "package_persistence_api", "migration_rules", "permission_model", "data_export_contract", "data_deletion_contract", "ai_agent_contract", "implementation_checklist", "readiness"]
-    ),
-    "provider-execution-contract.schema.json": objectSchema(
-      "provider-execution-contract.schema.json",
-      "Provider Execution Bridge Contract",
-      ["contract_version", "product_name", "implementation_status", "purpose", "onboarding_guarantees", "request_contract", "response_schema", "credential_handling", "redaction_enforcement", "rate_limit_cost_control", "audit_log_contract", "failure_contract", "ai_agent_contract", "implementation_checklist", "readiness"]
-    ),
-    "telemetry-audit-contract.schema.json": objectSchema(
-      "telemetry-audit-contract.schema.json",
-      "Telemetry and Audit Transport Contract",
-      ["contract_version", "product_name", "implementation_status", "purpose", "onboarding_guarantees", "consent_privacy_contract", "event_schema", "transport_retry_policy", "audit_log_model", "retention_deletion_controls", "workspace_analytics_boundaries", "ai_agent_contract", "implementation_checklist", "readiness"]
-    ),
-    "deployment-operations-contract.schema.json": objectSchema(
-      "deployment-operations-contract.schema.json",
-      "Deployment Operations and Launch Gates Contract",
-      ["contract_version", "product_name", "implementation_status", "purpose", "onboarding_guarantees", "environment_configuration", "ci_cd_gates", "hosted_workbench_runbook", "backup_rollback_policy", "observability_signals", "incident_response_checklist", "launch_gate_matrix", "ai_agent_contract", "implementation_checklist", "readiness"]
-    ),
     "frontend-build-manifest.schema.json": objectSchema(
       "frontend-build-manifest.schema.json",
       "Frontend Build Manifest",
@@ -237,11 +212,6 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "13-e2e/e2e-scenarios.json", schema_file: "e2e-scenarios.schema.json", description: "One hundred happy-path and edge-case E2E scenarios." },
       { artifact: "13-e2e/e2e-results.json", schema_file: "e2e-results.schema.json", description: "E2E scenario results, revealed faults, and fix plan." },
       { artifact: "14-target-execution/target-execution-report.json", schema_file: "target-execution-report.schema.json", description: "Target frontend install, typecheck, and production build execution proof." },
-      { artifact: "15-productization/productization-readiness.json", schema_file: "productization-readiness.schema.json", description: "Productization readiness gate contract." },
-      { artifact: "15-productization/account-workspace-contract.json", schema_file: "account-workspace-contract.schema.json", description: "Hosted account, workspace, persistence, migration, permission, export, and deletion contract." },
-      { artifact: "15-productization/provider-execution-contract.json", schema_file: "provider-execution-contract.schema.json", description: "Hosted provider request, response, credential, redaction, cost-control, failure, and audit contract." },
-      { artifact: "15-productization/telemetry-audit-contract.json", schema_file: "telemetry-audit-contract.schema.json", description: "Consent, event schema, transport retry, audit log, retention, deletion, and workspace analytics contract." },
-      { artifact: "15-productization/deployment-operations-contract.json", schema_file: "deployment-operations-contract.schema.json", description: "Environment configuration, CI/CD gates, deployment runbook, backup, rollback, observability, incident response, and launch gates contract." },
       { artifact: "06-frontend-agent-contract/build-manifest.json", schema_file: "frontend-build-manifest.schema.json", description: "Frontend build manifest schema." },
       { artifact: "03-experience-architecture/dsag.json", schema_file: "dsag.schema.json", description: "DSAG graph schema." },
       { artifact: "00-manifest/implementation-readiness.json", schema_file: "readiness-report.schema.json", description: "Readiness report schema." }

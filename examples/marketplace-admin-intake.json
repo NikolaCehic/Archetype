@@ -1,0 +1,46 @@
+{
+  "projectName": "MarketOps",
+  "context": "I am building a marketplace admin console for operators who manage sellers, listings, disputes, payouts, and trust workflows. The interface should be structured, fast to scan, and precise enough for high-volume operations.",
+  "goals": [
+    "Give operators a clear queue of urgent marketplace actions.",
+    "Make seller, listing, dispute, and payout state visible.",
+    "Support permission-sensitive workflows for escalation and review.",
+    "Generate a frontend contract that an AI coding agent can implement deterministically."
+  ],
+  "businessGoals": [
+    "Reduce operator handling time.",
+    "Improve consistency of escalation workflows.",
+    "Make trust and payout decisions auditable."
+  ],
+  "users": [
+    "Marketplace operator",
+    "Trust and safety lead",
+    "Finance reviewer"
+  ],
+  "referenceImages": [
+    {
+      "id": "ops_queue_reference",
+      "label": "operations queue",
+      "type": "admin table screenshot",
+      "notes": "Dense queue with priority, status, owner, SLA, and bulk actions."
+    },
+    {
+      "id": "case_detail_reference",
+      "label": "case detail",
+      "type": "detail view screenshot",
+      "notes": "Split-pane case detail with evidence, activity history, actions, and decision notes."
+    }
+  ],
+  "brand": {
+    "attributes": ["structured", "trustworthy", "operational", "calm"],
+    "primaryColor": "#3F3F46",
+    "tone": "Clear, procedural, careful, and concise."
+  },
+  "stack": {
+    "framework": "React",
+    "language": "TypeScript",
+    "styling": "Tailwind CSS + CSS variables",
+    "routing": "Next.js App Router"
+  },
+  "operatingMode": "full_architecture"
+}

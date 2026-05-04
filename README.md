@@ -1,198 +1,145 @@
 # Archetype
 
-Archetype is a Design Architecture Compiler. It turns product context, goals, visual evidence, brand material, and optional implementation evidence into a Product Experience Blueprint, Design System Package, Frontend Agent Contract, and quality/readiness reports.
+Frontend implementation contracts for AI coding agents.
 
-## Current Implementation
+Archetype turns product briefs, screenshots, brand notes, and existing frontend context into structured contracts that Claude Code, Codex, and other coding agents can follow.
 
-The first implementation is a local TypeScript compiler package. It generates a structured `archetype-output` folder from a structured intake JSON file.
+Instead of asking an agent to guess routes, screens, states, design tokens, data contracts, and acceptance criteria, generate an Archetype contract first.
 
-Implemented:
-
-- Domain inference.
-- Evidence Ledger.
-- Visual evidence extraction.
-- UX flow and state matrix completeness.
-- Deterministic component contracts.
-- Deterministic pattern contracts.
-- Deterministic data, action, and form contracts.
-- Token and typography contracts.
-- Acceptance-test and implementation verification contracts.
-- Production integration contracts for backend/API mapping, auth guards, copy confirmation, human review, and target-stack execution proof.
-- Deterministic target frontend source manifests, route/component maps, adapter interfaces, and codegen tasks.
-- Deterministic target frontend source writer CLI command.
-- Target frontend execution proof for install, typecheck, and production build.
-- 100-scenario E2E coverage catalog, E2E results, and findings report.
-- Workbench deterministic contract inspection.
-- Workbench E2E scenario/results inspection.
-- Workbench premium dark monochrome Tailwind/shadcn-style interface.
-- Workbench polished control language, button hierarchy, dropdown styling, review rows, and mobile navigation.
-- Workbench launch-review cockpit, grouped IA, AI-readable actions, and guided handoff flow.
-- Workbench Playwright UI test suite with 20 malformed-data edge scenarios and generated result artifacts.
-- Spec coverage and remaining-gap audit.
-- Product Model.
-- User, role, permission, entity, and lifecycle artifacts.
-- Experience architecture.
-- Route map.
-- Screen inventory.
-- YAML screen specs.
-- Design-system artifacts.
-- Frontend Agent Contract.
-- Data contracts and fixture data.
-- Validation report.
-- Readiness score.
-- Package exporter.
-- CLI runner.
-- CI validation and frontend build simulation.
-- Browser workbench for package review.
-- Workbench generation draft controls.
-- Workbench approval gate controls.
-- Workbench artifact diff and revision impact review.
-- Workbench export center and handoff artifacts.
-- Workbench local workspace persistence.
-- Workbench structured intake form builder.
-- Workbench source-material intake and safety preview.
-- Workbench route and screen coverage review controls.
-- Workbench design-system review controls.
-- Workbench frontend contract gap reporting.
-- Workbench build simulation triage controls.
-- Workbench revision change-request composer.
-- Workbench governance summary dashboard.
-- Workbench accessibility hardening.
-- Workbench state export and restore.
-- Workbench multi-package workspace import/export.
-- Workbench saved package comparison.
-- Workbench package archive and cleanup controls.
-- Workbench package search and filtering.
-- Workbench package sorting and saved package views.
-- Workbench saved package detail inspection.
-- Workbench workspace package tagging and notes.
-- Workbench package collection exports.
-- Workbench package collection import review.
-- Workbench package duplication controls.
-- Workbench package rename controls.
-- Workbench package pinning and priority controls.
-- Workbench bulk package actions.
-- Workbench workspace activity log.
-- Workbench workspace health summary.
-- Workbench workspace health export.
-- Workbench workspace health filtering.
-- Workbench workspace health actions.
-
-## Run
-
-Install dependencies:
+## Quickstart
 
 ```bash
 npm install
+npm run build
+npx . generate --input examples/saas-dashboard-intake.json --out archetype-output
 ```
 
-Build:
+Then ask your coding agent:
+
+```txt
+Use ./archetype-output to implement the frontend. Follow AGENTS.md or CLAUDE.md and run verification before declaring completion.
+```
+
+## What It Does
+
+Archetype compiles product intent into a frontend implementation package:
+
+- product model
+- route map
+- screen inventory
+- screen states
+- design-system tokens
+- component contracts
+- data, action, and form contracts
+- acceptance criteria
+- verification plan
+- readiness report
+
+## Core Flow
+
+```txt
+Product brief / screenshots / brand notes / repo context
+        ↓
+Archetype CLI or plugin
+        ↓
+archetype-output contract package
+        ↓
+Claude Code / Codex implements from the contract
+        ↓
+Archetype verifies the implementation against the contract
+```
+
+## CLI
+
+Generate a contract package:
+
+```bash
+npx . generate --input examples/saas-dashboard-intake.json --out archetype-output
+```
+
+Validate the package:
+
+```bash
+npx . validate --out archetype-output
+```
+
+Simulate implementation readiness:
+
+```bash
+npx . simulate --out archetype-output
+```
+
+Write a deterministic target frontend scaffold:
+
+```bash
+npx . write-target --out archetype-output --target tmp/generated-frontend --force
+```
+
+Verify a target frontend:
+
+```bash
+npx . verify-target --out archetype-output --target tmp/generated-frontend
+```
+
+## What Archetype Generates
+
+`archetype-output/` includes:
+
+- `implementation-contract.md` - the main frontend build contract
+- `AGENTS.md` - instructions for Codex and agentic coding tools
+- `CLAUDE.md` - instructions for Claude Code
+- `manifest.json` - machine-readable artifact map
+- `readiness-report.md` - blockers, warnings, assumptions, readiness score
+- `verification-plan.md` - checks required before completion
+- `03-experience-architecture/route-map.json` - app routes and navigation structure
+- `03-experience-architecture/screen-inventory.json` - required screens and states
+- `04-design-system/tokens/` - design-system constraints
+- `06-frontend-agent-contract/` - implementation rules and acceptance criteria
+
+## Use With Claude Code
+
+Generate an Archetype package:
+
+```bash
+npx . generate --input archetype.intake.json --out archetype-output
+```
+
+Then in Claude Code:
+
+```txt
+Use ./archetype-output to implement the frontend. Follow CLAUDE.md, implementation-contract.md, and verification-plan.md.
+```
+
+Plugin support is tracked in `archetype-plugin-pivot-md/scopes/07-claude-code-plugin.md`.
+
+## Use With Codex
+
+Generate an Archetype package:
+
+```bash
+npx . generate --input archetype.intake.json --out archetype-output
+```
+
+Then ask Codex:
+
+```txt
+Use ./archetype-output to implement the frontend. Follow AGENTS.md, implementation-contract.md, and verification-plan.md.
+```
+
+Plugin support is tracked in `archetype-plugin-pivot-md/scopes/08-codex-plugin.md`.
+
+## Examples
+
+- `examples/saas-dashboard-intake.json`
+- `examples/fintech-intake.json`
+- `examples/marketplace-admin-intake.json`
+
+## Development
 
 ```bash
 npm run build
-```
-
-Generate the sample package:
-
-```bash
 npm run smoke
-```
-
-Validate the generated package:
-
-```bash
-npm run validate
-```
-
-Simulate whether the exported frontend contract is buildable:
-
-```bash
-npm run simulate
-```
-
-Write the deterministic target frontend scaffold:
-
-```bash
-npm run write-target
-```
-
-Verify the generated target frontend in its real stack:
-
-```bash
-npm run verify-target
-```
-
-Run golden examples:
-
-```bash
-npm run golden
-```
-
-Build the browser workbench:
-
-```bash
-npm run workbench:build
-```
-
-Run the browser workbench:
-
-```bash
-npm run workbench:dev
-```
-
-Run the Workbench UI E2E suite:
-
-```bash
-npm run workbench:e2e
-```
-
-Generate readable Workbench UI E2E artifacts:
-
-```bash
-npm run workbench:e2e:report
-```
-
-The E2E artifact report is written to `tmp/workbench-ui-e2e/`.
-
-The compiler extracts visual evidence from screenshots, reference images, and design materials into density, navigation, layout, component, state, typography, data-display, and safety signals. It also exports UX flow/state completeness, deterministic component contracts, pattern contracts, data operation contracts, action contracts, form contracts, token contracts, typography contracts, verification contracts, production integration contracts, target frontend source manifests, target frontend execution proof artifacts, a 100-scenario E2E catalog/results/findings package, and a spec coverage audit with required states, contextual states, recovery actions, transition contracts, props, slots, variants, events, token bindings, accessibility rules, test selectors, pattern composition, workflow refs, data refs, query/mutation behavior, action preconditions, validation rules, type roles, CSS variables, acceptance rules, implementation proof suites, backend/API endpoint mappings, auth guards, copy surfaces, review gates, target-stack proof commands, exact target source file paths, route/component maps, adapter interfaces, ordered codegen tasks, install/typecheck/build command results, and explicit remaining gaps for deterministic frontend generation. The workbench can review generated packages, inspect deterministic contract artifacts, E2E results, and target execution proof, import an exported package folder, save packages into a local browser workspace, duplicate, rename, prioritize, pin, tag, annotate, search, filter, sort, browse, inspect, bulk-update visible package sets, export saved package collections, review collection imports before writing them, track workspace activity, summarize, filter, act on, and export workspace health, archive and clean up packages, export and restore an active workbench session, import and export multi-package workspaces, compare saved packages, prepare an intake JSON draft from structured form controls, collect source materials with a safety preview, copy a matching CLI command, track route and screen coverage, review design-system components and tokens, report frontend contract gaps, triage production integration gaps, inspect target source generation plans, triage build simulation and acceptance coverage, compose revision change requests, track local approval gate decisions, compare package baselines for revision impact, summarize governance actions, and generate handoff artifacts for downstream frontend work.
-
-Run all checks:
-
-```bash
 npm run check
 ```
 
-Output:
-
-```txt
-tmp/archetype-output/
-```
-
-Run with a custom intake file:
-
-```bash
-node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archetype-output
-```
-
-## Important Files
-
-- `PRODUCT_DEVELOPMENT_PLAN.md`: Full phased product plan.
-- `SPEC_CONVERGED.md`: Converged product specification.
-- `WORKBENCH_UI_AUDIT.md`: Detailed UI audit, root-cause findings, and production polish plan.
-- `playwright.config.ts`: Workbench UI Playwright configuration.
-- `tests/workbench/`: Workbench UI and malformed-data E2E scenarios.
-- `scripts/generate-workbench-e2e-report.mjs`: Converts Playwright JSON into readable Workbench UI E2E artifacts.
-- `src/core/pipeline.ts`: Compiler pipeline.
-- `src/modules/`: Generation modules.
-- `src/quality/quality.ts`: Validation and readiness scoring.
-- `src/quality/validatePackage.ts`: CI-friendly exported package validator.
-- `src/quality/simulatePackage.ts`: CI-friendly frontend build simulation validator.
-- `src/output/writeTargetFrontend.ts`: Deterministic target frontend source writer.
-- `src/output/exportPackage.ts`: Package writer.
-- `examples/fintech-intake.json`: Smoke-test intake.
-- `workbench/`: Browser workbench for reviewing generated packages.
-- `scripts/create-workbench-sample.mjs`: Creates the sample workbench package bundle.
-
-## Current Revealed Gaps
-
-The latest E2E pass after `verify-target` covers 100 scenarios: 88 pass, 12 warning, and 0 fail. The remaining gaps are live backend/API confirmation, auth provider confirmation, production copy approval, backend validation alignment, non-default state runtime proof, richer generated component implementations, browser visual regression proof, fixture adapter replacement, and qualified human accessibility/compliance review.
+The pivot reference lives in `archetype-plugin-pivot-md/`. That folder is the source of truth for the agent-harness direction.

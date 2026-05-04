@@ -17,9 +17,15 @@ import { buildFrontendBuildSimulationArtifacts } from "../modules/frontendBuildS
 import { buildTargetFrontendArtifacts } from "../modules/targetFrontend";
 import { buildPendingTargetExecutionArtifacts } from "../modules/targetExecution";
 import { buildE2EScenarioArtifacts } from "../modules/e2eScenarios";
-import { buildProductizationArtifacts } from "../modules/productization";
 
 const ARTIFACT_INDEX = [
+  "README.md",
+  "AGENTS.md",
+  "CLAUDE.md",
+  "manifest.json",
+  "readiness-report.md",
+  "implementation-contract.md",
+  "verification-plan.md",
   "00-manifest/manifest.json",
   "00-manifest/package-summary.md",
   "00-manifest/implementation-readiness.json",
@@ -138,16 +144,6 @@ const ARTIFACT_INDEX = [
   "13-e2e/e2e-findings.md",
   "14-target-execution/target-execution-report.json",
   "14-target-execution/target-execution-report.md",
-  "15-productization/productization-readiness.json",
-  "15-productization/productization-readiness.md",
-  "15-productization/account-workspace-contract.json",
-  "15-productization/account-workspace-contract.md",
-  "15-productization/provider-execution-contract.json",
-  "15-productization/provider-execution-contract.md",
-  "15-productization/telemetry-audit-contract.json",
-  "15-productization/telemetry-audit-contract.md",
-  "15-productization/deployment-operations-contract.json",
-  "15-productization/deployment-operations-contract.md",
   "08-quality/consistency-report.md",
   "08-quality/accessibility-report.md",
   "08-quality/safety-report.md",
@@ -187,11 +183,6 @@ const ARTIFACT_INDEX = [
   "09-schemas/e2e-scenarios.schema.json",
   "09-schemas/e2e-results.schema.json",
   "09-schemas/target-execution-report.schema.json",
-  "09-schemas/productization-readiness.schema.json",
-  "09-schemas/account-workspace-contract.schema.json",
-  "09-schemas/provider-execution-contract.schema.json",
-  "09-schemas/telemetry-audit-contract.schema.json",
-  "09-schemas/deployment-operations-contract.schema.json",
   "09-schemas/frontend-build-manifest.schema.json",
   "09-schemas/dsag.schema.json",
   "09-schemas/readiness-report.schema.json"
@@ -253,7 +244,6 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     targetFrontend,
     dsag
   });
-  const productization = buildProductizationArtifacts(input, frontendContract);
   const quality = buildQualityArtifacts({
     ingestion,
     evidence,
@@ -308,7 +298,6 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     targetFrontend,
     targetExecution,
     e2e,
-    productization,
     quality
   };
 }

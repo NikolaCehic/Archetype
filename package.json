@@ -1,34 +1,43 @@
 {
-  "name": "archetype-design-architect",
+  "name": "@nikolacehic/archetype",
   "version": "0.1.0",
-  "private": true,
-  "description": "Archetype Design Architecture Compiler",
-  "license": "UNLICENSED",
+  "description": "Frontend implementation contracts for AI coding agents.",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "bin": {
+    "archetype": "./dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./cli": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "examples",
+    "docs",
+    "archetype-plugin-pivot-md",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "generate": "node dist/cli.js generate",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "npm run typecheck",
+    "generate": "node dist/cli.js generate --input examples/saas-dashboard-intake.json --out tmp/archetype-output",
     "validate": "node dist/cli.js validate --out tmp/archetype-output",
     "simulate": "node dist/cli.js simulate --out tmp/archetype-output",
     "write-target": "node dist/cli.js write-target --out tmp/archetype-output --target tmp/generated-frontend --force",
     "verify-target": "node dist/cli.js verify-target --out tmp/archetype-output --target tmp/generated-frontend",
-    "smoke": "npm run build && node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archetype-output",
+    "smoke": "npm run build && node dist/cli.js generate --input examples/saas-dashboard-intake.json --out tmp/archetype-output",
     "golden": "npm run build && node scripts/run-golden.mjs",
-    "workbench:sample": "npm run build && node dist/cli.js generate --input examples/fintech-intake.json --out tmp/archetype-output && node dist/cli.js write-target --out tmp/archetype-output --target tmp/generated-frontend --force && node dist/cli.js verify-target --out tmp/archetype-output --target tmp/generated-frontend && node scripts/create-workbench-sample.mjs tmp/archetype-output workbench/public/sample-package.json",
-    "workbench:build": "npm run workbench:sample && vite build --config vite.workbench.config.ts",
-    "workbench:dev": "npm run workbench:sample && vite --config vite.workbench.config.ts --host 127.0.0.1",
-    "workbench:e2e": "playwright test --config playwright.config.ts",
-    "workbench:e2e:report": "node scripts/generate-workbench-e2e-report.mjs",
-    "check": "npm run smoke && npm run validate && npm run simulate && npm run write-target && npm run verify-target && npm run golden && npm run workbench:build",
-    "clean": "rm -rf dist dist-workbench tmp/archetype-output tmp/golden workbench/public/sample-package.json"
+    "demo:generate": "npm run build && node dist/cli.js generate --input examples/saas-dashboard-intake.json --out tmp/archetype-output",
+    "demo:verify": "npm run validate && npm run simulate && npm run write-target && npm run verify-target",
+    "test": "npm run smoke && npm run validate && npm run simulate && npm run golden",
+    "check": "npm run smoke && npm run validate && npm run simulate && npm run write-target && npm run verify-target && npm run golden",
+    "clean": "rm -rf dist tmp/archetype-output tmp/generated-frontend tmp/golden"
   },
   "devDependencies": {
-    "@playwright/test": "^1.59.1",
     "@types/node": "^22.15.3",
-    "autoprefixer": "^10.4.20",
-    "postcss": "^8.5.10",
-    "tailwindcss": "^3.4.17",
-    "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.9.3",
-    "vite": "^8.0.10"
+    "typescript": "^5.9.3"
   }
 }

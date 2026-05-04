@@ -177,12 +177,12 @@ const GROUPS: ScenarioGroup[] = [
     ]
   },
   {
-    area: "workbench_and_revision",
-    actor: "Workbench reviewer",
+    area: "contract_review_and_revision",
+    actor: "Contract reviewer",
     scenarios: [
-      { type: "happy_path", title: "Reference dashboard surface exists for web review", evaluator: "reference_dashboard" },
-      { type: "happy_path", title: "Reference table surface exists for web review", evaluator: "reference_table" },
-      { type: "happy_path", title: "Reference form surface exists for web review", evaluator: "reference_form" },
+      { type: "happy_path", title: "Reference dashboard surface exists for contract review", evaluator: "reference_dashboard" },
+      { type: "happy_path", title: "Reference table surface exists for contract review", evaluator: "reference_table" },
+      { type: "happy_path", title: "Reference form surface exists for contract review", evaluator: "reference_form" },
       { type: "happy_path", title: "Reference mobile surface exists for responsive review", evaluator: "reference_mobile" },
       { type: "happy_path", title: "Reference chart surface exists for data visualization review", evaluator: "reference_chart" },
       { type: "happy_path", title: "Revision protocol is exported", evaluator: "revision_protocol" },
@@ -341,7 +341,7 @@ function evaluate(evaluator: string, input: E2EInput): { status: ScenarioStatus;
     case "target_stack_execution_warning": return warning("Target stack execution proof is pending.", "Archetype can write a scaffold, but it has not proven the scaffold in the final repo runtime.", "Run install, typecheck, build, route tests, and visual checks in the generated target.");
     case "state_runtime_warning": return warning("Source manifest lists all states, but generated source still needs runtime state render proof.", "The current source writer scaffolds routes and selectors but does not yet prove every non-default state visually renders.", "Generate state fixtures and route stories/tests for every screen state.");
     case "real_component_implementation_warning": return warning("Component files are deterministic scaffolds.", "The source writer creates contract-shaped components, not final domain-rich production implementations.", "Expand component generator to render slots, variants, data shapes, and interaction behavior from contracts.");
-    case "visual_regression_warning": return warning("No browser visual regression proof is attached.", "Workbench displays contracts, but generated target UI has not been screenshot-tested across viewports.", "Add Playwright route screenshots and pixel assertions for generated target routes.");
+    case "visual_regression_warning": return warning("No browser visual regression proof is attached.", "Reference surfaces describe contracts, but generated target UI has not been screenshot-tested across viewports.", "Add Playwright route screenshots and pixel assertions for generated target routes.");
     case "fixture_adapter_warning": return warning("Fixture adapters are still active.", "Generated source uses fixtures until backend and auth adapters are replaced.", "Generate production adapter stubs from confirmed API/auth contracts.");
     case "high_risk_review_warning":
     case "regulated_review_warning": return warning("High-risk review is pending when risk flags are present.", "Archetype cannot claim regulated-domain compliance without qualified human review.", "Add explicit compliance-review gate outcomes and evidence.");
@@ -361,7 +361,7 @@ function scenarioArtifactsFor(area: string): string[] {
     production_integration: ["06-frontend-agent-contract/production-integration-contracts.json"],
     target_frontend_source: ["12-target-frontend/source-file-manifest.json", "12-target-frontend/route-component-map.json"],
     quality_and_traceability: ["08-quality/spec-coverage-audit.json", "03-experience-architecture/dsag.json"],
-    workbench_and_revision: ["07-reference-surfaces/reference-dashboard.md", "10-revision/revision-protocol.md"],
+    contract_review_and_revision: ["07-reference-surfaces/reference-dashboard.md", "10-revision/revision-protocol.md"],
     security_accessibility_compliance: ["08-quality/safety-report.md", "04-design-system/accessibility/accessibility-rules.json"]
   };
   return map[area] ?? [];
