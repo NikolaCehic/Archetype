@@ -36,6 +36,7 @@ assert(pkg.scripts?.prepare === "npm run build", "package must build for git ins
 assert(pkg.scripts?.["demo:run"], "package must expose demo:run.");
 assert(pkg.scripts?.["distribution:contract"], "package must expose distribution:contract.");
 assert((pkg.files ?? []).includes("plugins"), "package files must include plugin wrappers.");
+assert((pkg.files ?? []).includes("scripts"), "package files must include demo and contract scripts.");
 
 const readme = readText("README.md");
 for (const expected of [

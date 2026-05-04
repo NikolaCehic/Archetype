@@ -167,3 +167,28 @@ Deviation review:
 Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
+## Final Pivot Convergence Audit - Root Residue Removal
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/START_HERE.md`
+- `archetype-plugin-pivot-md/scopes/01-product-positioning.md`
+- `archetype-plugin-pivot-md/scopes/02-repo-package-cleanup.md`
+- `archetype-plugin-pivot-md/scopes/10-roadmap-and-acceptance.md`
+
+Lesson:
+
+- I could not honestly answer the user's certainty question while root-level pre-pivot files still existed. Even if they were not shipped in the npm package, they kept a competing product narrative in the repository.
+- The wrong files were old web/workbench/productization/onboarding/spec artifacts: `SPEC.md`, `SPEC_CONVERGED.md`, `PRODUCT.md`, `PRODUCT_DEVELOPMENT_PLAN.md`, `PRODUCTIZATION_PLAN.md`, `PRODUCTIZATION_IMPLEMENTATION_LOG.md`, `ONBOARDING_PLAN.md`, `ONBOARDING_IMPLEMENTATION_LOG.md`, `IMPLEMENTATION_STATUS.md`, `DESIGN.md`, `CONVERGENCE_REPORT.md`, and `WORKBENCH_UI_AUDIT.md`.
+- Ignored local directories `workbench/` and `dist-workbench/` were also wrong because they made the local tree look like the old product still existed.
+- The fix is not just deletion. `scripts/run-pivot-convergence-audit.mjs` now makes this part of `npm run check` by asserting the legacy root files and workbench directories stay gone while required harness files remain present.
+- `scripts/` must be included in the package file list because the distributed README and package scripts expose demo and contract commands.
+
+Deviation review:
+
+- No pivot-plan deviation was accepted. The 50-iteration historical logs remain under `iterations/` as requested iteration artifacts, while the misleading root-level product docs were removed from the product surface.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
