@@ -184,6 +184,7 @@ try {
   assert(summarize.product === "SignalDesk", "summarize should include product name.");
   assert(summarize.routes > 0, "summarize should include route count.");
   assert(summarize.screens > 0, "summarize should include screen count.");
+  assert(summarize.entrypoints.includes("test-first/test-first-contract.json"), "summarize should include test-first contract entrypoint.");
 
   const artifact = await callTool("archetype_read_artifact", {
     outputDir,

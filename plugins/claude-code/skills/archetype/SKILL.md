@@ -48,10 +48,12 @@ If the answer is obvious from the attached material, infer it and state the assu
 7. Read `spec/archetype-spec.md` and `spec/archetype-spec.json` as the canonical source of truth.
 8. Summarize readiness with `archetype_summarize_package`.
 9. If blockers exist, ask for only the missing evidence needed to unblock the contract.
-10. If ready or warning-only, create tests from the generated spec and contract before writing product UI.
-11. Continue with implementation workflow from `implement`.
-12. Verify the target with `verify`.
-13. If verification fails, patch the implementation or revise the contract, then verify again.
+10. If ready or warning-only, read `test-first/test-first-contract.json` and `test-first/test-first-plan.md`.
+11. Create the smoke, E2E, UI, integration, and unit tests declared in the test-first contract before writing product UI.
+12. Preserve the initial red test result.
+13. Continue with implementation workflow from `implement`.
+14. Verify the target with `verify`.
+15. If verification fails, patch the implementation or revise the contract, then verify again.
 
 ## Fallback
 

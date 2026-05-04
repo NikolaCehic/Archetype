@@ -139,7 +139,8 @@ try {
     "plugins/codex/skills/archetype/SKILL.md",
     "scripts/run-demo.mjs",
     "scripts/run-lifecycle-contract.mjs",
-    "scripts/run-spec-contract.mjs"
+    "scripts/run-spec-contract.mjs",
+    "scripts/run-test-first-contract.mjs"
   ]) {
     assert(existsSync(path.join(packageRoot, pluginFile)), `Installed package missing ${pluginFile}.`);
   }

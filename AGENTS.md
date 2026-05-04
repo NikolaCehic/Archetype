@@ -22,6 +22,7 @@ Archetype should provide:
 - public CLI commands
 - generated `archetype-output` packages
 - agent-readable `AGENTS.md` and `CLAUDE.md`
+- generated test-first contracts for smoke, E2E, UI, integration, and unit tests
 - MCP tools for generate, validate, read, summarize, and verify
 - Claude Code and Codex plugin wrappers
 

@@ -58,6 +58,7 @@ for (const expected of ["project idea", "Self-Contained Pipeline", "archetype_cr
   assert(frontDoor.includes(expected), `Codex front-door skill missing ${expected}.`);
 }
 assert(frontDoor.includes("spec/archetype-spec.json"), "Codex front-door skill must read the canonical spec.");
+assert(frontDoor.includes("test-first/test-first-contract.json"), "Codex front-door skill must read the test-first contract.");
 assert(!frontDoor.includes("Ask me what is missing, then build and verify"), "Codex front-door skill must not require prompt choreography.");
 
 const blueprint = readText("skills/archetype-blueprint/SKILL.md");
@@ -66,9 +67,10 @@ for (const expected of ["archetype_create_intake", "archetype_generate_package",
 }
 
 const implement = readText("skills/archetype-implement/SKILL.md");
-for (const expected of ["AGENTS.md", "spec/archetype-spec.json", "implementation-contract.md", "experience/route-map.json", "screens/screen-inventory.json", "design-system/tokens.json", "frontend-agent-contract/acceptance-criteria.json"]) {
+for (const expected of ["AGENTS.md", "spec/archetype-spec.json", "test-first/test-first-contract.json", "implementation-contract.md", "experience/route-map.json", "screens/screen-inventory.json", "design-system/tokens.json", "frontend-agent-contract/acceptance-criteria.json"]) {
   assert(implement.includes(expected), `Codex implement skill missing ${expected}.`);
 }
+assert(implement.includes("Preserve the initial red test result"), "Codex implement skill must enforce red-first TDD.");
 
 const verify = readText("skills/archetype-verify/SKILL.md");
 for (const expected of ["archetype_validate_package", "archetype_verify_target", "skipInstall: false", "verify-target"]) {

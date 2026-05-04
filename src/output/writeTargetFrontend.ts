@@ -285,6 +285,8 @@ function sourceForFile(outputDir: string, file: SourceManifestFile, routeMap: { 
   if (file.kind === "test") {
     return [
       `// Verification suite: ${file.suite_id ?? "unknown"}`,
+      "// Create this test before product UI implementation.",
+      "// Derive assertions from test-first/test-first-contract.json first.",
       "// Implement assertions from 06-frontend-agent-contract/verification-contracts.json.",
       "export {};"
     ].join("\n");

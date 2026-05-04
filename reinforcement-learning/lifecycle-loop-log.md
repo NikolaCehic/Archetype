@@ -106,3 +106,37 @@ Rule:
 Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
+## Scope 3 Review
+
+Context:
+
+- The product claim now needs both spec-driven development and test-driven agent implementation.
+- Scope 2 made the canonical spec the source of truth, but agents still needed deterministic test obligations before writing UI code.
+- The generated tests must cover smoke, E2E, UI, integration, and unit evidence, with Playwright-backed browser-observable proof.
+
+Implementation:
+
+- Added `test-first/test-first-contract.json`.
+- Added `test-first/test-first-plan.md`.
+- Added `test-first/playwright-contract.spec.ts`.
+- Added `test-first/vitest-contract.spec.ts`.
+- Derived route smoke tests, flow E2E tests, required screen-state UI tests, data/action/form integration tests, component/pattern/token unit tests, and accessibility tests from `spec/archetype-spec.json`.
+- Updated generated `AGENTS.md`, `CLAUDE.md`, README, implementation rules, CLI summarize, MCP summarize, plugin skills, docs, schema index, top-level manifest, and validation.
+- Updated target source-generation guidance so verification tests are created before components, patterns, routes, and screens.
+- Added `scripts/run-test-first-contract.mjs` and wired it into `npm run check`.
+
+Self-review:
+
+- The implementation adheres to Scope 3 because every generated package now contains a machine-readable test-first contract, a human-readable plan, target test templates, validation gates, summary entrypoints, and plugin instructions that require tests before product UI implementation.
+- Self-review caught one contradiction: target codegen still listed verification tests after route/component creation. That was wrong for TDD, so it was corrected and locked with a contract assertion.
+- The compiler still does not execute the user's target Playwright suite in this scope. That is intentional: Scope 3 generates deterministic test obligations; Scope 4 is Playwright-backed verification evidence against an implemented target.
+- Review answer: YES for Scope 3. The scope is fully implemented according to the current context.
+
+Rule:
+
+- Do not claim implementation is test-driven unless `test-first/test-first-contract.json` exists, validation enforces it, and agent instructions require red-first test creation before product UI code.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation

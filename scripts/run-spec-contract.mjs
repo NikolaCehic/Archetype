@@ -56,6 +56,8 @@ assert(spec.frontend_contract?.actions, "canonical spec must include action cont
 assert(spec.frontend_contract?.forms, "canonical spec must include form contracts.");
 assert(Array.isArray(spec.frontend_contract?.acceptance_criteria_ids), "canonical spec must include acceptance criteria ids.");
 assert(spec.verification?.required_evidence?.some((item) => String(item).includes("Tests generated")), "canonical spec must require test evidence.");
+assert(spec.verification?.test_first_contract_path === "test-first/test-first-contract.json", "canonical spec must point to the test-first contract.");
+assert(spec.traceability?.artifact_dependencies?.test_first_contract === "test-first/test-first-contract.json", "canonical spec must trace test-first contract dependency.");
 assert(spec.traceability?.artifact_dependencies?.implementation_contract === "implementation-contract.md", "canonical spec must trace implementation contract dependency.");
 
 const specMarkdown = readFileSync(specMdPath, "utf8");

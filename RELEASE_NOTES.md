@@ -8,6 +8,7 @@ This release pivots Archetype into an agent harness for Claude Code, Codex, and 
 
 - Public CLI commands: `init`, `generate`, `validate`, `summarize`, `simulate`, `write-target`, and `verify-target`.
 - Agent-readable `archetype-output` entrypoints: `AGENTS.md`, `CLAUDE.md`, `implementation-contract.md`, `verification-plan.md`, `readiness-report.md`, and `manifest.json`.
+- Canonical spec and test-first output folders for spec-driven plus test-driven agent implementation.
 - Canonical output folders for product, experience, screens, design system, frontend-agent contracts, and validation.
 - MCP stdio server with deterministic Archetype tools.
 - Claude Code plugin wrapper with blueprint, implement, verify, and revise skills.

@@ -113,6 +113,11 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Verification Contracts",
       ["contract_version", "test_suites", "coverage", "blockers", "warnings", "evidence_refs"]
     ),
+    "test-first-contract.schema.json": objectSchema(
+      "test-first-contract.schema.json",
+      "Test-First Contract",
+      ["contract_version", "source_spec_path", "tdd_policy", "required_test_order", "required_target_test_files", "suites", "coverage", "acceptance_gate", "traceability", "blockers", "warnings"]
+    ),
     "production-integration-contracts.schema.json": objectSchema(
       "production-integration-contracts.schema.json",
       "Production Integration Contracts",
@@ -202,6 +207,7 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "06-frontend-agent-contract/action-contracts.json", schema_file: "action-contracts.schema.json", description: "Screen action precondition, permission, and result contracts." },
       { artifact: "06-frontend-agent-contract/form-contracts.json", schema_file: "form-contracts.schema.json", description: "Form field, validation, and submission contracts." },
       { artifact: "06-frontend-agent-contract/verification-contracts.json", schema_file: "verification-contracts.schema.json", description: "Deterministic acceptance and implementation proof contract." },
+      { artifact: "test-first/test-first-contract.json", schema_file: "test-first-contract.schema.json", description: "Spec-derived smoke, E2E, UI, integration, unit, and accessibility test-first contract." },
       { artifact: "06-frontend-agent-contract/production-integration-contracts.json", schema_file: "production-integration-contracts.schema.json", description: "Backend, auth, copy, review, and target-stack confirmation contract." },
       { artifact: "04-design-system/tokens/token-contracts.json", schema_file: "token-contracts.schema.json", description: "Deterministic token layer and usage contract." },
       { artifact: "04-design-system/tokens/typography-system.json", schema_file: "typography-system.schema.json", description: "Typography roles, scale, and CSS contract." },

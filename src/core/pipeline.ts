@@ -19,6 +19,7 @@ import { buildPendingTargetExecutionArtifacts } from "../modules/targetExecution
 import { buildE2EScenarioArtifacts } from "../modules/e2eScenarios";
 import { buildLifecycleArtifacts } from "../modules/lifecycle";
 import { buildSpecArtifacts } from "../modules/spec";
+import { buildTestFirstArtifacts } from "../modules/testFirstContracts";
 
 const ARTIFACT_INDEX = [
   "README.md",
@@ -30,6 +31,10 @@ const ARTIFACT_INDEX = [
   "verification-plan.md",
   "spec/archetype-spec.md",
   "spec/archetype-spec.json",
+  "test-first/test-first-contract.json",
+  "test-first/test-first-plan.md",
+  "test-first/playwright-contract.spec.ts",
+  "test-first/vitest-contract.spec.ts",
   "lifecycle/state-machine.json",
   "lifecycle/context-completion.json",
   "lifecycle/clarification-questions.json",
@@ -194,6 +199,7 @@ const ARTIFACT_INDEX = [
   "09-schemas/action-contracts.schema.json",
   "09-schemas/form-contracts.schema.json",
   "09-schemas/verification-contracts.schema.json",
+  "09-schemas/test-first-contract.schema.json",
   "09-schemas/production-integration-contracts.schema.json",
   "09-schemas/token-contracts.schema.json",
   "09-schemas/typography-system.schema.json",
@@ -303,7 +309,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     ].sort()
   };
 
-  const packageWithoutSpec: Omit<ArchetypePackage, "spec"> = {
+  const packageWithoutSpecAndTestFirst: Omit<ArchetypePackage, "spec" | "testFirst"> = {
     manifest,
     lifecycle,
     ingestion,
@@ -323,10 +329,15 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     e2e,
     quality
   };
-  const spec = buildSpecArtifacts(packageWithoutSpec);
+  const spec = buildSpecArtifacts(packageWithoutSpecAndTestFirst);
+  const packageWithoutTestFirst: Omit<ArchetypePackage, "testFirst"> = {
+    ...packageWithoutSpecAndTestFirst,
+    spec
+  };
+  const testFirst = buildTestFirstArtifacts(packageWithoutTestFirst);
 
   return {
-    ...packageWithoutSpec,
-    spec
+    ...packageWithoutTestFirst,
+    testFirst
   };
 }

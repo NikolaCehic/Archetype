@@ -1,6 +1,6 @@
 import type { ArchetypePackage, SpecArtifacts } from "../core/types";
 
-type SpecInput = Omit<ArchetypePackage, "spec">;
+type SpecInput = Omit<ArchetypePackage, "spec" | "testFirst">;
 
 function asRecord(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
@@ -123,9 +123,11 @@ function buildSpecJson(pkg: SpecInput): Record<string, unknown> {
     verification: {
       contracts: pkg.frontendContract.verificationContracts,
       plan_path: "verification-plan.md",
+      test_first_contract_path: "test-first/test-first-contract.json",
       test_suite_count: testSuites.length,
       required_evidence: [
         "Tests generated from this spec before product UI implementation",
+        "Test-first contract generated from spec/archetype-spec.json before product UI implementation",
         "Automated route, screen, flow, UI, smoke, integration, and unit evidence",
         "Playwright-backed verification for browser-observable behavior",
         "Archetype contract adherence verification before completion"
@@ -139,6 +141,7 @@ function buildSpecJson(pkg: SpecInput): Record<string, unknown> {
       risks: pkg.evidence.risks.map((item) => item.claim ?? item.value ?? item.id),
       artifact_dependencies: {
         lifecycle: "lifecycle/context-completion.json",
+        test_first_contract: "test-first/test-first-contract.json",
         implementation_contract: "implementation-contract.md",
         agent_contract: "frontend-agent-contract/implementation-rules.json",
         verification_contracts: "06-frontend-agent-contract/verification-contracts.json",
@@ -211,6 +214,7 @@ function buildSpecMarkdown(pkg: SpecInput, specJson: Record<string, unknown>): s
     "## Verification",
     "",
     "- Tests must be generated from this spec before product UI code is implemented.",
+    "- The generated test-first contract lives at `test-first/test-first-contract.json` and must be satisfied before implementation.",
     "- Browser-observable behavior must be verified with Playwright-backed evidence in later lifecycle scopes.",
     `- Verification test suites: ${String(verification.test_suite_count ?? 0)}`,
     "",

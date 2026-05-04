@@ -188,11 +188,11 @@ export function buildTargetFrontendArtifacts(input: {
     kind: "test",
     suite_id: suite.suite_id,
     tests: Array.isArray(suite.tests) ? suite.tests.length : 0,
-    reads: ["06-frontend-agent-contract/verification-contracts.json"],
-    forbidden_behavior: ["Do not delete failing proof obligations.", "Report contract gaps for failed tests."]
+    reads: ["test-first/test-first-contract.json", "06-frontend-agent-contract/verification-contracts.json"],
+    forbidden_behavior: ["Do not write product UI before creating tests.", "Do not delete failing proof obligations.", "Report contract gaps for failed tests."]
   })));
 
-  const files = [...supportFiles, ...routeFiles, ...componentFiles, ...patternFiles, ...testFiles];
+  const files = [...supportFiles, ...testFiles, ...routeFiles, ...componentFiles, ...patternFiles];
 
   const routeComponentMap = {
     contract_version: "1.0",
@@ -229,46 +229,46 @@ export function buildTargetFrontendArtifacts(input: {
         acceptance: "Target repo uses the declared framework, language, styling, and routing contract."
       },
       {
-        task_id: "install_tokens_and_shell",
+        task_id: "create_verification_tests",
         order: 2,
+        writes: testFiles.map((file) => file.path),
+        reads: ["test-first/test-first-contract.json", "06-frontend-agent-contract/verification-contracts.json", "12-target-frontend/route-component-map.json"],
+        acceptance: "Every required test file exists before product UI implementation and no proof obligation is dropped."
+      },
+      {
+        task_id: "install_tokens_and_shell",
+        order: 3,
         writes: supportFiles.filter((file) => ["app_shell", "style", "config"].includes(file.kind)).map((file) => file.path),
         reads: ["04-design-system/tokens/css-variables.css", "04-design-system/tokens/typography.css", "06-frontend-agent-contract/layout-rules.json"],
         acceptance: "App shell and token files exist without hardcoded visual values."
       },
       {
         task_id: "create_adapters",
-        order: 3,
+        order: 4,
         writes: supportFiles.filter((file) => ["adapter", "content"].includes(file.kind)).map((file) => file.path),
         reads: ["06-frontend-agent-contract/production-integration-contracts.json", "06-frontend-agent-contract/fixture-data.json"],
         acceptance: "Data, auth, and copy adapters expose fixture-safe defaults and production confirmation boundaries."
       },
       {
         task_id: "create_components",
-        order: 4,
+        order: 5,
         writes: componentFiles.map((file) => file.path),
         reads: ["04-design-system/components/component-contracts.json", "04-design-system/tokens/token-contracts.json"],
         acceptance: "Every component contract has a file with declared props, states, tokens, and selectors."
       },
       {
         task_id: "create_patterns",
-        order: 5,
+        order: 6,
         writes: patternFiles.map((file) => file.path),
         reads: ["04-design-system/patterns/pattern-contracts.json", "04-design-system/components/component-contracts.json"],
         acceptance: "Every pattern contract has a file composed only from declared components."
       },
       {
         task_id: "create_routes_and_screens",
-        order: 6,
+        order: 7,
         writes: routeFiles.map((file) => file.path),
         reads: ["03-experience-architecture/route-map.json", "05-screen-specs/*.yaml", "06-frontend-agent-contract/component-usage-map.json"],
         acceptance: "Every route renders its declared screen, states, actions, patterns, and accessibility behavior."
-      },
-      {
-        task_id: "create_verification_tests",
-        order: 7,
-        writes: testFiles.map((file) => file.path),
-        reads: ["06-frontend-agent-contract/verification-contracts.json", "12-target-frontend/route-component-map.json"],
-        acceptance: "Every verification suite has a test file and no proof obligation is dropped."
       }
     ],
     blockers: files.length > 0 ? [] : ["No source files were generated for the target manifest."],
@@ -354,6 +354,7 @@ export function buildTargetFrontendArtifacts(input: {
     "- Use declared components and patterns only.",
     "- Use data, auth, and copy adapters for external integration.",
     "- Keep every data-archetype selector from the manifest.",
+    "- Create tests before product UI code and preserve the initial red result.",
     "- Report missing decisions as gaps instead of inventing behavior.",
     "- Run the verification suites before handoff."
   ].join("\n");

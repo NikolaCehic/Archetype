@@ -185,6 +185,25 @@ Pass condition:
 Archetype can truthfully claim spec-driven development because every generated package contains a canonical source-of-truth spec.
 ```
 
+## Phase 10 — Test-First Contracts
+
+Tasks:
+
+```txt
+[ ] Generate test-first/test-first-contract.json.
+[ ] Generate test-first/test-first-plan.md.
+[ ] Generate Playwright and Vitest contract templates.
+[ ] Derive route, flow, screen-state, integration, unit, and accessibility test obligations from the canonical spec.
+[ ] Update agent instructions to create tests before implementation.
+[ ] Validate route/screen consistency and required suite coverage.
+```
+
+Pass condition:
+
+```txt
+Archetype can truthfully claim test-driven agent implementation because every generated package declares the tests that must exist before product UI code.
+```
+
 ## Final Acceptance Criteria
 
 ```txt
@@ -200,6 +219,7 @@ Archetype can truthfully claim spec-driven development because every generated p
 [ ] Natural-language `/archetype "project idea"` flow asks clarifying questions and optional material prompts by default.
 [ ] Generated output includes lifecycle state machine and context completion artifacts.
 [ ] Generated output includes canonical source-of-truth spec markdown and JSON.
+[ ] Generated output includes spec-derived test-first contracts for smoke, E2E, UI, integration, and unit tests.
 [ ] MCP server exposes generate/validate/read/verify tools.
 [ ] Generated output includes AGENTS.md.
 [ ] Generated output includes CLAUDE.md.

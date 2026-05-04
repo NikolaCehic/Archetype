@@ -35,6 +35,7 @@ Archetype compiles product intent into a frontend implementation package:
 - component contracts
 - data, action, and form contracts
 - acceptance criteria
+- test-first contracts
 - verification plan
 - readiness report
 
@@ -127,6 +128,7 @@ Installation details are in `docs/install.md`.
 - `implementation-contract.md` - the main frontend build contract
 - `spec/archetype-spec.md` - canonical human-readable source of truth
 - `spec/archetype-spec.json` - canonical machine-readable source of truth
+- `test-first/` - spec-derived smoke, E2E, UI, integration, and unit test contracts
 - `lifecycle/` - state machine, context completion, and clarification questions
 - `AGENTS.md` - instructions for Codex and agentic coding tools
 - `CLAUDE.md` - instructions for Claude Code
@@ -202,6 +204,7 @@ npm run plugin:codex:contract
 npm run distribution:contract
 npm run lifecycle:contract
 npm run spec:contract
+npm run test-first:contract
 npm run install:contract
 npm run check
 ```

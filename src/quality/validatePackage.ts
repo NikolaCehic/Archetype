@@ -30,6 +30,10 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   const claudePath = path.join(outputDir, "CLAUDE.md");
   const canonicalSpecMarkdownPath = path.join(outputDir, "spec", "archetype-spec.md");
   const canonicalSpecJsonPath = path.join(outputDir, "spec", "archetype-spec.json");
+  const testFirstContractPath = path.join(outputDir, "test-first", "test-first-contract.json");
+  const testFirstPlanPath = path.join(outputDir, "test-first", "test-first-plan.md");
+  const testFirstPlaywrightPath = path.join(outputDir, "test-first", "playwright-contract.spec.ts");
+  const testFirstVitestPath = path.join(outputDir, "test-first", "vitest-contract.spec.ts");
   const implementationContractPath = path.join(outputDir, "implementation-contract.md");
   const verificationPlanPath = path.join(outputDir, "verification-plan.md");
   const lifecycleStateMachinePath = path.join(outputDir, "lifecycle", "state-machine.json");
@@ -59,6 +63,10 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   if (!existsSync(claudePath)) blockers.push("Missing CLAUDE.md.");
   if (!existsSync(canonicalSpecMarkdownPath)) blockers.push("Missing spec/archetype-spec.md.");
   if (!existsSync(canonicalSpecJsonPath)) blockers.push("Missing spec/archetype-spec.json.");
+  if (!existsSync(testFirstContractPath)) blockers.push("Missing test-first/test-first-contract.json.");
+  if (!existsSync(testFirstPlanPath)) blockers.push("Missing test-first/test-first-plan.md.");
+  if (!existsSync(testFirstPlaywrightPath)) blockers.push("Missing test-first/playwright-contract.spec.ts.");
+  if (!existsSync(testFirstVitestPath)) blockers.push("Missing test-first/vitest-contract.spec.ts.");
   if (!existsSync(implementationContractPath)) blockers.push("Missing implementation-contract.md.");
   if (!existsSync(verificationPlanPath)) blockers.push("Missing verification-plan.md.");
   if (!existsSync(lifecycleStateMachinePath)) blockers.push("Missing lifecycle/state-machine.json.");
@@ -125,6 +133,25 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
     frontend_contract?: unknown;
     verification?: { required_evidence?: unknown[] };
   }>(canonicalSpecJsonPath, blockers, "Canonical spec");
+  const testFirstContract = readJsonSafe<{
+    source_spec_path?: string;
+    tdd_policy?: { test_first_enforced?: boolean; red_phase_required?: boolean };
+    required_target_test_files?: unknown[];
+    suites?: Array<{ suite_type?: string; tests?: unknown[] }>;
+    coverage?: {
+      route_count?: number;
+      screen_count?: number;
+      total_test_count?: number;
+      smoke_test_count?: number;
+      e2e_test_count?: number;
+      integration_test_count?: number;
+      unit_test_count?: number;
+      required_state_test_count?: number;
+      suite_types?: unknown[];
+    };
+    acceptance_gate?: { required_evidence?: unknown[] };
+    traceability?: { canonical_spec?: string };
+  }>(testFirstContractPath, blockers, "Test-first contract");
   const lifecycleStateMachine = readJsonSafe<{
     states?: Array<{ state?: string }>;
     default_entrypoint?: string;
@@ -137,7 +164,7 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
     questions?: unknown[];
   }>(contextCompletionPath, blockers, "Context completion");
 
-  if (!topManifest || !manifest || !readiness || !schemaReport || !dsag || !routeMap || !screenInventory || !screenSpecs || !componentContracts || !implementationRules || !canonicalSpec || !lifecycleStateMachine || !contextCompletion) {
+  if (!topManifest || !manifest || !readiness || !schemaReport || !dsag || !routeMap || !screenInventory || !screenSpecs || !componentContracts || !implementationRules || !canonicalSpec || !testFirstContract || !lifecycleStateMachine || !contextCompletion) {
     return { status: "fail", outputDir, checkedFiles: 0, blockers, warnings };
   }
 
@@ -176,6 +203,46 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   }
   if (!Array.isArray(canonicalSpec.verification?.required_evidence) || canonicalSpec.verification.required_evidence.length === 0) {
     blockers.push("Canonical spec must define required verification evidence.");
+  }
+  if (testFirstContract.source_spec_path !== "spec/archetype-spec.json") {
+    blockers.push("Test-first contract must be derived from spec/archetype-spec.json.");
+  }
+  if (testFirstContract.traceability?.canonical_spec !== "spec/archetype-spec.json") {
+    blockers.push("Test-first traceability must point at the canonical spec.");
+  }
+  if (testFirstContract.tdd_policy?.test_first_enforced !== true || testFirstContract.tdd_policy?.red_phase_required !== true) {
+    blockers.push("Test-first contract must enforce red-first test-driven development.");
+  }
+  const suiteTypes = new Set((testFirstContract.suites ?? []).map((suite) => suite.suite_type));
+  for (const requiredSuite of ["smoke", "e2e", "ui", "integration", "unit"]) {
+    if (!suiteTypes.has(requiredSuite)) blockers.push(`Test-first contract missing ${requiredSuite} suite.`);
+  }
+  if ((testFirstContract.coverage?.route_count ?? -1) !== routes.length) {
+    blockers.push("Test-first contract route count must match route map.");
+  }
+  if ((testFirstContract.coverage?.screen_count ?? -1) !== specs.length) {
+    blockers.push("Test-first contract screen count must match screen specs.");
+  }
+  if ((testFirstContract.coverage?.smoke_test_count ?? 0) < routes.length) {
+    blockers.push("Test-first contract must include at least one smoke test per route.");
+  }
+  if ((testFirstContract.coverage?.required_state_test_count ?? 0) === 0) {
+    blockers.push("Test-first contract must include UI state tests.");
+  }
+  if ((testFirstContract.coverage?.integration_test_count ?? 0) === 0) {
+    blockers.push("Test-first contract must include integration tests.");
+  }
+  if ((testFirstContract.coverage?.unit_test_count ?? 0) === 0) {
+    blockers.push("Test-first contract must include unit tests.");
+  }
+  if ((testFirstContract.coverage?.total_test_count ?? 0) <= routes.length) {
+    blockers.push("Test-first contract total test count must exceed route count.");
+  }
+  if (!Array.isArray(testFirstContract.required_target_test_files) || testFirstContract.required_target_test_files.length < 5) {
+    blockers.push("Test-first contract must define required target test files.");
+  }
+  if (!Array.isArray(testFirstContract.acceptance_gate?.required_evidence) || testFirstContract.acceptance_gate.required_evidence.length === 0) {
+    blockers.push("Test-first contract must define required test evidence.");
   }
   const lifecycleStates = new Set((lifecycleStateMachine.states ?? []).map((item) => item.state));
   for (const requiredState of ["clarifying", "waiting_for_optional_materials", "spec_generating", "test_generating", "implementing_tests_first", "verifying_with_playwright", "revising", "done"]) {

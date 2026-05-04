@@ -84,6 +84,7 @@ scopes/10-roadmap-and-acceptance.md
 scopes/11-readme-rewrite.md
 scopes/12-lifecycle-orchestrator.md
 scopes/13-canonical-spec-artifacts.md
+scopes/14-test-first-contracts.md
 ```
 
 ## Build Order
@@ -101,6 +102,7 @@ scopes/13-canonical-spec-artifacts.md
 10. Distribution docs
 11. Lifecycle orchestrator
 12. Canonical spec artifacts
+13. Test-first contracts
 ```
 
 ## MVP Definition

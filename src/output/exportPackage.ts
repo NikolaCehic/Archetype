@@ -91,6 +91,10 @@ function buildTopLevelManifest(pkg: ArchetypePackage): Record<string, unknown> {
     { id: "manifest", path: "manifest.json", type: "json", required: true },
     { id: "canonical-spec", path: "spec/archetype-spec.md", type: "markdown", required: true },
     { id: "canonical-spec-json", path: "spec/archetype-spec.json", type: "json", required: true },
+    { id: "test-first-contract", path: "test-first/test-first-contract.json", type: "json", required: true },
+    { id: "test-first-plan", path: "test-first/test-first-plan.md", type: "markdown", required: true },
+    { id: "test-first-playwright-template", path: "test-first/playwright-contract.spec.ts", type: "text", required: true },
+    { id: "test-first-vitest-template", path: "test-first/vitest-contract.spec.ts", type: "text", required: true },
     { id: "implementation-contract", path: "implementation-contract.md", type: "markdown", required: true },
     { id: "verification-plan", path: "verification-plan.md", type: "markdown", required: true },
     { id: "readiness-report", path: "readiness-report.md", type: "markdown", required: true },
@@ -135,11 +139,13 @@ function buildPackageReadme(pkg: ArchetypePackage): string {
     "",
     "1. Read `spec/archetype-spec.md`.",
     "2. Read `spec/archetype-spec.json` for machine-readable source of truth.",
-    "3. Read `implementation-contract.md`.",
-    "4. Read `AGENTS.md` or `CLAUDE.md` depending on the agent host.",
-    "5. Read `lifecycle/lifecycle-report.md` to understand the current lifecycle state.",
-    "6. Read route, screen, and design-system artifacts before implementation.",
-    "7. Run the checks in `verification-plan.md` before declaring completion.",
+    "3. Read `test-first/test-first-contract.json`.",
+    "4. Create the required tests before product UI implementation.",
+    "5. Read `implementation-contract.md`.",
+    "6. Read `AGENTS.md` or `CLAUDE.md` depending on the agent host.",
+    "7. Read `lifecycle/lifecycle-report.md` to understand the current lifecycle state.",
+    "8. Read route, screen, and design-system artifacts before implementation.",
+    "9. Run the checks in `verification-plan.md` before declaring completion.",
     "",
     "## Readiness",
     "",
@@ -163,13 +169,15 @@ function buildGeneratedAgentsMd(): string {
     "0. `lifecycle/context-completion.json`",
     "1. `spec/archetype-spec.md`",
     "2. `spec/archetype-spec.json`",
-    "3. `implementation-contract.md`",
-    "4. `frontend-agent-contract/frontend-agent-instructions.md`",
-    "5. `experience/route-map.json`",
-    "6. `screens/screen-inventory.json`",
-    "7. `design-system/tokens.json`",
-    "8. `design-system/component-contracts.json`",
-    "9. `verification-plan.md`",
+    "3. `test-first/test-first-contract.json`",
+    "4. `test-first/test-first-plan.md`",
+    "5. `implementation-contract.md`",
+    "6. `frontend-agent-contract/frontend-agent-instructions.md`",
+    "7. `experience/route-map.json`",
+    "8. `screens/screen-inventory.json`",
+    "9. `design-system/tokens.json`",
+    "10. `design-system/component-contracts.json`",
+    "11. `verification-plan.md`",
     "",
     "## Rules",
     "",
@@ -181,7 +189,8 @@ function buildGeneratedAgentsMd(): string {
     "- Follow data, action, and form contracts.",
     "- Treat `spec/archetype-spec.json` and `spec/archetype-spec.md` as the source of truth.",
     "- Treat Archetype as spec-driven development: no implementation before the generated spec and contract are understood.",
-    "- Treat the agent phase as test-driven development: write tests from the contract before product UI code.",
+    "- Treat the agent phase as test-driven development: create the tests declared in `test-first/test-first-contract.json` before product UI code.",
+    "- Preserve the initial red test result before implementing, then drive the same tests green.",
     "- After implementation, run the verification commands in `verification-plan.md`.",
     "",
     "## Completion Standard",
@@ -201,6 +210,8 @@ function buildGeneratedClaudeMd(): string {
     "- `lifecycle/context-completion.json`",
     "- `spec/archetype-spec.md`",
     "- `spec/archetype-spec.json`",
+    "- `test-first/test-first-contract.json`",
+    "- `test-first/test-first-plan.md`",
     "- `implementation-contract.md`",
     "- `frontend-agent-contract/frontend-agent-instructions.md`",
     "- `experience/route-map.json`",
@@ -215,7 +226,8 @@ function buildGeneratedClaudeMd(): string {
     "- Use the design-system tokens.",
     "- Follow the data/action/form contracts.",
     "- Do not invent product behavior outside the contract.",
-    "- Write tests from the contract before product UI code.",
+    "- Create the tests from `test-first/test-first-contract.json` before product UI code.",
+    "- Preserve the initial red test result before implementing, then drive the same tests green.",
     "- Run validation before declaring completion.",
     "",
     "## Completion Standard",
@@ -303,6 +315,7 @@ function buildImplementationContract(pkg: ArchetypePackage): string {
     "",
     "- Run `archetype validate --out <archetype-output>`.",
     "- Run `archetype verify-target --out <archetype-output> --target <frontend-app>`.",
+    "- Attach the red-then-green evidence required by `test-first/test-first-contract.json`.",
     "- Report unresolved blockers and warnings before claiming completion."
   ].join("\n");
 }
@@ -376,12 +389,18 @@ function buildImplementationRules(pkg: ArchetypePackage): Record<string, unknown
     dataOperations: pkg.frontendContract.dataOperationContracts,
     actionContracts: pkg.frontendContract.actionContracts,
     formContracts: pkg.frontendContract.formContracts,
+    testFirstContract: {
+      path: "test-first/test-first-contract.json",
+      required_before_implementation: true,
+      coverage: asRecord(pkg.testFirst.contractJson.coverage)
+    },
     verificationContracts: pkg.frontendContract.verificationContracts,
     forbiddenBehavior: [
       "Do not invent routes outside experience/route-map.json.",
       "Do not invent screens outside screens/screen-inventory.json.",
       "Do not skip required screen states.",
       "Do not create ad hoc tokens before reading design-system/tokens.json.",
+      "Do not implement product UI before creating the tests declared in test-first/test-first-contract.json.",
       "Do not claim production integration until verification-plan.md has passed."
     ]
   };
@@ -398,6 +417,10 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeText(outDir, "readiness-report.md", buildReadinessReport(pkg));
   writeText(outDir, "spec/archetype-spec.md", pkg.spec.specMarkdown);
   writeJson(outDir, "spec/archetype-spec.json", pkg.spec.specJson);
+  writeJson(outDir, "test-first/test-first-contract.json", pkg.testFirst.contractJson);
+  writeText(outDir, "test-first/test-first-plan.md", pkg.testFirst.planMarkdown);
+  writeText(outDir, "test-first/playwright-contract.spec.ts", pkg.testFirst.playwrightContractSpec);
+  writeText(outDir, "test-first/vitest-contract.spec.ts", pkg.testFirst.vitestContractSpec);
   writeText(outDir, "implementation-contract.md", buildImplementationContract(pkg));
   writeText(outDir, "verification-plan.md", pkg.frontendContract.verificationPlan);
   writeJson(outDir, "lifecycle/state-machine.json", pkg.lifecycle.stateMachine);

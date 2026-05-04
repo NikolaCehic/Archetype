@@ -25,6 +25,30 @@ Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
 
+## Test-First Contracts
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/14-test-first-contracts.md`
+- `archetype-plugin-pivot-md/scopes/10-roadmap-and-acceptance.md`
+
+Lesson:
+
+- Spec-driven development and test-driven implementation are related but not the same. The canonical spec says what must be built; the test-first contract says which tests must exist before code is written.
+- The test-first contract must derive from `spec/archetype-spec.json`, not from prose instructions alone, or agents can drift into generic test plans.
+- A useful agent harness needs target test file obligations, suite types, evidence gates, and red-first policy in machine-readable form.
+- Validation must fail if the test-first layer is missing. Otherwise Archetype can claim TDD in docs while generated packages silently omit the thing agents need.
+- Source-generation runbooks must not accidentally put tests after UI files. Even if the compiler generates test obligations correctly, downstream codegen guidance can undermine TDD if its task order is wrong.
+- Scope 3 should not turn Archetype into the user's app test runner. It generates deterministic obligations and templates; target execution and Playwright-backed proof are a separate verification scope.
+
+Deviation review:
+
+- No pivot-plan deviation was accepted. The new test-first artifacts extend the generated contract package and plugin workflow without adding hosted web, backend, cloud, account, or billing surfaces.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
 ## Installability Certainty Audit
 
 Scope reference:

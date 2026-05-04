@@ -19,6 +19,8 @@ Read these files before writing UI code:
 - `archetype-output/CLAUDE.md`
 - `archetype-output/spec/archetype-spec.md`
 - `archetype-output/spec/archetype-spec.json`
+- `archetype-output/test-first/test-first-contract.json`
+- `archetype-output/test-first/test-first-plan.md`
 - `archetype-output/implementation-contract.md`
 - `archetype-output/experience/route-map.json`
 - `archetype-output/screens/screen-inventory.json`
@@ -34,6 +36,8 @@ Use MCP tool `archetype_read_artifact` when available. If MCP is unavailable, re
 
 - Implement only routes declared in `experience/route-map.json`.
 - Treat `spec/archetype-spec.json` as the canonical source of truth.
+- Create the smoke, E2E, UI, integration, and unit tests from `test-first/test-first-contract.json` before product UI implementation.
+- Preserve the initial red test result, then implement until the same tests are green.
 - Implement all required screens and states from `screens/screen-inventory.json`.
 - Use only tokens and component contracts declared in `design-system/`.
 - Follow data, action, and form contracts from `frontend-agent-contract/implementation-rules.json`.

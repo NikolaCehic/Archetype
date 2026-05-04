@@ -25,7 +25,9 @@ The user should not need to know `generate`, `validate`, `verify-target`, or whi
 
 ## Internal Contract Files
 
-When implementation starts, Codex reads `lifecycle/context-completion.json`, `spec/archetype-spec.md`, `spec/archetype-spec.json`, `AGENTS.md`, `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, `design-system/tokens.json`, and `frontend-agent-contract/implementation-rules.json`.
+When implementation starts, Codex reads `lifecycle/context-completion.json`, `spec/archetype-spec.md`, `spec/archetype-spec.json`, `test-first/test-first-contract.json`, `test-first/test-first-plan.md`, `AGENTS.md`, `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, `design-system/tokens.json`, and `frontend-agent-contract/implementation-rules.json`.
+
+Codex creates the smoke, E2E, UI, integration, and unit tests declared in `test-first/test-first-contract.json` before product UI implementation, preserves the initial red result, then implements until the same tests pass.
 
 ## Use The MCP Server
 

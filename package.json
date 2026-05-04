@@ -45,13 +45,14 @@
     "pivot:audit": "node scripts/run-pivot-convergence-audit.mjs",
     "lifecycle:contract": "npm run build && node scripts/run-lifecycle-contract.mjs",
     "spec:contract": "npm run build && node scripts/run-spec-contract.mjs",
+    "test-first:contract": "npm run build && node scripts/run-test-first-contract.mjs",
     "golden": "npm run build && node scripts/run-golden.mjs",
     "demo:run": "npm run build && node scripts/run-demo.mjs",
     "demo:generate": "npm run build && node dist/cli.js generate --input examples/saas-dashboard-intake.json --out tmp/archetype-output",
     "demo:verify": "npm run validate && npm run simulate && npm run write-target && npm run verify-target",
-    "test": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run plugin:codex:contract && npm run distribution:contract && npm run pivot:audit && npm run lifecycle:contract && npm run spec:contract && npm run install:contract && npm run golden",
-    "check": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run plugin:codex:contract && npm run distribution:contract && npm run pivot:audit && npm run lifecycle:contract && npm run spec:contract && npm run install:contract && npm run golden",
-    "clean": "rm -rf dist tmp/archetype-output tmp/generated-frontend tmp/golden tmp/cli-contract tmp/mcp-contract tmp/lifecycle-contract tmp/spec-contract tmp/install-contract tmp/demo"
+    "test": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run plugin:codex:contract && npm run distribution:contract && npm run pivot:audit && npm run lifecycle:contract && npm run spec:contract && npm run test-first:contract && npm run install:contract && npm run golden",
+    "check": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run plugin:codex:contract && npm run distribution:contract && npm run pivot:audit && npm run lifecycle:contract && npm run spec:contract && npm run test-first:contract && npm run install:contract && npm run golden",
+    "clean": "rm -rf dist tmp/archetype-output tmp/generated-frontend tmp/golden tmp/cli-contract tmp/mcp-contract tmp/lifecycle-contract tmp/spec-contract tmp/test-first-contract tmp/install-contract tmp/demo"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
