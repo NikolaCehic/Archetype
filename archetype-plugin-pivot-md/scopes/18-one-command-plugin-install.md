@@ -4,10 +4,10 @@
 
 Close the 60-second setup gap. Archetype must not ask users to understand repository plugin folders before they can try the product.
 
-The product install path is:
+The current product install path uses the GitHub package because the npm package is not published yet:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype install --target all --json
+npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json
 ```
 
 After that, the user should start a fresh Codex or Claude Code session and use the natural front door:

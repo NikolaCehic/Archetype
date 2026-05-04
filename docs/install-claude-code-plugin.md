@@ -3,7 +3,7 @@
 Install Archetype into Claude Code with one command:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype install --target claude --json
+npx --yes --package github:NikolaCehic/Archetype archetype install --target claude --json
 ```
 
 The installer writes a local Claude Code marketplace plus the plugin surface:
@@ -42,7 +42,7 @@ Lifecycle details live in `docs/agent-lifecycle.md`.
 The plugin `.mcp.json` launches:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype-mcp
+npx --yes --package github:NikolaCehic/Archetype archetype-mcp
 ```
 
 For local source testing, build the repo first:

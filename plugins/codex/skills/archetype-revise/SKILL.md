@@ -19,9 +19,9 @@ Revise the contract package from updated context instead of hand-editing generat
 8. If MCP is unavailable, use CLI fallback:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype generate --input archetype.intake.json --out archetype-output --json
-npx -y -p @nikolacehic/archetype archetype summarize --out archetype-output --json
-npx -y -p @nikolacehic/archetype archetype repair --out archetype-output --target . --json
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype summarize --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype repair --out archetype-output --target . --json
 ```
 
 ## Output

@@ -253,7 +253,7 @@ async function main(): Promise<void> {
       `Archetype release readiness: ${result.status}`,
       `Package: ${result.package_name}@${result.package_version}`,
       `Mode: ${result.package_mode}`,
-      "Published package quickstart:",
+      "Current package quickstart:",
       ...result.quickstart.published_package.map((line) => `- ${line}`),
       "Plugin front doors:",
       `- Claude Code: ${result.plugin_setup.claude_code.front_door}`,

@@ -21,8 +21,8 @@ Turn product intent into an `archetype-output` contract package that Claude Code
 6. If MCP is unavailable, use the CLI fallback:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype generate --input archetype.intake.json --out archetype-output --json
-npx -y -p @nikolacehic/archetype archetype summarize --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype summarize --out archetype-output --json
 ```
 
 ## Rules

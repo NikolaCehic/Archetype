@@ -45,13 +45,13 @@ archetype-output/
 ### Generate
 
 ```bash
-npx @nikolacehic/archetype generate --input examples/saas-dashboard-intake.json --out archetype-output
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input examples/saas-dashboard-intake.json --out archetype-output
 ```
 
 ### Validate
 
 ```bash
-npx @nikolacehic/archetype validate --out archetype-output
+npx --yes --package github:NikolaCehic/Archetype archetype validate --out archetype-output
 ```
 
 ### Implement With Codex
@@ -69,7 +69,7 @@ Use the Archetype package in ./archetype-output to implement the frontend. Follo
 ### Verify
 
 ```bash
-npx @nikolacehic/archetype verify-target --out archetype-output --target .
+npx --yes --package github:NikolaCehic/Archetype archetype verify-target --out archetype-output --target .
 ```
 
 ## Secondary Examples

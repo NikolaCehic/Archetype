@@ -122,7 +122,7 @@ Workflow:
   "mcpServers": {
     "archetype": {
       "command": "npx",
-      "args": ["-y", "@nikolacehic/archetype-mcp"]
+      "args": ["--yes", "--package", "github:NikolaCehic/Archetype", "archetype-mcp"]
     }
   }
 }
@@ -133,9 +133,9 @@ Workflow:
 If MCP is unavailable, skills should call CLI commands:
 
 ```bash
-npx @nikolacehic/archetype generate --input archetype.intake.json --out archetype-output
-npx @nikolacehic/archetype validate --out archetype-output
-npx @nikolacehic/archetype verify-target --out archetype-output --target .
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output
+npx --yes --package github:NikolaCehic/Archetype archetype validate --out archetype-output
+npx --yes --package github:NikolaCehic/Archetype archetype verify-target --out archetype-output --target .
 ```
 
 ## Acceptance Criteria

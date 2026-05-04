@@ -64,10 +64,10 @@ If the answer is obvious from the attached material, infer it and state the assu
 If MCP is unavailable, use the CLI internally. Do not make the user run these commands manually.
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype doctor --json
-npx -y -p @nikolacehic/archetype archetype generate --input archetype.intake.json --out archetype-output --json
-npx -y -p @nikolacehic/archetype archetype validate --out archetype-output --json
-npx -y -p @nikolacehic/archetype archetype verify-target --out archetype-output --target . --skip-install --json
+npx --yes --package github:NikolaCehic/Archetype archetype doctor --json
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype validate --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype verify-target --out archetype-output --target . --skip-install --json
 ```
 
 ## Completion Standard

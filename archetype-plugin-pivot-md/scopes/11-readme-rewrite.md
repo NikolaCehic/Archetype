@@ -23,7 +23,7 @@ Coding agents are good at writing code but bad at guessing product architecture.
 
 ## Quickstart
 
-npx @nikolacehic/archetype generate --input examples/saas-dashboard-intake.json --out archetype-output
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input examples/saas-dashboard-intake.json --out archetype-output
 
 ## Use with Claude Code
 
@@ -75,7 +75,7 @@ Instead of asking an agent to guess routes, screens, states, design tokens, data
 ## Quickstart
 
 ```bash
-npx @nikolacehic/archetype generate \
+npx --yes --package github:NikolaCehic/Archetype archetype generate \
   --input examples/saas-dashboard-intake.json \
   --out archetype-output
 ```
@@ -95,7 +95,7 @@ Use ./archetype-output to implement the frontend. Follow AGENTS.md or CLAUDE.md 
 Generate an Archetype package:
 
 ```bash
-npx @nikolacehic/archetype generate --input archetype.intake.json --out archetype-output
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output
 ```
 
 Then in Claude Code:
@@ -115,7 +115,7 @@ Plugin support is planned under `plugins/claude-code/`.
 Generate an Archetype package:
 
 ```bash
-npx @nikolacehic/archetype generate --input archetype.intake.json --out archetype-output
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output
 ```
 
 Then ask Codex:

@@ -2,12 +2,12 @@
 
 Goal: install Archetype into agent hosts and prove the fallback CLI path in about 60 seconds.
 
-## Published Package Install
+## GitHub Package Install
 
 Install the Codex and Claude Code plugin surfaces:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype install --target all --json
+npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json
 ```
 
 This writes:
@@ -31,9 +31,9 @@ The plugin flow should clarify missing context, ask for optional materials, gene
 ## Diagnostics And CLI Fallback
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype doctor --json
-npx -y -p @nikolacehic/archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
-npx -y -p @nikolacehic/archetype archetype generate --input archetype.intake.json --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype doctor --json
+npx --yes --package github:NikolaCehic/Archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output --json
 ```
 
 Read first:

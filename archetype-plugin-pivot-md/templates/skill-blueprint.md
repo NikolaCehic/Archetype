@@ -20,7 +20,7 @@ You are helping the user generate an Archetype frontend architecture package.
 4. If MCP is unavailable, run:
 
 ```bash
-npx @nikolacehic/archetype generate --input archetype.intake.json --out archetype-output
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output
 ```
 
 5. Inspect readiness score, blockers, warnings, and assumptions.

@@ -271,7 +271,7 @@ The source package, packed package, installed package, npx package, MCP server, 
 ## Final Acceptance Criteria
 
 ```txt
-[ ] `npx @nikolacehic/archetype generate ...` works.
+[ ] `npx --yes --package github:NikolaCehic/Archetype archetype generate ...` works.
 [ ] Claude Code plugin loads locally.
 [ ] Claude blueprint skill works.
 [ ] Claude implement skill works.

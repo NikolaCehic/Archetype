@@ -286,7 +286,7 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     warnings,
     quickstart: {
       published_package: [
-        "npx -y -p @nikolacehic/archetype archetype install --target all --json",
+        "npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json",
         "@Archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
         "/archetype \"I want to build a premium B2B analytics app for marketing teams.\""
       ],
@@ -305,12 +305,12 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
       claude_code: {
         front_door: "/archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
         plugin_path: "~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/",
-        mcp_command: "npx -y -p @nikolacehic/archetype archetype-mcp"
+        mcp_command: "npx --yes --package github:NikolaCehic/Archetype archetype-mcp"
       },
       codex: {
         front_door: "@Archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
         plugin_path: "~/plugins/archetype/",
-        mcp_command: "npx -y -p @nikolacehic/archetype archetype-mcp"
+        mcp_command: "npx --yes --package github:NikolaCehic/Archetype archetype-mcp"
       }
     },
     lifecycle: [

@@ -17,10 +17,10 @@ Verify the target frontend against `archetype-output`.
 6. If MCP is unavailable, use CLI fallback:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype validate --out archetype-output --json
-npx -y -p @nikolacehic/archetype archetype summarize --out archetype-output --json
-npx -y -p @nikolacehic/archetype archetype verify-target --out archetype-output --target . --skip-install --json
-npx -y -p @nikolacehic/archetype archetype repair --out archetype-output --target . --json
+npx --yes --package github:NikolaCehic/Archetype archetype validate --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype summarize --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype verify-target --out archetype-output --target . --skip-install --json
+npx --yes --package github:NikolaCehic/Archetype archetype repair --out archetype-output --target . --json
 ```
 
 ## Review

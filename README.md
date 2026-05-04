@@ -11,7 +11,7 @@ Instead of asking an agent to guess routes, screens, states, design tokens, data
 Install Archetype into Codex and Claude Code:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype install --target all --json
+npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json
 ```
 
 Then start a fresh agent session and use Archetype as one natural-language workflow:
@@ -26,9 +26,9 @@ Archetype should then ask any needed clarification questions, invite optional ma
 CLI fallback and diagnostics:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype doctor --json
-npx -y -p @nikolacehic/archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
-npx -y -p @nikolacehic/archetype archetype generate --input archetype.intake.json --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype doctor --json
+npx --yes --package github:NikolaCehic/Archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output --json
 ```
 
 See `docs/quickstart.md`, `docs/agent-lifecycle.md`, and `docs/release-readiness.md`.
@@ -72,7 +72,7 @@ Install paths are in `docs/install.md`.
 Install the agent-host plugin surfaces:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype install --target all --json
+npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json
 ```
 
 Check package, plugin, MCP, and lifecycle readiness:
@@ -186,7 +186,7 @@ Installation details are in `docs/install.md`.
 Install:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype install --target claude --json
+npx --yes --package github:NikolaCehic/Archetype archetype install --target claude --json
 ```
 
 Then use:
@@ -211,7 +211,7 @@ Install notes: `docs/install-claude-code-plugin.md`.
 Install:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype install --target codex --json
+npx --yes --package github:NikolaCehic/Archetype archetype install --target codex --json
 ```
 
 Then use:

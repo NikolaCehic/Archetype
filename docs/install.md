@@ -7,7 +7,7 @@ Archetype is a CLI, MCP server, and installable plugin package for AI coding age
 Install Archetype into Codex and Claude Code:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype install --target all --json
+npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json
 ```
 
 This registers the Codex home-local marketplace and a Claude Code local marketplace, then copies the root plugin surface into the locations those hosts can discover.
@@ -15,8 +15,8 @@ This registers the Codex home-local marketplace and a Claude Code local marketpl
 Use one host at a time when needed:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype install --target codex --json
-npx -y -p @nikolacehic/archetype archetype install --target claude --json
+npx --yes --package github:NikolaCehic/Archetype archetype install --target codex --json
+npx --yes --package github:NikolaCehic/Archetype archetype install --target claude --json
 ```
 
 After install, start a fresh Codex or Claude Code session:
@@ -31,16 +31,16 @@ After install, start a fresh Codex or Claude Code session:
 Generate a demo contract without cloning the repo:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype doctor --json
-npx -y -p @nikolacehic/archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
-npx -y -p @nikolacehic/archetype archetype generate --input archetype.intake.json --out archetype-output --json
-npx -y -p @nikolacehic/archetype archetype validate --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype doctor --json
+npx --yes --package github:NikolaCehic/Archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype validate --out archetype-output --json
 ```
 
 Start the MCP server from the package:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype-mcp
+npx --yes --package github:NikolaCehic/Archetype archetype-mcp
 ```
 
 ## Local Source Install

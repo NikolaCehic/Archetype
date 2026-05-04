@@ -102,7 +102,7 @@ Each example should include enough information to generate:
 A new user should be able to run:
 
 ```bash
-npx @nikolacehic/archetype generate --input examples/saas-dashboard-intake.json --out archetype-output
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input examples/saas-dashboard-intake.json --out archetype-output
 ```
 
 And receive a usable `archetype-output` folder.

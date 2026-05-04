@@ -5,7 +5,7 @@ Release readiness means a user or AI agent can install Archetype into Codex and 
 ## One-Command Install
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype install --target all --json
+npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json
 ```
 
 This is the primary 60-second setup path. It writes the Codex home-local marketplace, the Claude Code local marketplace, the root plugin manifests, skills, agents, and MCP config.
@@ -19,14 +19,14 @@ npm run build
 npx . doctor --json
 ```
 
-For a published package:
+For the current GitHub package:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype install --target all --json
-npx -y -p @nikolacehic/archetype archetype doctor --json
+npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json
+npx --yes --package github:NikolaCehic/Archetype archetype doctor --json
 ```
 
-The doctor checks package metadata, CLI and MCP bins, published file allowlist, root plugin surfaces, docs, plugin wrappers, MCP configs, examples, and release contract files.
+The doctor checks package metadata, CLI and MCP bins, packaged file allowlist, root plugin surfaces, docs, plugin wrappers, MCP configs, examples, and release contract files.
 
 ## Contracts
 

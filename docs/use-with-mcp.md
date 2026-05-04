@@ -26,7 +26,7 @@ Use `mcp.example.json` as the package config template:
   "mcpServers": {
     "archetype": {
       "command": "npx",
-      "args": ["-y", "-p", "@nikolacehic/archetype", "archetype-mcp"]
+      "args": ["--yes", "--package", "github:NikolaCehic/Archetype", "archetype-mcp"]
     }
   }
 }
@@ -45,14 +45,14 @@ Local source variant:
 }
 ```
 
-Published package form:
+Current GitHub package form:
 
 ```json
 {
   "mcpServers": {
     "archetype": {
       "command": "npx",
-      "args": ["-y", "-p", "@nikolacehic/archetype", "archetype-mcp"]
+      "args": ["--yes", "--package", "github:NikolaCehic/Archetype", "archetype-mcp"]
     }
   }
 }

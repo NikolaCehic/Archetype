@@ -342,7 +342,7 @@ Lesson:
 
 - The Codex plugin should mirror the Claude workflow intent but use Codex-native structure: `.codex-plugin/plugin.json`, compact skills, MCP config, and no subagent layer unless Codex plugin scope adds one.
 - The generated `AGENTS.md` path remains important even with a plugin. The implement skill must start from `AGENTS.md` and the implementation contract so Codex can also work without plugin installation.
-- MCP-first plus CLI fallback is the right plugin pattern because it keeps the workflow usable in local repos, published package installs, and agent hosts that have not enabled MCP yet.
+- MCP-first plus CLI fallback is the right plugin pattern because it keeps the workflow usable in local repos, GitHub package installs, eventual npm package installs, and agent hosts that have not enabled MCP yet.
 - The Codex plugin contract test should stay separate from the Claude plugin test because the manifest shape, skill names, and host conventions differ.
 - Plugin package inclusion has to be validated by `npm pack --dry-run`; otherwise wrapper files can pass local tests while missing from distribution.
 
@@ -366,7 +366,7 @@ Lesson:
 
 - Distribution is not only package metadata. Users need a published-package path, a local-source path, MCP startup, plugin install notes, a demo script, and release notes.
 - Because `dist/` is ignored, the package needs `prepare: npm run build` so git installs and package preparation produce runnable bins.
-- `mcp.example.json` should default to the published package command. Local source paths belong in docs, not the default config.
+- `mcp.example.json` should default to the currently installable GitHub package command until npm publish exists. Local source paths belong in docs, not the default config.
 - The demo has to execute the full loop: init, generate, validate, summarize, write target, and verify target. A narration-only demo would not prove the harness works.
 - Distribution docs need a contract test because docs and wrapper config can drift without breaking TypeScript.
 

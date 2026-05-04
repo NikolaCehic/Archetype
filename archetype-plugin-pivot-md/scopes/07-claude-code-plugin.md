@@ -174,7 +174,7 @@ Example:
   "mcpServers": {
     "archetype": {
       "command": "npx",
-      "args": ["-y", "@nikolacehic/archetype-mcp"]
+      "args": ["--yes", "--package", "github:NikolaCehic/Archetype", "archetype-mcp"]
     }
   }
 }

@@ -50,7 +50,8 @@ assert(manifest.license === "MIT", "Claude plugin manifest license must be MIT."
 assert(manifest.repository === "https://github.com/NikolaCehic/Archetype", "Claude plugin manifest repository must point to Archetype.");
 
 const mcp = readJson(".mcp.json");
-assert(mcp.mcpServers?.archetype?.command === "npx", "Claude plugin MCP config must use npx for published package execution.");
+assert(mcp.mcpServers?.archetype?.command === "npx", "Claude plugin MCP config must use npx for package execution.");
+assert(mcp.mcpServers.archetype.args.includes("github:NikolaCehic/Archetype"), "Claude plugin MCP config must use the GitHub package source until npm publish.");
 assert(mcp.mcpServers.archetype.args.includes("archetype-mcp"), "Claude plugin MCP config must launch archetype-mcp.");
 
 const frontDoor = readText("skills/archetype/SKILL.md");
@@ -64,7 +65,7 @@ assert(frontDoor.includes("verification/playwright-evidence.json"), "Claude fron
 assert(!frontDoor.includes("Ask me what is missing, then build and verify"), "Claude front-door skill must not require prompt choreography.");
 
 const blueprint = readText("skills/blueprint/SKILL.md");
-for (const expected of ["archetype_create_intake", "archetype_generate_package", "archetype_summarize_package", "archetype_read_artifact", "npx -y -p @nikolacehic/archetype"]) {
+for (const expected of ["archetype_create_intake", "archetype_generate_package", "archetype_summarize_package", "archetype_read_artifact", "npx --yes --package github:NikolaCehic/Archetype"]) {
   assert(blueprint.includes(expected), `Blueprint skill missing ${expected}.`);
 }
 

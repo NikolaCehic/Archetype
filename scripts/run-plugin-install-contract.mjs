@@ -52,6 +52,7 @@ function assertInstalledHome(homeDir, label) {
   assert(codexEntry?.policy?.installation === "INSTALLED_BY_DEFAULT", `${label}: Codex marketplace should install Archetype by default.`);
   assert(existsSync(path.join(codexPlugin, ".codex-plugin", "plugin.json")), `${label}: Codex install missing root manifest.`);
   assert(existsSync(path.join(codexPlugin, ".mcp.json")), `${label}: Codex install missing MCP config.`);
+  assert(readJson(path.join(codexPlugin, ".mcp.json")).mcpServers?.archetype?.args?.includes("github:NikolaCehic/Archetype"), `${label}: Codex MCP config should use the GitHub package source until npm publish.`);
   assert(existsSync(path.join(codexPlugin, "skills", "archetype", "SKILL.md")), `${label}: Codex install missing front-door skill.`);
   assert(existsSync(path.join(codexPlugin, "skills", "implement", "SKILL.md")), `${label}: Codex install missing implementation skill.`);
 
@@ -61,6 +62,7 @@ function assertInstalledHome(homeDir, label) {
   assert(claudeMarketplace.plugins.some((plugin) => plugin.name === "archetype" && plugin.source === "./plugins/archetype"), `${label}: Claude marketplace should point at ./plugins/archetype.`);
   assert(existsSync(path.join(claudePlugin, ".claude-plugin", "plugin.json")), `${label}: Claude install missing root manifest.`);
   assert(existsSync(path.join(claudePlugin, ".mcp.json")), `${label}: Claude install missing MCP config.`);
+  assert(readJson(path.join(claudePlugin, ".mcp.json")).mcpServers?.archetype?.args?.includes("github:NikolaCehic/Archetype"), `${label}: Claude MCP config should use the GitHub package source until npm publish.`);
   assert(existsSync(path.join(claudePlugin, "skills", "archetype", "SKILL.md")), `${label}: Claude install missing front-door skill.`);
   assert(existsSync(path.join(claudePlugin, "agents", "product-architect.md")), `${label}: Claude install missing product architect agent.`);
   assert(existsSync(path.join(claudePlugin, "docs", "quickstart.md")), `${label}: Claude install missing quickstart docs.`);

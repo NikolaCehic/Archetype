@@ -14,7 +14,7 @@ Template:
   "mcpServers": {
     "archetype": {
       "command": "npx",
-      "args": ["-y", "-p", "@nikolacehic/archetype", "archetype-mcp"]
+      "args": ["--yes", "--package", "github:NikolaCehic/Archetype", "archetype-mcp"]
     }
   }
 }

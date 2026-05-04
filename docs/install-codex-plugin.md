@@ -3,7 +3,7 @@
 Install Archetype into Codex with one command:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype install --target codex --json
+npx --yes --package github:NikolaCehic/Archetype archetype install --target codex --json
 ```
 
 The installer writes:
@@ -40,7 +40,7 @@ Lifecycle details live in `docs/agent-lifecycle.md`.
 The plugin `.mcp.json` launches:
 
 ```bash
-npx -y -p @nikolacehic/archetype archetype-mcp
+npx --yes --package github:NikolaCehic/Archetype archetype-mcp
 ```
 
 Codex can still use generated `AGENTS.md` without the plugin.

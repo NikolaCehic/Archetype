@@ -73,10 +73,10 @@ for (const deadFile of ["dist/llm/provider.js", "dist/llm/structuredOutput.js", 
 
 const readme = readText("README.md");
 for (const expected of [
-  "npx -y -p @nikolacehic/archetype archetype init",
-  "npx -y -p @nikolacehic/archetype archetype install --target all --json",
-  "npx -y -p @nikolacehic/archetype archetype doctor",
-  "npx -y -p @nikolacehic/archetype archetype generate",
+  "npx --yes --package github:NikolaCehic/Archetype archetype init",
+  "npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json",
+  "npx --yes --package github:NikolaCehic/Archetype archetype doctor",
+  "npx --yes --package github:NikolaCehic/Archetype archetype generate",
   "@Archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
   "docs/quickstart.md",
   "docs/agent-lifecycle.md",
