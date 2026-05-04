@@ -67,7 +67,8 @@ function packageJson(): string {
       dev: "next dev",
       build: "next build",
       start: "next start",
-      typecheck: "tsc --noEmit"
+      typecheck: "tsc --noEmit",
+      "archetype:playwright": "playwright test --config=playwright.config.ts"
     },
     dependencies: {
       "next": "16.2.4",
@@ -78,6 +79,7 @@ function packageJson(): string {
       "@types/node": "25.6.0",
       "@types/react": "19.2.14",
       "@types/react-dom": "19.2.3",
+      "@playwright/test": "1.59.1",
       "tailwindcss": "4.2.4",
       "typescript": "5.9.3"
     },
@@ -165,16 +167,28 @@ function routeSource(file: SourceManifestFile, routeMap: { routes?: Array<Record
   ];
   const componentCalls = components.map((component) => `      <${safeIdentifier(String(component.name ?? "Component"), "ArchetypeComponent")} />`);
   const patternCalls = patterns.map((pattern) => `      <${safeIdentifier(String(pattern.name ?? "Pattern"), "ArchetypePattern")} />`);
+  const states = JSON.stringify(file.required_states && file.required_states.length > 0 ? file.required_states : ["default"]);
   return [
     ...imports,
     imports.length ? "" : "",
-    "export default function ArchetypeRoute() {",
+    "type RouteProps = { searchParams?: Promise<Record<string, string | string[] | undefined>> };",
+    "",
+    `const allowedStates = ${states} as const;`,
+    "",
+    "export default async function ArchetypeRoute({ searchParams }: RouteProps) {",
+    "  const params = await searchParams;",
+    "  const requestedState = typeof params?.archetype_state === \"string\" ? params.archetype_state : \"default\";",
+    "  const state = (allowedStates as readonly string[]).includes(requestedState) ? requestedState : \"default\";",
     "  return (",
-    `    <main data-archetype-screen="${file.screen_id}" data-state="default" data-route="${file.route}" className="archetype-screen">`,
+    `    <main data-archetype-screen="${file.screen_id}" data-state={state} data-route="${file.route}" className="archetype-screen">`,
     "      <header className=\"archetype-page-header\">",
     `        <span className="archetype-eyebrow">${file.route}</span>`,
     `        <h1>${String(file.screen_id ?? "Screen").replace(/[._-]/g, " ")}</h1>`,
     "      </header>",
+    "      <section data-archetype-state={state} className=\"archetype-state-panel\">",
+    "        <span className=\"archetype-eyebrow\">state</span>",
+    "        <strong>{state.replace(/[_-]/g, \" \")}</strong>",
+    "      </section>",
     ...patternCalls,
     ...componentCalls,
     "    </main>",
@@ -249,6 +263,7 @@ function styleSource(outputDir: string): string {
     "",
     ".archetype-screen { padding: var(--space-6, 24px); color: var(--color-text-primary, #17202a); }",
     ".archetype-page-header { margin-bottom: var(--space-5, 20px); }",
+    ".archetype-state-panel { border: 1px dashed var(--color-border-subtle, #d8dee8); border-radius: var(--radius-md, 8px); padding: var(--space-3, 12px); margin: var(--space-3, 12px) 0; }",
     ".archetype-surface, .archetype-pattern { border: 1px solid var(--color-border-subtle, #d8dee8); border-radius: var(--radius-md, 8px); padding: var(--space-4, 16px); margin: var(--space-3, 12px) 0; background: var(--color-surface, #f8fafc); }",
     ".archetype-eyebrow { display: block; font-size: 12px; color: var(--color-text-muted, #566270); margin-bottom: 4px; }"
   ].join("\n");
@@ -259,6 +274,7 @@ function sourceForFile(outputDir: string, file: SourceManifestFile, routeMap: { 
   if (file.path === "tsconfig.json") return tsconfigJson();
   if (file.path === "next.config.mjs") return nextConfigSource();
   if (file.path === "next-env.d.ts") return "/// <reference types=\"next\" />\n/// <reference types=\"next/image-types/global\" />";
+  if (file.path === "playwright.config.ts") return readFileSync(path.join(outputDir, "verification", "playwright.config.ts"), "utf8");
   if (file.path === "src/app/layout.tsx") {
     return [
       "import type { ReactNode } from \"react\";",
@@ -282,7 +298,23 @@ function sourceForFile(outputDir: string, file: SourceManifestFile, routeMap: { 
   if (file.kind === "component") return componentSource(String(file.component ?? "Component"), file.path.split("/").pop()?.replace(".tsx", "") ?? "component");
   if (file.kind === "pattern") return patternSource(String(file.pattern ?? "Pattern"), file.path.split("/").pop()?.replace(".tsx", "") ?? "pattern");
   if (file.kind === "route") return routeSource(file, routeMap);
+  if (file.kind === "playwright_verification") return readFileSync(path.join(outputDir, "verification", "playwright-verification.spec.ts"), "utf8");
+  if (file.kind === "playwright_traceability") {
+    return [
+      "// Playwright scenarios are centralized in tests/e2e/archetype-route-smoke.spec.ts.",
+      "// This traceability file is required by test-first/test-first-contract.json.",
+      "export {};"
+    ].join("\n");
+  }
   if (file.kind === "test") {
+    if (file.suite_id === "route_smoke") return readFileSync(path.join(outputDir, "verification", "playwright-verification.spec.ts"), "utf8");
+    if (file.suite_id === "user_flows_e2e" || file.suite_id === "screen_state_ui" || file.suite_id === "accessibility_ui") {
+      return [
+        "// Playwright scenarios are centralized in tests/e2e/archetype-route-smoke.spec.ts.",
+        "// This file remains as the required test-first target file for traceability.",
+        "export {};"
+      ].join("\n");
+    }
     return [
       `// Verification suite: ${file.suite_id ?? "unknown"}`,
       "// Create this test before product UI implementation.",

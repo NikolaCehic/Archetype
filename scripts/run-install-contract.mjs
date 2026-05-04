@@ -140,7 +140,8 @@ try {
     "scripts/run-demo.mjs",
     "scripts/run-lifecycle-contract.mjs",
     "scripts/run-spec-contract.mjs",
-    "scripts/run-test-first-contract.mjs"
+    "scripts/run-test-first-contract.mjs",
+    "scripts/run-playwright-verification-contract.mjs"
   ]) {
     assert(existsSync(path.join(packageRoot, pluginFile)), `Installed package missing ${pluginFile}.`);
   }

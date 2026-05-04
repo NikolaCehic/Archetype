@@ -118,6 +118,16 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       "Test-First Contract",
       ["contract_version", "source_spec_path", "tdd_policy", "required_test_order", "required_target_test_files", "suites", "coverage", "acceptance_gate", "traceability", "blockers", "warnings"]
     ),
+    "playwright-verification-contract.schema.json": objectSchema(
+      "playwright-verification-contract.schema.json",
+      "Playwright Verification Contract",
+      ["contract_version", "source_spec_path", "source_test_first_contract_path", "lifecycle_gate", "runner", "required_target_command", "required_evidence_paths", "scenarios", "coverage", "pass_criteria", "blockers", "warnings"]
+    ),
+    "playwright-evidence.schema.json": objectSchema(
+      "playwright-evidence.schema.json",
+      "Playwright Evidence",
+      ["evidence_version", "status", "source_contract", "command", "coverage", "summary", "proof_artifacts", "blockers", "warnings"]
+    ),
     "production-integration-contracts.schema.json": objectSchema(
       "production-integration-contracts.schema.json",
       "Production Integration Contracts",
@@ -208,6 +218,8 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
       { artifact: "06-frontend-agent-contract/form-contracts.json", schema_file: "form-contracts.schema.json", description: "Form field, validation, and submission contracts." },
       { artifact: "06-frontend-agent-contract/verification-contracts.json", schema_file: "verification-contracts.schema.json", description: "Deterministic acceptance and implementation proof contract." },
       { artifact: "test-first/test-first-contract.json", schema_file: "test-first-contract.schema.json", description: "Spec-derived smoke, E2E, UI, integration, unit, and accessibility test-first contract." },
+      { artifact: "verification/playwright-verification-contract.json", schema_file: "playwright-verification-contract.schema.json", description: "Browser-observable route, state, flow, responsive, accessibility, and visual-smoke verification contract." },
+      { artifact: "verification/playwright-evidence.json", schema_file: "playwright-evidence.schema.json", description: "Pending or completed Playwright evidence written by verify-target." },
       { artifact: "06-frontend-agent-contract/production-integration-contracts.json", schema_file: "production-integration-contracts.schema.json", description: "Backend, auth, copy, review, and target-stack confirmation contract." },
       { artifact: "04-design-system/tokens/token-contracts.json", schema_file: "token-contracts.schema.json", description: "Deterministic token layer and usage contract." },
       { artifact: "04-design-system/tokens/typography-system.json", schema_file: "typography-system.schema.json", description: "Typography roles, scale, and CSS contract." },

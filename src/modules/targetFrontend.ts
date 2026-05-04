@@ -31,7 +31,15 @@ function patternPath(pattern: string): string {
 }
 
 function testPath(suiteId: string): string {
-  return `tests/archetype/${slugify(suiteId)}.spec.ts`;
+  const paths: Record<string, string> = {
+    route_smoke: "tests/e2e/archetype-route-smoke.spec.ts",
+    user_flows_e2e: "tests/e2e/archetype-user-flows.spec.ts",
+    screen_state_ui: "tests/ui/archetype-screen-states.spec.ts",
+    contract_integration: "tests/integration/archetype-contracts.spec.ts",
+    component_unit: "tests/unit/archetype-components.spec.ts",
+    accessibility_ui: "tests/e2e/archetype-accessibility.spec.ts"
+  };
+  return paths[suiteId] ?? `tests/archetype/${slugify(suiteId)}.spec.ts`;
 }
 
 export function buildTargetFrontendArtifacts(input: {
@@ -180,6 +188,13 @@ export function buildTargetFrontendArtifacts(input: {
       exports: ["default"],
       reads: ["04-design-system/tokens/tailwind.config.ts"],
       forbidden_behavior: ["Do not override generated token names without revising token contracts."]
+    },
+    {
+      path: "playwright.config.ts",
+      kind: "test_config",
+      exports: ["default"],
+      reads: ["verification/playwright.config.ts", "verification/playwright-verification-contract.json"],
+      forbidden_behavior: ["Do not remove Playwright browser evidence from the verification loop."]
     }
   ];
 
@@ -188,11 +203,45 @@ export function buildTargetFrontendArtifacts(input: {
     kind: "test",
     suite_id: suite.suite_id,
     tests: Array.isArray(suite.tests) ? suite.tests.length : 0,
-    reads: ["test-first/test-first-contract.json", "06-frontend-agent-contract/verification-contracts.json"],
+    reads: ["test-first/test-first-contract.json", "verification/playwright-verification-contract.json", "06-frontend-agent-contract/verification-contracts.json"],
     forbidden_behavior: ["Do not write product UI before creating tests.", "Do not delete failing proof obligations.", "Report contract gaps for failed tests."]
   })));
+  const playwrightVerificationFiles = [
+    {
+      path: "tests/e2e/archetype-route-smoke.spec.ts",
+      kind: "playwright_verification",
+      suite_id: "playwright_verification",
+      tests: 0,
+      reads: ["verification/playwright-verification-contract.json"],
+      forbidden_behavior: ["Do not remove browser-observable route, state, flow, responsive, accessibility, or visual-smoke checks."]
+    },
+    {
+      path: "tests/e2e/archetype-user-flows.spec.ts",
+      kind: "playwright_traceability",
+      suite_id: "playwright_flow_traceability",
+      tests: 0,
+      reads: ["verification/playwright-verification-contract.json"],
+      forbidden_behavior: ["Do not remove the required test-first target file."]
+    },
+    {
+      path: "tests/ui/archetype-screen-states.spec.ts",
+      kind: "playwright_traceability",
+      suite_id: "playwright_state_traceability",
+      tests: 0,
+      reads: ["verification/playwright-verification-contract.json"],
+      forbidden_behavior: ["Do not remove the required test-first target file."]
+    },
+    {
+      path: "tests/e2e/archetype-accessibility.spec.ts",
+      kind: "playwright_traceability",
+      suite_id: "playwright_accessibility_traceability",
+      tests: 0,
+      reads: ["verification/playwright-verification-contract.json"],
+      forbidden_behavior: ["Do not remove the required test-first target file."]
+    }
+  ];
 
-  const files = [...supportFiles, ...testFiles, ...routeFiles, ...componentFiles, ...patternFiles];
+  const files = [...supportFiles, ...playwrightVerificationFiles, ...testFiles, ...routeFiles, ...componentFiles, ...patternFiles];
 
   const routeComponentMap = {
     contract_version: "1.0",
@@ -231,8 +280,8 @@ export function buildTargetFrontendArtifacts(input: {
       {
         task_id: "create_verification_tests",
         order: 2,
-        writes: testFiles.map((file) => file.path),
-        reads: ["test-first/test-first-contract.json", "06-frontend-agent-contract/verification-contracts.json", "12-target-frontend/route-component-map.json"],
+        writes: [...supportFiles.filter((file) => file.kind === "test_config").map((file) => file.path), ...playwrightVerificationFiles.map((file) => file.path), ...testFiles.map((file) => file.path)],
+        reads: ["test-first/test-first-contract.json", "verification/playwright-verification-contract.json", "06-frontend-agent-contract/verification-contracts.json", "12-target-frontend/route-component-map.json"],
         acceptance: "Every required test file exists before product UI implementation and no proof obligation is dropped."
       },
       {
@@ -285,7 +334,7 @@ export function buildTargetFrontendArtifacts(input: {
       routes: routeFiles.length,
       components: componentFiles.length,
       patterns: patternFiles.length,
-      tests: testFiles.length,
+      tests: testFiles.length + playwrightVerificationFiles.length,
       backend_endpoint_mappings: productionIntegrationContracts.backend_api?.endpoint_mappings?.length ?? 0,
       auth_guards: (productionIntegrationContracts.authentication_authorization?.route_guards?.length ?? 0) + (productionIntegrationContracts.authentication_authorization?.action_guards?.length ?? 0),
       copy_surfaces: productionIntegrationContracts.content_brand?.copy_surfaces?.length ?? 0
@@ -346,7 +395,7 @@ export function buildTargetFrontendArtifacts(input: {
     `- Route files: ${routeFiles.length}`,
     `- Component files: ${componentFiles.length}`,
     `- Pattern files: ${patternFiles.length}`,
-    `- Verification test files: ${testFiles.length}`,
+    `- Verification test files: ${testFiles.length + playwrightVerificationFiles.length}`,
     "",
     "## Non-Negotiables",
     "",

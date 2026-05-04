@@ -25,9 +25,11 @@ The user should not need to know `generate`, `validate`, `verify-target`, or whi
 
 ## Internal Contract Files
 
-When implementation starts, Claude Code reads `lifecycle/context-completion.json`, `spec/archetype-spec.md`, `spec/archetype-spec.json`, `test-first/test-first-contract.json`, `test-first/test-first-plan.md`, `CLAUDE.md`, `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, `design-system/tokens.json`, and `frontend-agent-contract/implementation-rules.json`.
+When implementation starts, Claude Code reads `lifecycle/context-completion.json`, `spec/archetype-spec.md`, `spec/archetype-spec.json`, `test-first/test-first-contract.json`, `test-first/test-first-plan.md`, `verification/playwright-verification-contract.json`, `verification/playwright-verification-plan.md`, `CLAUDE.md`, `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, `design-system/tokens.json`, and `frontend-agent-contract/implementation-rules.json`.
 
 Claude Code creates the smoke, E2E, UI, integration, and unit tests declared in `test-first/test-first-contract.json` before product UI implementation, preserves the initial red result, then implements until the same tests pass.
+
+After implementation, Claude Code runs Playwright-backed verification through `archetype verify-target` and checks `verification/playwright-evidence.json` plus `verification/playwright-evidence.md`. A completion report must name the Playwright status, route/state/flow/responsive/accessibility/visual-smoke coverage, and any remaining warning.
 
 ## Use The MCP Server
 

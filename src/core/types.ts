@@ -596,6 +596,15 @@ export interface TestFirstArtifacts {
   vitestContractSpec: string;
 }
 
+export interface PlaywrightVerificationArtifacts {
+  contractJson: Record<string, unknown>;
+  planMarkdown: string;
+  configSource: string;
+  specSource: string;
+  evidenceJson: Record<string, unknown>;
+  evidenceMarkdown: string;
+}
+
 export interface Manifest {
   package_id: string;
   project_slug: string;
@@ -617,6 +626,7 @@ export interface ArchetypePackage {
   lifecycle: LifecycleArtifacts;
   spec: SpecArtifacts;
   testFirst: TestFirstArtifacts;
+  playwright: PlaywrightVerificationArtifacts;
   ingestion: IngestionArtifacts;
   evidence: EvidenceLedger;
   product: ProductArtifacts;

@@ -398,7 +398,7 @@ function buildVerificationContracts(
       forms: forms.length
     },
     blockers: testCount > 0 ? [] : ["No verification tests were generated."],
-    warnings: ["Verification contracts define required downstream proof, but they do not execute generated frontend code inside this compiler."],
+    warnings: ["Verification contracts define required downstream proof during generation; run verify-target for target stack execution and Playwright evidence."],
     evidence_refs: ["decision_compiler_order"]
   };
 }

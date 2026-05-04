@@ -34,6 +34,12 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   const testFirstPlanPath = path.join(outputDir, "test-first", "test-first-plan.md");
   const testFirstPlaywrightPath = path.join(outputDir, "test-first", "playwright-contract.spec.ts");
   const testFirstVitestPath = path.join(outputDir, "test-first", "vitest-contract.spec.ts");
+  const playwrightContractPath = path.join(outputDir, "verification", "playwright-verification-contract.json");
+  const playwrightPlanPath = path.join(outputDir, "verification", "playwright-verification-plan.md");
+  const playwrightConfigPath = path.join(outputDir, "verification", "playwright.config.ts");
+  const playwrightSpecPath = path.join(outputDir, "verification", "playwright-verification.spec.ts");
+  const playwrightEvidencePath = path.join(outputDir, "verification", "playwright-evidence.json");
+  const playwrightEvidenceMarkdownPath = path.join(outputDir, "verification", "playwright-evidence.md");
   const implementationContractPath = path.join(outputDir, "implementation-contract.md");
   const verificationPlanPath = path.join(outputDir, "verification-plan.md");
   const lifecycleStateMachinePath = path.join(outputDir, "lifecycle", "state-machine.json");
@@ -67,6 +73,12 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   if (!existsSync(testFirstPlanPath)) blockers.push("Missing test-first/test-first-plan.md.");
   if (!existsSync(testFirstPlaywrightPath)) blockers.push("Missing test-first/playwright-contract.spec.ts.");
   if (!existsSync(testFirstVitestPath)) blockers.push("Missing test-first/vitest-contract.spec.ts.");
+  if (!existsSync(playwrightContractPath)) blockers.push("Missing verification/playwright-verification-contract.json.");
+  if (!existsSync(playwrightPlanPath)) blockers.push("Missing verification/playwright-verification-plan.md.");
+  if (!existsSync(playwrightConfigPath)) blockers.push("Missing verification/playwright.config.ts.");
+  if (!existsSync(playwrightSpecPath)) blockers.push("Missing verification/playwright-verification.spec.ts.");
+  if (!existsSync(playwrightEvidencePath)) blockers.push("Missing verification/playwright-evidence.json.");
+  if (!existsSync(playwrightEvidenceMarkdownPath)) blockers.push("Missing verification/playwright-evidence.md.");
   if (!existsSync(implementationContractPath)) blockers.push("Missing implementation-contract.md.");
   if (!existsSync(verificationPlanPath)) blockers.push("Missing verification-plan.md.");
   if (!existsSync(lifecycleStateMachinePath)) blockers.push("Missing lifecycle/state-machine.json.");
@@ -152,6 +164,33 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
     acceptance_gate?: { required_evidence?: unknown[] };
     traceability?: { canonical_spec?: string };
   }>(testFirstContractPath, blockers, "Test-first contract");
+  const playwrightContract = readJsonSafe<{
+    source_spec_path?: string;
+    source_test_first_contract_path?: string;
+    lifecycle_gate?: string;
+    runner?: string;
+    required_target_command?: string;
+    scenarios?: unknown[];
+    coverage?: {
+      route_count?: number;
+      screen_count?: number;
+      route_scenarios?: number;
+      state_scenarios?: number;
+      flow_scenarios?: number;
+      responsive_scenarios?: number;
+      accessibility_scenarios?: number;
+      visual_smoke_scenarios?: number;
+      total_scenarios?: number;
+    };
+  }>(playwrightContractPath, blockers, "Playwright verification contract");
+  const playwrightEvidence = readJsonSafe<{
+    status?: string;
+    source_contract?: string;
+    command?: string;
+    coverage?: { route_count?: number; screen_count?: number; total_scenarios?: number };
+    summary?: { total?: number };
+    proof_artifacts?: unknown[];
+  }>(playwrightEvidencePath, blockers, "Playwright evidence");
   const lifecycleStateMachine = readJsonSafe<{
     states?: Array<{ state?: string }>;
     default_entrypoint?: string;
@@ -164,7 +203,7 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
     questions?: unknown[];
   }>(contextCompletionPath, blockers, "Context completion");
 
-  if (!topManifest || !manifest || !readiness || !schemaReport || !dsag || !routeMap || !screenInventory || !screenSpecs || !componentContracts || !implementationRules || !canonicalSpec || !testFirstContract || !lifecycleStateMachine || !contextCompletion) {
+  if (!topManifest || !manifest || !readiness || !schemaReport || !dsag || !routeMap || !screenInventory || !screenSpecs || !componentContracts || !implementationRules || !canonicalSpec || !testFirstContract || !playwrightContract || !playwrightEvidence || !lifecycleStateMachine || !contextCompletion) {
     return { status: "fail", outputDir, checkedFiles: 0, blockers, warnings };
   }
 
@@ -243,6 +282,57 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   }
   if (!Array.isArray(testFirstContract.acceptance_gate?.required_evidence) || testFirstContract.acceptance_gate.required_evidence.length === 0) {
     blockers.push("Test-first contract must define required test evidence.");
+  }
+  if (playwrightContract.source_spec_path !== "spec/archetype-spec.json") {
+    blockers.push("Playwright verification contract must derive from the canonical spec.");
+  }
+  if (playwrightContract.source_test_first_contract_path !== "test-first/test-first-contract.json") {
+    blockers.push("Playwright verification contract must point to the test-first contract.");
+  }
+  if (playwrightContract.lifecycle_gate !== "verifying_with_playwright" || playwrightContract.runner !== "playwright") {
+    blockers.push("Playwright verification contract must use the verifying_with_playwright lifecycle gate and playwright runner.");
+  }
+  if (playwrightContract.required_target_command !== "npm run archetype:playwright") {
+    blockers.push("Playwright verification contract must define npm run archetype:playwright as the target command.");
+  }
+  if ((playwrightContract.coverage?.route_count ?? -1) !== routes.length) {
+    blockers.push("Playwright verification route count must match route map.");
+  }
+  if ((playwrightContract.coverage?.screen_count ?? -1) !== specs.length) {
+    blockers.push("Playwright verification screen count must match screen specs.");
+  }
+  if ((playwrightContract.coverage?.route_scenarios ?? 0) < routes.length) {
+    blockers.push("Playwright verification must include route scenarios.");
+  }
+  if ((playwrightContract.coverage?.state_scenarios ?? 0) === 0) {
+    blockers.push("Playwright verification must include screen-state scenarios.");
+  }
+  if ((playwrightContract.coverage?.flow_scenarios ?? 0) === 0) {
+    blockers.push("Playwright verification must include flow scenarios.");
+  }
+  if ((playwrightContract.coverage?.responsive_scenarios ?? 0) < routes.length) {
+    blockers.push("Playwright verification must include responsive scenarios.");
+  }
+  if ((playwrightContract.coverage?.accessibility_scenarios ?? 0) < routes.length) {
+    blockers.push("Playwright verification must include accessibility scenarios.");
+  }
+  if ((playwrightContract.coverage?.visual_smoke_scenarios ?? 0) < routes.length) {
+    blockers.push("Playwright verification must include visual-smoke scenarios.");
+  }
+  if ((playwrightContract.coverage?.total_scenarios ?? 0) <= routes.length) {
+    blockers.push("Playwright verification total scenario count must exceed route count.");
+  }
+  if (!Array.isArray(playwrightContract.scenarios) || playwrightContract.scenarios.length !== playwrightContract.coverage?.total_scenarios) {
+    blockers.push("Playwright verification scenario list must match total scenario count.");
+  }
+  if (!["pending", "pass", "fail", "warning"].includes(String(playwrightEvidence.status))) {
+    blockers.push("Playwright evidence status must be pending, pass, warning, or fail.");
+  }
+  if (playwrightEvidence.source_contract !== "verification/playwright-verification-contract.json") {
+    blockers.push("Playwright evidence must point to the verification contract.");
+  }
+  if (playwrightEvidence.coverage?.route_count !== routes.length || playwrightEvidence.coverage?.screen_count !== specs.length) {
+    blockers.push("Playwright evidence coverage must match route and screen counts.");
   }
   const lifecycleStates = new Set((lifecycleStateMachine.states ?? []).map((item) => item.state));
   for (const requiredState of ["clarifying", "waiting_for_optional_materials", "spec_generating", "test_generating", "implementing_tests_first", "verifying_with_playwright", "revising", "done"]) {

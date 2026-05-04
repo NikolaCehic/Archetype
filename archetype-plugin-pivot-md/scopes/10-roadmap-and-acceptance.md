@@ -204,6 +204,27 @@ Pass condition:
 Archetype can truthfully claim test-driven agent implementation because every generated package declares the tests that must exist before product UI code.
 ```
 
+## Phase 11 — Playwright-Backed Verification
+
+Tasks:
+
+```txt
+[ ] Generate verification/playwright-verification-contract.json.
+[ ] Generate verification/playwright-verification-plan.md.
+[ ] Generate verification/playwright.config.ts.
+[ ] Generate verification/playwright-verification.spec.ts.
+[ ] Generate pending verification/playwright-evidence.json and markdown.
+[ ] Materialize target Playwright tests through write-target.
+[ ] Run Playwright from verify-target and write pass/fail evidence.
+[ ] Validate route, state, flow, responsive, accessibility, visual-smoke, and evidence coverage.
+```
+
+Pass condition:
+
+```txt
+Archetype can prove browser-observable contract adherence with Playwright evidence, not only generated test intentions.
+```
+
 ## Final Acceptance Criteria
 
 ```txt
@@ -220,6 +241,8 @@ Archetype can truthfully claim test-driven agent implementation because every ge
 [ ] Generated output includes lifecycle state machine and context completion artifacts.
 [ ] Generated output includes canonical source-of-truth spec markdown and JSON.
 [ ] Generated output includes spec-derived test-first contracts for smoke, E2E, UI, integration, and unit tests.
+[ ] Generated output includes Playwright verification contracts, config, browser test spec, and evidence artifacts.
+[ ] verify-target runs install, typecheck, production build, Playwright browser checks, and writes evidence.
 [ ] MCP server exposes generate/validate/read/verify tools.
 [ ] Generated output includes AGENTS.md.
 [ ] Generated output includes CLAUDE.md.

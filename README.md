@@ -36,6 +36,7 @@ Archetype compiles product intent into a frontend implementation package:
 - data, action, and form contracts
 - acceptance criteria
 - test-first contracts
+- Playwright-backed verification contract and evidence
 - verification plan
 - readiness report
 
@@ -129,6 +130,10 @@ Installation details are in `docs/install.md`.
 - `spec/archetype-spec.md` - canonical human-readable source of truth
 - `spec/archetype-spec.json` - canonical machine-readable source of truth
 - `test-first/` - spec-derived smoke, E2E, UI, integration, and unit test contracts
+- `verification/playwright-verification-contract.json` - browser verification obligations
+- `verification/playwright-verification-plan.md` - human-readable browser verification plan
+- `verification/playwright-verification.spec.ts` - generated Playwright browser checks
+- `verification/playwright-evidence.json` - pending or completed Playwright evidence
 - `lifecycle/` - state machine, context completion, and clarification questions
 - `AGENTS.md` - instructions for Codex and agentic coding tools
 - `CLAUDE.md` - instructions for Claude Code
@@ -205,6 +210,7 @@ npm run distribution:contract
 npm run lifecycle:contract
 npm run spec:contract
 npm run test-first:contract
+npm run playwright:contract
 npm run install:contract
 npm run check
 ```

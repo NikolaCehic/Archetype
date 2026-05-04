@@ -31,6 +31,7 @@ Coding agents can write code, but they often guess product architecture. Archety
 - data/action/form contracts
 - acceptance criteria
 - verification plan
+- Playwright-backed verification contract and evidence
 - readiness report
 
 ## Target User Journey
@@ -85,6 +86,7 @@ scopes/11-readme-rewrite.md
 scopes/12-lifecycle-orchestrator.md
 scopes/13-canonical-spec-artifacts.md
 scopes/14-test-first-contracts.md
+scopes/15-playwright-verification.md
 ```
 
 ## Build Order
@@ -103,6 +105,7 @@ scopes/14-test-first-contracts.md
 11. Lifecycle orchestrator
 12. Canonical spec artifacts
 13. Test-first contracts
+14. Playwright-backed verification
 ```
 
 ## MVP Definition

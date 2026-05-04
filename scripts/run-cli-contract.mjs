@@ -78,6 +78,12 @@ for (const requiredArtifact of [
   "test-first/test-first-plan.md",
   "test-first/playwright-contract.spec.ts",
   "test-first/vitest-contract.spec.ts",
+  "verification/playwright-verification-contract.json",
+  "verification/playwright-verification-plan.md",
+  "verification/playwright.config.ts",
+  "verification/playwright-verification.spec.ts",
+  "verification/playwright-evidence.json",
+  "verification/playwright-evidence.md",
   "experience/route-map.json",
   "design-system/tokens.json",
   "design-system/component-contracts.json",
@@ -100,6 +106,7 @@ assert(summarize.requiredStates.includes("loading"), "summarize should include r
 assert(summarize.entrypoints.includes("lifecycle/context-completion.json"), "summarize should include lifecycle context entrypoint.");
 assert(summarize.entrypoints.includes("spec/archetype-spec.json"), "summarize should include canonical spec entrypoint.");
 assert(summarize.entrypoints.includes("test-first/test-first-contract.json"), "summarize should include test-first contract entrypoint.");
+assert(summarize.entrypoints.includes("verification/playwright-verification-contract.json"), "summarize should include Playwright verification entrypoint.");
 
 const validate = runJson(["validate", "--out", outputDir]);
 assert(validate.status === "pass", "validate --json should pass.");
@@ -130,6 +137,7 @@ assert(verifyTarget.status === "pass", "verify-target --json should pass.");
 assert(verifyTarget.summary.install === "pass", "verify-target should install dependencies.");
 assert(verifyTarget.summary.typecheck === "pass", "verify-target should typecheck.");
 assert(verifyTarget.summary.build === "pass", "verify-target should build.");
+assert(verifyTarget.summary.playwright === "pass", "verify-target should run Playwright verification.");
 
 const summary = {
   status: "pass",

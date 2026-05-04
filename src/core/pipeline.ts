@@ -20,6 +20,7 @@ import { buildE2EScenarioArtifacts } from "../modules/e2eScenarios";
 import { buildLifecycleArtifacts } from "../modules/lifecycle";
 import { buildSpecArtifacts } from "../modules/spec";
 import { buildTestFirstArtifacts } from "../modules/testFirstContracts";
+import { buildPlaywrightVerificationArtifacts } from "../modules/playwrightVerification";
 
 const ARTIFACT_INDEX = [
   "README.md",
@@ -35,6 +36,12 @@ const ARTIFACT_INDEX = [
   "test-first/test-first-plan.md",
   "test-first/playwright-contract.spec.ts",
   "test-first/vitest-contract.spec.ts",
+  "verification/playwright-verification-contract.json",
+  "verification/playwright-verification-plan.md",
+  "verification/playwright.config.ts",
+  "verification/playwright-verification.spec.ts",
+  "verification/playwright-evidence.json",
+  "verification/playwright-evidence.md",
   "lifecycle/state-machine.json",
   "lifecycle/context-completion.json",
   "lifecycle/clarification-questions.json",
@@ -200,6 +207,8 @@ const ARTIFACT_INDEX = [
   "09-schemas/form-contracts.schema.json",
   "09-schemas/verification-contracts.schema.json",
   "09-schemas/test-first-contract.schema.json",
+  "09-schemas/playwright-verification-contract.schema.json",
+  "09-schemas/playwright-evidence.schema.json",
   "09-schemas/production-integration-contracts.schema.json",
   "09-schemas/token-contracts.schema.json",
   "09-schemas/typography-system.schema.json",
@@ -309,7 +318,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     ].sort()
   };
 
-  const packageWithoutSpecAndTestFirst: Omit<ArchetypePackage, "spec" | "testFirst"> = {
+  const packageWithoutSpecTestFirstAndPlaywright: Omit<ArchetypePackage, "spec" | "testFirst" | "playwright"> = {
     manifest,
     lifecycle,
     ingestion,
@@ -329,15 +338,20 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     e2e,
     quality
   };
-  const spec = buildSpecArtifacts(packageWithoutSpecAndTestFirst);
-  const packageWithoutTestFirst: Omit<ArchetypePackage, "testFirst"> = {
-    ...packageWithoutSpecAndTestFirst,
+  const spec = buildSpecArtifacts(packageWithoutSpecTestFirstAndPlaywright);
+  const packageWithoutTestFirstAndPlaywright: Omit<ArchetypePackage, "testFirst" | "playwright"> = {
+    ...packageWithoutSpecTestFirstAndPlaywright,
     spec
   };
-  const testFirst = buildTestFirstArtifacts(packageWithoutTestFirst);
+  const testFirst = buildTestFirstArtifacts(packageWithoutTestFirstAndPlaywright);
+  const packageWithoutPlaywright: Omit<ArchetypePackage, "playwright"> = {
+    ...packageWithoutTestFirstAndPlaywright,
+    testFirst
+  };
+  const playwright = buildPlaywrightVerificationArtifacts(packageWithoutPlaywright);
 
   return {
-    ...packageWithoutTestFirst,
-    testFirst
+    ...packageWithoutPlaywright,
+    playwright
   };
 }

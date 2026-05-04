@@ -49,11 +49,12 @@ If the answer is obvious from the attached material, infer it and state the assu
 8. Summarize readiness with `archetype_summarize_package`.
 9. If blockers exist, ask for only the missing evidence needed to unblock the contract.
 10. If ready or warning-only, read `test-first/test-first-contract.json` and `test-first/test-first-plan.md`.
-11. Create the smoke, E2E, UI, integration, and unit tests declared in the test-first contract before writing product UI.
-12. Preserve the initial red test result.
-13. Continue with implementation workflow from `implement`.
-14. Verify the target with `verify`.
-15. If verification fails, patch the implementation or revise the contract, then verify again.
+11. Read `verification/playwright-verification-contract.json` and `verification/playwright-verification-plan.md` before implementation so browser proof obligations are known up front.
+12. Create the smoke, E2E, UI, integration, and unit tests declared in the test-first contract before writing product UI.
+13. Preserve the initial red test result.
+14. Continue with implementation workflow from `implement`.
+15. Verify the target with `verify`.
+16. Check `verification/playwright-evidence.json` and `verification/playwright-evidence.md`; if verification fails, patch the implementation or revise the contract, then verify again.
 
 ## Fallback
 

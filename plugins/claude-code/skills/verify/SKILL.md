@@ -27,9 +27,13 @@ npx -y -p @nikolacehic/archetype archetype verify-target --out archetype-output 
 
 ## Review Focus
 
+- `verification/playwright-verification-contract.json`
+- `verification/playwright-evidence.json`
+- `verification/playwright-evidence.md`
 - route coverage
 - screen coverage
 - required loading, empty, error, success, stale, offline, and permission states
+- flow, responsive, and visual-smoke coverage
 - design tokens and component contracts
 - data, action, and form contracts
 - accessibility expectations

@@ -23,4 +23,6 @@ npx -y -p @nikolacehic/archetype archetype verify-target --out archetype-output 
 
 ## Review
 
-Check routes, screens, required states, component contracts, tokens, data contracts, action contracts, form contracts, accessibility expectations, and acceptance criteria. Return pass, warning, or fail with concrete fixes.
+Read `verification/playwright-verification-contract.json` before running verification. After verification, inspect `verification/playwright-evidence.json` and `verification/playwright-evidence.md`.
+
+Check routes, screens, required states, flow coverage, responsive behavior, visual-smoke screenshots, component contracts, tokens, data contracts, action contracts, form contracts, accessibility expectations, and acceptance criteria. Return pass, warning, or fail with concrete fixes.

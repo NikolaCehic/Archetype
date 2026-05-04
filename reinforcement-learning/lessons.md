@@ -49,6 +49,30 @@ Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
 
+## Playwright-Backed Verification
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/15-playwright-verification.md`
+- `reinforcement-learning/lifecycle-loop-log.md`
+
+Lesson:
+
+- Test-first contracts are not enough to prove an implementation. The harness needs a separate browser verification contract that runs after implementation and writes evidence.
+- The Playwright contract must derive from `spec/archetype-spec.json` and `test-first/test-first-contract.json`, or browser checks can drift from the generated source of truth.
+- `verify-target` should be the single proof command for agents: install, typecheck, production build, Playwright, audit, target execution report, and evidence writing.
+- The generated target must expose `npm run archetype:playwright` so Claude Code and Codex can execute the same deterministic browser checks without knowing internal files.
+- A readiness URL cannot assume `/` exists. The generated Playwright config must wait on a declared route.
+- Flow scenario generation has to read wrapped canonical structures like `{ flows: [...] }`, not only raw arrays.
+
+Deviation review:
+
+- No pivot-plan deviation was accepted. Scope 4 added local browser proof to the harness and did not reintroduce hosted web, backend, account, billing, cloud test orchestration, or project storage surfaces.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
 ## Installability Certainty Audit
 
 Scope reference:

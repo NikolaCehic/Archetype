@@ -140,3 +140,40 @@ Rule:
 Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
+## Scope 4 Review
+
+Context:
+
+- Scope 3 generated deterministic tests, but Archetype still needed browser-backed proof after an agent implements the target.
+- The verification step must not depend on user prompt choreography. `verify-target` should run the materialized target checks and write evidence into `archetype-output`.
+- Playwright proof must stay inside the local harness pivot, not become a hosted QA dashboard or cloud testing product.
+
+Implementation:
+
+- Added `verification/playwright-verification-contract.json`.
+- Added `verification/playwright-verification-plan.md`.
+- Added `verification/playwright.config.ts`.
+- Added `verification/playwright-verification.spec.ts`.
+- Added pending and completed `verification/playwright-evidence.json`.
+- Added pending and completed `verification/playwright-evidence.md`.
+- Derived route, required screen-state, user-flow, responsive, accessibility, and visual-smoke scenarios from the canonical spec and test-first contract.
+- Updated generated target source so `write-target` materializes Playwright config, browser verification specs, and `npm run archetype:playwright`.
+- Updated `verify-target` to run install, typecheck, production build, Playwright verification, target dependency audit, target execution proof, and Playwright evidence writing.
+- Added `scripts/run-playwright-verification-contract.mjs` and wired it into `npm run check`.
+- Updated validation, schema index, CLI summarize, MCP summarize, plugin skills, docs, pivot roadmap, distribution checks, and install checks.
+
+Self-review:
+
+- The implementation adheres to Scope 4 because every generated package now contains browser verification obligations, target Playwright config, executable browser checks, pending evidence, completed evidence after `verify-target`, and validation gates that fail when the proof layer is missing or incoherent.
+- Self-review caught two technical issues during smoke testing: the generated Playwright `webServer` originally waited on `/` even when the first generated route was not `/`, and flow scenarios were not being collected from the canonical `flows` wrapper. Both were fixed and locked into the Playwright contract test.
+- Remaining production confirmations are deliberately external: backend, auth, compliance, and final copy review. Those do not weaken Scope 4 because this scope proves browser-observable frontend contract adherence.
+- Review answer: YES for Scope 4. The scope is fully implemented according to the current context.
+
+Rule:
+
+- Do not claim browser verification is complete unless `verify-target` has written `verification/playwright-evidence.json` and Playwright route, state, flow, responsive, accessibility, and visual-smoke scenarios passed or every remaining warning is named.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation

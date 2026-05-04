@@ -185,6 +185,7 @@ try {
   assert(summarize.routes > 0, "summarize should include route count.");
   assert(summarize.screens > 0, "summarize should include screen count.");
   assert(summarize.entrypoints.includes("test-first/test-first-contract.json"), "summarize should include test-first contract entrypoint.");
+  assert(summarize.entrypoints.includes("verification/playwright-verification-contract.json"), "summarize should include Playwright verification entrypoint.");
 
   const artifact = await callTool("archetype_read_artifact", {
     outputDir,
@@ -205,6 +206,7 @@ try {
   assert(["pass", "warning"].includes(verify.status), "verify target should pass or warn.");
   assert(verify.summary?.typecheck === "pass", "verify target should typecheck.");
   assert(verify.summary?.build === "pass", "verify target should build.");
+  assert(verify.summary?.playwright === "pass", "verify target should run Playwright verification.");
 
   const summary = {
     status: "pass",

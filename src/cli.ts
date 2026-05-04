@@ -210,6 +210,8 @@ function summarizePackage(outputDir: string): Record<string, unknown> {
       "spec/archetype-spec.json",
       "test-first/test-first-contract.json",
       "test-first/test-first-plan.md",
+      "verification/playwright-verification-contract.json",
+      "verification/playwright-evidence.json",
       "AGENTS.md",
       "CLAUDE.md",
       "implementation-contract.md",

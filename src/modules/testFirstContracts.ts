@@ -1,7 +1,7 @@
 import type { ArchetypePackage, TestFirstArtifacts } from "../core/types";
 import { slugify } from "../core/stable";
 
-type TestFirstInput = Omit<ArchetypePackage, "testFirst">;
+type TestFirstInput = Omit<ArchetypePackage, "testFirst" | "playwright">;
 type JsonRecord = Record<string, unknown>;
 
 function asRecord(value: unknown): JsonRecord {

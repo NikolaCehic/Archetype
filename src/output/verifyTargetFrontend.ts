@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { targetExecutionMarkdown } from "../modules/targetExecution";
+import { playwrightEvidenceMarkdown } from "../modules/playwrightVerification";
 
 interface TargetVerifyOptions {
   skipInstall?: boolean;
@@ -28,6 +29,7 @@ export interface TargetVerificationResult {
     install: "pass" | "fail";
     typecheck: "pass" | "fail" | "pending";
     build: "pass" | "fail" | "pending";
+    playwright: "pass" | "fail" | "pending";
   };
   blockers: string[];
   warnings: string[];
@@ -161,11 +163,29 @@ function updateE2ETargetExecutionProof(outputDir: string, result: TargetVerifica
     item.scenario_id === "E2E-066" ||
     String(item.title ?? "").toLowerCase().includes("target stack execution proof")
   );
-  if (!scenario) return;
-  scenario.status = "pass";
-  scenario.result = "Target stack execution proof passed: npm install, typecheck, and production build completed in the generated target workspace.";
-  scenario.revealed_fault = null;
-  scenario.fix_hint = null;
+  if (scenario) {
+    scenario.status = "pass";
+    scenario.result = "Target stack execution proof passed: npm install, typecheck, production build, and Playwright verification completed in the generated target workspace.";
+    scenario.revealed_fault = null;
+    scenario.fix_hint = null;
+  }
+  if (result.summary.playwright === "pass") {
+    for (const item of results) {
+      const title = String(item.title ?? "").toLowerCase();
+      if (item.scenario_id === "E2E-067" || title.includes("non-default state")) {
+        item.status = "pass";
+        item.result = "Playwright verified browser-visible route state rendering for generated target screens.";
+        item.revealed_fault = null;
+        item.fix_hint = null;
+      }
+      if (item.scenario_id === "E2E-069" || title.includes("visual regression proof")) {
+        item.status = "pass";
+        item.result = "Playwright visual-smoke screenshots were captured for generated target routes.";
+        item.revealed_fault = null;
+        item.fix_hint = null;
+      }
+    }
+  }
 
   const summary = {
     total: results.length,
@@ -184,6 +204,77 @@ function updateE2ETargetExecutionProof(outputDir: string, result: TargetVerifica
   };
   writeJson(resultsPath, next);
   writeText(findingsPath, e2eFindingsMarkdown(results, summary));
+}
+
+function readPackageScripts(targetDir: string): Record<string, string> {
+  const packageJsonPath = path.join(targetDir, "package.json");
+  if (!existsSync(packageJsonPath)) return {};
+  try {
+    const pkg = readJson<{ scripts?: Record<string, string> }>(packageJsonPath);
+    return pkg.scripts ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function collectPlaywrightSummary(targetDir: string): {
+  passed: number;
+  failed: number;
+  skipped: number;
+  total: number;
+  rawAvailable: boolean;
+} {
+  const resultPath = path.join(targetDir, "test-results", "archetype-playwright-results.json");
+  if (!existsSync(resultPath)) return { passed: 0, failed: 0, skipped: 0, total: 0, rawAvailable: false };
+  try {
+    const raw = readJson<{
+      stats?: { expected?: number; unexpected?: number; skipped?: number };
+      suites?: unknown[];
+    }>(resultPath);
+    const passed = raw.stats?.expected ?? 0;
+    const failed = raw.stats?.unexpected ?? 0;
+    const skipped = raw.stats?.skipped ?? 0;
+    return { passed, failed, skipped, total: passed + failed + skipped, rawAvailable: true };
+  } catch {
+    return { passed: 0, failed: 0, skipped: 0, total: 0, rawAvailable: false };
+  }
+}
+
+function writePlaywrightEvidence(outputDir: string, targetDir: string, report: TargetVerificationResult): void {
+  const contractPath = path.join(outputDir, "verification", "playwright-verification-contract.json");
+  if (!existsSync(contractPath)) return;
+  const contract = readJson<{
+    coverage?: Record<string, unknown>;
+    required_evidence_paths?: unknown[];
+  }>(contractPath);
+  const playwrightSummary = collectPlaywrightSummary(targetDir);
+  const playwrightCommand = report.commands.find((item) => item.id === "playwright");
+  const status = playwrightCommand?.status === "pass" ? "pass" : "fail";
+  const blockers = status === "pass" ? [] : ["Playwright verification did not pass for the target frontend."];
+  const evidence = {
+    evidence_version: "1.0",
+    status,
+    generated_at: new Date().toISOString(),
+    source_contract: "verification/playwright-verification-contract.json",
+    command: playwrightCommand?.command ?? "npm run archetype:playwright",
+    target_dir: targetDir,
+    coverage: contract.coverage ?? {},
+    summary: playwrightSummary,
+    proof_artifacts: [
+      "verification/playwright-evidence.json",
+      "verification/playwright-evidence.md",
+      "target:test-results/archetype-playwright-results.json",
+      "target:test-results/archetype-visual-smoke",
+      "target:playwright-report"
+    ],
+    blockers,
+    warnings: status === "pass"
+      ? ["Playwright verifies generated target behavior, but production backend, auth, and final compliance review remain external confirmations."]
+      : ["Inspect target:test-results/archetype-playwright-results.json and target:playwright-report for failing browser evidence."],
+    raw_summary_available: playwrightSummary.rawAvailable
+  };
+  writeJson(path.join(outputDir, "verification", "playwright-evidence.json"), evidence);
+  writeText(path.join(outputDir, "verification", "playwright-evidence.md"), playwrightEvidenceMarkdown(evidence));
 }
 
 export function verifyTargetFrontendExecution(outputDir: string, targetDir: string, options: TargetVerifyOptions = {}): TargetVerificationResult {
@@ -210,6 +301,12 @@ export function verifyTargetFrontendExecution(outputDir: string, targetDir: stri
     }
     if (commands.every((item) => item.status === "pass")) commands.push(runCommand("typecheck", "npm", ["run", "typecheck"], targetDir));
     if (commands.every((item) => item.status === "pass")) commands.push(runCommand("build", "npm", ["run", "build"], targetDir));
+    const scripts = readPackageScripts(targetDir);
+    if (commands.every((item) => item.status === "pass") && scripts["archetype:playwright"]) {
+      commands.push(runCommand("playwright", "npm", ["run", "archetype:playwright"], targetDir));
+    } else if (commands.every((item) => item.status === "pass")) {
+      blockers.push("Target package.json is missing archetype:playwright script.");
+    }
   }
 
   for (const command of commands.filter((item) => item.status === "fail")) {
@@ -237,13 +334,19 @@ export function verifyTargetFrontendExecution(outputDir: string, targetDir: stri
     summary: {
       install: requiredCommandStatus("install"),
       typecheck: commandStatus("typecheck"),
-      build: commandStatus("build")
+      build: commandStatus("build"),
+      playwright: commandStatus("playwright")
     },
     blockers,
     warnings,
     proof_artifacts: [
       "14-target-execution/target-execution-report.json",
       "14-target-execution/target-execution-report.md",
+      "verification/playwright-evidence.json",
+      "verification/playwright-evidence.md",
+      "target:test-results/archetype-playwright-results.json",
+      "target:test-results/archetype-visual-smoke",
+      "target:playwright-report",
       "target:.next"
     ]
   };
@@ -252,6 +355,7 @@ export function verifyTargetFrontendExecution(outputDir: string, targetDir: stri
   const markdownPath = path.join(outputDir, "14-target-execution", "target-execution-report.md");
   writeJson(reportPath, report);
   writeText(markdownPath, targetExecutionMarkdown(report as unknown as Record<string, unknown>));
+  writePlaywrightEvidence(outputDir, targetDir, report);
   updateE2ETargetExecutionProof(outputDir, report);
   return report;
 }

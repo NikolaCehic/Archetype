@@ -59,6 +59,8 @@ for (const expected of ["project idea", "Self-Contained Pipeline", "archetype_cr
 }
 assert(frontDoor.includes("spec/archetype-spec.json"), "Claude front-door skill must read the canonical spec.");
 assert(frontDoor.includes("test-first/test-first-contract.json"), "Claude front-door skill must read the test-first contract.");
+assert(frontDoor.includes("verification/playwright-verification-contract.json"), "Claude front-door skill must read the Playwright verification contract.");
+assert(frontDoor.includes("verification/playwright-evidence.json"), "Claude front-door skill must inspect Playwright evidence.");
 assert(!frontDoor.includes("Ask me what is missing, then build and verify"), "Claude front-door skill must not require prompt choreography.");
 
 const blueprint = readText("skills/blueprint/SKILL.md");
@@ -73,7 +75,7 @@ for (const expected of ["spec/archetype-spec.json", "test-first/test-first-contr
 assert(implement.includes("Preserve the initial red test result"), "Claude implement skill must enforce red-first TDD.");
 
 const verify = readText("skills/verify/SKILL.md");
-for (const expected of ["archetype_validate_package", "archetype_verify_target", "skipInstall: false", "verify-target"]) {
+for (const expected of ["archetype_validate_package", "archetype_verify_target", "skipInstall: false", "verify-target", "verification/playwright-verification-contract.json", "verification/playwright-evidence.json", "visual-smoke"]) {
   assert(verify.includes(expected), `Verify skill missing ${expected}.`);
 }
 

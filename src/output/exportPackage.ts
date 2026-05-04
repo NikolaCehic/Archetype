@@ -95,6 +95,12 @@ function buildTopLevelManifest(pkg: ArchetypePackage): Record<string, unknown> {
     { id: "test-first-plan", path: "test-first/test-first-plan.md", type: "markdown", required: true },
     { id: "test-first-playwright-template", path: "test-first/playwright-contract.spec.ts", type: "text", required: true },
     { id: "test-first-vitest-template", path: "test-first/vitest-contract.spec.ts", type: "text", required: true },
+    { id: "playwright-verification-contract", path: "verification/playwright-verification-contract.json", type: "json", required: true },
+    { id: "playwright-verification-plan", path: "verification/playwright-verification-plan.md", type: "markdown", required: true },
+    { id: "playwright-config-template", path: "verification/playwright.config.ts", type: "text", required: true },
+    { id: "playwright-verification-spec", path: "verification/playwright-verification.spec.ts", type: "text", required: true },
+    { id: "playwright-evidence", path: "verification/playwright-evidence.json", type: "json", required: true },
+    { id: "playwright-evidence-report", path: "verification/playwright-evidence.md", type: "markdown", required: true },
     { id: "implementation-contract", path: "implementation-contract.md", type: "markdown", required: true },
     { id: "verification-plan", path: "verification-plan.md", type: "markdown", required: true },
     { id: "readiness-report", path: "readiness-report.md", type: "markdown", required: true },
@@ -140,12 +146,13 @@ function buildPackageReadme(pkg: ArchetypePackage): string {
     "1. Read `spec/archetype-spec.md`.",
     "2. Read `spec/archetype-spec.json` for machine-readable source of truth.",
     "3. Read `test-first/test-first-contract.json`.",
-    "4. Create the required tests before product UI implementation.",
-    "5. Read `implementation-contract.md`.",
-    "6. Read `AGENTS.md` or `CLAUDE.md` depending on the agent host.",
-    "7. Read `lifecycle/lifecycle-report.md` to understand the current lifecycle state.",
-    "8. Read route, screen, and design-system artifacts before implementation.",
-    "9. Run the checks in `verification-plan.md` before declaring completion.",
+    "4. Read `verification/playwright-verification-contract.json`.",
+    "5. Create the required tests before product UI implementation.",
+    "6. Read `implementation-contract.md`.",
+    "7. Read `AGENTS.md` or `CLAUDE.md` depending on the agent host.",
+    "8. Read `lifecycle/lifecycle-report.md` to understand the current lifecycle state.",
+    "9. Read route, screen, and design-system artifacts before implementation.",
+    "10. Run the checks in `verification-plan.md` before declaring completion.",
     "",
     "## Readiness",
     "",
@@ -171,13 +178,14 @@ function buildGeneratedAgentsMd(): string {
     "2. `spec/archetype-spec.json`",
     "3. `test-first/test-first-contract.json`",
     "4. `test-first/test-first-plan.md`",
-    "5. `implementation-contract.md`",
-    "6. `frontend-agent-contract/frontend-agent-instructions.md`",
-    "7. `experience/route-map.json`",
-    "8. `screens/screen-inventory.json`",
-    "9. `design-system/tokens.json`",
-    "10. `design-system/component-contracts.json`",
-    "11. `verification-plan.md`",
+    "5. `verification/playwright-verification-contract.json`",
+    "6. `implementation-contract.md`",
+    "7. `frontend-agent-contract/frontend-agent-instructions.md`",
+    "8. `experience/route-map.json`",
+    "9. `screens/screen-inventory.json`",
+    "10. `design-system/tokens.json`",
+    "11. `design-system/component-contracts.json`",
+    "12. `verification-plan.md`",
     "",
     "## Rules",
     "",
@@ -191,6 +199,7 @@ function buildGeneratedAgentsMd(): string {
     "- Treat Archetype as spec-driven development: no implementation before the generated spec and contract are understood.",
     "- Treat the agent phase as test-driven development: create the tests declared in `test-first/test-first-contract.json` before product UI code.",
     "- Preserve the initial red test result before implementing, then drive the same tests green.",
+    "- Run Playwright-backed verification and attach `verification/playwright-evidence.json` before declaring completion.",
     "- After implementation, run the verification commands in `verification-plan.md`.",
     "",
     "## Completion Standard",
@@ -212,6 +221,7 @@ function buildGeneratedClaudeMd(): string {
     "- `spec/archetype-spec.json`",
     "- `test-first/test-first-contract.json`",
     "- `test-first/test-first-plan.md`",
+    "- `verification/playwright-verification-contract.json`",
     "- `implementation-contract.md`",
     "- `frontend-agent-contract/frontend-agent-instructions.md`",
     "- `experience/route-map.json`",
@@ -228,6 +238,7 @@ function buildGeneratedClaudeMd(): string {
     "- Do not invent product behavior outside the contract.",
     "- Create the tests from `test-first/test-first-contract.json` before product UI code.",
     "- Preserve the initial red test result before implementing, then drive the same tests green.",
+    "- Run Playwright-backed verification and attach `verification/playwright-evidence.json` before declaring completion.",
     "- Run validation before declaring completion.",
     "",
     "## Completion Standard",
@@ -316,6 +327,7 @@ function buildImplementationContract(pkg: ArchetypePackage): string {
     "- Run `archetype validate --out <archetype-output>`.",
     "- Run `archetype verify-target --out <archetype-output> --target <frontend-app>`.",
     "- Attach the red-then-green evidence required by `test-first/test-first-contract.json`.",
+    "- Attach Playwright evidence from `verification/playwright-evidence.json`.",
     "- Report unresolved blockers and warnings before claiming completion."
   ].join("\n");
 }
@@ -394,6 +406,12 @@ function buildImplementationRules(pkg: ArchetypePackage): Record<string, unknown
       required_before_implementation: true,
       coverage: asRecord(pkg.testFirst.contractJson.coverage)
     },
+    playwrightVerification: {
+      path: "verification/playwright-verification-contract.json",
+      evidence_path: "verification/playwright-evidence.json",
+      required_before_completion: true,
+      coverage: asRecord(pkg.playwright.contractJson.coverage)
+    },
     verificationContracts: pkg.frontendContract.verificationContracts,
     forbiddenBehavior: [
       "Do not invent routes outside experience/route-map.json.",
@@ -401,6 +419,7 @@ function buildImplementationRules(pkg: ArchetypePackage): Record<string, unknown
       "Do not skip required screen states.",
       "Do not create ad hoc tokens before reading design-system/tokens.json.",
       "Do not implement product UI before creating the tests declared in test-first/test-first-contract.json.",
+      "Do not claim completion before Playwright evidence is generated by verify-target.",
       "Do not claim production integration until verification-plan.md has passed."
     ]
   };
@@ -421,6 +440,12 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeText(outDir, "test-first/test-first-plan.md", pkg.testFirst.planMarkdown);
   writeText(outDir, "test-first/playwright-contract.spec.ts", pkg.testFirst.playwrightContractSpec);
   writeText(outDir, "test-first/vitest-contract.spec.ts", pkg.testFirst.vitestContractSpec);
+  writeJson(outDir, "verification/playwright-verification-contract.json", pkg.playwright.contractJson);
+  writeText(outDir, "verification/playwright-verification-plan.md", pkg.playwright.planMarkdown);
+  writeText(outDir, "verification/playwright.config.ts", pkg.playwright.configSource);
+  writeText(outDir, "verification/playwright-verification.spec.ts", pkg.playwright.specSource);
+  writeJson(outDir, "verification/playwright-evidence.json", pkg.playwright.evidenceJson);
+  writeText(outDir, "verification/playwright-evidence.md", pkg.playwright.evidenceMarkdown);
   writeText(outDir, "implementation-contract.md", buildImplementationContract(pkg));
   writeText(outDir, "verification-plan.md", pkg.frontendContract.verificationPlan);
   writeJson(outDir, "lifecycle/state-machine.json", pkg.lifecycle.stateMachine);

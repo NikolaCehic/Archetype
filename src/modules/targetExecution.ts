@@ -21,6 +21,7 @@ interface TargetExecutionReport {
     install: "pending" | "pass" | "fail";
     typecheck: "pending" | "pass" | "fail";
     build: "pending" | "pass" | "fail";
+    playwright: "pending" | "pass" | "fail";
   };
   blockers: string[];
   warnings: string[];
@@ -69,12 +70,14 @@ export function buildPendingTargetExecutionArtifacts(): TargetExecutionArtifacts
     commands: [
       { id: "install", command: "npm install", status: "pending", exit_code: null, duration_ms: null },
       { id: "typecheck", command: "npm run typecheck", status: "pending", exit_code: null, duration_ms: null },
-      { id: "build", command: "npm run build", status: "pending", exit_code: null, duration_ms: null }
+      { id: "build", command: "npm run build", status: "pending", exit_code: null, duration_ms: null },
+      { id: "playwright", command: "npm run archetype:playwright", status: "pending", exit_code: null, duration_ms: null }
     ],
     summary: {
       install: "pending",
       typecheck: "pending",
-      build: "pending"
+      build: "pending",
+      playwright: "pending"
     },
     blockers: [],
     warnings: ["Target frontend execution proof has not run yet."],
