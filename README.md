@@ -209,6 +209,7 @@ npm run mcp:contract
 npm run plugin:claude:contract
 npm run plugin:codex:contract
 npm run distribution:contract
+npm run install:contract
 npm run check
 ```
 

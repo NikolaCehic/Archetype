@@ -25,6 +25,30 @@ Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
 
+## Installability Certainty Audit
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/02-repo-package-cleanup.md`
+- `archetype-plugin-pivot-md/scopes/09-demo-and-examples.md`
+- `archetype-plugin-pivot-md/scopes/10-roadmap-and-acceptance.md`
+
+Lesson:
+
+- I could not honestly answer 100% yes while the repo only proved local-source execution. The missing proof was a clean consumer install from the packed npm artifact.
+- I also found unused LLM-provider source files that belonged to a previous hosted/product direction. Keeping them would make the codebase look like it still had a provider-backed orchestration layer, which violates the harness pivot.
+- Deleting source files was not sufficient because stale compiled files remained in `dist/` and would have shipped in the npm package. The build must clean `dist/` before compiling.
+- The fix is `scripts/run-install-contract.mjs`: it packs the package, installs the tarball into a clean consumer directory, runs the installed `archetype` CLI through init/generate/validate/summarize, starts the installed `archetype-mcp` server, exercises the no-clone `npx -p <tarball> archetype` quickstart, verifies plugin files are present, and asserts the loop completes under 60 seconds.
+- The fix is now part of `npm run check`, and the pivot audit explicitly fails if deleted provider source files or stale compiled provider files return.
+
+Deviation review:
+
+- No pivot-plan deviation was accepted. I did not run `npm publish`; this phase proves the package artifact that would be published and the local clean install path that users and agents depend on.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
 ## Phase 2 - CLI Contract
 
 Scope reference:

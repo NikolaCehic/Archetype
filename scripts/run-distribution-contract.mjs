@@ -22,6 +22,7 @@ for (const file of [
   "docs/demo-script.md",
   "RELEASE_NOTES.md",
   "scripts/run-demo.mjs",
+  "scripts/run-install-contract.mjs",
   "mcp.example.json",
   "plugins/claude-code/.mcp.json",
   "plugins/codex/.mcp.json"
@@ -35,8 +36,13 @@ assert(pkg.bin?.["archetype-mcp"] === "./dist/mcp/server.js", "package must expo
 assert(pkg.scripts?.prepare === "npm run build", "package must build for git installs.");
 assert(pkg.scripts?.["demo:run"], "package must expose demo:run.");
 assert(pkg.scripts?.["distribution:contract"], "package must expose distribution:contract.");
+assert(pkg.scripts?.["install:contract"], "package must expose install:contract.");
 assert((pkg.files ?? []).includes("plugins"), "package files must include plugin wrappers.");
 assert((pkg.files ?? []).includes("scripts"), "package files must include demo and contract scripts.");
+
+for (const deadFile of ["dist/llm/provider.js", "dist/llm/structuredOutput.js", "dist/llm/types.js"]) {
+  assert(!existsSync(path.join(root, deadFile)), `distribution must not include stale compiled provider code: ${deadFile}`);
+}
 
 const readme = readText("README.md");
 for (const expected of [
@@ -79,5 +85,5 @@ console.log(JSON.stringify({
     "docs/demo-script.md",
     "RELEASE_NOTES.md"
   ],
-  scripts: ["demo:run", "distribution:contract"]
+  scripts: ["demo:run", "distribution:contract", "install:contract"]
 }, null, 2));

@@ -33,6 +33,12 @@ npx . generate --input archetype.intake.json --out archetype-output --json
 
 ## Verify
 
+Prove the clean packaged install path, installed CLI, installed MCP server, plugin files, and 60-second setup contract:
+
+```bash
+npm run install:contract
+```
+
 ```bash
 npx . validate --out archetype-output --json
 npx . summarize --out archetype-output --json

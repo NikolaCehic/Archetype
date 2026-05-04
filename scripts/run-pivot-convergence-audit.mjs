@@ -59,7 +59,8 @@ const requiredHarnessPaths = [
   "docs/demo-script.md",
   "scripts/run-cli-contract.mjs",
   "scripts/run-mcp-contract.mjs",
-  "scripts/run-distribution-contract.mjs"
+  "scripts/run-distribution-contract.mjs",
+  "scripts/run-install-contract.mjs"
 ];
 
 for (const file of requiredHarnessPaths) {
@@ -94,6 +95,17 @@ for (const forbidden of [
 
 const sourceFiles = walk("src").filter((file) => file.endsWith(".ts"));
 assert(sourceFiles.length > 0, "Source files must exist.");
+
+for (const deadFile of [
+  "src/llm/provider.ts",
+  "src/llm/structuredOutput.ts",
+  "src/llm/types.ts",
+  "dist/llm/provider.js",
+  "dist/llm/structuredOutput.js",
+  "dist/llm/types.js"
+]) {
+  assert(!existsSync(path.join(root, deadFile)), `Unused LLM provider dead code still exists: ${deadFile}`);
+}
 
 console.log(JSON.stringify({
   status: "pass",
