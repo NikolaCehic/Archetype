@@ -119,3 +119,27 @@ Deviation review:
 Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
+## Phase 6 - Codex Plugin
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/08-codex-plugin.md`
+- `archetype-plugin-pivot-md/scopes/10-roadmap-and-acceptance.md`
+- `archetype-plugin-pivot-md/prompts/codex-phase-05-plugins.md`
+
+Lesson:
+
+- The Codex plugin should mirror the Claude workflow intent but use Codex-native structure: `.codex-plugin/plugin.json`, compact skills, MCP config, and no subagent layer unless Codex plugin scope adds one.
+- The generated `AGENTS.md` path remains important even with a plugin. The implement skill must start from `AGENTS.md` and the implementation contract so Codex can also work without plugin installation.
+- MCP-first plus CLI fallback is the right plugin pattern because it keeps the workflow usable in local repos, published package installs, and agent hosts that have not enabled MCP yet.
+- The Codex plugin contract test should stay separate from the Claude plugin test because the manifest shape, skill names, and host conventions differ.
+- Plugin package inclusion has to be validated by `npm pack --dry-run`; otherwise wrapper files can pass local tests while missing from distribution.
+
+Deviation review:
+
+- No pivot-plan deviation was accepted. Codex plugin work stayed wrapper-only and did not change core compiler, CLI, MCP tools, or generated output behavior.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation

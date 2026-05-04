@@ -37,11 +37,12 @@
     "mcp": "node dist/mcp/server.js",
     "mcp:contract": "npm run build && node scripts/run-mcp-contract.mjs",
     "plugin:claude:contract": "node scripts/run-claude-plugin-contract.mjs",
+    "plugin:codex:contract": "node scripts/run-codex-plugin-contract.mjs",
     "golden": "npm run build && node scripts/run-golden.mjs",
     "demo:generate": "npm run build && node dist/cli.js generate --input examples/saas-dashboard-intake.json --out tmp/archetype-output",
     "demo:verify": "npm run validate && npm run simulate && npm run write-target && npm run verify-target",
-    "test": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run golden",
-    "check": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run golden",
+    "test": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run plugin:codex:contract && npm run golden",
+    "check": "npm run cli:contract && npm run mcp:contract && npm run plugin:claude:contract && npm run plugin:codex:contract && npm run golden",
     "clean": "rm -rf dist tmp/archetype-output tmp/generated-frontend tmp/golden tmp/cli-contract tmp/mcp-contract"
   },
   "devDependencies": {

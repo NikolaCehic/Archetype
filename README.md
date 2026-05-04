@@ -170,6 +170,12 @@ Use ./archetype-output to implement the frontend. Follow AGENTS.md, implementati
 
 Plugin support is tracked in `archetype-plugin-pivot-md/scopes/08-codex-plugin.md`.
 
+Local Codex plugin wrapper:
+
+- `plugins/codex/.codex-plugin/plugin.json`
+- `plugins/codex/skills/`
+- `plugins/codex/.mcp.json`
+
 ## Examples
 
 - `examples/saas-dashboard-intake.json`
@@ -184,6 +190,7 @@ npm run smoke
 npm run cli:contract
 npm run mcp:contract
 npm run plugin:claude:contract
+npm run plugin:codex:contract
 npm run check
 ```
 
