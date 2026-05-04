@@ -1,20 +1,28 @@
 # Use Archetype With Claude Code
 
-Archetype gives Claude Code an implementation contract before code is written.
+Archetype should feel like one Claude Code workflow, not a sequence of user-managed commands.
 
-## Generate A Contract
-
-```bash
-npx . generate --input examples/saas-dashboard-intake.json --out archetype-output --json
-```
-
-## Ask Claude Code To Implement
+## Natural Front Door
 
 ```txt
-Use ./archetype-output to implement the frontend. Follow CLAUDE.md, implementation-contract.md, and verification-plan.md. Do not invent routes, screens, states, design tokens, data contracts, or product copy outside the contract.
+/archetype @docs/product-brief.md @screens/dashboard.png Build this frontend. Ask me what is missing, then implement and verify.
 ```
 
-Claude should read `experience/route-map.json`, `screens/screen-inventory.json`, `design-system/tokens.json`, and `frontend-agent-contract/implementation-rules.json` before writing UI code.
+Claude Code should:
+
+- read the imported `@` files itself
+- ask one compact set of missing-context questions only when needed
+- create `archetype.intake.json`
+- generate `archetype-output`
+- implement from the generated contract
+- verify the target frontend
+- patch or revise until verification is acceptable
+
+The user should not need to know `generate`, `validate`, `verify-target`, or which generated file to hand back to Claude Code.
+
+## Internal Contract Files
+
+When implementation starts, Claude Code reads `CLAUDE.md`, `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, `design-system/tokens.json`, and `frontend-agent-contract/implementation-rules.json`.
 
 ## Use The MCP Server
 

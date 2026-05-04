@@ -13,6 +13,8 @@ plugins/codex/
   .codex-plugin/
     plugin.json
   skills/
+    archetype/
+      SKILL.md
     archetype-blueprint/
       SKILL.md
     archetype-implement/
@@ -50,6 +52,18 @@ Core fields:
 ```
 
 ## Skills
+
+### `archetype`
+
+Use when the user wants a single natural-language Archetype workflow with `@` imported files and no command choreography.
+
+Workflow:
+
+1. Read all `@` imported files, folders, screenshots, and design notes.
+2. Ask one compact set of missing-context questions only when essential product, stack, flow, visual, backend, or verification facts are absent.
+3. Create or update `archetype.intake.json` with imported materials.
+4. Generate the contract package.
+5. Continue into implementation and verification without asking the user to choose internal commands.
 
 ### `archetype-blueprint`
 
@@ -127,12 +141,14 @@ npx @nikolacehic/archetype verify-target --out archetype-output --target .
 
 ```txt
 [ ] Codex plugin manifest exists.
+[ ] Natural-language `archetype` front door exists.
 [ ] Blueprint skill exists.
 [ ] Implement skill exists.
 [ ] Verify skill exists.
 [ ] Revise skill exists.
 [ ] MCP config exists.
 [ ] Skills include CLI fallback.
+[ ] Imported `@` files are treated as source materials.
 [ ] Generated AGENTS.md supports Codex even without plugin.
 ```
 

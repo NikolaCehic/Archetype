@@ -49,6 +49,29 @@ Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
 
+## Natural-Language Harness Front Door
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/07-claude-code-plugin.md`
+- `archetype-plugin-pivot-md/scopes/08-codex-plugin.md`
+- `archetype-plugin-pivot-md/scopes/10-roadmap-and-acceptance.md`
+
+Lesson:
+
+- A CLI-first explanation is still too much product friction. The user should not need to know the internal sequence of blueprint, generate, implement, validate, verify, or which generated file to hand back to Claude Code or Codex.
+- The correct harness surface is a single natural-language front door where the user writes intent and imports files with `@` references. The host agent reads those files, asks only missing-context questions, creates the intake, generates the contract, implements, verifies, and revises in one loop.
+- Imported `@` files must become first-class source materials, not loose prose. `archetype_create_intake` now accepts a `materials` array so the plugin can preserve imported briefs, screenshots, design files, and repo context as evidence.
+- Phase skills remain useful internally, but they are no longer the primary user experience. `archetype` is the front door; blueprint, implement, verify, and revise are subflows.
+
+Deviation review:
+
+- The pivot plan originally listed phase-specific skills but did not explicitly require the natural front door. I updated the pivot scopes and acceptance criteria because the previous shape was technically installable but not intuitive enough for the product goal.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
 ## Phase 2 - CLI Contract
 
 Scope reference:

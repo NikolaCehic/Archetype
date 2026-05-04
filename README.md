@@ -8,15 +8,19 @@ Instead of asking an agent to guess routes, screens, states, design tokens, data
 
 ## Quickstart
 
+With the Codex or Claude Code plugin installed, use Archetype as one natural-language workflow:
+
+```txt
+@Archetype @docs/product-brief.md @screens/dashboard.png Build this frontend. Ask me what is missing, then implement and verify.
+```
+
+The agent should read imported `@` files, ask only missing-context questions, generate the contract, implement from it, verify the target, and patch or revise without making you learn internal commands.
+
+CLI fallback:
+
 ```bash
 npx -y -p @nikolacehic/archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
 npx -y -p @nikolacehic/archetype archetype generate --input archetype.intake.json --out archetype-output --json
-```
-
-Then ask your coding agent:
-
-```txt
-Use ./archetype-output to implement the frontend. Follow AGENTS.md or CLAUDE.md and run verification before declaring completion.
 ```
 
 ## What It Does
@@ -39,7 +43,7 @@ Archetype compiles product intent into a frontend implementation package:
 ```txt
 Product brief / screenshots / brand notes / repo context
         ↓
-Archetype CLI or plugin
+Archetype plugin reads @files, asks missing questions, and calls CLI/MCP internally
         ↓
 archetype-output contract package
         ↓
@@ -136,16 +140,8 @@ Installation details are in `docs/install.md`.
 
 ## Use With Claude Code
 
-Generate an Archetype package:
-
-```bash
-npx . generate --input archetype.intake.json --out archetype-output --json
-```
-
-Then in Claude Code:
-
 ```txt
-Use ./archetype-output to implement the frontend. Follow CLAUDE.md, implementation-contract.md, and verification-plan.md.
+/archetype @docs/product-brief.md @screens/dashboard.png Build this frontend. Ask me what is missing, then implement and verify.
 ```
 
 Plugin support is tracked in `archetype-plugin-pivot-md/scopes/07-claude-code-plugin.md`.
@@ -161,16 +157,8 @@ Install notes: `docs/install-claude-code-plugin.md`.
 
 ## Use With Codex
 
-Generate an Archetype package:
-
-```bash
-npx . generate --input archetype.intake.json --out archetype-output --json
-```
-
-Then ask Codex:
-
 ```txt
-Use ./archetype-output to implement the frontend. Follow AGENTS.md, implementation-contract.md, and verification-plan.md.
+@Archetype @docs/product-brief.md @screens/dashboard.png Build this frontend. Ask me what is missing, then implement and verify.
 ```
 
 Plugin support is tracked in `archetype-plugin-pivot-md/scopes/08-codex-plugin.md`.

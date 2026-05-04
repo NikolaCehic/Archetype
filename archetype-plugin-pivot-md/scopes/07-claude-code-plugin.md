@@ -13,6 +13,8 @@ plugins/claude-code/
   .claude-plugin/
     plugin.json
   skills/
+    archetype/
+      SKILL.md
     blueprint/
       SKILL.md
     implement/
@@ -49,6 +51,22 @@ Core manifest fields:
 ```
 
 ## Skills
+
+### `/archetype`
+
+Purpose:
+
+```txt
+Natural-language front door that accepts user direction plus @imported files and runs blueprint, implementation, verification, and revision as one guided loop.
+```
+
+Workflow:
+
+1. Read all `@` imported files, folders, screenshots, and design notes.
+2. Ask one compact set of missing-context questions only when essential product, stack, flow, visual, backend, or verification facts are absent.
+3. Create or update `archetype.intake.json` with imported materials.
+4. Generate the contract package.
+5. Continue into implementation and verification without asking the user to choose internal commands.
 
 ### `/archetype:blueprint`
 
@@ -165,6 +183,7 @@ Example:
 
 ```txt
 [ ] Plugin manifest exists.
+[ ] Natural-language `/archetype` front door exists.
 [ ] Blueprint skill exists.
 [ ] Implement skill exists.
 [ ] Verify skill exists.
@@ -172,6 +191,7 @@ Example:
 [ ] Product architect subagent exists.
 [ ] Frontend contract reviewer subagent exists.
 [ ] Plugin can call Archetype CLI or MCP.
+[ ] Imported `@` files are treated as source materials.
 [ ] Plugin does not require workbench.
 ```
 

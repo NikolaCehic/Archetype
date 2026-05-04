@@ -29,6 +29,7 @@ function listFiles(dir) {
 const requiredFiles = [
   ".claude-plugin/plugin.json",
   ".mcp.json",
+  "skills/archetype/SKILL.md",
   "skills/blueprint/SKILL.md",
   "skills/implement/SKILL.md",
   "skills/verify/SKILL.md",
@@ -51,6 +52,11 @@ assert(manifest.repository === "https://github.com/NikolaCehic/Archetype", "Clau
 const mcp = readJson(".mcp.json");
 assert(mcp.mcpServers?.archetype?.command === "npx", "Claude plugin MCP config must use npx for published package execution.");
 assert(mcp.mcpServers.archetype.args.includes("archetype-mcp"), "Claude plugin MCP config must launch archetype-mcp.");
+
+const frontDoor = readText("skills/archetype/SKILL.md");
+for (const expected of ["@file", "Self-Contained Pipeline", "archetype_create_intake", "materials", "Ask at most six", "Do not end by telling the user what to tell Claude Code next"]) {
+  assert(frontDoor.includes(expected), `Claude front-door skill missing ${expected}.`);
+}
 
 const blueprint = readText("skills/blueprint/SKILL.md");
 for (const expected of ["archetype_create_intake", "archetype_generate_package", "archetype_summarize_package", "archetype_read_artifact", "npx -y -p @nikolacehic/archetype"]) {
@@ -90,6 +96,6 @@ console.log(JSON.stringify({
   status: "pass",
   pluginDir,
   files: requiredFiles.length,
-  skills: ["blueprint", "implement", "verify", "revise"],
+  skills: ["archetype", "blueprint", "implement", "verify", "revise"],
   agents: ["product-architect", "frontend-contract-reviewer"]
 }, null, 2));

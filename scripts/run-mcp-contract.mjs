@@ -1,5 +1,5 @@
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
@@ -130,6 +130,21 @@ try {
     existingRepoContext: "The target frontend should be deterministic and should not invent routes or screen states.",
     outputPath: intakePath,
     users: ["Marketing manager", "Growth analyst", "Workspace admin"],
+    materials: [
+      {
+        label: "@docs/product-brief.md",
+        type: "document",
+        path: "docs/product-brief.md",
+        content: "Analytics dashboard brief with onboarding, workspace switching, campaign reporting, and settings.",
+        notes: "Imported from an @file mention."
+      },
+      {
+        label: "@screens/dashboard.png",
+        type: "screenshot",
+        path: "screens/dashboard.png",
+        notes: "Dense dark dashboard screenshot with sidebar, metric cards, charts, tables, and filter controls."
+      }
+    ],
     goals: [
       "Generate a deterministic frontend implementation contract.",
       "Expose route, screen, design-system, and verification artifacts for coding agents."
@@ -138,6 +153,9 @@ try {
   assert(["success", "warning"].includes(createIntake.status), "create intake should succeed or warn.");
   assert(createIntake.intakePath === intakePath, "create intake should report the written intake path.");
   assert(existsSync(intakePath), "create intake should write intake JSON.");
+  assert(createIntake.materials >= 4, "create intake should preserve imported @file materials plus derived context materials.");
+  const createdIntake = JSON.parse(readFileSync(intakePath, "utf8"));
+  assert(createdIntake.materials.some((material) => material.label === "@screens/dashboard.png"), "intake should include imported screenshot material.");
 
   const unsafeGenerate = await expectToolError("archetype_generate_package", {
     inputPath: intakePath,

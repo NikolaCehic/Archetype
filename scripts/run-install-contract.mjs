@@ -133,8 +133,10 @@ try {
   for (const pluginFile of [
     "plugins/claude-code/.claude-plugin/plugin.json",
     "plugins/claude-code/.mcp.json",
+    "plugins/claude-code/skills/archetype/SKILL.md",
     "plugins/codex/.codex-plugin/plugin.json",
     "plugins/codex/.mcp.json",
+    "plugins/codex/skills/archetype/SKILL.md",
     "scripts/run-demo.mjs"
   ]) {
     assert(existsSync(path.join(packageRoot, pluginFile)), `Installed package missing ${pluginFile}.`);

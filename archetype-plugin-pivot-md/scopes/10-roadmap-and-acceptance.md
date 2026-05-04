@@ -91,6 +91,7 @@ Tasks:
 
 ```txt
 [ ] Add Claude plugin manifest.
+[ ] Add natural-language archetype front door.
 [ ] Add blueprint skill.
 [ ] Add implement skill.
 [ ] Add verify skill.
@@ -112,6 +113,7 @@ Tasks:
 
 ```txt
 [ ] Add Codex plugin manifest.
+[ ] Add natural-language archetype front door.
 [ ] Add archetype-blueprint skill.
 [ ] Add archetype-implement skill.
 [ ] Add archetype-verify skill.
@@ -156,6 +158,7 @@ Users can install/use Archetype without cloning and reverse-engineering the repo
 [ ] Codex blueprint skill works.
 [ ] Codex implement skill works.
 [ ] Codex verify skill works.
+[ ] Natural-language `@Archetype @file...` flow works without user command choreography.
 [ ] MCP server exposes generate/validate/read/verify tools.
 [ ] Generated output includes AGENTS.md.
 [ ] Generated output includes CLAUDE.md.

@@ -29,6 +29,7 @@ function listFiles(dir) {
 const requiredFiles = [
   ".codex-plugin/plugin.json",
   ".mcp.json",
+  "skills/archetype/SKILL.md",
   "skills/archetype-blueprint/SKILL.md",
   "skills/archetype-implement/SKILL.md",
   "skills/archetype-verify/SKILL.md",
@@ -51,6 +52,11 @@ assert(manifest.interface?.displayName === "Archetype", "Codex plugin manifest d
 const mcp = readJson(".mcp.json");
 assert(mcp.mcpServers?.archetype?.command === "npx", "Codex plugin MCP config must use npx for published package execution.");
 assert(mcp.mcpServers.archetype.args.includes("archetype-mcp"), "Codex plugin MCP config must launch archetype-mcp.");
+
+const frontDoor = readText("skills/archetype/SKILL.md");
+for (const expected of ["@file", "Self-Contained Pipeline", "archetype_create_intake", "materials", "Ask at most six", "Do not end by telling the user what to tell Codex next"]) {
+  assert(frontDoor.includes(expected), `Codex front-door skill missing ${expected}.`);
+}
 
 const blueprint = readText("skills/archetype-blueprint/SKILL.md");
 for (const expected of ["archetype_create_intake", "archetype_generate_package", "archetype_summarize_package", "archetype_read_artifact", "npx -y -p @nikolacehic/archetype"]) {
@@ -81,5 +87,5 @@ console.log(JSON.stringify({
   status: "pass",
   pluginDir,
   files: requiredFiles.length,
-  skills: ["archetype-blueprint", "archetype-implement", "archetype-verify", "archetype-revise"]
+  skills: ["archetype", "archetype-blueprint", "archetype-implement", "archetype-verify", "archetype-revise"]
 }, null, 2));

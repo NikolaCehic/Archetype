@@ -9,6 +9,8 @@ import {
   type McpToolDefinition
 } from "./shared";
 
+const SOURCE_MATERIAL_TYPES = new Set(["document", "code", "design_file", "screenshot", "brand", "other"]);
+
 function inferStack(targetStack: string): FrontendStackInput {
   const normalized = targetStack.toLowerCase();
   const stack: FrontendStackInput = {};
@@ -36,6 +38,29 @@ function brandAttributes(brandNotes: string): string[] {
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 12);
+}
+
+function sourceMaterialType(value: unknown): SourceMaterialInput["type"] {
+  return typeof value === "string" && SOURCE_MATERIAL_TYPES.has(value) ? value as SourceMaterialInput["type"] : "other";
+}
+
+function sourceMaterialInputs(value: unknown): SourceMaterialInput[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item, index) => {
+    const record = asRecord(item);
+    const pathValue = stringValue(record, "path");
+    const label = stringValue(record, "label") || pathValue || `Imported material ${index + 1}`;
+    const content = stringValue(record, "content");
+    const notes = stringValue(record, "notes");
+    return {
+      id: stringValue(record, "id") || undefined,
+      label,
+      type: sourceMaterialType(record.type),
+      content: content || undefined,
+      notes: notes || undefined,
+      path: pathValue || undefined
+    };
+  }).filter((material) => material.label && (material.content || material.notes || material.path));
 }
 
 export const createIntakeTool: McpToolDefinition = {
@@ -77,6 +102,22 @@ export const createIntakeTool: McpToolDefinition = {
         type: "array",
         items: { type: "string" },
         description: "Optional target user roles."
+      },
+      materials: {
+        type: "array",
+        description: "Optional source materials imported by the agent from @files, screenshots, repo paths, design notes, or attached context.",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            label: { type: "string" },
+            type: { type: "string", enum: ["document", "code", "design_file", "screenshot", "brand", "other"] },
+            content: { type: "string" },
+            notes: { type: "string" },
+            path: { type: "string" }
+          },
+          required: ["label", "type"]
+        }
       }
     },
     required: ["brief"]
@@ -92,19 +133,20 @@ export const createIntakeTool: McpToolDefinition = {
     const outputPath = resolveDeclaredPath(record.outputPath, "archetype.intake.json", "outputPath");
     const goals = arrayValue(record, "goals");
     const users = arrayValue(record, "users");
+    const importedMaterials = sourceMaterialInputs(record.materials);
 
     const missingInputs = [
       !targetStack ? "targetStack" : "",
       !brandNotes ? "brandNotes" : "",
-      !existingRepoContext ? "existingRepoContext" : ""
+      !existingRepoContext && importedMaterials.length === 0 ? "existingRepoContext or materials" : ""
     ].filter(Boolean);
     const riskFlags = [
       !targetStack ? "Target stack was not provided; generated contracts will remain framework-agnostic." : "",
-      !existingRepoContext ? "No existing repository context was provided; migration constraints may be incomplete." : "",
+      !existingRepoContext && importedMaterials.length === 0 ? "No existing repository context or imported source materials were provided; migration constraints may be incomplete." : "",
       !brandNotes ? "No brand notes were provided; visual direction will be inferred from the brief." : ""
     ].filter(Boolean);
 
-    const materials: SourceMaterialInput[] = [];
+    const materials: SourceMaterialInput[] = [...importedMaterials];
     if (existingRepoContext) {
       materials.push({
         id: "existing_repo_context",
@@ -128,6 +170,9 @@ export const createIntakeTool: McpToolDefinition = {
       brief,
       brandNotes ? `Brand notes: ${brandNotes}` : "",
       existingRepoContext ? `Existing repo context: ${existingRepoContext}` : "",
+      importedMaterials.length > 0
+        ? `Imported @ materials:\n${importedMaterials.map((material) => `- ${material.label} (${material.type})${material.path ? ` at ${material.path}` : ""}${material.notes ? `: ${material.notes}` : ""}`).join("\n")}`
+        : "",
       targetStack ? `Target stack: ${targetStack}` : ""
     ].filter(Boolean).join("\n\n");
 
@@ -154,6 +199,7 @@ export const createIntakeTool: McpToolDefinition = {
       intakePath: outputPath,
       missingInputs,
       riskFlags,
+      materials: materials.length,
       nextTool: "archetype_generate_package"
     };
   }

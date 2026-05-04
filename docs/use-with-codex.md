@@ -1,20 +1,28 @@
 # Use Archetype With Codex
 
-Archetype gives Codex an implementation contract before code is written.
+Archetype should feel like one Codex workflow, not a sequence of user-managed commands.
 
-## Generate A Contract
-
-```bash
-npx . generate --input examples/saas-dashboard-intake.json --out archetype-output --json
-```
-
-## Ask Codex To Implement
+## Natural Front Door
 
 ```txt
-Use ./archetype-output to implement the frontend. Follow AGENTS.md, implementation-contract.md, and verification-plan.md. Do not invent routes, screens, states, design tokens, data contracts, or product copy outside the contract.
+@Archetype @docs/product-brief.md @screens/dashboard.png Build this frontend. Ask me what is missing, then implement and verify.
 ```
 
-Codex should read `experience/route-map.json`, `screens/screen-inventory.json`, `design-system/tokens.json`, and `frontend-agent-contract/implementation-rules.json` before writing UI code.
+Codex should:
+
+- read the imported `@` files itself
+- ask one compact set of missing-context questions only when needed
+- create `archetype.intake.json`
+- generate `archetype-output`
+- implement from the generated contract
+- verify the target frontend
+- patch or revise until verification is acceptable
+
+The user should not need to know `generate`, `validate`, `verify-target`, or which generated file to hand back to Codex.
+
+## Internal Contract Files
+
+When implementation starts, Codex reads `AGENTS.md`, `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, `design-system/tokens.json`, and `frontend-agent-contract/implementation-rules.json`.
 
 ## Use The MCP Server
 
