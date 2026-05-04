@@ -1,0 +1,50 @@
+# Demo Script
+
+## Thesis
+
+Brief -> Archetype contract -> coding agent implementation -> verification.
+
+The coding agent no longer has to guess the frontend architecture.
+
+## Setup
+
+```bash
+npm install
+npm run build
+```
+
+## Run The Demo
+
+```bash
+npm run demo:run
+```
+
+The demo writes:
+
+- `tmp/demo/archetype.intake.json`
+- `tmp/demo/archetype-output/`
+- `tmp/demo/generated-frontend/`
+- `tmp/demo/demo-summary.json`
+
+## Narration
+
+1. Start from the SaaS dashboard brief.
+2. Generate `archetype-output`.
+3. Show `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, and `design-system/tokens.json`.
+4. Materialize the target frontend scaffold.
+5. Run verification against the generated contract.
+6. Explain warnings as production integration gaps, not compiler failure.
+
+## Agent Prompt
+
+For Codex:
+
+```txt
+Use ./archetype-output to implement the frontend. Follow AGENTS.md and implementation-contract.md. Do not invent routes, states, tokens, or product copy outside the contract.
+```
+
+For Claude Code:
+
+```txt
+Use ./archetype-output to implement the frontend. Follow CLAUDE.md and implementation-contract.md. Run verification before declaring completion.
+```

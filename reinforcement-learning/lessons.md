@@ -143,3 +143,27 @@ Deviation review:
 Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
+## Phase 7 - Distribution
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/09-demo-and-examples.md`
+- `archetype-plugin-pivot-md/scopes/10-roadmap-and-acceptance.md`
+- `archetype-plugin-pivot-md/scopes/11-readme-rewrite.md`
+
+Lesson:
+
+- Distribution is not only package metadata. Users need a published-package path, a local-source path, MCP startup, plugin install notes, a demo script, and release notes.
+- Because `dist/` is ignored, the package needs `prepare: npm run build` so git installs and package preparation produce runnable bins.
+- `mcp.example.json` should default to the published package command. Local source paths belong in docs, not the default config.
+- The demo has to execute the full loop: init, generate, validate, summarize, write target, and verify target. A narration-only demo would not prove the harness works.
+- Distribution docs need a contract test because docs and wrapper config can drift without breaking TypeScript.
+
+Deviation review:
+
+- No pivot-plan deviation was accepted. I documented publish-ready commands and local install paths, but did not run `npm publish` because publishing requires registry credentials and an explicit release decision.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation

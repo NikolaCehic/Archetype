@@ -9,9 +9,8 @@ Instead of asking an agent to guess routes, screens, states, design tokens, data
 ## Quickstart
 
 ```bash
-npm install
-npm run build
-npx . generate --input examples/saas-dashboard-intake.json --out archetype-output --json
+npx -y -p @nikolacehic/archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
+npx -y -p @nikolacehic/archetype archetype generate --input archetype.intake.json --out archetype-output --json
 ```
 
 Then ask your coding agent:
@@ -50,6 +49,8 @@ Archetype verifies the implementation against the contract
 ```
 
 ## CLI
+
+Install paths are in `docs/install.md`.
 
 Create a starter intake:
 
@@ -113,6 +114,8 @@ The server exposes deterministic tools for agent hosts:
 
 See `docs/use-with-mcp.md` and `mcp.example.json`.
 
+Installation details are in `docs/install.md`.
+
 ## What Archetype Generates
 
 `archetype-output/` includes:
@@ -154,6 +157,8 @@ Local Claude Code plugin wrapper:
 - `plugins/claude-code/agents/`
 - `plugins/claude-code/.mcp.json`
 
+Install notes: `docs/install-claude-code-plugin.md`.
+
 ## Use With Codex
 
 Generate an Archetype package:
@@ -176,6 +181,18 @@ Local Codex plugin wrapper:
 - `plugins/codex/skills/`
 - `plugins/codex/.mcp.json`
 
+Install notes: `docs/install-codex-plugin.md`.
+
+## Demo
+
+Run the reproducible demo:
+
+```bash
+npm run demo:run
+```
+
+Narration and expected artifacts are in `docs/demo-script.md`.
+
 ## Examples
 
 - `examples/saas-dashboard-intake.json`
@@ -191,7 +208,10 @@ npm run cli:contract
 npm run mcp:contract
 npm run plugin:claude:contract
 npm run plugin:codex:contract
+npm run distribution:contract
 npm run check
 ```
+
+Release notes live in `RELEASE_NOTES.md`.
 
 The pivot reference lives in `archetype-plugin-pivot-md/`. That folder is the source of truth for the agent-harness direction.

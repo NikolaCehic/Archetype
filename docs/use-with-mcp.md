@@ -19,7 +19,20 @@ npm run mcp
 
 ## MCP Config
 
-Use `mcp.example.json` as the local config template:
+Use `mcp.example.json` as the package config template:
+
+```json
+{
+  "mcpServers": {
+    "archetype": {
+      "command": "npx",
+      "args": ["-y", "-p", "@nikolacehic/archetype", "archetype-mcp"]
+    }
+  }
+}
+```
+
+Local source variant:
 
 ```json
 {
