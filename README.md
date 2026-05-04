@@ -198,11 +198,15 @@ Then use:
 Installed Claude Code plugin surface:
 
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/.claude-plugin/plugin.json`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/commands/archetype.md`
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/skills/`
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/agents/`
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/.mcp.json`
+- `~/.claude/skills/archetype/SKILL.md`
 
 Install notes: `docs/install-claude-code-plugin.md`.
+
+The Claude Code installer writes both the plugin surface and `~/.claude/skills/archetype/`, then installs/enables `archetype@archetype-local` when the `claude` CLI is available.
 
 ## Use With Codex
 

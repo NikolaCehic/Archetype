@@ -29,6 +29,7 @@ function listFiles(dir) {
 const requiredFiles = [
   ".claude-plugin/plugin.json",
   ".mcp.json",
+  "commands/archetype.md",
   "skills/archetype/SKILL.md",
   "skills/blueprint/SKILL.md",
   "skills/implement/SKILL.md",
@@ -63,6 +64,11 @@ assert(frontDoor.includes("test-first/test-first-contract.json"), "Claude front-
 assert(frontDoor.includes("verification/playwright-verification-contract.json"), "Claude front-door skill must read the Playwright verification contract.");
 assert(frontDoor.includes("verification/playwright-evidence.json"), "Claude front-door skill must inspect Playwright evidence.");
 assert(!frontDoor.includes("Ask me what is missing, then build and verify"), "Claude front-door skill must not require prompt choreography.");
+
+const slashCommand = readText("commands/archetype.md");
+for (const expected of ["description:", "$ARGUMENTS", "archetype.intake.json", "archetype-output", "test-first contract", "Playwright", "Do not ask the user to run"]) {
+  assert(slashCommand.includes(expected), `Claude /archetype command missing ${expected}.`);
+}
 
 const blueprint = readText("skills/blueprint/SKILL.md");
 for (const expected of ["archetype_create_intake", "archetype_generate_package", "archetype_summarize_package", "archetype_read_artifact", "npx --yes --package github:NikolaCehic/Archetype"]) {

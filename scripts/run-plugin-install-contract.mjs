@@ -71,11 +71,19 @@ function assertInstalledHome(homeDir, label) {
   const claudeMarketplace = readJson(path.join(claudeMarketplaceRoot, ".claude-plugin", "marketplace.json"));
   assert(claudeMarketplace.plugins.some((plugin) => plugin.name === "archetype" && plugin.source === "./plugins/archetype"), `${label}: Claude marketplace should point at ./plugins/archetype.`);
   assert(existsSync(path.join(claudePlugin, ".claude-plugin", "plugin.json")), `${label}: Claude install missing root manifest.`);
+  assert(!existsSync(path.join(claudePlugin, ".claude-plugin", "marketplace.json")), `${label}: Claude plugin install should not include a nested marketplace manifest.`);
   assert(existsSync(path.join(claudePlugin, ".mcp.json")), `${label}: Claude install missing MCP config.`);
   assert(readJson(path.join(claudePlugin, ".mcp.json")).mcpServers?.archetype?.args?.includes("github:NikolaCehic/Archetype"), `${label}: Claude MCP config should use the GitHub package source until npm publish.`);
+  assert(existsSync(path.join(claudePlugin, "commands", "archetype.md")), `${label}: Claude install missing /archetype slash command.`);
   assert(existsSync(path.join(claudePlugin, "skills", "archetype", "SKILL.md")), `${label}: Claude install missing front-door skill.`);
   assert(existsSync(path.join(claudePlugin, "agents", "product-architect.md")), `${label}: Claude install missing product architect agent.`);
   assert(existsSync(path.join(claudePlugin, "docs", "quickstart.md")), `${label}: Claude install missing quickstart docs.`);
+  assert(existsSync(path.join(homeDir, ".claude", "skills", "archetype", "SKILL.md")), `${label}: Claude home skills missing /archetype front-door skill.`);
+  assert(existsSync(path.join(homeDir, ".claude", "skills", "archetype-blueprint", "SKILL.md")), `${label}: Claude home skills missing blueprint skill.`);
+  assert(existsSync(path.join(homeDir, ".claude", "skills", "archetype-implement", "SKILL.md")), `${label}: Claude home skills missing implementation skill.`);
+  assert(existsSync(path.join(homeDir, ".claude", "skills", "archetype-verify", "SKILL.md")), `${label}: Claude home skills missing verification skill.`);
+  assert(existsSync(path.join(homeDir, ".claude", "skills", "archetype-revise", "SKILL.md")), `${label}: Claude home skills missing revision skill.`);
+  assert(readFileSync(path.join(homeDir, ".claude", "skills", "archetype", "SKILL.md"), "utf8").includes("/archetype"), `${label}: Claude front-door skill should document /archetype.`);
 }
 
 function packTarball() {
@@ -128,6 +136,7 @@ try {
     ".claude-plugin/plugin.json",
     ".mcp.json",
     ".agents/plugins/marketplace.json",
+    "plugins/claude-code/commands/archetype.md",
     "skills/archetype/SKILL.md",
     "skills/implement/SKILL.md",
     "agents/product-architect.md",

@@ -18,6 +18,9 @@ This writes:
 - `~/.agents/plugins/marketplace.json` for Codex plugin discovery
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/` for Claude Code
 - `~/.claude/plugins/marketplaces/archetype-local/.claude-plugin/marketplace.json` for Claude Code marketplace discovery
+- `~/.claude/skills/archetype/` for the Claude Code `/archetype` front door
+
+When the `claude` CLI is available, the installer also registers `archetype-local` and installs/enables `archetype@archetype-local`.
 
 Then start a fresh Codex or Claude Code session.
 

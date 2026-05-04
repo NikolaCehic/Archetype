@@ -145,6 +145,7 @@ try {
     "dist/install/pluginInstaller.js",
     "plugins/claude-code/.claude-plugin/plugin.json",
     "plugins/claude-code/.mcp.json",
+    "plugins/claude-code/commands/archetype.md",
     "plugins/claude-code/skills/archetype/SKILL.md",
     "plugins/codex/.codex-plugin/plugin.json",
     "plugins/codex/.mcp.json",

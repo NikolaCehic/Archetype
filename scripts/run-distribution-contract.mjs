@@ -42,6 +42,7 @@ for (const file of [
   "agents/product-architect.md",
   "mcp.example.json",
   "plugins/claude-code/.mcp.json",
+  "plugins/claude-code/commands/archetype.md",
   "plugins/codex/.mcp.json"
 ]) {
   assert(existsSync(path.join(root, file)), `Missing distribution artifact: ${file}`);
@@ -96,7 +97,9 @@ for (const expected of [
   "docs/demo-script.md",
   "~/.codex/skills/archetype",
   "~/plugins/archetype",
-  "~/.claude/plugins/marketplaces/archetype-local/plugins/archetype"
+  "~/.claude/plugins/marketplaces/archetype-local/plugins/archetype",
+  "~/.claude/skills/archetype",
+  "archetype@archetype-local"
 ]) {
   assert(readme.includes(expected), `README missing ${expected}.`);
 }

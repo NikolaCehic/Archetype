@@ -11,13 +11,26 @@ The installer writes a local Claude Code marketplace plus the plugin surface:
 - `~/.claude/plugins/marketplaces/archetype-local/.claude-plugin/marketplace.json`
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/.claude-plugin/plugin.json`
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/.mcp.json`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/commands/archetype.md`
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/skills/archetype/SKILL.md`
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/skills/blueprint/SKILL.md`
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/skills/implement/SKILL.md`
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/skills/verify/SKILL.md`
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/skills/revise/SKILL.md`
+- `~/.claude/skills/archetype/SKILL.md`
+- `~/.claude/skills/archetype-blueprint/SKILL.md`
+- `~/.claude/skills/archetype-implement/SKILL.md`
+- `~/.claude/skills/archetype-verify/SKILL.md`
+- `~/.claude/skills/archetype-revise/SKILL.md`
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/agents/product-architect.md`
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/agents/frontend-contract-reviewer.md`
+
+When the `claude` CLI is available, the installer also runs:
+
+```bash
+claude plugin marketplace add ~/.claude/plugins/marketplaces/archetype-local
+claude plugin install archetype@archetype-local
+```
 
 For local source testing:
 

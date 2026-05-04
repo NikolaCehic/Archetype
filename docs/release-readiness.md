@@ -8,7 +8,7 @@ Release readiness means a user or AI agent can install Archetype into Codex and 
 npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json
 ```
 
-This is the primary 60-second setup path. It writes the Codex home-local marketplace, the Claude Code local marketplace, the root plugin manifests, skills, agents, and MCP config.
+This is the primary 60-second setup path. It writes the Codex home-local marketplace, the Claude Code local marketplace, direct Codex and Claude Code skills, slash command files, agents, and MCP config. When the `claude` CLI is available, it also installs/enables `archetype@archetype-local`.
 
 ## Doctor
 

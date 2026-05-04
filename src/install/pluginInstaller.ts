@@ -1,4 +1,5 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -71,6 +72,31 @@ const CODEX_SKILL_COPY_ENTRIES = [
   { source: path.join("plugins", "codex", "skills", "archetype-implement"), destinationName: "archetype-implement" },
   { source: path.join("plugins", "codex", "skills", "archetype-verify"), destinationName: "archetype-verify" },
   { source: path.join("plugins", "codex", "skills", "archetype-revise"), destinationName: "archetype-revise" }
+];
+
+const CLAUDE_PLUGIN_COPY_ENTRIES = [
+  { source: path.join("plugins", "claude-code", ".claude-plugin"), destination: ".claude-plugin" },
+  { source: path.join("plugins", "claude-code", ".mcp.json"), destination: ".mcp.json" },
+  { source: path.join("plugins", "claude-code", "commands"), destination: "commands" },
+  { source: path.join("plugins", "claude-code", "skills"), destination: "skills" },
+  { source: path.join("plugins", "claude-code", "agents"), destination: "agents" },
+  { source: path.join("plugins", "claude-code", "assets"), destination: "assets" },
+  { source: "README.md", destination: "README.md" },
+  { source: "LICENSE", destination: "LICENSE" },
+  { source: path.join("docs", "quickstart.md"), destination: path.join("docs", "quickstart.md") },
+  { source: path.join("docs", "agent-lifecycle.md"), destination: path.join("docs", "agent-lifecycle.md") },
+  { source: path.join("docs", "install-codex-plugin.md"), destination: path.join("docs", "install-codex-plugin.md") },
+  { source: path.join("docs", "install-claude-code-plugin.md"), destination: path.join("docs", "install-claude-code-plugin.md") },
+  { source: path.join("docs", "release-readiness.md"), destination: path.join("docs", "release-readiness.md") },
+  { source: path.join("docs", "use-with-mcp.md"), destination: path.join("docs", "use-with-mcp.md") }
+];
+
+const CLAUDE_SKILL_COPY_ENTRIES = [
+  { source: path.join("plugins", "claude-code", "skills", "archetype"), destinationName: "archetype" },
+  { source: path.join("plugins", "claude-code", "skills", "blueprint"), destinationName: "archetype-blueprint" },
+  { source: path.join("plugins", "claude-code", "skills", "implement"), destinationName: "archetype-implement" },
+  { source: path.join("plugins", "claude-code", "skills", "verify"), destinationName: "archetype-verify" },
+  { source: path.join("plugins", "claude-code", "skills", "revise"), destinationName: "archetype-revise" }
 ];
 
 function readJsonSafe<T>(filePath: string, fallback: T): T {
@@ -164,6 +190,104 @@ function copyCodexSkills(
     cpSync(source, destination, { recursive: true, force: true });
     addAction(actions, "codex", "copy_codex_skill", destination, "written", `Copied ${entry.destinationName} into Codex skills.`, source);
   }
+}
+
+function copyMappedEntries(
+  target: ConcreteTarget,
+  packageRoot: string,
+  destinationRoot: string,
+  entries: Array<{ source: string; destination: string }>,
+  actions: InstallAction[],
+  blockers: string[],
+  dryRun: boolean
+): void {
+  for (const entry of entries) {
+    const source = path.join(packageRoot, entry.source);
+    const destination = path.join(destinationRoot, entry.destination);
+    if (!existsSync(source)) {
+      blockers.push(`Missing package plugin source: ${entry.source}`);
+      addAction(actions, target, "copy_plugin_surface", destination, "failed", `${entry.source} is missing from the package.`, source);
+      continue;
+    }
+
+    if (dryRun) {
+      addAction(actions, target, "copy_plugin_surface", destination, "planned", `Would copy ${entry.source}.`, source);
+      continue;
+    }
+
+    mkdirSync(path.dirname(destination), { recursive: true });
+    rmSync(destination, { recursive: true, force: true });
+    cpSync(source, destination, { recursive: true, force: true });
+    addAction(actions, target, "copy_plugin_surface", destination, "written", `Copied ${entry.source}.`, source);
+  }
+}
+
+function copyClaudeSkills(
+  packageRoot: string,
+  claudeSkillsRoot: string,
+  actions: InstallAction[],
+  blockers: string[],
+  dryRun: boolean
+): void {
+  for (const entry of CLAUDE_SKILL_COPY_ENTRIES) {
+    const source = path.join(packageRoot, entry.source);
+    const destination = path.join(claudeSkillsRoot, entry.destinationName);
+    if (!existsSync(source)) {
+      blockers.push(`Missing Claude skill source: ${entry.source}`);
+      addAction(actions, "claude", "copy_claude_skill", destination, "failed", `${entry.source} is missing from the package.`, source);
+      continue;
+    }
+
+    if (dryRun) {
+      addAction(actions, "claude", "copy_claude_skill", destination, "planned", `Would copy ${entry.destinationName} into Claude skills.`, source);
+      continue;
+    }
+
+    mkdirSync(path.dirname(destination), { recursive: true });
+    rmSync(destination, { recursive: true, force: true });
+    cpSync(source, destination, { recursive: true, force: true });
+    addAction(actions, "claude", "copy_claude_skill", destination, "written", `Copied ${entry.destinationName} into Claude skills.`, source);
+  }
+}
+
+function tryRunClaudePluginCommand(
+  args: string[],
+  operation: string,
+  destination: string,
+  actions: InstallAction[],
+  warnings: string[],
+  dryRun: boolean,
+  canRun: boolean
+): void {
+  if (dryRun) {
+    addAction(actions, "claude", operation, destination, "planned", `Would run claude ${args.join(" ")}.`);
+    return;
+  }
+
+  if (!canRun) {
+    addAction(actions, "claude", operation, destination, "skipped", "Skipped Claude Code CLI mutation because --home is not the active user home.");
+    return;
+  }
+
+  const result = spawnSync("claude", args, {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+
+  if (result.error) {
+    warnings.push(`Claude Code CLI is unavailable for ${operation}: ${result.error.message}`);
+    addAction(actions, "claude", operation, destination, "skipped", `Claude Code CLI unavailable: ${result.error.message}`);
+    return;
+  }
+
+  if (result.status !== 0) {
+    const detail = (result.stderr || result.stdout || `claude exited with ${result.status}`).trim();
+    warnings.push(`Claude Code ${operation} did not complete automatically: ${detail}`);
+    addAction(actions, "claude", operation, destination, "skipped", detail);
+    return;
+  }
+
+  addAction(actions, "claude", operation, destination, "written", (result.stdout || `Ran claude ${args.join(" ")}.`).trim());
 }
 
 function codexMarketplaceEntry(): Record<string, unknown> {
@@ -305,7 +429,12 @@ export function installAgentPlugins(options: InstallOptions): PluginInstallRepor
   if (targets.includes("claude")) {
     const marketplaceRoot = writeClaudeMarketplace(homeDir, actions, dryRun);
     const claudePluginRoot = path.join(marketplaceRoot, "plugins", "archetype");
-    copyPluginSurface("claude", packageRoot, claudePluginRoot, actions, blockers, dryRun);
+    const shouldRunClaudeCli = path.resolve(homeDir) === path.resolve(os.homedir());
+    copyMappedEntries("claude", packageRoot, claudePluginRoot, CLAUDE_PLUGIN_COPY_ENTRIES, actions, blockers, dryRun);
+    copyClaudeSkills(packageRoot, path.join(homeDir, ".claude", "skills"), actions, blockers, dryRun);
+    tryRunClaudePluginCommand(["plugin", "marketplace", "add", marketplaceRoot], "register_claude_marketplace", marketplaceRoot, actions, warnings, dryRun, shouldRunClaudeCli);
+    tryRunClaudePluginCommand(["plugin", "install", "archetype@archetype-local"], "install_claude_plugin", "archetype@archetype-local", actions, warnings, dryRun, shouldRunClaudeCli);
+    tryRunClaudePluginCommand(["plugin", "update", "archetype@archetype-local"], "update_claude_plugin", "archetype@archetype-local", actions, warnings, dryRun, shouldRunClaudeCli);
   }
 
   if (dryRun) warnings.push("Dry run only: no plugin files were written.");
