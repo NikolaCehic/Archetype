@@ -45,16 +45,26 @@ function readJson(filePath) {
 
 function assertInstalledHome(homeDir, label) {
   const codexPlugin = path.join(homeDir, "plugins", "archetype");
+  const codexNativePlugin = path.join(homeDir, ".codex", "plugins", "archetype");
+  const codexSkills = path.join(homeDir, ".codex", "skills");
   const codexMarketplacePath = path.join(homeDir, ".agents", "plugins", "marketplace.json");
   const codexMarketplace = readJson(codexMarketplacePath);
   const codexEntry = codexMarketplace.plugins.find((plugin) => plugin.name === "archetype");
   assert(codexEntry?.source?.path === "./plugins/archetype", `${label}: Codex marketplace should point at ./plugins/archetype.`);
   assert(codexEntry?.policy?.installation === "INSTALLED_BY_DEFAULT", `${label}: Codex marketplace should install Archetype by default.`);
   assert(existsSync(path.join(codexPlugin, ".codex-plugin", "plugin.json")), `${label}: Codex install missing root manifest.`);
+  assert(existsSync(path.join(codexNativePlugin, ".codex-plugin", "plugin.json")), `${label}: Codex native plugin install missing root manifest.`);
   assert(existsSync(path.join(codexPlugin, ".mcp.json")), `${label}: Codex install missing MCP config.`);
+  assert(existsSync(path.join(codexNativePlugin, ".mcp.json")), `${label}: Codex native plugin install missing MCP config.`);
   assert(readJson(path.join(codexPlugin, ".mcp.json")).mcpServers?.archetype?.args?.includes("github:NikolaCehic/Archetype"), `${label}: Codex MCP config should use the GitHub package source until npm publish.`);
   assert(existsSync(path.join(codexPlugin, "skills", "archetype", "SKILL.md")), `${label}: Codex install missing front-door skill.`);
   assert(existsSync(path.join(codexPlugin, "skills", "implement", "SKILL.md")), `${label}: Codex install missing implementation skill.`);
+  assert(existsSync(path.join(codexSkills, "archetype", "SKILL.md")), `${label}: Codex home skills missing front-door skill.`);
+  assert(existsSync(path.join(codexSkills, "archetype-blueprint", "SKILL.md")), `${label}: Codex home skills missing blueprint skill.`);
+  assert(existsSync(path.join(codexSkills, "archetype-implement", "SKILL.md")), `${label}: Codex home skills missing implementation skill.`);
+  assert(existsSync(path.join(codexSkills, "archetype-verify", "SKILL.md")), `${label}: Codex home skills missing verification skill.`);
+  assert(existsSync(path.join(codexSkills, "archetype-revise", "SKILL.md")), `${label}: Codex home skills missing revision skill.`);
+  assert(readFileSync(path.join(codexSkills, "archetype", "SKILL.md"), "utf8").includes("$archetype"), `${label}: Codex front-door skill should document $archetype.`);
 
   const claudeMarketplaceRoot = path.join(homeDir, ".claude", "plugins", "marketplaces", "archetype-local");
   const claudePlugin = path.join(claudeMarketplaceRoot, "plugins", "archetype");
@@ -94,6 +104,7 @@ try {
   assert(dry.status === "warning", "Dry-run install should warn that no files were written.");
   assert(dry.actions.every((action) => action.status === "planned"), "Dry-run install should only contain planned actions.");
   assert(!existsSync(path.join(dryHome, "plugins")), "Dry-run install must not write Codex plugin files.");
+  assert(!existsSync(path.join(dryHome, ".codex")), "Dry-run install must not write Codex native plugin or skill files.");
   assert(!existsSync(path.join(dryHome, ".claude")), "Dry-run install must not write Claude plugin files.");
 
   const source = runJson("node", [
@@ -106,7 +117,7 @@ try {
     "--json"
   ]);
   assert(source.status === "pass", "Source install should pass.");
-  assert(source.front_doors.codex.startsWith("@Archetype"), "Install report should expose Codex front door.");
+  assert(source.front_doors.codex.startsWith("$archetype"), "Install report should expose Codex front door.");
   assert(source.front_doors.claude_code.startsWith("/archetype"), "Install report should expose Claude Code front door.");
   assertInstalledHome(sourceHome, "source");
 

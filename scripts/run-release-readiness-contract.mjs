@@ -100,7 +100,7 @@ assert(sourceDoctor.status === "pass", "source doctor should pass.");
 assert(sourceDoctor.quickstart.published_package.length === 3, "doctor should expose a three-command published quickstart.");
 assert(sourceDoctor.quickstart.published_package[0].includes("archetype install --target all --json"), "doctor should expose one-command plugin install.");
 assert(sourceDoctor.plugin_setup.claude_code.front_door.includes("/archetype"), "doctor should expose Claude Code front door.");
-assert(sourceDoctor.plugin_setup.codex.front_door.includes("@Archetype"), "doctor should expose Codex front door.");
+assert(sourceDoctor.plugin_setup.codex.front_door.includes("$archetype"), "doctor should expose Codex front door.");
 assert(sourceDoctor.lifecycle.includes("Clarify missing context"), "doctor should expose lifecycle steps.");
 assert(sourceDoctor.mcp_tools.includes("archetype_release_doctor"), "doctor should name release doctor MCP tool.");
 

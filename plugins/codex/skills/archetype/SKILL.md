@@ -5,12 +5,12 @@ description: Use when a user asks Archetype in natural language to turn @attache
 
 # Archetype
 
-This is the user-facing front door. The user should be able to write `/archetype` or `@Archetype` with only a project idea. Archetype owns clarification, optional-material intake, contract generation, tests-first implementation, verification, and revision.
+This is the user-facing front door. The user should be able to write `$archetype` or a natural-language Archetype request with only a project idea. Archetype owns clarification, optional-material intake, contract generation, tests-first implementation, verification, and revision.
 
 Examples:
 
-- `@Archetype "I want to build a premium B2B analytics app for marketing teams."`
-- `/archetype "Create a patient intake portal for a small clinic."`
+- `$archetype "I want to build a premium B2B analytics app for marketing teams."`
+- `Archetype: create a patient intake portal for a small clinic.`
 - `Archetype: redesign this repo as a contract-driven onboarding app.`
 
 ## Interaction Contract
@@ -18,7 +18,7 @@ Examples:
 - Treat every `@file`, `@folder`, screenshot, design file, or mentioned repo path as source material.
 - Read imported files yourself. Never ask the user to paste content from files they already attached.
 - Do not ask the user to choose internal commands such as blueprint, implement, generate, validate, or verify.
-- Do not require the user to say "ask me what is missing" or "implement and verify"; that is the default `/archetype` lifecycle.
+- Do not require the user to say "ask me what is missing" or "implement and verify"; that is the default `$archetype` lifecycle.
 - Ask one compact question set only when essential context is missing.
 - Ask the user to optionally provide materials after the initial idea: designs, screenshots, wireframes, `SPEC.md`, `PRD.md`, brand notes, API docs, route maps, existing repo files, or test policy.
 - After the user answers, continue through blueprint, implementation, verification, and revision without requiring another handoff prompt.
@@ -74,7 +74,7 @@ npx --yes --package github:NikolaCehic/Archetype archetype verify-target --out a
 The user should experience Archetype as one guided agent workflow:
 
 ```txt
-natural-language /archetype idea
+natural-language $archetype idea
         -> clarification and optional material request
         -> context completion
         -> canonical spec and contract generation

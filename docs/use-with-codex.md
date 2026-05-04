@@ -7,12 +7,12 @@ Setup and lifecycle references: `docs/quickstart.md`, `docs/agent-lifecycle.md`,
 ## Natural Front Door
 
 ```txt
-@Archetype "I want to build a premium B2B analytics app for marketing teams."
+$archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
 
 Codex should:
 
-- treat `/archetype` or `@Archetype` as the full lifecycle by default
+- treat `$archetype` or a natural-language Archetype request as the full lifecycle by default
 - ask clarification questions when product context is incomplete
 - invite optional `@` files, screenshots, wireframes, `SPEC.md`, `PRD.md`, brand notes, or repo context
 - read the imported `@` files itself
@@ -24,6 +24,8 @@ Codex should:
 - patch or revise until verification is acceptable
 
 The user should not need to know `generate`, `validate`, `verify-target`, or which generated file to hand back to Codex.
+
+Codex `@` mentions attach files and folders; they do not invoke Archetype. Use `$archetype` for the workflow, then attach materials with `@`.
 
 ## Internal Contract Files
 

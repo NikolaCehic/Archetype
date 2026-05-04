@@ -12,7 +12,9 @@ npx --yes --package github:NikolaCehic/Archetype archetype install --target all 
 
 This writes:
 
-- `~/plugins/archetype/` for Codex
+- `~/.codex/skills/archetype/` for the Codex front-door skill
+- `~/.codex/skills/archetype-blueprint/`, `~/.codex/skills/archetype-implement/`, `~/.codex/skills/archetype-verify/`, and `~/.codex/skills/archetype-revise/`
+- `~/.codex/plugins/archetype/` and `~/plugins/archetype/` for the Codex plugin surface
 - `~/.agents/plugins/marketplace.json` for Codex plugin discovery
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/` for Claude Code
 - `~/.claude/plugins/marketplaces/archetype-local/.claude-plugin/marketplace.json` for Claude Code marketplace discovery
@@ -22,9 +24,11 @@ Then start a fresh Codex or Claude Code session.
 ## Natural Front Doors
 
 ```txt
-@Archetype "I want to build a premium B2B analytics app for marketing teams."
-/archetype "I want to build a premium B2B analytics app for marketing teams."
+Codex: $archetype "I want to build a premium B2B analytics app for marketing teams."
+Claude Code: /archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
+
+In Codex, use `@` only to attach project files and folders, for example `@SPEC.md` or `@screenshots/login.png`.
 
 The plugin flow should clarify missing context, ask for optional materials, generate `archetype-output`, drive tests first, verify with Playwright, and plan repair tasks without making the user learn internal commands.
 

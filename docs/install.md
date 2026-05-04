@@ -10,7 +10,7 @@ Install Archetype into Codex and Claude Code:
 npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json
 ```
 
-This registers the Codex home-local marketplace and a Claude Code local marketplace, then copies the root plugin surface into the locations those hosts can discover.
+This writes Codex skills under `~/.codex/skills`, mirrors the Codex plugin surface under `~/.codex/plugins/archetype` and `~/plugins/archetype`, and registers a Claude Code local marketplace.
 
 Use one host at a time when needed:
 
@@ -22,8 +22,8 @@ npx --yes --package github:NikolaCehic/Archetype archetype install --target clau
 After install, start a fresh Codex or Claude Code session:
 
 ```txt
-@Archetype "I want to build a premium B2B analytics app for marketing teams."
-/archetype "I want to build a premium B2B analytics app for marketing teams."
+Codex: $archetype "I want to build a premium B2B analytics app for marketing teams."
+Claude Code: /archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
 
 ## CLI Fallback

@@ -64,7 +64,7 @@ assert(doctor.docs.some((doc) => doc.path === "docs/agent-lifecycle.md"), "docto
 const install = runJson(["install", "--target", "all", "--home", path.join(workspace, "dry-home"), "--dry-run"]);
 assert(install.status === "warning", "install dry-run should warn that no files were written.");
 assert(install.actions.every((action) => action.status === "planned"), "install dry-run should only plan actions.");
-assert(install.front_doors.codex.startsWith("@Archetype"), "install should expose Codex front door.");
+assert(install.front_doors.codex.startsWith("$archetype"), "install should expose Codex front door.");
 assert(install.front_doors.claude_code.startsWith("/archetype"), "install should expose Claude Code front door.");
 
 const init = runJson(["init", "--template", "saas-dashboard", "--out", intakePath]);

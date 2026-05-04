@@ -65,6 +65,14 @@ const PLUGIN_COPY_ENTRIES = [
   "docs/use-with-mcp.md"
 ];
 
+const CODEX_SKILL_COPY_ENTRIES = [
+  { source: path.join("plugins", "codex", "skills", "archetype"), destinationName: "archetype" },
+  { source: path.join("plugins", "codex", "skills", "archetype-blueprint"), destinationName: "archetype-blueprint" },
+  { source: path.join("plugins", "codex", "skills", "archetype-implement"), destinationName: "archetype-implement" },
+  { source: path.join("plugins", "codex", "skills", "archetype-verify"), destinationName: "archetype-verify" },
+  { source: path.join("plugins", "codex", "skills", "archetype-revise"), destinationName: "archetype-revise" }
+];
+
 function readJsonSafe<T>(filePath: string, fallback: T): T {
   if (!existsSync(filePath)) return fallback;
   try {
@@ -128,6 +136,33 @@ function copyPluginSurface(
     mkdirSync(path.dirname(destination), { recursive: true });
     cpSync(source, destination, { recursive: true, force: true });
     addAction(actions, target, "copy_plugin_surface", destination, "written", `Copied ${entry}.`, source);
+  }
+}
+
+function copyCodexSkills(
+  packageRoot: string,
+  codexSkillsRoot: string,
+  actions: InstallAction[],
+  blockers: string[],
+  dryRun: boolean
+): void {
+  for (const entry of CODEX_SKILL_COPY_ENTRIES) {
+    const source = path.join(packageRoot, entry.source);
+    const destination = path.join(codexSkillsRoot, entry.destinationName);
+    if (!existsSync(source)) {
+      blockers.push(`Missing Codex skill source: ${entry.source}`);
+      addAction(actions, "codex", "copy_codex_skill", destination, "failed", `${entry.source} is missing from the package.`, source);
+      continue;
+    }
+
+    if (dryRun) {
+      addAction(actions, "codex", "copy_codex_skill", destination, "planned", `Would copy ${entry.destinationName} into Codex skills.`, source);
+      continue;
+    }
+
+    mkdirSync(path.dirname(destination), { recursive: true });
+    cpSync(source, destination, { recursive: true, force: true });
+    addAction(actions, "codex", "copy_codex_skill", destination, "written", `Copied ${entry.destinationName} into Codex skills.`, source);
   }
 }
 
@@ -259,7 +294,11 @@ export function installAgentPlugins(options: InstallOptions): PluginInstallRepor
 
   if (targets.includes("codex")) {
     const codexPluginRoot = path.join(homeDir, "plugins", "archetype");
+    const codexNativePluginRoot = path.join(homeDir, ".codex", "plugins", "archetype");
+    const codexSkillsRoot = path.join(homeDir, ".codex", "skills");
     copyPluginSurface("codex", packageRoot, codexPluginRoot, actions, blockers, dryRun);
+    copyPluginSurface("codex", packageRoot, codexNativePluginRoot, actions, blockers, dryRun);
+    copyCodexSkills(packageRoot, codexSkillsRoot, actions, blockers, dryRun);
     writeCodexMarketplace(homeDir, actions, dryRun);
   }
 
@@ -284,12 +323,12 @@ export function installAgentPlugins(options: InstallOptions): PluginInstallRepor
     blockers,
     warnings,
     front_doors: {
-      codex: "@Archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
+      codex: "$archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
       claude_code: "/archetype \"I want to build a premium B2B analytics app for marketing teams.\""
     },
     next_steps: [
       "Start a fresh Codex or Claude Code session after installing.",
-      "Use @Archetype in Codex or /archetype in Claude Code with a natural-language product idea.",
+      "Use $archetype in Codex or /archetype in Claude Code with a natural-language product idea.",
       "Archetype will ask clarification questions, invite optional materials, generate the contract, drive tests first, verify, and repair."
     ]
   };

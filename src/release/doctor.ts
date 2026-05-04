@@ -238,7 +238,7 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     "docs/agent-lifecycle.md",
     "docs/release-readiness.md",
     "archetype install --target all --json",
-    "@Archetype \"I want to build a premium B2B analytics app for marketing teams.\""
+    "$archetype \"I want to build a premium B2B analytics app for marketing teams.\""
   ]);
   checkTextIncludes(checks, "docs.quickstart", "Quickstart docs", path.join(root, "docs", "quickstart.md"), [
     "60 seconds",
@@ -287,7 +287,7 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     quickstart: {
       published_package: [
         "npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json",
-        "@Archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
+        "$archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
         "/archetype \"I want to build a premium B2B analytics app for marketing teams.\""
       ],
       local_source: [
@@ -308,8 +308,8 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
         mcp_command: "npx --yes --package github:NikolaCehic/Archetype archetype-mcp"
       },
       codex: {
-        front_door: "@Archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
-        plugin_path: "~/plugins/archetype/",
+        front_door: "$archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
+        plugin_path: "~/.codex/skills/archetype/",
         mcp_command: "npx --yes --package github:NikolaCehic/Archetype archetype-mcp"
       }
     },

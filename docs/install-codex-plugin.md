@@ -8,6 +8,12 @@ npx --yes --package github:NikolaCehic/Archetype archetype install --target code
 
 The installer writes:
 
+- `~/.codex/skills/archetype/SKILL.md`
+- `~/.codex/skills/archetype-blueprint/SKILL.md`
+- `~/.codex/skills/archetype-implement/SKILL.md`
+- `~/.codex/skills/archetype-verify/SKILL.md`
+- `~/.codex/skills/archetype-revise/SKILL.md`
+- `~/.codex/plugins/archetype/.codex-plugin/plugin.json`
 - `~/plugins/archetype/.codex-plugin/plugin.json`
 - `~/plugins/archetype/.mcp.json`
 - `~/plugins/archetype/skills/archetype/SKILL.md`
@@ -30,8 +36,10 @@ npx . doctor --json
 The natural front door is:
 
 ```txt
-@Archetype "I want to build a premium B2B analytics app for marketing teams."
+$archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
+
+Codex `@` mentions are for attaching files and folders such as `@SPEC.md` or `@screenshots/login.png`. Archetype itself is loaded as the `$archetype` skill.
 
 Codex should ask needed clarification questions, invite optional materials, generate the contract, write tests first, implement from the contract, and verify without asking the user to run CLI commands.
 

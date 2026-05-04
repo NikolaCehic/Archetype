@@ -82,7 +82,7 @@ for (const expected of [
   "npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json",
   "npx --yes --package github:NikolaCehic/Archetype archetype doctor",
   "npx --yes --package github:NikolaCehic/Archetype archetype generate",
-  "@Archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
+  "$archetype \"I want to build a premium B2B analytics app for marketing teams.\"",
   "docs/quickstart.md",
   "docs/agent-lifecycle.md",
   "docs/release-readiness.md",
@@ -94,6 +94,7 @@ for (const expected of [
   "10-revision/repair-task-queue.json",
   "docs/install.md",
   "docs/demo-script.md",
+  "~/.codex/skills/archetype",
   "~/plugins/archetype",
   "~/.claude/plugins/marketplaces/archetype-local/plugins/archetype"
 ]) {
@@ -105,7 +106,7 @@ for (const expected of ["archetype install --target all --json", "archetype doct
   assert(install.includes(expected), `install docs missing ${expected}.`);
 }
 const quickstart = readText("docs/quickstart.md");
-for (const expected of ["60 seconds", "archetype install --target all --json", "archetype doctor --json", "archetype generate", "/archetype", "@Archetype"]) {
+for (const expected of ["60 seconds", "archetype install --target all --json", "archetype doctor --json", "archetype generate", "/archetype", "$archetype"]) {
   assert(quickstart.includes(expected), `quickstart docs missing ${expected}.`);
 }
 const lifecycle = readText("docs/agent-lifecycle.md");

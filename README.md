@@ -17,8 +17,8 @@ npx --yes --package github:NikolaCehic/Archetype archetype install --target all 
 Then start a fresh agent session and use Archetype as one natural-language workflow:
 
 ```txt
-@Archetype "I want to build a premium B2B analytics app for marketing teams."
-/archetype "I want to build a premium B2B analytics app for marketing teams."
+Codex: $archetype "I want to build a premium B2B analytics app for marketing teams."
+Claude Code: /archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
 
 Archetype should then ask any needed clarification questions, invite optional materials such as designs, screenshots, wireframes, `SPEC.md`, or `PRD.md`, generate the spec and agent contract, drive tests-first implementation, verify the target, and patch or revise without making you learn internal commands.
@@ -215,11 +215,17 @@ npx --yes --package github:NikolaCehic/Archetype archetype install --target code
 Then use:
 
 ```txt
-@Archetype "I want to build a premium B2B analytics app for marketing teams."
+$archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
 
 Installed Codex plugin surface:
 
+- `~/.codex/skills/archetype/SKILL.md`
+- `~/.codex/skills/archetype-blueprint/SKILL.md`
+- `~/.codex/skills/archetype-implement/SKILL.md`
+- `~/.codex/skills/archetype-verify/SKILL.md`
+- `~/.codex/skills/archetype-revise/SKILL.md`
+- `~/.codex/plugins/archetype/.codex-plugin/plugin.json`
 - `~/plugins/archetype/.codex-plugin/plugin.json`
 - `~/plugins/archetype/skills/`
 - `~/plugins/archetype/.mcp.json`
