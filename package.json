@@ -29,12 +29,13 @@
     "write-target": "node dist/cli.js write-target --out tmp/archetype-output --target tmp/generated-frontend --force",
     "verify-target": "node dist/cli.js verify-target --out tmp/archetype-output --target tmp/generated-frontend",
     "smoke": "npm run build && node dist/cli.js generate --input examples/saas-dashboard-intake.json --out tmp/archetype-output",
+    "cli:contract": "npm run build && node scripts/run-cli-contract.mjs",
     "golden": "npm run build && node scripts/run-golden.mjs",
     "demo:generate": "npm run build && node dist/cli.js generate --input examples/saas-dashboard-intake.json --out tmp/archetype-output",
     "demo:verify": "npm run validate && npm run simulate && npm run write-target && npm run verify-target",
-    "test": "npm run smoke && npm run validate && npm run simulate && npm run golden",
-    "check": "npm run smoke && npm run validate && npm run simulate && npm run write-target && npm run verify-target && npm run golden",
-    "clean": "rm -rf dist tmp/archetype-output tmp/generated-frontend tmp/golden"
+    "test": "npm run cli:contract && npm run golden",
+    "check": "npm run cli:contract && npm run golden",
+    "clean": "rm -rf dist tmp/archetype-output tmp/generated-frontend tmp/golden tmp/cli-contract"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",

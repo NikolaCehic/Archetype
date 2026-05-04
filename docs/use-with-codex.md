@@ -5,7 +5,7 @@ Archetype gives Codex an implementation contract before code is written.
 ## Generate A Contract
 
 ```bash
-npx . generate --input examples/saas-dashboard-intake.json --out archetype-output
+npx . generate --input examples/saas-dashboard-intake.json --out archetype-output --json
 ```
 
 ## Ask Codex To Implement
@@ -17,8 +17,9 @@ Use ./archetype-output to implement the frontend. Follow AGENTS.md, implementati
 ## Verify Before Completion
 
 ```bash
-npx . validate --out archetype-output
-npx . verify-target --out archetype-output --target .
+npx . summarize --out archetype-output --json
+npx . validate --out archetype-output --json
+npx . verify-target --out archetype-output --target . --json
 ```
 
 Codex plugin work is tracked in `archetype-plugin-pivot-md/scopes/08-codex-plugin.md`.

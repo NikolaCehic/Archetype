@@ -11,7 +11,7 @@ Instead of asking an agent to guess routes, screens, states, design tokens, data
 ```bash
 npm install
 npm run build
-npx . generate --input examples/saas-dashboard-intake.json --out archetype-output
+npx . generate --input examples/saas-dashboard-intake.json --out archetype-output --json
 ```
 
 Then ask your coding agent:
@@ -51,34 +51,46 @@ Archetype verifies the implementation against the contract
 
 ## CLI
 
+Create a starter intake:
+
+```bash
+npx . init --template saas-dashboard --out archetype.intake.json --json
+```
+
 Generate a contract package:
 
 ```bash
-npx . generate --input examples/saas-dashboard-intake.json --out archetype-output
+npx . generate --input examples/saas-dashboard-intake.json --out archetype-output --json
 ```
 
 Validate the package:
 
 ```bash
-npx . validate --out archetype-output
+npx . validate --out archetype-output --json
+```
+
+Summarize compact agent context:
+
+```bash
+npx . summarize --out archetype-output --json
 ```
 
 Simulate implementation readiness:
 
 ```bash
-npx . simulate --out archetype-output
+npx . simulate --out archetype-output --json
 ```
 
 Write a deterministic target frontend scaffold:
 
 ```bash
-npx . write-target --out archetype-output --target tmp/generated-frontend --force
+npx . write-target --out archetype-output --target tmp/generated-frontend --force --json
 ```
 
 Verify a target frontend:
 
 ```bash
-npx . verify-target --out archetype-output --target tmp/generated-frontend
+npx . verify-target --out archetype-output --target tmp/generated-frontend --json
 ```
 
 ## What Archetype Generates
@@ -101,7 +113,7 @@ npx . verify-target --out archetype-output --target tmp/generated-frontend
 Generate an Archetype package:
 
 ```bash
-npx . generate --input archetype.intake.json --out archetype-output
+npx . generate --input archetype.intake.json --out archetype-output --json
 ```
 
 Then in Claude Code:
@@ -117,7 +129,7 @@ Plugin support is tracked in `archetype-plugin-pivot-md/scopes/07-claude-code-pl
 Generate an Archetype package:
 
 ```bash
-npx . generate --input archetype.intake.json --out archetype-output
+npx . generate --input archetype.intake.json --out archetype-output --json
 ```
 
 Then ask Codex:
@@ -139,6 +151,7 @@ Plugin support is tracked in `archetype-plugin-pivot-md/scopes/08-codex-plugin.m
 ```bash
 npm run build
 npm run smoke
+npm run cli:contract
 npm run check
 ```
 

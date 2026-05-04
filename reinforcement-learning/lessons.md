@@ -24,3 +24,27 @@ Deviation review:
 Convergence statement:
 
 - I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
+
+## Phase 2 - CLI Contract
+
+Scope reference:
+
+- `archetype-plugin-pivot-md/scopes/04-cli-contract.md`
+- `archetype-plugin-pivot-md/scopes/10-roadmap-and-acceptance.md`
+- `archetype-plugin-pivot-md/prompts/codex-phase-02-cli.md`
+
+Lesson:
+
+- The CLI is the lowest-friction agent harness surface, so every command that agents will call must have stable flags and parseable output.
+- `generate` cannot only print prose because MCP and coding agents need readiness, blockers, warnings, and artifact paths as JSON.
+- `summarize` is necessary because Codex and Claude should not need to ingest the full contract package before deciding what to read next.
+- `init` must be deterministic and template-based, not interactive.
+- `validate` must explicitly check top-level agent entrypoints and parse core route/screen artifacts, not only trust internal manifests.
+
+Deviation review:
+
+- No pivot-plan deviation was accepted. I did not add plugin or MCP behavior in this phase because Phase 2 only stabilizes the CLI command surface.
+
+Convergence statement:
+
+- I dont know how to implement this better as I cannot answer what is techically or architecturally wrong with the current implentation
