@@ -515,6 +515,62 @@ for (const expected of [
   assert(contractVerifier.includes(expected), `Contract verifier missing hardened requirement ${expected}.`);
 }
 
+const repairPlanner = readText("agents/repair-planner.md");
+for (const expected of [
+  "## Role",
+  "Role ID: `repair-planner`",
+  "Role Type: Implementation repair coordinator and drift-to-task gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Operating Procedure",
+  "## Repair Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Required Repair Task Contract",
+  "## Priority Matrix",
+  "## Owner Matrix",
+  "ready_for_repair_execution",
+  "needs_repair_execution",
+  "ready_for_reverification",
+  "blocked_missing_repair_evidence",
+  "blocked_contract_revision_without_approval",
+  "patch_implementation_first",
+  "10-revision/verification-repair-contract.json",
+  "10-revision/repair-task-queue.json",
+  "10-revision/repair-plan.md",
+  "10-revision/drift-report.json",
+  "verification/playwright-evidence.json",
+  "14-target-execution/target-execution-report.json",
+  "qa/scenario-catalog.json",
+  "qa/playwright-results.json",
+  "qa/malformed-data-results.json",
+  "qa/accessibility-results.md",
+  "qa/visual-regression-report.md",
+  "qa/contract-drift-report.md",
+  "target:test-results/archetype-playwright-results.json",
+  "target:playwright-report/",
+  "archetype_verify_target",
+  "archetype_plan_repair",
+  "implementation_patch",
+  "contract_revision_review",
+  "marker_only_test_drift",
+  "source_artifacts",
+  "target_files",
+  "expected_fix",
+  "forbidden_fixes",
+  "rerun_commands",
+  "closure_evidence",
+  "npm run typecheck",
+  "npm run build",
+  "npm run archetype:playwright",
+  "archetype repair --out <archetype-output> --target <target-frontend> --json",
+  "archetype verify-target --out <archetype-output> --target <target-frontend> --json",
+  "No agent can approve its own work.",
+  "This role cannot close or verify repair tasks it planned."
+]) {
+  assert(repairPlanner.includes(expected), `Repair planner missing hardened requirement ${expected}.`);
+}
+
 const reviewer = readText("agents/frontend-contract-reviewer.md");
 for (const expected of ["missing evidence", "acceptance criteria", "archetype_validate_package"]) {
   assert(reviewer.toLowerCase().includes(expected), `Frontend contract reviewer missing ${expected}.`);

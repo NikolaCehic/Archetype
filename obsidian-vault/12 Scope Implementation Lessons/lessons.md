@@ -2094,3 +2094,61 @@ Current answer for contract verifier hardening:
 I do not know how to make the contract verifier role more deterministic without importing requirements outside the approved Archetype lifecycle artifacts, target execution evidence, Playwright/QA reports, and human approval evidence.
 I cannot identify a technical or architectural mismatch against the contract verifier hardening goal in the current role file.
 ```
+
+## Agent Hardening - Repair Planner
+
+Source files:
+
+- `agents/repair-planner.md`
+- `plugins/claude-code/agents/repair-planner.md`
+- `scripts/run-agent-role-files-contract.mjs`
+- `scripts/run-claude-plugin-contract.mjs`
+
+Browser research anchors:
+
+- Playwright debugging: https://playwright.dev/docs/debug
+- Playwright trace viewer: https://playwright.dev/docs/trace-viewer-intro
+- Playwright reporters: https://playwright.dev/docs/test-reporters
+- Testing Library guiding principles: https://testing-library.com/docs/guiding-principles/
+- Specification by Example: https://martinfowler.com/bliki/SpecificationByExample.html
+
+Mismatches found before hardening:
+
+- The repair planner role was a thin task-list stub and did not define a role, mission, production standard, operating procedure, repair sufficiency gate, output schema, task contract, priority matrix, owner matrix, or self-review loop.
+- The role did not require preservation of failing Playwright results, traces, screenshots, reports, command logs, or QA evidence.
+- The role did not distinguish `implementation_patch`, `test_repair`, `qa_repair`, `contract_revision_review`, and `blocked_missing_evidence`.
+- The role did not require closure evidence, forbidden fixes, stable owners, target files, rerun commands, or patch-first ordering for each task.
+- The role did not define when contract revision is allowed, so a repair loop could still rewrite the contract to hide implementation drift.
+- Contract tests only enforced generic role sections, so repair-planner-specific regressions could ship in the plugin.
+
+Corrections applied:
+
+- Rewrote the role as an implementation repair coordinator and drift-to-task gatekeeper.
+- Added explicit authority, mission, production standard, canonical inputs, outputs, blockers, operating procedure, repair sufficiency gate, one-question clarification priority, output schema, decision rules, required task contract, priority matrix, owner matrix, practice anchors, good/bad output signals, self-review checklist, and handoff rules.
+- Required tasks to include `task_id`, `priority`, `severity`, `owner`, `source`, `classification`, `action_type`, `summary`, `evidence`, `source_artifacts`, `target_files`, `expected_fix`, `forbidden_fixes`, `rerun_commands`, and `closure_evidence`.
+- Added deterministic statuses: `ready_for_repair_execution`, `needs_repair_execution`, `ready_for_reverification`, `blocked_missing_repair_evidence`, and `blocked_contract_revision_without_approval`.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened repair planner requirements in both root agent and Claude plugin checks.
+
+Self-healing rules added:
+
+- Repair planning must preserve failing evidence until the same check passes.
+- Failed implementation defaults to `implementation_patch`; `contract_revision_review` requires user-approved source evidence.
+- A repair task without source artifacts, target files, expected fix, rerun commands, and closure evidence is not actionable.
+- Install, typecheck, and build failures must be fixed before relying on browser scenario evidence.
+- A non-empty repair queue blocks completion even when tasks have been assigned.
+- Plugin mirrors must carry the same hardened repair role as the root repository.
+
+Agent hardening convergence review:
+
+- The repair planner now has enough role detail to convert verification failure into deterministic patch work.
+- The role blocks missing evidence, stale lifecycle state, unowned tasks, unlocalized tasks, missing closure criteria, test weakening, contract revision without approval, and completion with unresolved work.
+- The role explicitly hands off type, architecture, visual, accessibility, test, QA, revision, and verification concerns to the correct owners instead of self-approving.
+- Contract tests now fail if the hardened repair planning responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for repair planner hardening:
+
+```txt
+I do not know how to make the repair planner role more deterministic without importing requirements outside the approved Archetype lifecycle artifacts, target execution evidence, Playwright/QA reports, repair artifacts, and human-approved contract revision evidence.
+I cannot identify a technical or architectural mismatch against the repair planner hardening goal in the current role file.
+```

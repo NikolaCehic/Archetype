@@ -568,6 +568,72 @@ for (const agentRoot of agentRoots) {
   }
 }
 
+const repairPlannerRequirements = [
+  "## Role",
+  "Role ID: `repair-planner`",
+  "Role Type: Implementation repair coordinator and drift-to-task gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Repair Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required Repair Task Contract",
+  "## Priority Matrix",
+  "## Owner Matrix",
+  "## Self-Review Checklist",
+  "ready_for_repair_execution",
+  "needs_repair_execution",
+  "ready_for_reverification",
+  "blocked_missing_repair_evidence",
+  "blocked_contract_revision_without_approval",
+  "patch_implementation_first",
+  "10-revision/verification-repair-contract.json",
+  "10-revision/repair-task-queue.json",
+  "10-revision/repair-plan.md",
+  "10-revision/drift-report.json",
+  "verification/playwright-evidence.json",
+  "verification/playwright-evidence.md",
+  "14-target-execution/target-execution-report.json",
+  "qa/scenario-catalog.json",
+  "qa/playwright-results.json",
+  "qa/malformed-data-results.json",
+  "qa/accessibility-results.md",
+  "qa/visual-regression-report.md",
+  "qa/contract-drift-report.md",
+  "target:test-results/archetype-playwright-results.json",
+  "target:playwright-report/",
+  "target:test-results/**/*.zip",
+  "archetype_verify_target",
+  "archetype_plan_repair",
+  "implementation_patch",
+  "contract_revision_review",
+  "blocked_missing_evidence",
+  "marker_only_test_drift",
+  "source_artifacts",
+  "target_files",
+  "expected_fix",
+  "forbidden_fixes",
+  "rerun_commands",
+  "closure_evidence",
+  "npm run typecheck",
+  "npm run build",
+  "npm run archetype:playwright",
+  "archetype repair --out <archetype-output> --target <target-frontend> --json",
+  "archetype verify-target --out <archetype-output> --target <target-frontend> --json",
+  "No agent can approve its own work.",
+  "This role cannot close or verify repair tasks it planned."
+];
+for (const agentRoot of agentRoots) {
+  const repairPlanner = readText(path.join(agentRoot, "repair-planner.md"));
+  for (const expected of repairPlannerRequirements) {
+    assert(repairPlanner.includes(expected), `${agentRoot}/repair-planner.md missing hardened repair-planner requirement: ${expected}.`);
+  }
+}
+
 const compatibilityReviewer = validateRoleFile(path.join("agents", "frontend-contract-reviewer.md"));
 assert(compatibilityReviewer.includes("Compatibility role"), "frontend-contract-reviewer.md must be marked as compatibility role.");
 assert(readText(path.join("plugins", "claude-code", "agents", "frontend-contract-reviewer.md")) === compatibilityReviewer, "Compatibility reviewer must be mirrored into Claude Code plugin agents.");
@@ -612,6 +678,7 @@ const summary = {
   accessibilitySpecialistRequirements,
   testFirstDeveloperRequirements,
   contractVerifierRequirements,
+  repairPlannerRequirements,
   rule: "No agent can approve its own work."
 };
 
