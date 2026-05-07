@@ -285,6 +285,45 @@ for (const expected of [
   assert(frontendPracticeEnforcer.includes(expected), `Frontend practice enforcer missing hardened requirement ${expected}.`);
 }
 
+const strictTypescriptDeveloper = readText("agents/strict-typescript-developer.md");
+for (const expected of [
+  "## Role",
+  "Role ID: `strict-typescript-developer`",
+  "Role Type: Strict TypeScript implementation specialist and contract-typing gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Operating Procedure",
+  "## Type Safety Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Required Type Contract",
+  "## Adapter And State Union Rules",
+  "## Strictness Repair Rules",
+  "strict: true",
+  "12-target-frontend/adapter-interfaces.ts",
+  "14-target-execution/target-execution-report.json",
+  "06-frontend-agent-contract/data-contracts.json",
+  "06-frontend-agent-contract/data-operation-contracts.json",
+  "06-frontend-agent-contract/action-contracts.json",
+  "06-frontend-agent-contract/form-contracts.json",
+  "ArchetypeQueryResult",
+  "ArchetypeMutationResult",
+  "ArchetypeDataAdapter",
+  "ArchetypeAuthAdapter",
+  "permission_denied",
+  "partial_data",
+  "stale_data",
+  "success_confirmation",
+  "validation_error",
+  "broad `any`",
+  "unsafe casts",
+  "unknown",
+  "npm run typecheck",
+  "Never ask a bulk TypeScript questionnaire"
+]) {
+  assert(strictTypescriptDeveloper.includes(expected), `Strict TypeScript developer missing hardened requirement ${expected}.`);
+}
+
 const reviewer = readText("agents/frontend-contract-reviewer.md");
 for (const expected of ["missing evidence", "acceptance criteria", "archetype_validate_package"]) {
   assert(reviewer.toLowerCase().includes(expected), `Frontend contract reviewer missing ${expected}.`);

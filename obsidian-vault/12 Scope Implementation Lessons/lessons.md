@@ -1833,3 +1833,52 @@ Current answer for frontend practice enforcer hardening:
 I do not know how to make the frontend practice enforcer role more deterministic without importing requirements outside HL-08 and the approved Archetype package.
 I cannot identify a technical or architectural mismatch against the frontend practice enforcer hardening goal in the current role file.
 ```
+
+## Agent Hardening - Strict TypeScript Developer
+
+Source files:
+
+- `agents/strict-typescript-developer.md`
+- `plugins/claude-code/agents/strict-typescript-developer.md`
+- `scripts/run-agent-role-files-contract.mjs`
+- `scripts/run-claude-plugin-contract.mjs`
+
+Mismatches found before hardening:
+
+- The strict TypeScript role mentioned `any`, typecheck, and props, but did not define a full role, production standard, operating procedure, type-safety gate, output schema, required type contract, adapter/state union rules, or self-review checklist.
+- The role used legacy paths such as `frontend-agent-contract/implementation-rules.json`, `data-contracts/*.json`, and `forms/*.json` instead of the canonical `06-frontend-agent-contract/*` and `12-target-frontend/*` artifacts.
+- The role did not require `12-target-frontend/adapter-interfaces.ts`, finite state unions, adapter return types, target `tsconfig.json`, or `14-target-execution/target-execution-report.json`.
+- The role did not distinguish safe boundary `unknown` from unsafe un-narrowed values.
+- The role did not turn strictness failures into repair tasks with rerun commands.
+- The role was not contract-tested beyond generic required sections.
+
+Corrections applied:
+
+- Rewrote the role as a strict TypeScript implementation specialist and contract-typing gatekeeper.
+- Added strict compiler policy, canonical inputs, state union requirements, adapter typing rules, data/action/form/component/pattern typing rules, external value narrowing, typecheck evidence, repair rules, output schema, handoff rules, and self-review checklist.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened strict TypeScript requirements in both root agent and Claude plugin checks.
+
+Self-healing rules added:
+
+- `strict: true` and target typecheck evidence are required before completion can be claimed.
+- `12-target-frontend/adapter-interfaces.ts` is the type authority for generated data and auth adapters.
+- Query and mutation states must remain finite unions, not arbitrary strings.
+- `unknown` is allowed only at external boundaries and must be narrowed before use.
+- Broad `any`, unsafe casts, unchecked JSON, broad index signatures, disabled strictness, and failed typecheck are blockers.
+- Type failures must become repair tasks with file, contract, unsafe pattern, and rerun command.
+- Every hardened role upgrade must be mirrored into plugin surfaces and pinned by contract tests.
+
+Agent hardening convergence review:
+
+- The strict TypeScript developer now has enough role detail to enforce contract-derived typing deterministically.
+- The role blocks disabled strictness, missing adapter interfaces, invalid state unions, untyped contract surfaces, unsafe external values, broad `any`, unsafe casts, missing validation, and failed typecheck evidence.
+- The role explicitly hands off data model, component API, validation, accessibility typing, and repair sequencing risks instead of self-approving.
+- Contract tests now fail if the hardened strict TypeScript responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for strict TypeScript developer hardening:
+
+```txt
+I do not know how to make the strict TypeScript developer role more deterministic without importing requirements outside the approved Archetype package and target repository type evidence.
+I cannot identify a technical or architectural mismatch against the strict TypeScript developer hardening goal in the current role file.
+```

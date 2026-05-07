@@ -283,6 +283,57 @@ for (const agentRoot of agentRoots) {
   }
 }
 
+const strictTypescriptDeveloperRequirements = [
+  "## Role",
+  "Role ID: `strict-typescript-developer`",
+  "Role Type: Strict TypeScript implementation specialist and contract-typing gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Type Safety Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required Type Contract",
+  "## Adapter And State Union Rules",
+  "## Strictness Repair Rules",
+  "## Self-Review Checklist",
+  "strict: true",
+  "12-target-frontend/adapter-interfaces.ts",
+  "14-target-execution/target-execution-report.json",
+  "06-frontend-agent-contract/data-contracts.json",
+  "06-frontend-agent-contract/data-operation-contracts.json",
+  "06-frontend-agent-contract/action-contracts.json",
+  "06-frontend-agent-contract/form-contracts.json",
+  "ArchetypeQueryResult",
+  "ArchetypeMutationResult",
+  "ArchetypeDataAdapter",
+  "ArchetypeAuthAdapter",
+  "loading",
+  "default",
+  "empty",
+  "error",
+  "permission_denied",
+  "offline",
+  "partial_data",
+  "stale_data",
+  "success_confirmation",
+  "validation_error",
+  "broad `any`",
+  "unsafe casts",
+  "unknown",
+  "npm run typecheck",
+  "Never ask a bulk TypeScript questionnaire"
+];
+for (const agentRoot of agentRoots) {
+  const strictTypescriptDeveloper = readText(path.join(agentRoot, "strict-typescript-developer.md"));
+  for (const expected of strictTypescriptDeveloperRequirements) {
+    assert(strictTypescriptDeveloper.includes(expected), `${agentRoot}/strict-typescript-developer.md missing hardened strict-typescript-developer requirement: ${expected}.`);
+  }
+}
+
 const compatibilityReviewer = validateRoleFile(path.join("agents", "frontend-contract-reviewer.md"));
 assert(compatibilityReviewer.includes("Compatibility role"), "frontend-contract-reviewer.md must be marked as compatibility role.");
 assert(readText(path.join("plugins", "claude-code", "agents", "frontend-contract-reviewer.md")) === compatibilityReviewer, "Compatibility reviewer must be mirrored into Claude Code plugin agents.");
@@ -322,6 +373,7 @@ const summary = {
   frontendArchitectRequirements,
   designSystemArchitectRequirements,
   frontendPracticeEnforcerRequirements,
+  strictTypescriptDeveloperRequirements,
   rule: "No agent can approve its own work."
 };
 
