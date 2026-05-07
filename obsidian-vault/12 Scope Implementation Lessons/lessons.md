@@ -1924,3 +1924,59 @@ Current answer for strict TypeScript developer hardening:
 I do not know how to make the strict TypeScript developer role more deterministic without importing requirements outside the approved Archetype package and target repository type evidence.
 I cannot identify a technical or architectural mismatch against the strict TypeScript developer hardening goal in the current role file.
 ```
+
+## Agent Hardening - Accessibility Specialist
+
+Source files:
+
+- `agents/accessibility-specialist.md`
+- `plugins/claude-code/agents/accessibility-specialist.md`
+- `scripts/run-agent-role-files-contract.mjs`
+- `scripts/run-claude-plugin-contract.mjs`
+
+Browser research anchors:
+
+- W3C WCAG 2.2 Quick Reference: https://www.w3.org/WAI/WCAG22/quickref/
+- WAI-ARIA Authoring Practices Guide patterns: https://www.w3.org/WAI/ARIA/apg/patterns/
+- MDN ARIA reference: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA
+
+Mismatches found before hardening:
+
+- The accessibility role mentioned keyboard, focus, labels, contrast, and evidence, but did not define a full role, mission, production standard, operating procedure, sufficiency gate, output schema, evidence contract, repair format, or self-review checklist.
+- The role used legacy artifact paths such as `screens/screen-inventory.json` and `design-system/component-contracts.json` instead of canonical `03-experience-architecture/*`, `04-design-system/*`, `05-screen-specs/*`, and `06-frontend-agent-contract/*` artifacts.
+- The role did not require test-first accessibility obligations, Playwright accessibility scenario coverage, QA accessibility reports, or human review boundaries.
+- The role did not explicitly enforce native semantics before ARIA, ARIA pattern correctness, landmarks, heading order, focus restoration, status announcements, reduced motion, chart fallback, or color-not-sole-indicator rules.
+- The role did not turn accessibility failures into deterministic repair tasks.
+- The role was not contract-tested beyond generic required sections.
+
+Corrections applied:
+
+- Rewrote the role as an accessibility contract specialist and WCAG AA evidence gatekeeper.
+- Added explicit authority, mission, production standard, canonical inputs, outputs, blockers, operating procedure, accessibility sufficiency gate, one-question clarification priority, output schema, decision rules, evidence contract, accessibility matrix, repair handoff format, external practice anchors, good/bad output signals, and self-review checklist.
+- Required evidence from `04-design-system/accessibility/accessibility-rules.json`, `test-first/test-first-contract.json`, `verification/playwright-verification-contract.json`, `verification/playwright-evidence.json`, `specialist-gate/frontend-practices/accessibility-practices.json`, `qa/accessibility-results.md`, `qa/scenario-catalog.json`, and `08-quality/accessibility-report.md`.
+- Added statuses: `ready_for_accessibility_verification`, `needs_accessibility_repair`, and `blocked_missing_accessibility_evidence`.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened accessibility specialist requirements in both root agent and Claude plugin checks.
+
+Self-healing rules added:
+
+- Accessibility claims are invalid without route, screen, state, component, test, and evidence references.
+- Prefer native semantics before ARIA; ARIA without matching keyboard and focus behavior is a blocker.
+- Automated checks are evidence, not compliance certification. Qualified human review remains required before legal or compliance claims.
+- Accessibility must be present in design-system contracts, screen specs, test-first suites, Playwright verification, QA reports, and repair queues.
+- Marker-only accessibility tests do not prove accessible user-visible behavior.
+- Every hardened role upgrade must be mirrored into plugin surfaces and pinned by contract tests.
+
+Agent hardening convergence review:
+
+- The accessibility specialist now has enough role detail to enforce accessibility deterministically across contracts, tests, QA evidence, and repair planning.
+- The role blocks missing names, missing labels, invalid semantics, broken keyboard paths, missing focus, inaccessible forms, color-only status, missing chart fallback, reduced-motion gaps, ARIA misuse, and unsupported compliance claims.
+- The role explicitly hands off design-system, visual, test-first, QA, repair, and verification concerns instead of self-approving.
+- Contract tests now fail if the hardened accessibility responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for accessibility specialist hardening:
+
+```txt
+I do not know how to make the accessibility specialist role more deterministic without importing requirements outside WCAG AA, WAI-ARIA pattern guidance, the approved Archetype package, and target accessibility evidence.
+I cannot identify a technical or architectural mismatch against the accessibility specialist hardening goal in the current role file.
+```

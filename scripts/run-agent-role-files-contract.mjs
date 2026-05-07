@@ -388,6 +388,65 @@ for (const agentRoot of agentRoots) {
   }
 }
 
+const accessibilitySpecialistRequirements = [
+  "## Role",
+  "Role ID: `accessibility-specialist`",
+  "Role Type: Accessibility contract specialist and WCAG AA evidence gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Accessibility Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required Accessibility Evidence Contract",
+  "## Accessibility Matrix",
+  "## Repair Handoff Format",
+  "## Self-Review Checklist",
+  "WCAG AA",
+  "No ARIA is better than Bad ARIA",
+  "native HTML semantics",
+  "keyboard",
+  "visible focus",
+  "accessible names",
+  "landmarks",
+  "heading",
+  "forms",
+  "error associations",
+  "status-announcement",
+  "reduced-motion",
+  "color-only",
+  "chart-fallback",
+  "ready_for_accessibility_verification",
+  "needs_accessibility_repair",
+  "blocked_missing_accessibility_evidence",
+  "Never ask a bulk accessibility questionnaire",
+  "04-design-system/accessibility/accessibility-rules.json",
+  "04-design-system/components/component-contracts.json",
+  "04-design-system/patterns/pattern-contracts.json",
+  "05-screen-specs/*.yaml",
+  "06-frontend-agent-contract/form-contracts.json",
+  "06-frontend-agent-contract/action-contracts.json",
+  "06-frontend-agent-contract/verification-contracts.json",
+  "test-first/test-first-contract.json",
+  "test-first/test-quality-standard.json",
+  "verification/playwright-verification-contract.json",
+  "verification/playwright-evidence.json",
+  "specialist-gate/frontend-practices/accessibility-practices.json",
+  "qa/accessibility-results.md",
+  "qa/scenario-catalog.json",
+  "08-quality/accessibility-report.md",
+  "10-revision/repair-task-queue.json"
+];
+for (const agentRoot of agentRoots) {
+  const accessibilitySpecialist = readText(path.join(agentRoot, "accessibility-specialist.md"));
+  for (const expected of accessibilitySpecialistRequirements) {
+    assert(accessibilitySpecialist.includes(expected), `${agentRoot}/accessibility-specialist.md missing hardened accessibility-specialist requirement: ${expected}.`);
+  }
+}
+
 const compatibilityReviewer = validateRoleFile(path.join("agents", "frontend-contract-reviewer.md"));
 assert(compatibilityReviewer.includes("Compatibility role"), "frontend-contract-reviewer.md must be marked as compatibility role.");
 assert(readText(path.join("plugins", "claude-code", "agents", "frontend-contract-reviewer.md")) === compatibilityReviewer, "Compatibility reviewer must be mirrored into Claude Code plugin agents.");
@@ -429,6 +488,7 @@ const summary = {
   frontendPracticeEnforcerRequirements,
   strictTypescriptDeveloperRequirements,
   pixelPerfectDeveloperRequirements,
+  accessibilitySpecialistRequirements,
   rule: "No agent can approve its own work."
 };
 

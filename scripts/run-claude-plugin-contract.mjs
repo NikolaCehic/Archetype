@@ -367,6 +367,55 @@ for (const expected of [
   assert(pixelPerfectDeveloper.includes(expected), `Pixel-perfect developer missing hardened requirement ${expected}.`);
 }
 
+const accessibilitySpecialist = readText("agents/accessibility-specialist.md");
+for (const expected of [
+  "## Role",
+  "Role ID: `accessibility-specialist`",
+  "Role Type: Accessibility contract specialist and WCAG AA evidence gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Operating Procedure",
+  "## Accessibility Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Required Accessibility Evidence Contract",
+  "## Accessibility Matrix",
+  "WCAG AA",
+  "No ARIA is better than Bad ARIA",
+  "native HTML semantics",
+  "keyboard",
+  "visible focus",
+  "accessible names",
+  "landmarks",
+  "error associations",
+  "status-announcement",
+  "reduced-motion",
+  "color-only",
+  "chart-fallback",
+  "ready_for_accessibility_verification",
+  "needs_accessibility_repair",
+  "blocked_missing_accessibility_evidence",
+  "Never ask a bulk accessibility questionnaire",
+  "04-design-system/accessibility/accessibility-rules.json",
+  "04-design-system/components/component-contracts.json",
+  "04-design-system/patterns/pattern-contracts.json",
+  "05-screen-specs/*.yaml",
+  "06-frontend-agent-contract/form-contracts.json",
+  "06-frontend-agent-contract/action-contracts.json",
+  "06-frontend-agent-contract/verification-contracts.json",
+  "test-first/test-first-contract.json",
+  "test-first/test-quality-standard.json",
+  "verification/playwright-verification-contract.json",
+  "verification/playwright-evidence.json",
+  "specialist-gate/frontend-practices/accessibility-practices.json",
+  "qa/accessibility-results.md",
+  "qa/scenario-catalog.json",
+  "08-quality/accessibility-report.md",
+  "10-revision/repair-task-queue.json"
+]) {
+  assert(accessibilitySpecialist.includes(expected), `Accessibility specialist missing hardened requirement ${expected}.`);
+}
+
 const reviewer = readText("agents/frontend-contract-reviewer.md");
 for (const expected of ["missing evidence", "acceptance criteria", "archetype_validate_package"]) {
   assert(reviewer.toLowerCase().includes(expected), `Frontend contract reviewer missing ${expected}.`);
