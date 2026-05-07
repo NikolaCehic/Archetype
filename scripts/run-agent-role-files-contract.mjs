@@ -93,6 +93,46 @@ for (const agentRoot of agentRoots) {
   }
 }
 
+const experienceArchitectRequirements = [
+  "## Role",
+  "Role ID: `experience-architect`",
+  "Role Type: UX architecture specialist and flow/state completeness gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Experience Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required State Contract",
+  "## Self-Review Checklist",
+  "03-experience-architecture/flow-specs.json",
+  "03-experience-architecture/route-map.json",
+  "03-experience-architecture/screen-inventory.json",
+  "03-experience-architecture/ux-flow-state-completeness.json",
+  "05-screen-specs/*.yaml",
+  "default",
+  "loading",
+  "empty",
+  "error",
+  "permission_denied",
+  "offline",
+  "partial_data",
+  "stale_data",
+  "filtered_empty",
+  "validation_error",
+  "success_confirmation",
+  "Never ask a bulk UX questionnaire"
+];
+for (const agentRoot of agentRoots) {
+  const experienceArchitect = readText(path.join(agentRoot, "experience-architect.md"));
+  for (const expected of experienceArchitectRequirements) {
+    assert(experienceArchitect.includes(expected), `${agentRoot}/experience-architect.md missing hardened experience-architect requirement: ${expected}.`);
+  }
+}
+
 const compatibilityReviewer = validateRoleFile(path.join("agents", "frontend-contract-reviewer.md"));
 assert(compatibilityReviewer.includes("Compatibility role"), "frontend-contract-reviewer.md must be marked as compatibility role.");
 assert(readText(path.join("plugins", "claude-code", "agents", "frontend-contract-reviewer.md")) === compatibilityReviewer, "Compatibility reviewer must be mirrored into Claude Code plugin agents.");
@@ -128,6 +168,7 @@ const summary = {
   rootFiles,
   sections: requiredSections,
   productArchitectRequirements,
+  experienceArchitectRequirements,
   rule: "No agent can approve its own work."
 };
 

@@ -140,6 +140,30 @@ for (const expected of [
   assert(productArchitect.includes(expected), `Product architect missing hardened requirement ${expected}.`);
 }
 
+const experienceArchitect = readText("agents/experience-architect.md");
+for (const expected of [
+  "## Role",
+  "Role ID: `experience-architect`",
+  "Role Type: UX architecture specialist and flow/state completeness gatekeeper.",
+  "## Operating Procedure",
+  "## Experience Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Required State Contract",
+  "03-experience-architecture/flow-specs.json",
+  "03-experience-architecture/route-map.json",
+  "03-experience-architecture/screen-inventory.json",
+  "03-experience-architecture/ux-flow-state-completeness.json",
+  "permission_denied",
+  "partial_data",
+  "stale_data",
+  "validation_error",
+  "success_confirmation",
+  "Never ask a bulk UX questionnaire"
+]) {
+  assert(experienceArchitect.includes(expected), `Experience architect missing hardened requirement ${expected}.`);
+}
+
 const reviewer = readText("agents/frontend-contract-reviewer.md");
 for (const expected of ["missing evidence", "acceptance criteria", "archetype_validate_package"]) {
   assert(reviewer.toLowerCase().includes(expected), `Frontend contract reviewer missing ${expected}.`);
