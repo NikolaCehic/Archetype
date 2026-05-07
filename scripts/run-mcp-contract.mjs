@@ -120,6 +120,10 @@ try {
     "archetype_create_intake",
     "archetype_answer_clarification",
     "archetype_generate_package",
+    "archetype_data_plane_status",
+    "archetype_data_plane_timeline",
+    "archetype_data_plane_read_artifact",
+    "archetype_data_plane_replay_run",
     "archetype_validate_package",
     "archetype_summarize_package",
     "archetype_read_artifact",
@@ -228,6 +232,31 @@ try {
   assert(generate.readinessTier === "ready_for_contract_approval", "generated draft package should be waiting for contract approval.");
   assert(generate.blockers.some((blocker) => blocker.includes("canonical contract is not approved by a human reviewer")), "MCP generate should expose the human approval implementation gate.");
   assert(generate.artifacts.some((artifact) => artifact.id === "frontend-contract-draft"), "generate should return frontend draft artifact.");
+  assert(typeof generate.dataPlaneRunId === "string" && generate.dataPlaneRunId.length > 0, "generate should return a data-plane run ID.");
+
+  const dataPlaneStatus = await callTool("archetype_data_plane_status", { outputDir });
+  assert(dataPlaneStatus.runCount === 1, "data-plane status should find one draft run.");
+  assert(dataPlaneStatus.latestRunId === generate.dataPlaneRunId, "data-plane status should expose the generated run ID.");
+  const dataPlaneTimeline = await callTool("archetype_data_plane_timeline", {
+    outputDir,
+    runId: generate.dataPlaneRunId
+  });
+  assert(dataPlaneTimeline.eventCount > 10, "data-plane timeline should expose recorded events.");
+  const dataPlaneArtifact = await callTool("archetype_data_plane_read_artifact", {
+    outputDir,
+    artifactId: "frontend-contract-draft"
+  });
+  assert(dataPlaneArtifact.artifact?.ref?.path === "draft/frontend-contract.draft.json", "data-plane read artifact should return an ArtifactRecord.");
+  const dataPlaneReplay = await callTool("archetype_data_plane_replay_run", {
+    outputDir,
+    runId: generate.dataPlaneRunId
+  });
+  assert(dataPlaneReplay.replay?.timeline?.length === dataPlaneTimeline.eventCount, "data-plane replay should reconstruct the timeline.");
+  const missingDataPlaneRun = await expectToolError("archetype_data_plane_timeline", {
+    outputDir,
+    runId: "missing-run"
+  });
+  assert(missingDataPlaneRun.error?.code === "RUN_NOT_FOUND", "data-plane timeline should return typed missing-run errors.");
 
   const validate = await callTool("archetype_validate_package", { outputDir });
   assert(validate.status === "pass", "validate should pass.");
@@ -283,6 +312,7 @@ try {
   });
   assert(approvedGenerate.readyForFrontendAgent === true, "human-approved MCP package should be ready for frontend implementation.");
   assert(approvedGenerate.readinessTier === "ready_for_implementation", "human-approved MCP package should be ready for implementation.");
+  assert(typeof approvedGenerate.dataPlaneRunId === "string" && approvedGenerate.dataPlaneRunId.length > 0, "approved generate should return a data-plane run ID.");
   const approvedSummarize = await callTool("archetype_summarize_package", { outputDir: approvedOutputDir });
   assert(approvedSummarize.entrypoints.includes("test-first/test-quality-standard.json"), "approved MCP summarize should expose the test quality standard.");
   assert(approvedSummarize.entrypoints.includes("draft/design-system-preview.html"), "approved MCP summarize should expose the design preview.");

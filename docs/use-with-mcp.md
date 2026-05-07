@@ -64,6 +64,10 @@ Current GitHub package form:
 - `archetype_release_doctor`
 - `archetype_answer_clarification`
 - `archetype_generate_package`
+- `archetype_data_plane_status`
+- `archetype_data_plane_timeline`
+- `archetype_data_plane_read_artifact`
+- `archetype_data_plane_replay_run`
 - `archetype_validate_package`
 - `archetype_summarize_package`
 - `archetype_read_artifact`
@@ -72,7 +76,14 @@ Current GitHub package form:
 
 The tools are deterministic wrappers around intake creation, one-question clarification updates, compiler output, package validation, artifact reading, target verification, and repair-task planning. They do not run a general-purpose agent.
 
-The Agent Data Plane adds deterministic query tools for run status, event timelines, artifact records, and replay. Those tools read `archetype-output/data-plane/` and do not call an LLM. See `docs/agent-data-plane.md`.
+The Agent Data Plane query tools read `archetype-output/data-plane/` and do not call an LLM:
+
+- `archetype_data_plane_status`
+- `archetype_data_plane_timeline`
+- `archetype_data_plane_read_artifact`
+- `archetype_data_plane_replay_run`
+
+Use them before broad artifact reads when an agent only needs run status, event history, artifact lineage, or replay state. See `docs/agent-data-plane.md`.
 
 When `archetype_generate_package` returns a `draft_contract`, hosts should surface `draft/design-system-preview.html` for browser review and `draft/design-system-review.md` for the review loop. The preview is static HTML generated from `draft/design-system.draft.json`; it is not app code and must not be used as implementation authority.
 

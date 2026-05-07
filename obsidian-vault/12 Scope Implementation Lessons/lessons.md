@@ -2872,3 +2872,55 @@ Phase 04 convergence review:
 I do not know how to make the CLI query surface more complete within Phase 04 without implementing MCP tools that belong to Phase 05.
 I cannot identify a Phase 04 mismatch after verifying read-only query commands, typed malformed failures, shared query logic, and existing CLI/MCP contract compatibility.
 ```
+
+## Agent Data Plane Phase 05 - MCP Query Surface
+
+Source:
+
+- `docs/AGENT_DATA_PLANE_PLAN.md`
+- `docs/agent-data-plane.md`
+
+Extracted requirements:
+
+- Add `archetype_data_plane_status`.
+- Add `archetype_data_plane_timeline`.
+- Add `archetype_data_plane_read_artifact`.
+- Add `archetype_data_plane_replay_run`.
+- Match CLI read/query semantics.
+- Include tools in MCP tool list.
+- Keep existing MCP tools working.
+
+Phase critique:
+
+- MCP tools must reuse `src/data-plane/queries.ts`; duplicating logic would drift from the CLI surface.
+- MCP tool errors previously returned only `{ status, message }`, which would hide `DataPlaneError.code` and fail the typed-error requirement.
+- `read_artifact` must return `ArtifactRecord` metadata, not generated artifact contents, otherwise agents lose the token-safety benefit of the data plane.
+
+Corrections applied:
+
+- Added `src/mcp/tools/dataPlane.ts` with four read-only data-plane tools.
+- Registered the tools in `src/mcp/tools/index.ts`.
+- Updated MCP server instructions to name Agent Data Plane querying.
+- Updated MCP error serialization to preserve `DataPlaneError` code, message, and details.
+- Extended `scripts/run-mcp-contract.mjs` to require the tools, query a generated draft run, read an artifact record, replay the run, and verify typed missing-run errors.
+- Updated README, MCP docs, Codex docs, and data-plane docs with the new tool names.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run mcp:contract`: pass.
+- `npm run cli:contract`: pass.
+- `rg -n "as any|\\bany\\b" src/data-plane src/mcp src/cli.ts scripts/run-mcp-contract.mjs`: no matches.
+
+Self-healing rules:
+
+- MCP data-plane tools must stay as thin wrappers over shared query functions.
+- Data-plane MCP failures must preserve `DataPlaneError` details in `structuredContent`.
+- Use `archetype_data_plane_read_artifact` for artifact records and `archetype_read_artifact` only when full file content is explicitly needed.
+
+Phase 05 convergence review:
+
+```txt
+I do not know how to make the MCP query surface more complete within Phase 05 without adding the dedicated data-plane contract script that belongs to Phase 06.
+I cannot identify a Phase 05 mismatch after verifying tool registration, shared CLI/MCP semantics, typed MCP data-plane errors, and existing CLI/MCP contract compatibility.
+```

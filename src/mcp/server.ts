@@ -3,6 +3,7 @@
 import { createInterface } from "node:readline";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { isDataPlaneError } from "../data-plane";
 import { archetypeMcpTools } from "./tools";
 import { asRecord, type JsonRecord } from "./tools/shared";
 
@@ -65,10 +66,19 @@ function toolResult(payload: unknown): JsonRecord {
 }
 
 function toolError(error: unknown): JsonRecord {
-  const payload = {
-    status: "error",
-    message: error instanceof Error ? error.message : String(error)
-  };
+  const payload = isDataPlaneError(error)
+    ? {
+      status: "error",
+      error: {
+        code: error.code,
+        message: error.message,
+        details: error.details
+      }
+    }
+    : {
+      status: "error",
+      message: error instanceof Error ? error.message : String(error)
+    };
   return {
     isError: true,
     content: [
@@ -117,7 +127,7 @@ async function handleRequest(request: JsonRpcRequest): Promise<void> {
         name: "archetype-mcp",
         version: packageVersion()
       },
-      instructions: "Archetype exposes deterministic tools for checking release readiness, creating intakes, applying one clarification answer at a time, generating frontend implementation contracts, validating packages, reading artifacts, summarizing packages, verifying target frontends, and planning repair tasks from verification evidence."
+      instructions: "Archetype exposes deterministic tools for checking release readiness, creating intakes, applying one clarification answer at a time, generating frontend implementation contracts, querying the Agent Data Plane, validating packages, reading artifacts, summarizing packages, verifying target frontends, and planning repair tasks from verification evidence."
     });
     return;
   }

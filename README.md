@@ -160,6 +160,10 @@ The server exposes deterministic tools for agent hosts:
 - `archetype_create_intake`
 - `archetype_answer_clarification`
 - `archetype_generate_package`
+- `archetype_data_plane_status`
+- `archetype_data_plane_timeline`
+- `archetype_data_plane_read_artifact`
+- `archetype_data_plane_replay_run`
 - `archetype_validate_package`
 - `archetype_summarize_package`
 - `archetype_read_artifact`

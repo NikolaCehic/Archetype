@@ -153,7 +153,12 @@ archetype data-plane read-artifact --out archetype-output --artifact <artifact-i
 archetype data-plane replay --out archetype-output --run <run-id> --json
 ```
 
-MCP query tools expose the same read-only behavior for agent hosts.
+MCP query tools expose the same read-only behavior for agent hosts:
+
+- `archetype_data_plane_status`
+- `archetype_data_plane_timeline`
+- `archetype_data_plane_read_artifact`
+- `archetype_data_plane_replay_run`
 
 ## Adapter Strategy
 
