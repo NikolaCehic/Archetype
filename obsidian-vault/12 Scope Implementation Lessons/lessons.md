@@ -1980,3 +1980,61 @@ Current answer for accessibility specialist hardening:
 I do not know how to make the accessibility specialist role more deterministic without importing requirements outside WCAG AA, WAI-ARIA pattern guidance, the approved Archetype package, and target accessibility evidence.
 I cannot identify a technical or architectural mismatch against the accessibility specialist hardening goal in the current role file.
 ```
+
+## Agent Hardening - Test First Developer
+
+Source files:
+
+- `agents/test-first-developer.md`
+- `plugins/claude-code/agents/test-first-developer.md`
+- `scripts/run-agent-role-files-contract.mjs`
+- `scripts/run-claude-plugin-contract.mjs`
+
+Browser research anchors:
+
+- Playwright best practices: https://playwright.dev/docs/best-practices
+- Testing Library guiding principles: https://testing-library.com/docs/guiding-principles/
+- Vitest guide: https://vitest.dev/guide/
+
+Mismatches found before hardening:
+
+- The role mentioned smoke, E2E, UI, accessibility, integration, and unit tests, but did not define a full role, mission, production standard, operating procedure, sufficiency gate, output schema, evidence contract, suite matrix, forbidden patterns, required behavior checklist, or self-review checklist.
+- The role used legacy paths such as `experience/route-map.json`, `screens/screen-inventory.json`, and `frontend-agent-contract/verification-contracts.json` instead of canonical `03-experience-architecture/*`, `05-screen-specs/*`, `06-frontend-agent-contract/*`, and `12-target-frontend/*` artifacts.
+- The role did not require `test-first/test-quality-standard.json`, generated Playwright and Vitest templates, target test files, `test-results/initial-red-test-run.md`, or red-to-green evidence integrity.
+- The role did not explicitly block marker-only tests, static contract-array tests, generic success-panel tests, screenshot-byte-size tests, skipped tests, or weakened tests.
+- The role did not define how to distinguish meaningful red failures from broken test setup.
+- The role was not contract-tested beyond generic required sections.
+
+Corrections applied:
+
+- Rewrote the role as a test-first implementation specialist and red-green evidence gatekeeper.
+- Added explicit authority, mission, production standard, canonical inputs, outputs, blockers, operating procedure, sufficiency gate, one-question clarification priority, output schema, decision rules, evidence contract, suite matrix, forbidden test patterns, required behavior checklist, external practice anchors, good/bad output signals, and self-review checklist.
+- Required six suites: `smoke`, `e2e`, `ui`, `accessibility`, `integration`, and `unit`.
+- Required target files for route smoke, user flows, screen states, accessibility, integration contracts, and component/unit contracts.
+- Required evidence from `test-first/test-first-contract.json`, `test-first/test-quality-standard.json`, `test-first/playwright-contract.spec.ts`, `test-first/vitest-contract.spec.ts`, `test-results/initial-red-test-run.md`, `verification/playwright-verification-contract.json`, `verification/playwright-evidence.json`, `12-target-frontend/source-file-manifest.json`, `12-target-frontend/codegen-tasks.json`, `14-target-execution/target-execution-report.json`, `qa/scenario-catalog.json`, and `10-revision/repair-task-queue.json`.
+- Added statuses: `ready_for_implementation_after_red`, `needs_test_repair`, and `blocked_untestable_contract`.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened test-first developer requirements in both root agent and Claude plugin checks.
+
+Self-healing rules added:
+
+- Implementation cannot start until target tests exist and initial red evidence is captured.
+- A red phase is valid only when failures prove missing or incomplete implementation, not broken setup or disconnected tests.
+- Marker-only tests, generic success-panel tests, static contract-array tests, screenshot-byte-size tests, skipped tests, and weakened tests are blockers.
+- Playwright tests should prefer user-visible behavior, roles, names, state fixtures, keyboard, status, viewport, screenshot, and route/deep-link evidence.
+- Vitest tests should exercise target behavior or fail meaningfully until target behavior exists.
+- Every hardened role upgrade must be mirrored into plugin surfaces and pinned by contract tests.
+
+Agent hardening convergence review:
+
+- The test-first developer now has enough role detail to enforce TDD deterministically before implementation.
+- The role blocks missing tests, missing initial red evidence, missing suite coverage, marker-only tests, behaviorless unit/integration tests, untestable contract gaps, skipped tests, and test weakening.
+- The role explicitly hands off contract gaps, accessibility test gaps, visual evidence gaps, implementation failures, QA failures, repair planning, and final verification instead of self-approving.
+- Contract tests now fail if the hardened test-first responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for test-first developer hardening:
+
+```txt
+I do not know how to make the test-first developer role more deterministic without importing requirements outside the approved Archetype package, target repository test evidence, and browser/user-facing testing best practices.
+I cannot identify a technical or architectural mismatch against the test-first developer hardening goal in the current role file.
+```

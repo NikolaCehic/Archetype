@@ -416,6 +416,57 @@ for (const expected of [
   assert(accessibilitySpecialist.includes(expected), `Accessibility specialist missing hardened requirement ${expected}.`);
 }
 
+const testFirstDeveloper = readText("agents/test-first-developer.md");
+for (const expected of [
+  "## Role",
+  "Role ID: `test-first-developer`",
+  "Role Type: Test-first implementation specialist and red-green evidence gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Operating Procedure",
+  "## Test-First Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Required Test Evidence Contract",
+  "## Required Suite Matrix",
+  "## Forbidden Test Patterns",
+  "No product UI before tests.",
+  "red_phase_required",
+  "green_phase_required",
+  "Marker-only tests fail the verifier.",
+  "ready_for_implementation_after_red",
+  "needs_test_repair",
+  "blocked_untestable_contract",
+  "Never ask a bulk test-first questionnaire",
+  "test-first/test-first-contract.json",
+  "test-first/test-first-plan.md",
+  "test-first/test-quality-standard.json",
+  "test-first/playwright-contract.spec.ts",
+  "test-first/vitest-contract.spec.ts",
+  "test-results/initial-red-test-run.md",
+  "verification/playwright-verification-contract.json",
+  "verification/playwright-evidence.json",
+  "03-experience-architecture/route-map.json",
+  "05-screen-specs/*.yaml",
+  "06-frontend-agent-contract/verification-contracts.json",
+  "12-target-frontend/source-file-manifest.json",
+  "12-target-frontend/codegen-tasks.json",
+  "14-target-execution/target-execution-report.json",
+  "qa/scenario-catalog.json",
+  "10-revision/repair-task-queue.json",
+  "tests/e2e/archetype-route-smoke.spec.ts",
+  "tests/e2e/archetype-user-flows.spec.ts",
+  "tests/ui/archetype-screen-states.spec.ts",
+  "tests/e2e/archetype-accessibility.spec.ts",
+  "tests/integration/archetype-contracts.spec.ts",
+  "tests/unit/archetype-components.spec.ts",
+  "malformed data",
+  "permission mismatches",
+  "Visual evidence covers desktop, tablet, and mobile"
+]) {
+  assert(testFirstDeveloper.includes(expected), `Test-first developer missing hardened requirement ${expected}.`);
+}
+
 const reviewer = readText("agents/frontend-contract-reviewer.md");
 for (const expected of ["missing evidence", "acceptance criteria", "archetype_validate_package"]) {
   assert(reviewer.toLowerCase().includes(expected), `Frontend contract reviewer missing ${expected}.`);

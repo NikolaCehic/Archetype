@@ -447,6 +447,71 @@ for (const agentRoot of agentRoots) {
   }
 }
 
+const testFirstDeveloperRequirements = [
+  "## Role",
+  "Role ID: `test-first-developer`",
+  "Role Type: Test-first implementation specialist and red-green evidence gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Test-First Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required Test Evidence Contract",
+  "## Required Suite Matrix",
+  "## Forbidden Test Patterns",
+  "## Required Behavior Checklist",
+  "## Self-Review Checklist",
+  "No product UI before tests.",
+  "red_phase_required",
+  "green_phase_required",
+  "Marker-only tests fail the verifier.",
+  "ready_for_implementation_after_red",
+  "needs_test_repair",
+  "blocked_untestable_contract",
+  "Never ask a bulk test-first questionnaire",
+  "test-first/test-first-contract.json",
+  "test-first/test-first-plan.md",
+  "test-first/test-quality-standard.json",
+  "test-first/playwright-contract.spec.ts",
+  "test-first/vitest-contract.spec.ts",
+  "test-results/initial-red-test-run.md",
+  "verification/playwright-verification-contract.json",
+  "verification/playwright-evidence.json",
+  "03-experience-architecture/route-map.json",
+  "05-screen-specs/*.yaml",
+  "06-frontend-agent-contract/verification-contracts.json",
+  "12-target-frontend/source-file-manifest.json",
+  "12-target-frontend/codegen-tasks.json",
+  "14-target-execution/target-execution-report.json",
+  "qa/scenario-catalog.json",
+  "10-revision/repair-task-queue.json",
+  "tests/e2e/archetype-route-smoke.spec.ts",
+  "tests/e2e/archetype-user-flows.spec.ts",
+  "tests/ui/archetype-screen-states.spec.ts",
+  "tests/e2e/archetype-accessibility.spec.ts",
+  "tests/integration/archetype-contracts.spec.ts",
+  "tests/unit/archetype-components.spec.ts",
+  "smoke",
+  "e2e",
+  "ui",
+  "accessibility",
+  "integration",
+  "unit",
+  "malformed data",
+  "permission mismatches",
+  "Visual evidence covers desktop, tablet, and mobile"
+];
+for (const agentRoot of agentRoots) {
+  const testFirstDeveloper = readText(path.join(agentRoot, "test-first-developer.md"));
+  for (const expected of testFirstDeveloperRequirements) {
+    assert(testFirstDeveloper.includes(expected), `${agentRoot}/test-first-developer.md missing hardened test-first-developer requirement: ${expected}.`);
+  }
+}
+
 const compatibilityReviewer = validateRoleFile(path.join("agents", "frontend-contract-reviewer.md"));
 assert(compatibilityReviewer.includes("Compatibility role"), "frontend-contract-reviewer.md must be marked as compatibility role.");
 assert(readText(path.join("plugins", "claude-code", "agents", "frontend-contract-reviewer.md")) === compatibilityReviewer, "Compatibility reviewer must be mirrored into Claude Code plugin agents.");
@@ -489,6 +554,7 @@ const summary = {
   strictTypescriptDeveloperRequirements,
   pixelPerfectDeveloperRequirements,
   accessibilitySpecialistRequirements,
+  testFirstDeveloperRequirements,
   rule: "No agent can approve its own work."
 };
 
