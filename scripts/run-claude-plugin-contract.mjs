@@ -199,6 +199,44 @@ for (const expected of [
   assert(frontendArchitect.includes(expected), `Frontend architect missing hardened requirement ${expected}.`);
 }
 
+const designSystemArchitect = readText("agents/design-system-architect.md");
+for (const expected of [
+  "## Role",
+  "Role ID: `design-system-architect`",
+  "Role Type: Design-system contract specialist and token/component gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Operating Procedure",
+  "## Design-System Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Required Design-System Contract",
+  "## shadcn, Radix, And Tailwind Rules",
+  "## Draft Preview Review Loop",
+  "draft/design-system.draft.json",
+  "draft/design-system-preview.html",
+  "draft/design-system-review.md",
+  "04-design-system/tokens/token-contracts.json",
+  "04-design-system/tokens/typography-system.json",
+  "04-design-system/tokens/css-variables.css",
+  "04-design-system/tokens/tailwind.config.ts",
+  "04-design-system/components/component-contracts.json",
+  "04-design-system/patterns/pattern-contracts.json",
+  "04-design-system/accessibility/accessibility-rules.json",
+  "specialist-gate/frontend-practices/design-system-practices.json",
+  "No implementation agent may build product UI from the preview alone.",
+  "Never ask a bulk design-system questionnaire",
+  "WCAG AA",
+  "CSS variables",
+  "semantic tokens",
+  "shadcn",
+  "Radix",
+  "Tailwind",
+  "one-note palettes"
+]) {
+  assert(designSystemArchitect.includes(expected), `Design-system architect missing hardened requirement ${expected}.`);
+}
+
 const reviewer = readText("agents/frontend-contract-reviewer.md");
 for (const expected of ["missing evidence", "acceptance criteria", "archetype_validate_package"]) {
   assert(reviewer.toLowerCase().includes(expected), `Frontend contract reviewer missing ${expected}.`);

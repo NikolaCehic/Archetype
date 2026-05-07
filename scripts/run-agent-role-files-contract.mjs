@@ -176,6 +176,57 @@ for (const agentRoot of agentRoots) {
   }
 }
 
+const designSystemArchitectRequirements = [
+  "## Role",
+  "Role ID: `design-system-architect`",
+  "Role Type: Design-system contract specialist and token/component gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Design-System Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required Design-System Contract",
+  "## shadcn, Radix, And Tailwind Rules",
+  "## Draft Preview Review Loop",
+  "## Self-Review Checklist",
+  "draft/design-system.draft.json",
+  "draft/design-system-preview.html",
+  "draft/design-system-review.md",
+  "04-design-system/tokens/primitive-tokens.json",
+  "04-design-system/tokens/semantic-tokens.json",
+  "04-design-system/tokens/component-tokens.json",
+  "04-design-system/tokens/token-contracts.json",
+  "04-design-system/tokens/typography-system.json",
+  "04-design-system/tokens/css-variables.css",
+  "04-design-system/tokens/typography.css",
+  "04-design-system/tokens/tailwind.config.ts",
+  "04-design-system/components/component-contracts.json",
+  "04-design-system/components/component-registry.json",
+  "04-design-system/patterns/pattern-contracts.json",
+  "04-design-system/accessibility/accessibility-rules.json",
+  "specialist-gate/frontend-practices/design-system-practices.json",
+  "No implementation agent may build product UI from the preview alone.",
+  "Never ask a bulk design-system questionnaire",
+  "WCAG AA",
+  "CSS variables",
+  "semantic tokens",
+  "component states",
+  "shadcn",
+  "Radix",
+  "Tailwind",
+  "one-note palettes"
+];
+for (const agentRoot of agentRoots) {
+  const designSystemArchitect = readText(path.join(agentRoot, "design-system-architect.md"));
+  for (const expected of designSystemArchitectRequirements) {
+    assert(designSystemArchitect.includes(expected), `${agentRoot}/design-system-architect.md missing hardened design-system-architect requirement: ${expected}.`);
+  }
+}
+
 const compatibilityReviewer = validateRoleFile(path.join("agents", "frontend-contract-reviewer.md"));
 assert(compatibilityReviewer.includes("Compatibility role"), "frontend-contract-reviewer.md must be marked as compatibility role.");
 assert(readText(path.join("plugins", "claude-code", "agents", "frontend-contract-reviewer.md")) === compatibilityReviewer, "Compatibility reviewer must be mirrored into Claude Code plugin agents.");
@@ -213,6 +264,7 @@ const summary = {
   productArchitectRequirements,
   experienceArchitectRequirements,
   frontendArchitectRequirements,
+  designSystemArchitectRequirements,
   rule: "No agent can approve its own work."
 };
 

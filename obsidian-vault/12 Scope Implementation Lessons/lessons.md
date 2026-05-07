@@ -1735,3 +1735,52 @@ Current answer for frontend architect hardening:
 I do not know how to make the frontend architect role more deterministic without importing requirements outside the approved Archetype package and current hardened lifecycle.
 I cannot identify a technical or architectural mismatch against the frontend architect hardening goal in the current role file.
 ```
+
+## Agent Hardening - Design System Architect
+
+Source files:
+
+- `agents/design-system-architect.md`
+- `plugins/claude-code/agents/design-system-architect.md`
+- `scripts/run-agent-role-files-contract.mjs`
+- `scripts/run-claude-plugin-contract.mjs`
+
+Mismatches found before hardening:
+
+- The design-system architect role listed tokens, typography, components, states, and polish blockers, but did not define a production-grade role, mission, operating procedure, sufficiency gate, output schema, or self-review checklist.
+- The role referenced legacy `design-system/*` paths but did not require the canonical `04-design-system/*` artifact set.
+- The role did not distinguish `draft/design-system-preview.html` as a human review projection from canonical implementation authority.
+- The role did not require token layers, CSS variables, Tailwind token mapping, shadcn/Radix constraints, or WCAG AA accessibility rules.
+- The role did not mechanically enforce that component contracts include props, slots, variants, states, events, tokens, accessibility, data behavior, and tests.
+- The role was not contract-tested beyond generic role sections.
+
+Corrections applied:
+
+- Rewrote the role as a design-system contract specialist and token/component gatekeeper.
+- Added draft preview review rules, canonical artifact requirements, token-layer validation, typography validation, component contract validation, pattern contract validation, shadcn/Radix/Tailwind rules, accessibility gates, responsive density checks, and handoff requirements.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened design-system architect requirements in both root agent and Claude plugin checks.
+
+Self-healing rules added:
+
+- A design-system role is not hardened unless it separates draft preview review from canonical implementation authority.
+- `draft/design-system-preview.html` can support human review but cannot authorize product UI implementation.
+- Canonical design-system review must use the `04-design-system/*` artifacts, especially token contracts, typography system, component contracts, pattern contracts, accessibility rules, CSS variables, and Tailwind token mapping.
+- shadcn, Radix, and Tailwind are implementation tools, not design authority.
+- Component contracts must include props, slots, variants, states, events, tokens, accessibility, data, tests, and forbidden usage.
+- WCAG AA, visible focus, keyboard behavior, labels, status text, reduced motion, and chart fallback are design-system blockers when missing.
+- Every hardened role upgrade must be mirrored into plugin surfaces and pinned by contract tests.
+
+Agent hardening convergence review:
+
+- The design-system architect now has enough role detail to produce deterministic design-system handoffs from approved Archetype artifacts.
+- The role blocks weak visual direction, missing draft preview traceability, missing token layers, tokenless styling, missing component states, shadcn default drift, raw Tailwind drift, and accessibility gaps.
+- The role explicitly hands off frontend architecture, pixel-perfect, accessibility, strict typing, QA, and contract verification risks instead of self-approving.
+- Contract tests now fail if the hardened design-system architect responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for design-system architect hardening:
+
+```txt
+I do not know how to make the design-system architect role more deterministic without importing requirements outside the approved Archetype package and current hardened lifecycle.
+I cannot identify a technical or architectural mismatch against the design-system architect hardening goal in the current role file.
+```
