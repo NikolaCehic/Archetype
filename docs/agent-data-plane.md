@@ -143,7 +143,17 @@ Projections are deterministic read models:
 - `verification`: verification and repair status.
 - `readiness`: readiness tier, blockers, warnings, and authorization.
 
-CLI and MCP commands read these projections without calling an LLM.
+CLI query commands read these projections without calling an LLM:
+
+```bash
+archetype data-plane status --out archetype-output --json
+archetype data-plane timeline --out archetype-output --run <run-id> --json
+archetype data-plane artifacts --out archetype-output --run <run-id> --json
+archetype data-plane read-artifact --out archetype-output --artifact <artifact-id> --json
+archetype data-plane replay --out archetype-output --run <run-id> --json
+```
+
+MCP query tools expose the same read-only behavior for agent hosts.
 
 ## Adapter Strategy
 

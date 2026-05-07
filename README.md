@@ -135,6 +135,16 @@ Plan repair tasks from the latest verification evidence:
 npx . repair --out archetype-output --target tmp/generated-frontend --json
 ```
 
+Inspect the Agent Data Plane without rereading large artifacts:
+
+```bash
+npx . data-plane status --out archetype-output --json
+npx . data-plane timeline --out archetype-output --run <run-id> --json
+npx . data-plane artifacts --out archetype-output --run <run-id> --json
+npx . data-plane read-artifact --out archetype-output --artifact <artifact-id> --json
+npx . data-plane replay --out archetype-output --run <run-id> --json
+```
+
 ## MCP
 
 Start the local MCP server:

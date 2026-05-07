@@ -2818,3 +2818,57 @@ Phase 03 convergence review:
 I do not know how to make compiler/exporter integration more faithful to Phase 03 without adding CLI/MCP query commands that belong to later phases.
 I cannot identify a Phase 03 mismatch after verifying no default compiler behavior change, default CLI/MCP run creation, artifact lineage after export, replay, and existing contract compatibility.
 ```
+
+## Agent Data Plane Phase 04 - CLI Query Surface
+
+Source:
+
+- `docs/AGENT_DATA_PLANE_PLAN.md`
+- `docs/agent-data-plane.md`
+
+Extracted requirements:
+
+- Add `archetype data-plane status --out archetype-output --json`.
+- Add `archetype data-plane timeline --out archetype-output --run <run-id> --json`.
+- Add `archetype data-plane artifacts --out archetype-output --run <run-id> --json`.
+- Add `archetype data-plane read-artifact --out archetype-output --artifact <artifact-id> --json`.
+- Add `archetype data-plane replay --out archetype-output --run <run-id> --json`.
+- Keep all commands deterministic, read-only, and LLM-free.
+- Return typed JSON failures for malformed reads.
+
+Phase critique:
+
+- Query behavior should not live only inside CLI because MCP needs the same semantics in Phase 05.
+- `status` must be safe on an empty data-plane directory and should not create files.
+- `timeline`, `artifacts`, and `replay` require explicit run IDs; otherwise agents can accidentally inspect the wrong run.
+- `read-artifact` can safely search all runs when no run ID is supplied because artifact records carry their source `run_id`.
+
+Corrections applied:
+
+- Added `src/data-plane/queries.ts` as the shared read-only query layer.
+- Added `data-plane` CLI subcommands for status, timeline, artifacts, read-artifact, and replay.
+- Added typed JSON error handling for data-plane commands using `DataPlaneError` codes.
+- Updated README and data-plane docs with CLI query commands.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run build`: pass.
+- CLI query smoke verified `status`, `timeline`, `artifacts`, `read-artifact`, and `replay` against a canonical generated run.
+- Malformed CLI smoke verified typed `RUN_NOT_FOUND`, `ARTIFACT_NOT_FOUND`, and `INVALID_DATA_PLANE_ARGUMENT` failures.
+- `npm run cli:contract`: pass.
+- `npm run mcp:contract`: pass.
+
+Self-healing rules:
+
+- Keep query operations read-only and shared through `src/data-plane/queries.ts`.
+- CLI/MCP query surfaces should return data-plane records, not generated artifact file contents.
+- Require `--run` for run-scoped reads unless the operation can unambiguously locate by artifact ID.
+- Typed data-plane failures must expose `{ status: "error", error: { code, message, details } }` in JSON mode.
+
+Phase 04 convergence review:
+
+```txt
+I do not know how to make the CLI query surface more complete within Phase 04 without implementing MCP tools that belong to Phase 05.
+I cannot identify a Phase 04 mismatch after verifying read-only query commands, typed malformed failures, shared query logic, and existing CLI/MCP contract compatibility.
+```

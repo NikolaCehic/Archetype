@@ -13,6 +13,19 @@ export {
   type ManifestArtifact,
   type RecordPackageOptions
 } from "./packageRecorder";
+export {
+  queryDataPlaneArtifact,
+  queryDataPlaneArtifacts,
+  queryDataPlaneReplay,
+  queryDataPlaneStatus,
+  queryDataPlaneTimeline,
+  type DataPlaneArtifactResult,
+  type DataPlaneArtifactsResult,
+  type DataPlaneReplayResult,
+  type DataPlaneRunSummary,
+  type DataPlaneStatusResult,
+  type DataPlaneTimelineResult
+} from "./queries";
 export type {
   ArtifactStore,
   DataPlane,

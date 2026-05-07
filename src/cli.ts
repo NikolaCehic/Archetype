@@ -15,12 +15,25 @@ import { installAgentPlugins, type InstallTarget } from "./install/pluginInstall
 import { runReleaseDoctor } from "./release/doctor";
 import { validateExportedPackage } from "./quality/validatePackage";
 import { simulateExportedPackage } from "./quality/simulatePackage";
-import { FileDataPlane, mergeManifestArtifacts, recordClarificationPackage, recordCompiledPackage, recordExportedArtifacts } from "./data-plane";
+import {
+  DataPlaneError,
+  FileDataPlane,
+  isDataPlaneError,
+  mergeManifestArtifacts,
+  queryDataPlaneArtifact,
+  queryDataPlaneArtifacts,
+  queryDataPlaneReplay,
+  queryDataPlaneStatus,
+  queryDataPlaneTimeline,
+  recordClarificationPackage,
+  recordCompiledPackage,
+  recordExportedArtifacts
+} from "./data-plane";
 import type { ArchetypeInput } from "./core/types";
 
 type CommandStatus = "success" | "warning" | "error";
 
-const VALID_COMMANDS = new Set(["doctor", "install", "init", "generate", "answer-clarification", "validate", "summarize", "simulate", "write-target", "verify-target", "repair"]);
+const VALID_COMMANDS = new Set(["doctor", "install", "init", "generate", "answer-clarification", "validate", "summarize", "simulate", "write-target", "verify-target", "repair", "data-plane"]);
 const TEMPLATE_FILES: Record<string, string> = {
   "saas-dashboard": "saas-dashboard-intake.json",
   fintech: "fintech-intake.json",
@@ -42,6 +55,11 @@ function usage(exitCode = 1): never {
   console.log("  archetype write-target --out <output-dir> --target <target-dir> [--force]");
   console.log("  archetype verify-target --out <output-dir> --target <target-dir> [--skip-install]");
   console.log("  archetype repair --out <output-dir> [--target <target-dir>]");
+  console.log("  archetype data-plane status --out <output-dir> [--json]");
+  console.log("  archetype data-plane timeline --out <output-dir> --run <run-id> [--json]");
+  console.log("  archetype data-plane artifacts --out <output-dir> --run <run-id> [--json]");
+  console.log("  archetype data-plane read-artifact --out <output-dir> --artifact <artifact-id> [--run <run-id>] [--json]");
+  console.log("  archetype data-plane replay --out <output-dir> --run <run-id> [--json]");
   console.log("");
   console.log("Add --json to return parseable command results.");
   process.exit(exitCode);
@@ -80,6 +98,10 @@ function dataPlaneForOutput(outputDir: string): FileDataPlane {
   return new FileDataPlane({ rootDir: path.join(outputDir, "data-plane") });
 }
 
+function dataPlaneRootForOutput(outputDir: string): string {
+  return path.join(outputDir, "data-plane");
+}
+
 function packageRoot(): string {
   return path.resolve(__dirname, "..");
 }
@@ -113,6 +135,21 @@ function errorExit(message: string, jsonMode: boolean): never {
     console.error(message);
   }
   process.exit(1);
+}
+
+function dataPlaneErrorExit(error: unknown, jsonMode: boolean): never {
+  if (isDataPlaneError(error) && jsonMode) {
+    writeJson({
+      status: "error",
+      error: {
+        code: error.code,
+        message: error.message,
+        details: error.details
+      }
+    });
+    process.exit(1);
+  }
+  errorExit(error instanceof Error ? error.message : String(error), jsonMode);
 }
 
 function initCommand(jsonMode: boolean): void {
@@ -318,6 +355,70 @@ function answerClarificationCommand(jsonMode: boolean): void {
   ]);
 }
 
+function dataPlaneCommand(jsonMode: boolean): void {
+  const action = process.argv[3];
+  const outDir = getArg("--out");
+  if (!action) usage();
+  if (!outDir) {
+    dataPlaneErrorExit(new DataPlaneError("INVALID_DATA_PLANE_ARGUMENT", "data-plane commands require --out <output-dir>.", { operation: action }), jsonMode);
+  }
+  const outputDir = path.resolve(outDir);
+  const dataPlane = dataPlaneForOutput(outputDir);
+  const dataPlaneRoot = dataPlaneRootForOutput(outputDir);
+  try {
+    if (action === "status") {
+      const result = queryDataPlaneStatus(dataPlane, outputDir, dataPlaneRoot);
+      resultOutput(result, jsonMode, [
+        `Agent Data Plane: ${dataPlaneRoot}`,
+        `Runs: ${result.runCount}`,
+        `Latest run: ${result.latestRunId ?? "none"}`
+      ]);
+      return;
+    }
+    if (action === "timeline") {
+      const result = queryDataPlaneTimeline(dataPlane, outputDir, getArg("--run"));
+      resultOutput(result, jsonMode, [
+        `Run: ${result.runId}`,
+        `Events: ${result.eventCount}`,
+        ...result.timeline.map((item) => `${item.sequence}. ${item.type} [${item.phase}] ${item.summary}`)
+      ]);
+      return;
+    }
+    if (action === "artifacts") {
+      const result = queryDataPlaneArtifacts(dataPlane, outputDir, getArg("--run"));
+      resultOutput(result, jsonMode, [
+        `Run: ${result.runId}`,
+        `Artifacts: ${result.artifactCount}`,
+        ...result.artifacts.map((artifact) => `${artifact.artifact_id} ${artifact.ref.path}`)
+      ]);
+      return;
+    }
+    if (action === "read-artifact") {
+      const result = queryDataPlaneArtifact(dataPlane, outputDir, getArg("--artifact"), getArg("--run"));
+      resultOutput(result, jsonMode, [
+        `Artifact: ${result.artifact.artifact_id}`,
+        `Run: ${result.runId}`,
+        `Path: ${result.artifact.ref.path}`,
+        `SHA-256: ${result.artifact.ref.sha256 ?? "none"}`
+      ]);
+      return;
+    }
+    if (action === "replay") {
+      const result = queryDataPlaneReplay(dataPlane, outputDir, getArg("--run"));
+      resultOutput(result, jsonMode, [
+        `Run: ${result.runId}`,
+        `Events: ${result.replay.events.length}`,
+        `Artifacts: ${result.replay.artifacts.length}`,
+        `Timeline: ${result.replay.timeline.length}`
+      ]);
+      return;
+    }
+    dataPlaneErrorExit(new DataPlaneError("INVALID_DATA_PLANE_ARGUMENT", `Unknown data-plane command "${action}".`, { operation: action }), jsonMode);
+  } catch (error) {
+    dataPlaneErrorExit(error, jsonMode);
+  }
+}
+
 function summarizePackage(outputDir: string): Record<string, unknown> {
   const topManifest = readJson<{
     packageType?: string;
@@ -490,6 +591,11 @@ async function main(): Promise<void> {
 
   if (command === "init") {
     initCommand(jsonMode);
+    return;
+  }
+
+  if (command === "data-plane") {
+    dataPlaneCommand(jsonMode);
     return;
   }
 
