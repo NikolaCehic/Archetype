@@ -1,9 +1,13 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { targetExecutionMarkdown } from "../modules/targetExecution";
 import { playwrightEvidenceMarkdown } from "../modules/playwrightVerification";
 import { updateRepairArtifactsFromLatest } from "../modules/revisionProtocol";
+import { buildLifecycleExecutionStateArtifact, lifecycleExecutionStateMarkdown } from "../modules/lifecycleExecutionStates";
+import { buildQaArtifactsFromRecords } from "../modules/qaTeam";
+import { FORBIDDEN_TEST_PATTERNS } from "../modules/testQualityStandard";
+import { finalReadinessReportMarkdown } from "../modules/requiredPackageArtifacts";
 
 interface TargetVerifyOptions {
   skipInstall?: boolean;
@@ -60,11 +64,20 @@ function readJson<T>(filePath: string): T {
   return JSON.parse(readFileSync(filePath, "utf8")) as T;
 }
 
+function readJsonOrEmpty(filePath: string): Record<string, unknown> {
+  if (!existsSync(filePath)) return {};
+  try {
+    return readJson<Record<string, unknown>>(filePath);
+  } catch {
+    return {};
+  }
+}
+
 function tail(value: string, max = 12000): string {
   return value.length > max ? value.slice(value.length - max) : value;
 }
 
-function runCommand(id: string, command: string, args: string[], cwd: string): CommandResult {
+function runCommand(id: string, command: string, args: string[], cwd: string, env: Record<string, string> = {}): CommandResult {
   const started = Date.now();
   const result = spawnSync(command, args, {
     cwd,
@@ -72,7 +85,8 @@ function runCommand(id: string, command: string, args: string[], cwd: string): C
     env: {
       ...process.env,
       CI: "1",
-      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_TELEMETRY_DISABLED: "1",
+      ...env
     }
   });
   const exitCode = typeof result.status === "number" ? result.status : 1;
@@ -85,6 +99,30 @@ function runCommand(id: string, command: string, args: string[], cwd: string): C
     stdout: tail(result.stdout ?? ""),
     stderr: tail(result.stderr ?? result.error?.message ?? "")
   };
+}
+
+function allocatePlaywrightPort(): string {
+  const script = [
+    "const net = require('node:net');",
+    "const server = net.createServer();",
+    "server.unref();",
+    "server.on('error', () => process.exit(1));",
+    "server.listen(0, '127.0.0.1', () => {",
+    "  const address = server.address();",
+    "  if (!address || typeof address === 'string') process.exit(1);",
+    "  process.stdout.write(String(address.port));",
+    "  server.close(() => process.exit(0));",
+    "});"
+  ].join("\n");
+  const result = spawnSync(process.execPath, ["-e", script], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      NEXT_TELEMETRY_DISABLED: "1"
+    }
+  });
+  const port = Number(String(result.stdout ?? "").trim());
+  return Number.isInteger(port) && port > 0 ? String(port) : "4177";
 }
 
 function auditTargetDependencies(targetDir: string): { blockers: string[]; warnings: string[] } {
@@ -124,6 +162,58 @@ function auditTargetDependencies(targetDir: string): { blockers: string[]; warni
   } catch {
     return { blockers: [], warnings: ["npm audit report could not be parsed."] };
   }
+}
+
+function listTargetTestFiles(directory: string): string[] {
+  if (!existsSync(directory)) return [];
+  const entries = readdirSync(directory, { withFileTypes: true });
+  return entries.flatMap((entry) => {
+    const absolutePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return listTargetTestFiles(absolutePath);
+    if (entry.isFile() && /\.(spec|test)\.(ts|tsx|js|jsx)$/.test(entry.name)) return [absolutePath];
+    return [];
+  });
+}
+
+function auditTargetTestQuality(outputDir: string, targetDir: string): { blockers: string[]; warnings: string[] } {
+  const standardPath = path.join(outputDir, "test-first", "test-quality-standard.json");
+  if (!existsSync(standardPath)) {
+    return { blockers: ["Missing test-first/test-quality-standard.json; target test quality cannot be verified."], warnings: [] };
+  }
+  const testFiles = listTargetTestFiles(path.join(targetDir, "tests"));
+  if (testFiles.length === 0) {
+    return { blockers: ["Target tests directory has no spec/test files; marker-only audit cannot pass."], warnings: [] };
+  }
+
+  const blockers: string[] = [];
+  const warnings: string[] = [];
+  for (const filePath of testFiles) {
+    const source = readFileSync(filePath, "utf8");
+    const relativePath = path.relative(targetDir, filePath);
+    const usesOnlyMarkerSurface = /data-archetype-(screen|state)/.test(source);
+    const behaviorSignals = [
+      /getByRole\(["']heading/,
+      /getByRole\(["']main/,
+      /getByRole\(["']status/,
+      /innerText\(/,
+      /toContainText\(/,
+      /toHaveURL\(/,
+      /new URL\(page\.url\(\)\)/,
+      /keyboard\.press\(/,
+      /setViewportSize\(/,
+      /boundingBox\(/,
+      /screenshot\(/,
+      /evaluate\(/
+    ];
+    const hasBehaviorEvidence = behaviorSignals.some((signal) => signal.test(source));
+    if (usesOnlyMarkerSurface && !hasBehaviorEvidence) {
+      blockers.push(`Marker-only test file fails HL-11 verifier: ${relativePath}. Forbidden patterns: ${FORBIDDEN_TEST_PATTERNS.join(" | ")}`);
+    }
+  }
+  if (blockers.length === 0) {
+    warnings.push("Target tests passed HL-11 marker-only audit; Playwright still needs to provide browser evidence.");
+  }
+  return { blockers, warnings };
 }
 
 function e2eFindingsMarkdown(results: Array<Record<string, unknown>>, summary: Record<string, unknown>): string {
@@ -283,12 +373,71 @@ function writePlaywrightEvidence(outputDir: string, targetDir: string, report: T
   writeText(path.join(outputDir, "verification", "playwright-evidence.md"), playwrightEvidenceMarkdown(evidence));
 }
 
+function writeLifecycleExecutionState(outputDir: string, report: TargetVerificationResult): void {
+  const topManifest = readJsonOrEmpty(path.join(outputDir, "manifest.json"));
+  const internalManifest = readJsonOrEmpty(path.join(outputDir, "00-manifest", "manifest.json"));
+  const testFirstContract = readJsonOrEmpty(path.join(outputDir, "test-first", "test-first-contract.json"));
+  const playwrightContract = readJsonOrEmpty(path.join(outputDir, "verification", "playwright-verification-contract.json"));
+  const playwrightEvidence = readJsonOrEmpty(path.join(outputDir, "verification", "playwright-evidence.json"));
+  const repairTaskQueue = readJsonOrEmpty(path.join(outputDir, "10-revision", "repair-task-queue.json"));
+  const sourceFileManifest = readJsonOrEmpty(path.join(outputDir, "12-target-frontend", "source-file-manifest.json"));
+  const artifact = buildLifecycleExecutionStateArtifact({
+    implementationAuthorized: topManifest.implementationAuthorized === true || internalManifest.implementation_authorized === true,
+    packageId: typeof internalManifest.package_id === "string" ? internalManifest.package_id : undefined,
+    readinessTier: typeof internalManifest.readiness_tier === "string" ? internalManifest.readiness_tier : undefined,
+    testFirstContract,
+    playwrightContract,
+    playwrightEvidence,
+    targetExecution: report as unknown as Record<string, unknown>,
+    repairTaskQueue,
+    sourceFileManifest
+  });
+  writeJson(path.join(outputDir, "lifecycle", "execution-state.json"), artifact);
+  writeText(path.join(outputDir, "lifecycle", "execution-state.md"), lifecycleExecutionStateMarkdown(artifact));
+}
+
+function writeQaArtifacts(outputDir: string, report: TargetVerificationResult): void {
+  const qa = buildQaArtifactsFromRecords({
+    playwrightContract: readJsonOrEmpty(path.join(outputDir, "verification", "playwright-verification-contract.json")),
+    playwrightEvidence: readJsonOrEmpty(path.join(outputDir, "verification", "playwright-evidence.json")),
+    testFirstContract: readJsonOrEmpty(path.join(outputDir, "test-first", "test-first-contract.json")),
+    repairTaskQueue: readJsonOrEmpty(path.join(outputDir, "10-revision", "repair-task-queue.json")),
+    driftReport: readJsonOrEmpty(path.join(outputDir, "10-revision", "drift-report.json")),
+    targetExecution: report as unknown as Record<string, unknown>
+  });
+  writeJson(path.join(outputDir, "qa", "scenario-catalog.json"), qa.scenarioCatalog);
+  writeJson(path.join(outputDir, "qa", "playwright-results.json"), qa.playwrightResults);
+  writeJson(path.join(outputDir, "qa", "malformed-data-results.json"), qa.malformedDataResults);
+  writeText(path.join(outputDir, "qa", "accessibility-results.md"), qa.accessibilityResultsMarkdown);
+  writeText(path.join(outputDir, "qa", "visual-regression-report.md"), qa.visualRegressionReportMarkdown);
+  writeText(path.join(outputDir, "qa", "contract-drift-report.md"), qa.contractDriftReportMarkdown);
+}
+
+function writeFinalReadinessReport(outputDir: string, report: TargetVerificationResult): void {
+  writeText(path.join(outputDir, "lifecycle", "final-readiness-report.md"), finalReadinessReportMarkdown({
+    manifest: readJsonOrEmpty(path.join(outputDir, "00-manifest", "manifest.json")),
+    playwrightEvidence: readJsonOrEmpty(path.join(outputDir, "verification", "playwright-evidence.json")),
+    targetExecution: report as unknown as Record<string, unknown>,
+    repairTaskQueue: readJsonOrEmpty(path.join(outputDir, "10-revision", "repair-task-queue.json")),
+    qaScenarioCatalog: readJsonOrEmpty(path.join(outputDir, "qa", "scenario-catalog.json"))
+  }));
+}
+
 export function verifyTargetFrontendExecution(outputDir: string, targetDir: string, options: TargetVerifyOptions = {}): TargetVerificationResult {
   const blockers: string[] = [];
   const warnings: string[] = [];
   if (!existsSync(outputDir)) blockers.push(`Output directory does not exist: ${outputDir}`);
   if (!existsSync(targetDir)) blockers.push(`Target directory does not exist: ${targetDir}`);
   if (!existsSync(path.join(targetDir, "package.json"))) blockers.push("Target package.json is missing. Run write-target first.");
+  const manifestPath = path.join(outputDir, "manifest.json");
+  if (!existsSync(manifestPath)) {
+    blockers.push("Missing manifest.json.");
+  } else {
+    const manifest = readJson<{ implementationAuthorized?: boolean; contractApproval?: { status?: string } }>(manifestPath);
+    if (manifest.implementationAuthorized !== true) {
+      blockers.push(`Verification is not authorized before human contract approval. Contract approval status: ${manifest.contractApproval?.status ?? "unknown"}.`);
+    }
+  }
 
   const commands: CommandResult[] = [];
   if (blockers.length === 0) {
@@ -308,9 +457,16 @@ export function verifyTargetFrontendExecution(outputDir: string, targetDir: stri
     if (commands.every((item) => item.status === "pass")) commands.push(runCommand("typecheck", "npm", ["run", "typecheck"], targetDir));
     if (commands.every((item) => item.status === "pass")) commands.push(runCommand("build", "npm", ["run", "build"], targetDir));
     const scripts = readPackageScripts(targetDir);
-    if (commands.every((item) => item.status === "pass") && scripts["archetype:playwright"]) {
-      commands.push(runCommand("playwright", "npm", ["run", "archetype:playwright"], targetDir));
-    } else if (commands.every((item) => item.status === "pass")) {
+    if (commands.every((item) => item.status === "pass")) {
+      const testQuality = auditTargetTestQuality(outputDir, targetDir);
+      blockers.push(...testQuality.blockers);
+      warnings.push(...testQuality.warnings);
+    }
+    if (commands.every((item) => item.status === "pass") && blockers.length === 0 && scripts["archetype:playwright"]) {
+      commands.push(runCommand("playwright", "npm", ["run", "archetype:playwright"], targetDir, {
+        ARCHETYPE_PLAYWRIGHT_PORT: allocatePlaywrightPort()
+      }));
+    } else if (commands.every((item) => item.status === "pass") && blockers.length === 0) {
       blockers.push("Target package.json is missing archetype:playwright script.");
     }
   }
@@ -381,6 +537,9 @@ export function verifyTargetFrontendExecution(outputDir: string, targetDir: stri
   };
   writeJson(reportPath, report);
   writeText(markdownPath, targetExecutionMarkdown(report as unknown as Record<string, unknown>));
+  writeQaArtifacts(outputDir, report);
+  writeFinalReadinessReport(outputDir, report);
+  writeLifecycleExecutionState(outputDir, report);
   updateE2ETargetExecutionProof(outputDir, report);
   return report;
 }

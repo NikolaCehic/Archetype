@@ -1,3 +1,4 @@
+import { answerClarificationTool } from "./answerClarification";
 import { createIntakeTool } from "./createIntake";
 import { generatePackageTool } from "./generatePackage";
 import { planRepairTool } from "./planRepair";
@@ -11,6 +12,7 @@ import type { McpToolDefinition } from "./shared";
 export const archetypeMcpTools: McpToolDefinition[] = [
   releaseDoctorTool,
   createIntakeTool,
+  answerClarificationTool,
   generatePackageTool,
   validatePackageTool,
   summarizePackageTool,

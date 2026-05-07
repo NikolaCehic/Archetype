@@ -31,7 +31,7 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
     "manifest.schema.json": objectSchema(
       "manifest.schema.json",
       "Archetype Manifest",
-      ["package_id", "project_slug", "spec_version", "schema_version", "source_hash", "generated_at", "operating_mode", "export_target", "readiness_score", "ready_for_frontend_agent", "artifact_index"]
+      ["package_id", "project_slug", "spec_version", "schema_version", "source_hash", "generated_at", "operating_mode", "export_target", "readiness_score", "readiness_tier", "ready_for_frontend_agent", "implementation_authorized", "contract_approval", "readiness_evidence", "artifact_index"]
     ),
     "evidence-ledger.schema.json": objectSchema(
       "evidence-ledger.schema.json",
@@ -206,7 +206,7 @@ export function buildSchemaArtifacts(): SchemaArtifacts {
     "readiness-report.schema.json": objectSchema(
       "readiness-report.schema.json",
       "Readiness Report",
-      ["score", "readyForFrontendAgent", "dimensions", "blockers", "warnings", "requiredHumanReview"]
+      ["score", "readinessTier", "readyForFrontendAgent", "dimensions", "blockers", "warnings", "requiredHumanReview"]
     )
   };
 

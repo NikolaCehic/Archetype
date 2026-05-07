@@ -185,7 +185,7 @@ function routeSource(file: SourceManifestFile, routeMap: { routes?: Array<Record
     `        <span className="archetype-eyebrow">${file.route}</span>`,
     `        <h1>${String(file.screen_id ?? "Screen").replace(/[._-]/g, " ")}</h1>`,
     "      </header>",
-    "      <section data-archetype-state={state} className=\"archetype-state-panel\">",
+    "      <section data-archetype-state={state} className=\"archetype-state-panel\" role=\"status\" aria-live=\"polite\">",
     "        <span className=\"archetype-eyebrow\">state</span>",
     "        <strong>{state.replace(/[_-]/g, \" \")}</strong>",
     "      </section>",
@@ -330,8 +330,16 @@ export function writeTargetFrontendSource(outputDir: string, targetDir: string, 
   const blockers: string[] = [];
   const warnings: string[] = [];
   const manifestPath = path.join(outputDir, "12-target-frontend", "source-file-manifest.json");
+  const topManifestPath = path.join(outputDir, "manifest.json");
   const routeMapPath = path.join(outputDir, "12-target-frontend", "route-component-map.json");
   const adapterPath = path.join(outputDir, "12-target-frontend", "adapter-interfaces.ts");
+  if (!existsSync(topManifestPath)) blockers.push("Missing manifest.json.");
+  if (existsSync(topManifestPath)) {
+    const topManifest = readJson<{ implementationAuthorized?: boolean; contractApproval?: { status?: string } }>(topManifestPath);
+    if (topManifest.implementationAuthorized !== true) {
+      blockers.push(`Implementation is not authorized. Contract approval status: ${topManifest.contractApproval?.status ?? "unknown"}.`);
+    }
+  }
   if (!existsSync(manifestPath)) blockers.push("Missing 12-target-frontend/source-file-manifest.json.");
   if (!existsSync(routeMapPath)) blockers.push("Missing 12-target-frontend/route-component-map.json.");
   if (!existsSync(adapterPath)) blockers.push("Missing 12-target-frontend/adapter-interfaces.ts.");

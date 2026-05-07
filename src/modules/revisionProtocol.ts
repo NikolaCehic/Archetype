@@ -8,6 +8,7 @@ import type {
 } from "../core/types";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { buildLifecycleExecutionStateArtifact, lifecycleExecutionStateMarkdown } from "./lifecycleExecutionStates";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -82,6 +83,24 @@ function writeJson(filePath: string, value: unknown): void {
 function writeText(filePath: string, value: string): void {
   mkdirSync(path.dirname(filePath), { recursive: true });
   writeFileSync(filePath, `${value.trimEnd()}\n`);
+}
+
+function writeLifecycleExecutionStateFromLatest(outputDir: string, targetExecution: JsonRecord, repairTaskQueue: JsonRecord): void {
+  const topManifest = readJsonSafe(path.join(outputDir, "manifest.json"));
+  const internalManifest = readJsonSafe(path.join(outputDir, "00-manifest", "manifest.json"));
+  const artifact = buildLifecycleExecutionStateArtifact({
+    implementationAuthorized: topManifest.implementationAuthorized === true || internalManifest.implementation_authorized === true,
+    packageId: typeof internalManifest.package_id === "string" ? internalManifest.package_id : undefined,
+    readinessTier: typeof internalManifest.readiness_tier === "string" ? internalManifest.readiness_tier : undefined,
+    testFirstContract: readJsonSafe(path.join(outputDir, "test-first", "test-first-contract.json")),
+    playwrightContract: readJsonSafe(path.join(outputDir, "verification", "playwright-verification-contract.json")),
+    playwrightEvidence: readJsonSafe(path.join(outputDir, "verification", "playwright-evidence.json")),
+    targetExecution,
+    repairTaskQueue,
+    sourceFileManifest: readJsonSafe(path.join(outputDir, "12-target-frontend", "source-file-manifest.json"))
+  });
+  writeJson(path.join(outputDir, "lifecycle", "execution-state.json"), artifact);
+  writeText(path.join(outputDir, "lifecycle", "execution-state.md"), lifecycleExecutionStateMarkdown(artifact));
 }
 
 function buildRepairContract(): JsonRecord {
@@ -357,7 +376,7 @@ function buildRepairTaskQueue(input: {
     completion_gate: input.status === "fail"
       ? "Do not declare completion until every blocker task is resolved and verify-target writes passing evidence."
       : input.status === "pass"
-        ? "No repair tasks remain. Completion may proceed if external production warnings are named."
+        ? "No repair tasks remain after verify-target wrote passing evidence. Completion may proceed if external production warnings are named."
         : "Run verify-target to produce repair tasks or completion evidence.",
     blockers: input.status === "fail" && dedupedTasks.length === 0 ? ["Verification failed but no repair tasks could be classified. Inspect target execution and Playwright evidence manually."] : [],
     warnings: input.status === "pass"
@@ -650,7 +669,7 @@ export function buildRevisionArtifacts(input: {
       "",
       "1. Capture feedback as a revision request.",
       "2. Classify changed evidence, product decisions, UX architecture, design-system decisions, or frontend contract rules.",
-      "3. Mark affected decisions as accepted, rejected, superseded, or blocked.",
+      "3. Mark affected decisions as confirmed, candidate, missing, conflicted, or blocked.",
       "4. Use invalidation rules to mark stale artifacts.",
       "5. Regenerate only affected artifacts and their dependents.",
       "6. Rebuild DSAG and readiness reports.",
@@ -664,9 +683,9 @@ export function buildRevisionArtifacts(input: {
       "# Decision Diff Policy",
       "",
       "- Decision diffs compare decision ID, status, confidence, evidence refs, and decision text.",
-      "- Superseded decisions must point to replacement decisions.",
-      "- Rejected decisions must include a reason.",
-      "- Low-confidence decisions may be promoted only with stronger evidence or explicit user approval.",
+      "- Candidate decisions must remain non-canonical until stronger evidence or explicit user approval exists.",
+      "- Conflicted decisions must include the competing evidence refs and the reason they cannot both be true.",
+      "- Low-confidence decisions may be confirmed only with canonical evidence or explicit user approval.",
       "- Diff summaries must list affected artifacts and validation changes."
     ].join("\n"),
     artifactInvalidationReport: [
@@ -727,6 +746,9 @@ export function updateRepairArtifactsFromLatest(outputDir: string, targetDir?: s
   writeText(path.join(outputDir, REPAIR_PLAN_PATH), repairPlanMarkdown(queue));
   writeJson(path.join(outputDir, DRIFT_REPORT_PATH), drift);
   writeText(path.join(outputDir, DRIFT_REPORT_MARKDOWN_PATH), driftReportMarkdown(drift));
+  if (existsSync(path.join(outputDir, "lifecycle"))) {
+    writeLifecycleExecutionStateFromLatest(outputDir, targetExecution, queue);
+  }
   return {
     status,
     outputDir,

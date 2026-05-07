@@ -4,9 +4,13 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { runArchetypeCompiler } from "./core/pipeline";
 import { exportPackage } from "./output/exportPackage";
+import { exportClarificationPackage } from "./output/exportClarificationPackage";
+import { exportDraftPackage } from "./output/exportDraftPackage";
 import { writeTargetFrontendSource } from "./output/writeTargetFrontend";
 import { verifyTargetFrontendExecution } from "./output/verifyTargetFrontend";
 import { updateRepairArtifactsFromLatest } from "./modules/revisionProtocol";
+import { applyClarificationAnswer } from "./modules/clarificationUx";
+import { assessContextGate } from "./modules/contextGate";
 import { installAgentPlugins, type InstallTarget } from "./install/pluginInstaller";
 import { runReleaseDoctor } from "./release/doctor";
 import { validateExportedPackage } from "./quality/validatePackage";
@@ -15,7 +19,7 @@ import type { ArchetypeInput } from "./core/types";
 
 type CommandStatus = "success" | "warning" | "error";
 
-const VALID_COMMANDS = new Set(["doctor", "install", "init", "generate", "validate", "summarize", "simulate", "write-target", "verify-target", "repair"]);
+const VALID_COMMANDS = new Set(["doctor", "install", "init", "generate", "answer-clarification", "validate", "summarize", "simulate", "write-target", "verify-target", "repair"]);
 const TEMPLATE_FILES: Record<string, string> = {
   "saas-dashboard": "saas-dashboard-intake.json",
   fintech: "fintech-intake.json",
@@ -30,6 +34,7 @@ function usage(exitCode = 1): never {
   console.log("  archetype install [--target codex|claude|all] [--home <dir>] [--dry-run] [--json]");
   console.log("  archetype init --out <intake.json> [--template saas-dashboard|fintech|marketplace-admin] [--force]");
   console.log("  archetype generate --input <intake.json> --out <output-dir>");
+  console.log("  archetype answer-clarification --input <intake.json> --out <next-intake.json> --question-id <id> --answer <text> [--answered-by <name>]");
   console.log("  archetype validate --out <output-dir>");
   console.log("  archetype summarize --out <output-dir>");
   console.log("  archetype simulate --out <output-dir>");
@@ -139,10 +144,80 @@ function generateCommand(jsonMode: boolean): void {
   const absoluteInput = path.resolve(inputPath);
   const absoluteOut = path.resolve(outDir);
   const input = readJson<ArchetypeInput>(absoluteInput);
+  const contextGate = assessContextGate(input);
+
+  if (contextGate.status === "needs_clarification") {
+    const clarificationPackage = exportClarificationPackage(input, contextGate, absoluteOut, absoluteInput);
+    const artifacts = clarificationPackage.artifacts.map((artifact) => ({
+      id: artifact.id,
+      path: path.join(absoluteOut, artifact.path),
+      type: artifact.type,
+      required: artifact.required
+    }));
+    const result = {
+      status: "warning" as const,
+      outputDir: absoluteOut,
+      packageType: "clarification",
+      readinessScore: clarificationPackage.readiness.score,
+      readinessTier: clarificationPackage.readiness.readinessTier,
+      readyForFrontendAgent: false,
+      blockers: contextGate.blockers,
+      warnings: contextGate.warnings,
+      nextQuestion: contextGate.questions[0]?.question ?? null,
+      artifacts
+    };
+
+    resultOutput(result, jsonMode, [
+      `Archetype clarification package generated: ${absoluteOut}`,
+      "Full contract package generated: false",
+      `Readiness score: ${clarificationPackage.readiness.score}`,
+      `Readiness tier: ${clarificationPackage.readiness.readinessTier}`,
+      "Ready for frontend agent: false",
+      ...(contextGate.questions[0] ? [`Next question: ${contextGate.questions[0].question}`] : []),
+      "Blockers:",
+      ...contextGate.blockers.map((blocker) => `- ${blocker}`)
+    ]);
+    return;
+  }
+
   const compiled = runArchetypeCompiler(input, {
     sourcePath: absoluteInput,
     outputDir: absoluteOut
   });
+
+  if (compiled.manifest.implementation_authorized !== true) {
+    const draftPackage = exportDraftPackage(compiled, absoluteOut);
+    const artifacts = draftPackage.artifacts.map((artifact) => ({
+      id: artifact.id,
+      path: path.join(absoluteOut, artifact.path),
+      type: artifact.type,
+      required: artifact.required
+    }));
+    const blockers = compiled.quality.readiness.blockers;
+    const warnings = compiled.quality.readiness.warnings;
+    const result = {
+      status: "warning" as const,
+      outputDir: absoluteOut,
+      packageType: "draft_contract",
+      readinessScore: compiled.quality.readiness.score,
+      readinessTier: "ready_for_contract_approval",
+      readyForFrontendAgent: false,
+      blockers,
+      warnings,
+      artifacts
+    };
+
+    resultOutput(result, jsonMode, [
+      `Archetype draft contract package generated: ${absoluteOut}`,
+      "Canonical spec generated: false",
+      `Readiness score: ${compiled.quality.readiness.score}`,
+      "Readiness tier: ready_for_contract_approval",
+      "Ready for frontend agent: false",
+      ...(blockers.length > 0 ? ["Blockers:", ...blockers.map((blocker) => `- ${blocker}`)] : []),
+      ...(warnings.length > 0 ? ["Warnings:", ...warnings.map((warning) => `- ${warning}`)] : [])
+    ]);
+    return;
+  }
 
   exportPackage(compiled, absoluteOut);
   const topManifest = readJson<{
@@ -160,6 +235,7 @@ function generateCommand(jsonMode: boolean): void {
     status: commandStatus(blockers, warnings),
     outputDir: absoluteOut,
     readinessScore: compiled.quality.readiness.score,
+    readinessTier: compiled.manifest.readiness_tier,
     readyForFrontendAgent: compiled.quality.readiness.readyForFrontendAgent,
     blockers,
     warnings,
@@ -169,31 +245,82 @@ function generateCommand(jsonMode: boolean): void {
   resultOutput(result, jsonMode, [
     `Archetype package generated: ${absoluteOut}`,
     `Readiness score: ${compiled.quality.readiness.score}`,
+    `Readiness tier: ${compiled.manifest.readiness_tier}`,
     `Ready for frontend agent: ${compiled.quality.readiness.readyForFrontendAgent}`,
     ...(blockers.length > 0 ? ["Blockers:", ...blockers.map((blocker) => `- ${blocker}`)] : []),
     ...(warnings.length > 0 ? ["Warnings:", ...warnings.map((warning) => `- ${warning}`)] : [])
   ]);
 }
 
+function answerClarificationCommand(jsonMode: boolean): void {
+  const inputPath = getArg("--input");
+  const outPath = getArg("--out");
+  const questionId = getArg("--question-id");
+  const answer = getArg("--answer");
+  const answeredBy = getArg("--answered-by") ?? "user";
+  if (!inputPath || !outPath || !questionId || !answer) usage();
+
+  const absoluteInput = path.resolve(inputPath);
+  const absoluteOut = path.resolve(outPath);
+  const input = readJson<ArchetypeInput>(absoluteInput);
+  const applied = applyClarificationAnswer({
+    intake: input,
+    questionId,
+    answer,
+    answeredBy
+  });
+  writeFileSync(absoluteOut, `${JSON.stringify(applied.updatedInput, null, 2)}\n`);
+  const result = {
+    status: applied.status,
+    inputPath: absoluteInput,
+    outputPath: absoluteOut,
+    answeredQuestion: applied.answeredQuestion?.question ?? null,
+    answeredQuestionId: applied.answeredQuestion?.id ?? questionId,
+    contextStatus: applied.contextStatus,
+    readinessTier: applied.readinessTier,
+    nextQuestion: applied.nextQuestion?.question ?? null,
+    nextQuestionId: applied.nextQuestion?.id ?? null,
+    clarificationTurn: applied.clarificationTurn
+  };
+
+  resultOutput(result, jsonMode, [
+    `Archetype clarification answer applied: ${absoluteOut}`,
+    `Context status: ${applied.contextStatus}`,
+    `Readiness tier: ${applied.readinessTier}`,
+    ...(applied.nextQuestion ? [`Next question: ${applied.nextQuestion.question}`] : ["Next question: none"])
+  ]);
+}
+
 function summarizePackage(outputDir: string): Record<string, unknown> {
   const topManifest = readJson<{
+    packageType?: string;
     productName?: string;
     readinessScore?: number;
+    readinessTier?: string;
     readyForFrontendAgent?: boolean;
     blockers?: string[];
     warnings?: string[];
   }>(path.join(outputDir, "manifest.json"));
-  const productModel = readJson<{
-    product_name?: string;
-    product_type?: string;
-    product_category?: string;
-  }>(path.join(outputDir, "product", "product-model.json"));
-  const routeMap = readJson<{ routes?: Array<{ route?: string; screen_id?: string }> }>(
-    path.join(outputDir, "experience", "route-map.json")
-  );
-  const screenInventory = readJson<{
-    screens?: Array<{ screen_id?: string; route?: string; required_states?: string[] }>;
-  }>(path.join(outputDir, "screens", "screen-inventory.json"));
+  const isDraft = topManifest.packageType === "draft_contract";
+  const productModel = isDraft
+    ? readJson<{ product_model?: { product_name?: string; product_type?: string; product_category?: string } }>(path.join(outputDir, "draft", "product-model.draft.json")).product_model ?? {}
+    : readJson<{ product_name?: string; product_type?: string; product_category?: string }>(path.join(outputDir, "product", "product-model.json"));
+  const draftExperience = isDraft
+    ? readJson<{ routes?: Array<{ route?: string; screen_id?: string }>; screens?: Array<{ screen_id?: string; route?: string; states?: Record<string, { required?: boolean }> }> }>(path.join(outputDir, "draft", "experience-architecture.draft.json"))
+    : null;
+  const routeMap = isDraft
+    ? { routes: draftExperience?.routes ?? [] }
+    : readJson<{ routes?: Array<{ route?: string; screen_id?: string }> }>(path.join(outputDir, "experience", "route-map.json"));
+  const screenInventory = isDraft
+    ? {
+      screens: (draftExperience?.screens ?? []).map((screen) => ({
+        ...screen,
+        required_states: Object.entries(screen.states ?? {})
+          .filter(([, state]) => state.required === true)
+          .map(([state]) => state)
+      }))
+    }
+    : readJson<{ screens?: Array<{ screen_id?: string; route?: string; required_states?: string[] }> }>(path.join(outputDir, "screens", "screen-inventory.json"));
 
   const routes = routeMap.routes ?? [];
   const screens = screenInventory.screens ?? [];
@@ -212,24 +339,64 @@ function summarizePackage(outputDir: string): Record<string, unknown> {
     routeMap: routes.map((route) => ({ route: route.route, screenId: route.screen_id })),
     requiredStates,
     readinessScore: topManifest.readinessScore ?? 0,
+    readinessTier: topManifest.readinessTier ?? "unknown",
     readyForFrontendAgent: topManifest.readyForFrontendAgent ?? false,
     blockers: topManifest.blockers ?? [],
     warnings: topManifest.warnings ?? [],
     entrypoints: [
+      "lifecycle/start-request.json",
       "lifecycle/context-completion.json",
+      "lifecycle/context-matrix.json",
+      "lifecycle/readiness-tiers.json",
+      "lifecycle/implementation-phases.json",
+      "lifecycle/clarification-turn.json",
+      "lifecycle/clarification-state.json",
+      "lifecycle/clarification-transcript.md",
+      "lifecycle/approval-request.md",
+      "lifecycle/approval-decision.json",
+      "01-evidence/evidence-ledger.json",
+      "01-evidence/missing-context.md",
+      ...(isDraft ? [
+        "lifecycle/contract-state.json",
+        "draft/product-model.draft.json",
+        "draft/experience-architecture.draft.json",
+        "draft/design-system.draft.json",
+        "draft/frontend-contract.draft.json",
+        "draft/assumption-ledger.md",
+        "draft/contract-approval-request.json"
+      ] : []),
+      "governance/non-negotiable-principles.json",
+      "governance/evidence-decision-model.json",
+      "governance/forbidden-behaviors.json",
+      "governance/convergence-standard.json",
+      "governance/frontend-practice-skills.json",
       "lifecycle/lifecycle-report.md",
-      "spec/archetype-spec.md",
-      "spec/archetype-spec.json",
-      "test-first/test-first-contract.json",
-      "test-first/test-first-plan.md",
-      "verification/playwright-verification-contract.json",
-      "verification/playwright-evidence.json",
-      "10-revision/repair-task-queue.json",
-      "10-revision/repair-plan.md",
-      "AGENTS.md",
-      "CLAUDE.md",
-      "implementation-contract.md",
-      "verification-plan.md",
+      ...(!isDraft ? [
+        "lifecycle/contract-state.json",
+        "lifecycle/execution-state.json",
+        "lifecycle/final-readiness-report.md",
+        "spec/archetype-spec.md",
+        "spec/archetype-spec.json",
+        "test-first/test-first-contract.json",
+        "test-first/test-first-plan.md",
+        "test-first/test-quality-standard.json",
+        "test-results/initial-red-test-run.md",
+        "verification/playwright-verification-contract.json",
+        "verification/playwright-evidence.json",
+        "qa/scenario-catalog.json",
+        "qa/playwright-results.json",
+        "qa/malformed-data-results.json",
+        "qa/accessibility-results.md",
+        "qa/visual-regression-report.md",
+        "qa/contract-drift-report.md",
+        "reviews/specialist-review-summary.md",
+        "10-revision/repair-task-queue.json",
+        "10-revision/repair-plan.md",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "implementation-contract.md",
+        "verification-plan.md"
+      ] : []),
       "manifest.json"
     ]
   };
@@ -301,6 +468,11 @@ async function main(): Promise<void> {
     const result = validateExportedPackage(path.resolve(outDir));
     writeJson(result);
     if (result.status === "fail") process.exit(1);
+    return;
+  }
+
+  if (command === "answer-clarification") {
+    answerClarificationCommand(jsonMode);
     return;
   }
 

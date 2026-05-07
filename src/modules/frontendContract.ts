@@ -70,6 +70,7 @@ function buildDataOperationContracts(profile: DomainProfile, experience: Experie
     query_id: `${screen.screen_id}.load`,
     screen_id: screen.screen_id,
     route: screen.route,
+    evidence_refs: screen.evidence_refs,
     entity_refs: screen.data_needs,
     route_params: routeParams(screen.route),
     request_contract: {
@@ -112,6 +113,7 @@ function buildDataOperationContracts(profile: DomainProfile, experience: Experie
           route: screen.route,
           action_id: actionValue(action, "id"),
           action_type: actionValue(action, "type"),
+          evidence_refs: screen.evidence_refs,
           entity_ref: entity,
           permission: actionValue(action, "permission"),
           input_contract: {

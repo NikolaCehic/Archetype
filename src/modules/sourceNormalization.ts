@@ -374,6 +374,90 @@ export function buildIngestionArtifacts(input: ArchetypeInput): IngestionArtifac
     });
   }
 
+  if (input.dataBoundary) {
+    normalizedSources.push({
+      source_id: "source_data_boundary",
+      source_type: "data_boundary",
+      source_label: "User-provided data, auth, and permission boundary",
+      summary: [
+        input.dataBoundary.mode ? `Mode: ${input.dataBoundary.mode}.` : "",
+        input.dataBoundary.dataSource ? `Data source: ${input.dataBoundary.dataSource}.` : "",
+        input.dataBoundary.auth ? `Auth: ${input.dataBoundary.auth}.` : "",
+        input.dataBoundary.permissions ? `Permissions: ${input.dataBoundary.permissions}.` : "",
+        input.dataBoundary.notes ?? ""
+      ].filter(Boolean).join(" ") || "Data boundary provided.",
+      observations: [
+        input.dataBoundary.mode ? `Mode: ${input.dataBoundary.mode}.` : "No mode provided.",
+        input.dataBoundary.dataSource ? `Data source: ${input.dataBoundary.dataSource}.` : "No data source provided.",
+        input.dataBoundary.auth ? `Auth: ${input.dataBoundary.auth}.` : "No auth boundary provided.",
+        input.dataBoundary.permissions ? `Permissions: ${input.dataBoundary.permissions}.` : "No permission boundary provided.",
+        input.dataBoundary.notes ? `Notes: ${input.dataBoundary.notes}` : "No notes provided."
+      ],
+      design_implications: ["Constrain data operations, fixtures, auth states, permission states, forms, and tests to the stated boundary."],
+      used_for: ["data_contracts", "data_operations", "permission_model", "test_contracts"],
+      confidence: "high",
+      redactions: []
+    });
+  }
+
+  if (input.testExecution) {
+    normalizedSources.push({
+      source_id: "source_test_execution",
+      source_type: "test_execution_permission",
+      source_label: "User-provided test and Playwright execution permission",
+      summary: [
+        input.testExecution.playwrightAllowed === true ? "Playwright allowed." : "",
+        input.testExecution.commandsAllowed === true ? "Command execution allowed." : "",
+        (input.testExecution.testTypes ?? []).length > 0 ? `Test types: ${input.testExecution.testTypes?.join(", ")}.` : "",
+        input.testExecution.notes ?? ""
+      ].filter(Boolean).join(" ") || "Test execution permission provided.",
+      observations: [
+        `Playwright allowed: ${input.testExecution.playwrightAllowed === true}.`,
+        `Commands allowed: ${input.testExecution.commandsAllowed === true}.`,
+        `Test types: ${(input.testExecution.testTypes ?? []).join(", ") || "unspecified"}.`,
+        input.testExecution.notes ? `Notes: ${input.testExecution.notes}` : "No notes provided."
+      ],
+      design_implications: ["Generate test-first contracts and Playwright verification obligations from explicit permission."],
+      used_for: ["test_first_contract", "playwright_verification", "qa_readiness"],
+      confidence: "high",
+      redactions: []
+    });
+  }
+
+  if (input.assumptionApproval) {
+    normalizedSources.push({
+      source_id: "source_assumption_approval",
+      source_type: "assumption_approval",
+      source_label: "User-provided assumption approval",
+      summary: input.assumptionApproval.notes ?? (input.assumptionApproval.approvedForDraft ? "Candidate assumptions approved for draft." : "Assumption approval provided."),
+      observations: [
+        `Approved for draft: ${input.assumptionApproval.approvedForDraft === true}.`,
+        input.assumptionApproval.approvedBy ? `Approved by: ${input.assumptionApproval.approvedBy}.` : "No approver provided.",
+        input.assumptionApproval.approvedAt ? `Approved at: ${input.assumptionApproval.approvedAt}.` : "No approval timestamp provided.",
+        (input.assumptionApproval.approvedAssumptionIds ?? []).length > 0 ? `Approved assumptions: ${input.assumptionApproval.approvedAssumptionIds?.join(", ")}.` : "No specific assumption ids provided.",
+        input.assumptionApproval.notes ? `Notes: ${input.assumptionApproval.notes}` : "No notes provided."
+      ],
+      design_implications: ["Candidate assumptions may be proposed in draft artifacts but must remain non-canonical until human approval."],
+      used_for: ["context_sufficiency", "evidence_decision_model", "approval_gates"],
+      confidence: input.assumptionApproval.approvedForDraft ? "high" : "medium",
+      redactions: []
+    });
+  }
+
+  if ((input.safetyConstraints ?? []).length > 0) {
+    normalizedSources.push({
+      source_id: "source_safety_constraints",
+      source_type: "safety_constraints",
+      source_label: "User-provided safety and sensitive-data constraints",
+      summary: input.safetyConstraints?.join(" ") ?? "Safety constraints provided.",
+      observations: input.safetyConstraints ?? [],
+      design_implications: ["Constrain risk copy, sensitive-data handling, compliance claims, and human review requirements."],
+      used_for: ["risk_model", "content_rules", "verification_plan", "readiness_gates"],
+      confidence: "high",
+      redactions: []
+    });
+  }
+
   for (const [index, material] of (input.materials ?? []).entries()) {
     normalizedSources.push(normalizeMaterial(material, index));
   }

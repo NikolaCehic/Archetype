@@ -520,6 +520,7 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
 
   const readiness: ReadinessReport = {
     score,
+    readinessTier: "ready_for_contract_draft",
     readyForFrontendAgent: hardBlockers.length === 0,
     dimensions,
     blockers: hardBlockers,

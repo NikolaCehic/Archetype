@@ -1,4 +1,4 @@
-import type { ArchetypeInput, FrontendStackInput, SourceMaterialInput } from "../../core/types";
+import type { ArchetypeInput, DataBoundaryInput, FrontendStackInput, SourceMaterialInput } from "../../core/types";
 import {
   arrayValue,
   asRecord,
@@ -10,6 +10,7 @@ import {
 } from "./shared";
 
 const SOURCE_MATERIAL_TYPES = new Set(["document", "code", "design_file", "screenshot", "brand", "other"]);
+const DATA_BOUNDARY_MODES = new Set(["mock", "api", "repo", "hybrid"]);
 
 function inferStack(targetStack: string): FrontendStackInput {
   const normalized = targetStack.toLowerCase();
@@ -42,6 +43,10 @@ function brandAttributes(brandNotes: string): string[] {
 
 function sourceMaterialType(value: unknown): SourceMaterialInput["type"] {
   return typeof value === "string" && SOURCE_MATERIAL_TYPES.has(value) ? value as SourceMaterialInput["type"] : "other";
+}
+
+function dataBoundaryMode(value: unknown): DataBoundaryInput["mode"] | undefined {
+  return typeof value === "string" && DATA_BOUNDARY_MODES.has(value) ? value as DataBoundaryInput["mode"] : undefined;
 }
 
 function sourceMaterialInputs(value: unknown): SourceMaterialInput[] {
@@ -118,6 +123,43 @@ export const createIntakeTool: McpToolDefinition = {
           },
           required: ["label", "type"]
         }
+      },
+      dataBoundary: {
+        type: "object",
+        description: "Required HL-03 data, auth, and permission boundary.",
+        properties: {
+          mode: { type: "string", enum: ["mock", "api", "repo", "hybrid"] },
+          dataSource: { type: "string" },
+          auth: { type: "string" },
+          permissions: { type: "string" },
+          notes: { type: "string" }
+        }
+      },
+      testExecution: {
+        type: "object",
+        description: "Required HL-03 test and Playwright execution permission.",
+        properties: {
+          playwrightAllowed: { type: "boolean" },
+          commandsAllowed: { type: "boolean" },
+          testTypes: { type: "array", items: { type: "string" } },
+          notes: { type: "string" }
+        }
+      },
+      assumptionApproval: {
+        type: "object",
+        description: "Required HL-03 permission to propose candidate assumptions for draft artifacts.",
+        properties: {
+          approvedForDraft: { type: "boolean" },
+          approvedBy: { type: "string" },
+          approvedAt: { type: "string" },
+          approvedAssumptionIds: { type: "array", items: { type: "string" } },
+          notes: { type: "string" }
+        }
+      },
+      safetyConstraints: {
+        type: "array",
+        items: { type: "string" },
+        description: "Safety, compliance, regulated-data, or sensitive-data constraints to enforce when detected."
       }
     },
     required: ["brief"]
@@ -134,16 +176,26 @@ export const createIntakeTool: McpToolDefinition = {
     const goals = arrayValue(record, "goals");
     const users = arrayValue(record, "users");
     const importedMaterials = sourceMaterialInputs(record.materials);
+    const dataBoundaryRecord = asRecord(record.dataBoundary);
+    const testExecutionRecord = asRecord(record.testExecution);
+    const assumptionApprovalRecord = asRecord(record.assumptionApproval);
+    const safetyConstraints = arrayValue(record, "safetyConstraints");
 
     const missingInputs = [
       !targetStack ? "targetStack" : "",
       !brandNotes ? "brandNotes" : "",
-      !existingRepoContext && importedMaterials.length === 0 ? "existingRepoContext or materials" : ""
+      !existingRepoContext && importedMaterials.length === 0 ? "existingRepoContext or materials" : "",
+      Object.keys(dataBoundaryRecord).length === 0 ? "dataBoundary" : "",
+      Object.keys(testExecutionRecord).length === 0 ? "testExecution" : "",
+      Object.keys(assumptionApprovalRecord).length === 0 ? "assumptionApproval" : ""
     ].filter(Boolean);
     const riskFlags = [
       !targetStack ? "Target stack was not provided; generated contracts will remain framework-agnostic." : "",
       !existingRepoContext && importedMaterials.length === 0 ? "No existing repository context or imported source materials were provided; migration constraints may be incomplete." : "",
-      !brandNotes ? "No brand notes were provided; visual direction will be inferred from the brief." : ""
+      !brandNotes ? "No brand notes were provided; visual direction will be inferred from the brief." : "",
+      Object.keys(dataBoundaryRecord).length === 0 ? "No data/auth/permission boundary was provided; Archetype will ask before drafting contracts." : "",
+      Object.keys(testExecutionRecord).length === 0 ? "No test execution permission was provided; Archetype will ask before generating test obligations." : "",
+      Object.keys(assumptionApprovalRecord).length === 0 ? "No assumption approval was provided; Archetype will ask before proposing draft assumptions." : ""
     ].filter(Boolean);
 
     const materials: SourceMaterialInput[] = [...importedMaterials];
@@ -188,6 +240,33 @@ export const createIntakeTool: McpToolDefinition = {
           }
         : undefined,
       stack: targetStack ? inferStack(targetStack) : undefined,
+      dataBoundary: Object.keys(dataBoundaryRecord).length > 0
+        ? {
+            mode: dataBoundaryMode(dataBoundaryRecord.mode),
+            dataSource: stringValue(dataBoundaryRecord, "dataSource") || undefined,
+            auth: stringValue(dataBoundaryRecord, "auth") || undefined,
+            permissions: stringValue(dataBoundaryRecord, "permissions") || undefined,
+            notes: stringValue(dataBoundaryRecord, "notes") || undefined
+          }
+        : undefined,
+      testExecution: Object.keys(testExecutionRecord).length > 0
+        ? {
+            playwrightAllowed: testExecutionRecord.playwrightAllowed === true,
+            commandsAllowed: testExecutionRecord.commandsAllowed === true,
+            testTypes: arrayValue(testExecutionRecord, "testTypes"),
+            notes: stringValue(testExecutionRecord, "notes") || undefined
+          }
+        : undefined,
+      assumptionApproval: Object.keys(assumptionApprovalRecord).length > 0
+        ? {
+            approvedForDraft: assumptionApprovalRecord.approvedForDraft === true,
+            approvedBy: stringValue(assumptionApprovalRecord, "approvedBy") || undefined,
+            approvedAt: stringValue(assumptionApprovalRecord, "approvedAt") || undefined,
+            approvedAssumptionIds: arrayValue(assumptionApprovalRecord, "approvedAssumptionIds"),
+            notes: stringValue(assumptionApprovalRecord, "notes") || undefined
+          }
+        : undefined,
+      safetyConstraints,
       operatingMode: "full_architecture",
       materials
     };

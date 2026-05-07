@@ -1,4 +1,5 @@
 import type { ArchetypePackage, PlaywrightVerificationArtifacts } from "../core/types";
+import { FORBIDDEN_TEST_PATTERNS, REQUIRED_TEST_BEHAVIORS } from "./testQualityStandard";
 
 type PlaywrightInput = Omit<ArchetypePackage, "playwright">;
 type JsonRecord = Record<string, unknown>;
@@ -133,23 +134,26 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
       ]
     };
   });
-  const visualScenarios = routes.map((route, index) => {
-    const routePath = String(route.route ?? "/");
-    const screenId = String(route.screen_id ?? `screen_${index + 1}`);
-    return {
-      scenario_id: `PW-VISUAL-${String(index + 1).padStart(3, "0")}`,
-      type: "visual_smoke",
-      route: routePath,
-      resolved_route: routeUrl(routePath),
-      screen_id: screenId,
-      screenshot_path: `test-results/archetype-visual-smoke/${screenId}.png`,
-      assertions: [
-        "Screenshot can be captured.",
-        "Screen root bounding box is non-empty.",
-        "Screenshot is attached as visual-smoke evidence."
-      ]
-    };
-  });
+  const visualScenarios = routes.flatMap((route, index) =>
+    viewports.map((viewport) => {
+      const routePath = String(route.route ?? "/");
+      const screenId = String(route.screen_id ?? `screen_${index + 1}`);
+      return {
+        scenario_id: `PW-VISUAL-${String(index + 1).padStart(3, "0")}-${viewport.viewport_id}`,
+        type: "visual_smoke",
+        route: routePath,
+        resolved_route: routeUrl(routePath),
+        screen_id: screenId,
+        viewport,
+        screenshot_path: `test-results/archetype-visual-smoke/${screenId}-${viewport.viewport_id}.png`,
+        assertions: [
+          "Screenshot can be captured at the declared viewport.",
+          "Screen root bounding box is non-empty.",
+          "Screenshot is attached as visual-smoke evidence; byte size alone is not treated as quality."
+        ]
+      };
+    })
+  );
   const scenarios = [
     ...routeScenarios,
     ...stateScenarios,
@@ -163,6 +167,10 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
     contract_version: "1.0",
     source_spec_path: "spec/archetype-spec.json",
     source_test_first_contract_path: "test-first/test-first-contract.json",
+    test_quality_standard_path: "test-first/test-quality-standard.json",
+    marker_only_tests_fail_verifier: true,
+    forbidden_test_patterns: FORBIDDEN_TEST_PATTERNS,
+    required_test_behaviors: REQUIRED_TEST_BEHAVIORS,
     lifecycle_gate: "verifying_with_playwright",
     runner: "playwright",
     base_url_env: "ARCHETYPE_PLAYWRIGHT_BASE_URL",
@@ -306,6 +314,9 @@ function buildSpecSource(contract: JsonRecord): string {
     "      await page.goto(scenario.resolved_route);",
     "      await expect(page.locator(scenario.selector)).toBeVisible();",
     "      await expect(page.locator(\"[data-archetype-screen]\")).toHaveAttribute(\"data-archetype-screen\", scenario.screen_id);",
+    "      await expect(page.getByRole(\"heading\", { level: 1 })).toBeVisible();",
+    "      const visibleText = (await page.locator(scenario.selector).innerText()).trim();",
+    "      expect(visibleText.length).toBeGreaterThan(8);",
     "    });",
     "  }",
     "});",
@@ -316,6 +327,7 @@ function buildSpecSource(contract: JsonRecord): string {
     "      await page.goto(scenario.resolved_route);",
     "      await expect(page.locator(`[data-archetype-screen=\"${scenario.screen_id}\"]`)).toBeVisible();",
     "      await expect(page.locator(scenario.selector).first()).toBeVisible();",
+    "      await expect(page.getByRole(\"status\")).toContainText(String(scenario.state).replace(/[_-]/g, \" \"));",
     "    });",
     "  }",
     "});",
@@ -326,6 +338,8 @@ function buildSpecSource(contract: JsonRecord): string {
     "      for (const route of scenario.resolved_routes) {",
     "        await page.goto(route);",
     "        await expect(page.locator(\"[data-archetype-screen]\").first()).toBeVisible();",
+    "        await expect(page.getByRole(\"heading\", { level: 1 })).toBeVisible();",
+    "        expect(new URL(page.url()).pathname).toBe(new URL(route, page.url()).pathname);",
     "      }",
     "    });",
     "  }",
@@ -352,7 +366,12 @@ function buildSpecSource(contract: JsonRecord): string {
     "    test(scenario.scenario_id, async ({ page }) => {",
     "      await page.goto(scenario.resolved_route);",
     "      await expect(page.locator(`[data-archetype-screen=\"${scenario.screen_id}\"]`)).toBeVisible();",
+    "      await expect(page.getByRole(\"main\")).toBeVisible();",
     "      await expect(page.locator(\"h1\")).toHaveCount(1);",
+    "      await expect(page.getByRole(\"status\")).toBeVisible();",
+    "      await page.keyboard.press(\"Tab\");",
+    "      const focusedTag = await page.evaluate(() => document.activeElement?.tagName ?? \"\");",
+    "      expect(focusedTag.length).toBeGreaterThan(0);",
     "      const unnamedButtons = await page.locator(\"button\").evaluateAll((buttons) => buttons.filter((button) => !button.textContent?.trim() && !button.getAttribute(\"aria-label\")).length);",
     "      expect(unnamedButtons).toBe(0);",
     "    });",
@@ -362,6 +381,7 @@ function buildSpecSource(contract: JsonRecord): string {
     "test.describe(\"Archetype visual-smoke verification\", () => {",
     "  for (const scenario of visualScenarios) {",
     "    test(scenario.scenario_id, async ({ page }) => {",
+    "      await page.setViewportSize({ width: scenario.viewport.width, height: scenario.viewport.height });",
     "      await page.goto(scenario.resolved_route);",
     "      const root = page.locator(`[data-archetype-screen=\"${scenario.screen_id}\"]`);",
     "      await expect(root).toBeVisible();",

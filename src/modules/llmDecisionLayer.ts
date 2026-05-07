@@ -19,8 +19,8 @@ export function buildLLMDecisionArtifacts(): LLMDecisionArtifacts {
       "- Every LLM module must target an explicit schema.",
       "- Invalid JSON must enter a repair loop.",
       "- Missing required fields block that module output.",
-      "- Unsupported claims are downgraded to assumptions or rejected.",
-      "- Accepted outputs must be deterministic after post-processing."
+      "- Unsupported claims are downgraded to candidate or blocked decisions.",
+      "- Confirmed outputs must be deterministic after post-processing and backed by canonical evidence."
     ].join("\n"),
     repairPolicy: [
       "# Repair Policy",

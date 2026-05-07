@@ -24,6 +24,37 @@ export interface FrontendStackInput {
   routing?: string;
 }
 
+export interface DataBoundaryInput {
+  mode?: "mock" | "api" | "repo" | "hybrid";
+  dataSource?: string;
+  auth?: string;
+  permissions?: string;
+  notes?: string;
+}
+
+export interface TestExecutionInput {
+  playwrightAllowed?: boolean;
+  commandsAllowed?: boolean;
+  testTypes?: string[];
+  notes?: string;
+}
+
+export interface AssumptionApprovalInput {
+  approvedForDraft?: boolean;
+  approvedBy?: string;
+  approvedAt?: string;
+  approvedAssumptionIds?: string[];
+  notes?: string;
+}
+
+export interface ContractApprovalInput {
+  approved?: boolean;
+  approvedBy?: string;
+  approverType?: "human" | "agent" | "system";
+  approvedAt?: string;
+  artifactRefs?: string[];
+}
+
 export type SourceMaterialType = "document" | "code" | "design_file" | "screenshot" | "brand" | "other";
 
 export interface SourceMaterialInput {
@@ -44,8 +75,13 @@ export interface ArchetypeInput {
   referenceImages?: ReferenceImageInput[];
   brand?: BrandInput;
   stack?: FrontendStackInput;
+  dataBoundary?: DataBoundaryInput;
+  testExecution?: TestExecutionInput;
+  assumptionApproval?: AssumptionApprovalInput;
+  safetyConstraints?: string[];
   operatingMode?: OperatingMode;
   materials?: SourceMaterialInput[];
+  contractApproval?: ContractApprovalInput;
 }
 
 export interface CompilerOptions {
@@ -57,16 +93,31 @@ export interface SourceRecord {
   source_id: string;
   source_type: string;
   source_label: string;
+  evidence_level: EvidenceLevel;
+  can_become_canonical: boolean;
   observations: string[];
   design_implications: string[];
   used_for: string[];
   confidence: "high" | "medium" | "low";
 }
 
+export type EvidenceLevel =
+  | "unknown"
+  | "archetype_inference"
+  | "weak_user_hint"
+  | "explicit_user_answer"
+  | "imported_material_fact"
+  | "repo_fact"
+  | "user_confirmed_assumption";
+
+export type DecisionStatus = "confirmed" | "candidate" | "missing" | "conflicted" | "blocked";
+
 export interface EvidenceItem {
   id: string;
   claim?: string;
   value?: string;
+  evidence_level: EvidenceLevel;
+  can_become_canonical: boolean;
   confidence: "high" | "medium" | "low";
   reason?: string;
   source_refs?: string[];
@@ -75,9 +126,11 @@ export interface EvidenceItem {
 export interface DecisionRecord {
   id: string;
   decision: string;
-  status: "proposed" | "accepted" | "rejected" | "superseded" | "blocked";
+  status: DecisionStatus;
   confidence: "high" | "medium" | "low";
   evidence_refs: string[];
+  canonical_evidence_refs: string[];
+  candidate_evidence_refs: string[];
 }
 
 export interface EvidenceLedger {
@@ -513,11 +566,49 @@ export interface ValidationReport {
 
 export interface ReadinessReport {
   score: number;
+  readinessTier: ReadinessTier;
   readyForFrontendAgent: boolean;
   dimensions: Record<string, number>;
   blockers: string[];
   warnings: string[];
   requiredHumanReview: string[];
+}
+
+export type ReadinessTier =
+  | "ready_for_clarification"
+  | "ready_for_contract_draft"
+  | "ready_for_contract_approval"
+  | "ready_for_test_authoring"
+  | "ready_for_implementation"
+  | "ready_for_qa"
+  | "ready_for_completion";
+
+export interface ReadinessTierGate {
+  tier: ReadinessTier;
+  status: "current" | "satisfied" | "blocked" | "not_reached";
+  purpose: string;
+  required_artifacts: string[];
+  evidence_refs: string[];
+  blockers: string[];
+}
+
+export interface ReadinessTiersArtifact {
+  artifact_version: string;
+  source_scope: "HL-03";
+  weak_context_definition: string;
+  current_tier: ReadinessTier;
+  next_tier: ReadinessTier | null;
+  boolean_compatibility: {
+    ready_for_frontend_agent: boolean;
+    implementation_authorized: boolean;
+    note: string;
+  };
+  gates: ReadinessTierGate[];
+  artifact_backed_claims: Array<{
+    claim: string;
+    artifact_refs: string[];
+  }>;
+  blockers: string[];
 }
 
 export interface QualityArtifacts {
@@ -547,6 +638,101 @@ export type LifecycleState =
   | "revising"
   | "done";
 
+export interface ClarificationAnswerTarget {
+  intake_fields: string[];
+  context_matrix_decision_id: string;
+  update_strategy: string;
+  canonicalization_rule: string;
+}
+
+export interface ClarificationQuestion {
+  id: string;
+  question: string;
+  reason: string;
+  required: boolean;
+  answered_by: string[];
+  source_scope: "HL-04";
+  selection_rule: string;
+  impact: "critical" | "high" | "medium" | "low";
+  selected_decision_id: string;
+  answer_target: ClarificationAnswerTarget;
+  after_answer: {
+    action: string;
+    repeat_until: string;
+    final_pre_contract_step: string;
+  };
+}
+
+export interface ClarificationTurnArtifact {
+  artifact_version: "1.0";
+  source_scope: "HL-04";
+  rule: string;
+  default_first_question_for_vague_marketing_dashboard: string;
+  algorithm: string[];
+  current_question: ClarificationQuestion | null;
+  question_count: number;
+  selection: {
+    selection_rule: string;
+    selected_decision_id: string | null;
+    selected_impact: "critical" | "high" | "medium" | "low" | null;
+    candidate_blockers: Array<{
+      decision_id: string;
+      label: string;
+      status: "missing" | "conflicted" | "blocked";
+      impact: "critical" | "high" | "medium" | "low";
+      required: boolean;
+    }>;
+  };
+  answer_protocol: {
+    user_experience: string;
+    answer_storage: string;
+    update_behavior: string;
+    repeat_behavior: string;
+    final_pre_contract_step: string;
+  };
+  blocked_generation: boolean;
+}
+
+export interface LifecycleStartRequestArtifact {
+  artifact_version: "1.0";
+  source_scope: "HL-05";
+  state: "start";
+  input: {
+    request_type: "natural_language_idea" | "change_request" | "existing_repo_request";
+    captured_intent: string;
+    project_name: string | null;
+    operating_mode: OperatingMode;
+  };
+  detected_context: {
+    imported_files: string[];
+    screenshots: string[];
+    folders: string[];
+    repo_context: string[];
+    material_count: number;
+  };
+  allowed: string[];
+  forbidden: string[];
+  output: "lifecycle/start-request.json";
+}
+
+export interface ClarificationStateArtifact {
+  artifact_version: "1.0";
+  source_scope: "HL-05";
+  state: "clarification";
+  current_question: ClarificationQuestion | null;
+  context_status: "complete" | "needs_clarification";
+  hard_blockers_remaining: boolean;
+  missing_decisions: string[];
+  candidate_decisions: string[];
+  confirmed_decisions: string[];
+  conflicted_decisions: string[];
+  blocked_decisions: string[];
+  allowed: string[];
+  forbidden: string[];
+  outputs: string[];
+  next_action: string;
+}
+
 export interface LifecycleArtifacts {
   stateMachine: {
     lifecycle_version: string;
@@ -562,30 +748,54 @@ export interface LifecycleArtifacts {
     }>;
     rules: string[];
   };
+  startRequest: LifecycleStartRequestArtifact;
   contextCompletion: {
     status: "complete" | "needs_clarification";
     current_state: LifecycleState;
     next_state: LifecycleState;
+    readiness_tier: ReadinessTier;
     confidence_score: number;
     known_facts: string[];
     missing_decisions: string[];
     assumptions: string[];
     optional_material_prompt: string;
-    questions: Array<{
-      id: string;
-      question: string;
-      reason: string;
-      required: boolean;
-      answered_by: string[];
-    }>;
+    questions: ClarificationQuestion[];
   };
-  clarificationQuestions: Array<{
-    id: string;
-    question: string;
-    reason: string;
-    required: boolean;
-    answered_by: string[];
-  }>;
+  contextMatrix: {
+    matrix_version: string;
+    source_scope: string;
+    purpose: string;
+    weak_context_definition: string;
+    status: "complete" | "needs_clarification";
+    readiness_tier: ReadinessTier;
+    next_lifecycle_state: LifecycleState;
+    required_dimensions: string[];
+    readiness_tiers: ReadinessTier[];
+    decisions: Array<{
+      id: string;
+      dimension: string;
+      label: string;
+      status: "confirmed" | "candidate" | "missing" | "conflicted" | "blocked";
+      required: boolean;
+      impact: "critical" | "high" | "medium" | "low";
+      evidence_level: EvidenceLevel;
+      can_become_canonical: boolean;
+      evidence: string[];
+      reason: string;
+      source_refs: string[];
+      question?: ClarificationQuestion;
+    }>;
+    next_question: ClarificationQuestion | null;
+    blockers: string[];
+    warnings: string[];
+  };
+  clarificationQuestions: ClarificationQuestion[];
+  clarificationTurn: ClarificationTurnArtifact;
+  clarificationTurnReport: string;
+  clarificationState: ClarificationStateArtifact;
+  clarificationTranscript: string;
+  readinessTiers: ReadinessTiersArtifact;
+  readinessTiersReport: string;
   lifecycleReport: string;
 }
 
@@ -620,7 +830,15 @@ export interface Manifest {
   operating_mode: OperatingMode;
   export_target: string;
   readiness_score: number;
+  readiness_tier: ReadinessTier;
   ready_for_frontend_agent: boolean;
+  implementation_authorized: boolean;
+  contract_approval: Record<string, unknown>;
+  readiness_evidence: Array<{
+    claim: string;
+    status: string;
+    artifact_refs: string[];
+  }>;
   blockers: string[];
   warnings: string[];
   artifact_index: string[];

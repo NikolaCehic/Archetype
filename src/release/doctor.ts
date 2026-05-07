@@ -338,6 +338,7 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     mcp_tools: [
       "archetype_release_doctor",
       "archetype_create_intake",
+      "archetype_answer_clarification",
       "archetype_generate_package",
       "archetype_validate_package",
       "archetype_summarize_package",

@@ -1,6 +1,25 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { ArchetypePackage } from "../core/types";
+import { buildConvergenceStandardArtifact, convergenceStandardMarkdown } from "../modules/convergenceStandard";
+import { buildEvidenceDecisionModelArtifact, evidenceDecisionModelMarkdown } from "../modules/evidenceDecisionModel";
+import { buildForbiddenBehaviorAcceptanceArtifact, forbiddenBehaviorAcceptanceMarkdown } from "../modules/forbiddenBehaviorAcceptance";
+import { buildFrontendPracticeSkillsArtifact, frontendPracticeSkillOutput, frontendPracticeSkillsMarkdown, FRONTEND_PRACTICE_SKILLS } from "../modules/frontendPracticeSkills";
+import { buildImplementationPhasesArtifact, implementationPhasesMarkdown } from "../modules/implementationPhases";
+import { buildContractDraftArtifacts } from "../modules/lifecycleContractStates";
+import { buildLifecycleExecutionStateArtifacts } from "../modules/lifecycleExecutionStates";
+import { missingContextMarkdown } from "../modules/lifecycleIntakeStates";
+import { buildNonNegotiablePrinciplesArtifact, nonNegotiablePrinciplesMarkdown } from "../modules/nonNegotiablePrinciples";
+import { buildPendingQaArtifacts, REQUIRED_QA_ARTIFACTS } from "../modules/qaTeam";
+import { buildPackageReadinessTiersArtifact, readinessTiersMarkdown } from "../modules/readinessTiers";
+import { buildTestQualityStandardArtifact, testQualityStandardMarkdown } from "../modules/testQualityStandard";
+import {
+  approvalDecisionArtifact,
+  approvalRequestMarkdown,
+  finalReadinessReportMarkdown,
+  initialRedTestRunMarkdown,
+  specialistReviewSummaryMarkdown
+} from "../modules/requiredPackageArtifacts";
 
 function ensureDir(filePath: string): void {
   mkdirSync(path.dirname(filePath), { recursive: true });
@@ -89,10 +108,15 @@ function buildTopLevelManifest(pkg: ArchetypePackage): Record<string, unknown> {
     { id: "agent-instructions", path: "AGENTS.md", type: "markdown", required: true },
     { id: "claude-instructions", path: "CLAUDE.md", type: "markdown", required: true },
     { id: "manifest", path: "manifest.json", type: "json", required: true },
+    { id: "evidence-ledger", path: "01-evidence/evidence-ledger.json", type: "json", required: true },
+    { id: "missing-context", path: "01-evidence/missing-context.md", type: "markdown", required: true },
     { id: "canonical-spec", path: "spec/archetype-spec.md", type: "markdown", required: true },
     { id: "canonical-spec-json", path: "spec/archetype-spec.json", type: "json", required: true },
     { id: "test-first-contract", path: "test-first/test-first-contract.json", type: "json", required: true },
     { id: "test-first-plan", path: "test-first/test-first-plan.md", type: "markdown", required: true },
+    { id: "test-quality-standard", path: "test-first/test-quality-standard.json", type: "json", required: true },
+    { id: "test-quality-standard-report", path: "test-first/test-quality-standard.md", type: "markdown", required: true },
+    { id: "initial-red-test-run", path: "test-results/initial-red-test-run.md", type: "markdown", required: true },
     { id: "test-first-playwright-template", path: "test-first/playwright-contract.spec.ts", type: "text", required: true },
     { id: "test-first-vitest-template", path: "test-first/vitest-contract.spec.ts", type: "text", required: true },
     { id: "playwright-verification-contract", path: "verification/playwright-verification-contract.json", type: "json", required: true },
@@ -101,6 +125,12 @@ function buildTopLevelManifest(pkg: ArchetypePackage): Record<string, unknown> {
     { id: "playwright-verification-spec", path: "verification/playwright-verification.spec.ts", type: "text", required: true },
     { id: "playwright-evidence", path: "verification/playwright-evidence.json", type: "json", required: true },
     { id: "playwright-evidence-report", path: "verification/playwright-evidence.md", type: "markdown", required: true },
+    { id: "qa-scenario-catalog", path: "qa/scenario-catalog.json", type: "json", required: true },
+    { id: "qa-playwright-results", path: "qa/playwright-results.json", type: "json", required: true },
+    { id: "qa-malformed-data-results", path: "qa/malformed-data-results.json", type: "json", required: true },
+    { id: "qa-accessibility-results", path: "qa/accessibility-results.md", type: "markdown", required: true },
+    { id: "qa-visual-regression-report", path: "qa/visual-regression-report.md", type: "markdown", required: true },
+    { id: "qa-contract-drift-report", path: "qa/contract-drift-report.md", type: "markdown", required: true },
     { id: "verification-repair-contract", path: "10-revision/verification-repair-contract.json", type: "json", required: true },
     { id: "repair-task-queue", path: "10-revision/repair-task-queue.json", type: "json", required: true },
     { id: "repair-plan", path: "10-revision/repair-plan.md", type: "markdown", required: true },
@@ -110,9 +140,49 @@ function buildTopLevelManifest(pkg: ArchetypePackage): Record<string, unknown> {
     { id: "verification-plan", path: "verification-plan.md", type: "markdown", required: true },
     { id: "readiness-report", path: "readiness-report.md", type: "markdown", required: true },
     { id: "lifecycle-state-machine", path: "lifecycle/state-machine.json", type: "json", required: true },
+    { id: "start-request", path: "lifecycle/start-request.json", type: "json", required: true },
     { id: "context-completion", path: "lifecycle/context-completion.json", type: "json", required: true },
+    { id: "context-matrix", path: "lifecycle/context-matrix.json", type: "json", required: true },
+    { id: "readiness-tiers", path: "lifecycle/readiness-tiers.json", type: "json", required: true },
+    { id: "readiness-tiers-report", path: "lifecycle/readiness-tiers.md", type: "markdown", required: true },
+    { id: "implementation-phases", path: "lifecycle/implementation-phases.json", type: "json", required: true },
+    { id: "implementation-phases-report", path: "lifecycle/implementation-phases.md", type: "markdown", required: true },
+    { id: "clarification-turn", path: "lifecycle/clarification-turn.json", type: "json", required: true },
+    { id: "clarification-turn-report", path: "lifecycle/clarification-turn.md", type: "markdown", required: true },
+    { id: "clarification-state", path: "lifecycle/clarification-state.json", type: "json", required: true },
+    { id: "clarification-transcript", path: "lifecycle/clarification-transcript.md", type: "markdown", required: true },
+    { id: "approval-request", path: "lifecycle/approval-request.md", type: "markdown", required: true },
+    { id: "approval-decision", path: "lifecycle/approval-decision.json", type: "json", required: true },
     { id: "clarification-questions", path: "lifecycle/clarification-questions.json", type: "json", required: true },
     { id: "lifecycle-report", path: "lifecycle/lifecycle-report.md", type: "markdown", required: true },
+    { id: "final-readiness-report", path: "lifecycle/final-readiness-report.md", type: "markdown", required: true },
+    { id: "lifecycle-contract-state", path: "lifecycle/contract-state.json", type: "json", required: true },
+    { id: "lifecycle-execution-state", path: "lifecycle/execution-state.json", type: "json", required: true },
+    { id: "lifecycle-execution-state-report", path: "lifecycle/execution-state.md", type: "markdown", required: true },
+    { id: "product-model-draft", path: "draft/product-model.draft.json", type: "json", required: true },
+    { id: "experience-architecture-draft", path: "draft/experience-architecture.draft.json", type: "json", required: true },
+    { id: "design-system-draft", path: "draft/design-system.draft.json", type: "json", required: true },
+    { id: "frontend-contract-draft", path: "draft/frontend-contract.draft.json", type: "json", required: true },
+    { id: "assumption-ledger", path: "draft/assumption-ledger.md", type: "markdown", required: true },
+    { id: "specialist-review", path: "draft/specialist-review.json", type: "json", required: true },
+    { id: "specialist-review-summary", path: "reviews/specialist-review-summary.md", type: "markdown", required: true },
+    { id: "contract-approval-request", path: "draft/contract-approval-request.json", type: "json", required: true },
+    { id: "non-negotiable-principles", path: "governance/non-negotiable-principles.json", type: "json", required: true },
+    { id: "non-negotiable-principles-report", path: "governance/non-negotiable-principles.md", type: "markdown", required: true },
+    { id: "evidence-decision-model", path: "governance/evidence-decision-model.json", type: "json", required: true },
+    { id: "evidence-decision-model-report", path: "governance/evidence-decision-model.md", type: "markdown", required: true },
+    { id: "forbidden-behaviors", path: "governance/forbidden-behaviors.json", type: "json", required: true },
+    { id: "forbidden-behaviors-report", path: "governance/forbidden-behaviors.md", type: "markdown", required: true },
+    { id: "convergence-standard", path: "governance/convergence-standard.json", type: "json", required: true },
+    { id: "convergence-standard-report", path: "governance/convergence-standard.md", type: "markdown", required: true },
+    { id: "frontend-practice-skills", path: "governance/frontend-practice-skills.json", type: "json", required: true },
+    { id: "frontend-practice-skills-report", path: "governance/frontend-practice-skills.md", type: "markdown", required: true },
+    ...FRONTEND_PRACTICE_SKILLS.map((skill) => ({
+      id: `frontend-practice-${skill.id}`,
+      path: skill.output_artifact,
+      type: "json" as const,
+      required: true
+    })),
     { id: "product-model", path: "product/product-model.json", type: "json", required: true },
     { id: "user-roles", path: "product/user-roles.json", type: "json", required: true },
     { id: "route-map", path: "experience/route-map.json", type: "json", required: true },
@@ -133,7 +203,11 @@ function buildTopLevelManifest(pkg: ArchetypePackage): Record<string, unknown> {
     generatedAt: pkg.manifest.generated_at,
     productName: productName(pkg),
     readinessScore: pkg.quality.readiness.score,
+    readinessTier: pkg.manifest.readiness_tier,
     readyForFrontendAgent: pkg.quality.readiness.readyForFrontendAgent,
+    implementationAuthorized: pkg.manifest.implementation_authorized,
+    contractApproval: pkg.manifest.contract_approval,
+    readinessEvidence: pkg.manifest.readiness_evidence,
     blockers: pkg.quality.readiness.blockers,
     warnings: pkg.quality.readiness.warnings,
     artifacts
@@ -151,19 +225,32 @@ function buildPackageReadme(pkg: ArchetypePackage): string {
     "1. Read `spec/archetype-spec.md`.",
     "2. Read `spec/archetype-spec.json` for machine-readable source of truth.",
     "3. Read `test-first/test-first-contract.json`.",
-    "4. Read `verification/playwright-verification-contract.json`.",
-    "5. Read `10-revision/repair-task-queue.json` before deciding whether to patch or revise.",
-    "6. Create the required tests before product UI implementation.",
-    "7. Read `implementation-contract.md`.",
-    "8. Read `AGENTS.md` or `CLAUDE.md` depending on the agent host.",
-    "9. Read `lifecycle/lifecycle-report.md` to understand the current lifecycle state.",
-    "10. Read route, screen, and design-system artifacts before implementation.",
-    "11. Run the checks in `verification-plan.md` before declaring completion.",
+    "4. Read `test-first/test-quality-standard.json`.",
+    "5. Read `test-results/initial-red-test-run.md`.",
+    "6. Read `verification/playwright-verification-contract.json`.",
+    "7. Read `10-revision/repair-task-queue.json` before deciding whether to patch or revise.",
+    "8. Create the required tests before product UI implementation.",
+    "9. Read `implementation-contract.md`.",
+    "10. Read `lifecycle/approval-decision.json` and `reviews/specialist-review-summary.md`.",
+    "11. Read `AGENTS.md` or `CLAUDE.md` depending on the agent host.",
+    "12. Read `lifecycle/lifecycle-report.md` to understand the current lifecycle state.",
+    "13. Read `lifecycle/readiness-tiers.json` before interpreting readiness.",
+    "14. Read `lifecycle/execution-state.json` before test authoring, implementation, QA, repair, or completion claims.",
+    "15. Read `lifecycle/implementation-phases.json` before moving between test, implementation, QA, repair, and regression phases.",
+    "16. Read `qa/scenario-catalog.json` and QA result artifacts before completion claims.",
+    "17. Read route, screen, and design-system artifacts before implementation.",
+    "18. Read `governance/non-negotiable-principles.json` before implementation.",
+    "19. Read `governance/evidence-decision-model.json` before treating claims as canonical.",
+    "20. Read `governance/forbidden-behaviors.json` before implementation and completion claims.",
+    "21. Read `governance/convergence-standard.json` before claiming the lifecycle is hardened.",
+    "22. Run the checks in `verification-plan.md` before declaring completion.",
     "",
     "## Readiness",
     "",
     `- Score: ${pkg.quality.readiness.score}`,
+    `- Tier: ${pkg.manifest.readiness_tier}`,
     `- Ready for frontend agent: ${pkg.quality.readiness.readyForFrontendAgent}`,
+    `- Implementation authorized: ${pkg.manifest.implementation_authorized}`,
     `- Blockers: ${pkg.quality.readiness.blockers.length}`,
     `- Warnings: ${pkg.quality.readiness.warnings.length}`
   ].join("\n");
@@ -180,20 +267,38 @@ function buildGeneratedAgentsMd(): string {
     "Before implementing UI, read:",
     "",
     "0. `lifecycle/context-completion.json`",
+    "0.1. `governance/non-negotiable-principles.json`",
+    "0.2. `governance/evidence-decision-model.json`",
+    "0.2.1. `governance/forbidden-behaviors.json`",
+    "0.2.2. `governance/convergence-standard.json`",
+    "0.3. `lifecycle/readiness-tiers.json`",
+    "0.4. `lifecycle/execution-state.json`",
+    "0.5. `lifecycle/implementation-phases.json`",
+    "0.6. `lifecycle/approval-decision.json`",
+    "0.7. `reviews/specialist-review-summary.md`",
     "1. `spec/archetype-spec.md`",
     "2. `spec/archetype-spec.json`",
     "3. `test-first/test-first-contract.json`",
     "4. `test-first/test-first-plan.md`",
-    "5. `verification/playwright-verification-contract.json`",
-    "6. `10-revision/repair-task-queue.json`",
-    "7. `10-revision/repair-plan.md`",
-    "8. `implementation-contract.md`",
-    "9. `frontend-agent-contract/frontend-agent-instructions.md`",
-    "10. `experience/route-map.json`",
-    "11. `screens/screen-inventory.json`",
-    "12. `design-system/tokens.json`",
-    "13. `design-system/component-contracts.json`",
-    "14. `verification-plan.md`",
+    "5. `test-first/test-quality-standard.json`",
+    "5.1. `test-results/initial-red-test-run.md`",
+    "6. `verification/playwright-verification-contract.json`",
+    "7. `qa/scenario-catalog.json`",
+    "7. `qa/playwright-results.json`",
+    "8. `qa/malformed-data-results.json`",
+    "9. `qa/accessibility-results.md`",
+    "10. `qa/visual-regression-report.md`",
+    "11. `qa/contract-drift-report.md`",
+    "12. `10-revision/repair-task-queue.json`",
+    "13. `10-revision/repair-plan.md`",
+    "14. `implementation-contract.md`",
+    "15. `frontend-agent-contract/frontend-agent-instructions.md`",
+    "16. `experience/route-map.json`",
+    "17. `screens/screen-inventory.json`",
+    "18. `design-system/tokens.json`",
+    "19. `design-system/component-contracts.json`",
+    "20. `verification-plan.md`",
+    "21. `lifecycle/final-readiness-report.md`",
     "",
     "## Rules",
     "",
@@ -204,11 +309,21 @@ function buildGeneratedAgentsMd(): string {
     "- Use the design-system tokens before creating ad hoc styling.",
     "- Follow data, action, and form contracts.",
     "- Treat `spec/archetype-spec.json` and `spec/archetype-spec.md` as the source of truth.",
+    "- Do not implement product UI unless `governance/non-negotiable-principles.json` reports implementation_authorized: true.",
+    "- Do not treat archetype_inference or weak_user_hint as canonical evidence.",
+    "- Only confirmed decisions with canonical evidence may drive implementation-authorized artifacts.",
+    "- Reject every behavior listed in `governance/forbidden-behaviors.json`.",
+    "- Treat every question in `governance/convergence-standard.json` as requiring the answer `No.` with evidence.",
+    "- Do not treat pending human approval as agent approval.",
     "- Treat Archetype as spec-driven development: no implementation before the generated spec and contract are understood.",
     "- Treat the agent phase as test-driven development: create the tests declared in `test-first/test-first-contract.json` before product UI code.",
+    "- Follow `test-first/test-quality-standard.json`; marker-only tests fail the verifier.",
     "- Preserve the initial red test result before implementing, then drive the same tests green.",
     "- Run Playwright-backed verification and attach `verification/playwright-evidence.json` before declaring completion.",
+    "- Treat QA as evidence: read `qa/scenario-catalog.json`, `qa/playwright-results.json`, malformed data results, accessibility results, visual regression report, and contract drift report.",
     "- If verification fails, read `10-revision/repair-task-queue.json` and patch listed implementation drift before revising the contract.",
+    "- Read `lifecycle/execution-state.json`; completion is blocked until `ready_for_completion` is true.",
+    "- Read `lifecycle/implementation-phases.json`; no phase can skip its lifecycle acceptance gate.",
     "- After implementation, run the verification commands in `verification-plan.md`.",
     "",
     "## Completion Standard",
@@ -226,11 +341,25 @@ function buildGeneratedClaudeMd(): string {
     "## Primary Files",
     "",
     "- `lifecycle/context-completion.json`",
+    "- `lifecycle/execution-state.json`",
+    "- `lifecycle/implementation-phases.json`",
+    "- `lifecycle/approval-decision.json`",
+    "- `reviews/specialist-review-summary.md`",
     "- `spec/archetype-spec.md`",
     "- `spec/archetype-spec.json`",
+    "- `governance/forbidden-behaviors.json`",
+    "- `governance/convergence-standard.json`",
     "- `test-first/test-first-contract.json`",
     "- `test-first/test-first-plan.md`",
+    "- `test-first/test-quality-standard.json`",
+    "- `test-results/initial-red-test-run.md`",
     "- `verification/playwright-verification-contract.json`",
+    "- `qa/scenario-catalog.json`",
+    "- `qa/playwright-results.json`",
+    "- `qa/malformed-data-results.json`",
+    "- `qa/accessibility-results.md`",
+    "- `qa/visual-regression-report.md`",
+    "- `qa/contract-drift-report.md`",
     "- `10-revision/repair-task-queue.json`",
     "- `10-revision/repair-plan.md`",
     "- `implementation-contract.md`",
@@ -239,6 +368,7 @@ function buildGeneratedClaudeMd(): string {
     "- `screens/screen-inventory.json`",
     "- `design-system/tokens.json`",
     "- `verification-plan.md`",
+    "- `lifecycle/final-readiness-report.md`",
     "",
     "## Implementation Discipline",
     "",
@@ -248,9 +378,13 @@ function buildGeneratedClaudeMd(): string {
     "- Follow the data/action/form contracts.",
     "- Do not invent product behavior outside the contract.",
     "- Create the tests from `test-first/test-first-contract.json` before product UI code.",
+    "- Follow `test-first/test-quality-standard.json`; marker-only tests fail the verifier.",
     "- Preserve the initial red test result before implementing, then drive the same tests green.",
     "- Run Playwright-backed verification and attach `verification/playwright-evidence.json` before declaring completion.",
+    "- Treat QA as evidence: read all `qa/` artifacts before declaring completion.",
     "- If verification fails, read `10-revision/repair-task-queue.json` and patch listed implementation drift before revising the contract.",
+    "- Read `lifecycle/execution-state.json`; completion is blocked until `ready_for_completion` is true.",
+    "- Read `lifecycle/implementation-phases.json`; no phase can skip its lifecycle acceptance gate.",
     "- Run validation before declaring completion.",
     "",
     "## Completion Standard",
@@ -352,7 +486,9 @@ function buildReadinessReport(pkg: ArchetypePackage): string {
     "# Readiness Report",
     "",
     `- Readiness score: ${pkg.quality.readiness.score}`,
+    `- Readiness tier: ${pkg.manifest.readiness_tier}`,
     `- Ready for frontend agent: ${pkg.quality.readiness.readyForFrontendAgent}`,
+    `- Implementation authorized: ${pkg.manifest.implementation_authorized}`,
     "",
     "## Blockers",
     "",
@@ -376,9 +512,9 @@ function buildReadinessReport(pkg: ArchetypePackage): string {
     "",
     "## Recommended Next Action",
     "",
-    pkg.quality.readiness.readyForFrontendAgent
+    pkg.manifest.implementation_authorized
       ? "Implement from the contract, then run validation and target verification."
-      : "Resolve blockers before asking a coding agent to implement the frontend."
+      : "Resolve approval and lifecycle blockers before asking a coding agent to implement the frontend."
   ].join("\n");
 }
 
@@ -424,6 +560,35 @@ function buildImplementationRules(pkg: ArchetypePackage): Record<string, unknown
       required_before_completion: true,
       coverage: asRecord(pkg.playwright.contractJson.coverage)
     },
+    qaEvidence: {
+      required_artifacts: REQUIRED_QA_ARTIFACTS,
+      scenario_catalog: "qa/scenario-catalog.json",
+      playwright_results: "qa/playwright-results.json",
+      malformed_data_results: "qa/malformed-data-results.json",
+      accessibility_results: "qa/accessibility-results.md",
+      visual_regression_report: "qa/visual-regression-report.md",
+      contract_drift_report: "qa/contract-drift-report.md",
+      required_before_completion: true,
+      rule: "QA produces evidence, not vibes."
+    },
+    forbiddenBehaviorAcceptance: {
+      path: "governance/forbidden-behaviors.json",
+      source_scope: "HL-13",
+      required_before_implementation: true,
+      required_before_completion: true
+    },
+    convergenceStandard: {
+      path: "governance/convergence-standard.json",
+      source_scope: "HL-16",
+      required_before_completion: true,
+      required_answer: "No."
+    },
+    implementationPhases: {
+      path: "lifecycle/implementation-phases.json",
+      source_scope: "HL-15",
+      required_before_implementation: true,
+      rule: "No phase can skip its lifecycle acceptance gate."
+    },
     repairLoop: {
       contract_path: "10-revision/verification-repair-contract.json",
       task_queue_path: "10-revision/repair-task-queue.json",
@@ -439,6 +604,7 @@ function buildImplementationRules(pkg: ArchetypePackage): Record<string, unknown
       "Do not create ad hoc tokens before reading design-system/tokens.json.",
       "Do not implement product UI before creating the tests declared in test-first/test-first-contract.json.",
       "Do not claim completion before Playwright evidence is generated by verify-target.",
+      "Do not claim QA completion without the required qa/* evidence artifacts.",
       "Do not claim completion while 10-revision/repair-task-queue.json contains blocker tasks.",
       "Do not claim production integration until verification-plan.md has passed."
     ]
@@ -448,6 +614,30 @@ function buildImplementationRules(pkg: ArchetypePackage): Record<string, unknown
 export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   rmSync(outDir, { recursive: true, force: true });
   mkdirSync(outDir, { recursive: true });
+  const nonNegotiablePrinciples = buildNonNegotiablePrinciplesArtifact(pkg);
+  const evidenceDecisionModel = buildEvidenceDecisionModelArtifact(pkg);
+  const frontendPracticeSkills = buildFrontendPracticeSkillsArtifact(pkg);
+  const forbiddenBehaviorAcceptance = buildForbiddenBehaviorAcceptanceArtifact();
+  const convergenceStandard = buildConvergenceStandardArtifact({
+    packageType: "canonical",
+    contextStatus: String(pkg.lifecycle.contextCompletion.status ?? "complete"),
+    readinessTier: pkg.manifest.readiness_tier,
+    readyForFrontendAgent: pkg.quality.readiness.readyForFrontendAgent,
+    implementationAuthorized: pkg.manifest.implementation_authorized
+  });
+  const readinessTiers = buildPackageReadinessTiersArtifact(pkg);
+  const implementationPhases = buildImplementationPhasesArtifact({
+    packageType: "canonical",
+    contextStatus: String(pkg.lifecycle.contextCompletion.status ?? "complete"),
+    readinessTier: pkg.manifest.readiness_tier,
+    readyForFrontendAgent: pkg.quality.readiness.readyForFrontendAgent,
+    implementationAuthorized: pkg.manifest.implementation_authorized,
+    contractApprovalStatus: String(pkg.manifest.contract_approval.status ?? "unknown")
+  });
+  const draft = buildContractDraftArtifacts(pkg);
+  const execution = buildLifecycleExecutionStateArtifacts(pkg);
+  const qa = buildPendingQaArtifacts(pkg);
+  const testQualityStandard = buildTestQualityStandardArtifact();
 
   writeText(outDir, "README.md", buildPackageReadme(pkg));
   writeText(outDir, "AGENTS.md", buildGeneratedAgentsMd());
@@ -458,6 +648,9 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeJson(outDir, "spec/archetype-spec.json", pkg.spec.specJson);
   writeJson(outDir, "test-first/test-first-contract.json", pkg.testFirst.contractJson);
   writeText(outDir, "test-first/test-first-plan.md", pkg.testFirst.planMarkdown);
+  writeJson(outDir, "test-first/test-quality-standard.json", testQualityStandard);
+  writeText(outDir, "test-first/test-quality-standard.md", testQualityStandardMarkdown(testQualityStandard));
+  writeText(outDir, "test-results/initial-red-test-run.md", initialRedTestRunMarkdown(pkg.testFirst.contractJson));
   writeText(outDir, "test-first/playwright-contract.spec.ts", pkg.testFirst.playwrightContractSpec);
   writeText(outDir, "test-first/vitest-contract.spec.ts", pkg.testFirst.vitestContractSpec);
   writeJson(outDir, "verification/playwright-verification-contract.json", pkg.playwright.contractJson);
@@ -466,12 +659,60 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeText(outDir, "verification/playwright-verification.spec.ts", pkg.playwright.specSource);
   writeJson(outDir, "verification/playwright-evidence.json", pkg.playwright.evidenceJson);
   writeText(outDir, "verification/playwright-evidence.md", pkg.playwright.evidenceMarkdown);
+  writeJson(outDir, "qa/scenario-catalog.json", qa.scenarioCatalog);
+  writeJson(outDir, "qa/playwright-results.json", qa.playwrightResults);
+  writeJson(outDir, "qa/malformed-data-results.json", qa.malformedDataResults);
+  writeText(outDir, "qa/accessibility-results.md", qa.accessibilityResultsMarkdown);
+  writeText(outDir, "qa/visual-regression-report.md", qa.visualRegressionReportMarkdown);
+  writeText(outDir, "qa/contract-drift-report.md", qa.contractDriftReportMarkdown);
   writeText(outDir, "implementation-contract.md", buildImplementationContract(pkg));
   writeText(outDir, "verification-plan.md", pkg.frontendContract.verificationPlan);
   writeJson(outDir, "lifecycle/state-machine.json", pkg.lifecycle.stateMachine);
+  writeJson(outDir, "lifecycle/start-request.json", pkg.lifecycle.startRequest);
   writeJson(outDir, "lifecycle/context-completion.json", pkg.lifecycle.contextCompletion);
+  writeJson(outDir, "lifecycle/context-matrix.json", pkg.lifecycle.contextMatrix);
+  writeJson(outDir, "lifecycle/readiness-tiers.json", readinessTiers);
+  writeText(outDir, "lifecycle/readiness-tiers.md", readinessTiersMarkdown(readinessTiers));
+  writeJson(outDir, "lifecycle/implementation-phases.json", implementationPhases);
+  writeText(outDir, "lifecycle/implementation-phases.md", implementationPhasesMarkdown(implementationPhases));
+  writeJson(outDir, "lifecycle/clarification-turn.json", pkg.lifecycle.clarificationTurn);
+  writeText(outDir, "lifecycle/clarification-turn.md", pkg.lifecycle.clarificationTurnReport);
+  writeJson(outDir, "lifecycle/clarification-state.json", pkg.lifecycle.clarificationState);
+  writeText(outDir, "lifecycle/clarification-transcript.md", pkg.lifecycle.clarificationTranscript);
+  writeText(outDir, "lifecycle/approval-request.md", approvalRequestMarkdown(draft.contractApprovalRequest));
+  writeJson(outDir, "lifecycle/approval-decision.json", approvalDecisionArtifact(pkg.manifest as unknown as Record<string, unknown>));
   writeJson(outDir, "lifecycle/clarification-questions.json", pkg.lifecycle.clarificationQuestions);
   writeText(outDir, "lifecycle/lifecycle-report.md", pkg.lifecycle.lifecycleReport);
+  writeText(outDir, "lifecycle/final-readiness-report.md", finalReadinessReportMarkdown({
+    manifest: pkg.manifest as unknown as Record<string, unknown>,
+    playwrightEvidence: pkg.playwright.evidenceJson,
+    repairTaskQueue: pkg.revision.repairTaskQueue,
+    qaScenarioCatalog: qa.scenarioCatalog
+  }));
+  writeJson(outDir, "lifecycle/contract-state.json", draft.contractState);
+  writeJson(outDir, "lifecycle/execution-state.json", execution.executionState);
+  writeText(outDir, "lifecycle/execution-state.md", execution.executionStateMarkdown);
+  writeJson(outDir, "draft/product-model.draft.json", draft.productModelDraft);
+  writeJson(outDir, "draft/experience-architecture.draft.json", draft.experienceArchitectureDraft);
+  writeJson(outDir, "draft/design-system.draft.json", draft.designSystemDraft);
+  writeJson(outDir, "draft/frontend-contract.draft.json", draft.frontendContractDraft);
+  writeText(outDir, "draft/assumption-ledger.md", draft.assumptionLedger);
+  writeJson(outDir, "draft/specialist-review.json", draft.specialistReview);
+  writeText(outDir, "reviews/specialist-review-summary.md", specialistReviewSummaryMarkdown(draft.specialistReview));
+  writeJson(outDir, "draft/contract-approval-request.json", draft.contractApprovalRequest);
+  writeJson(outDir, "governance/non-negotiable-principles.json", nonNegotiablePrinciples);
+  writeText(outDir, "governance/non-negotiable-principles.md", nonNegotiablePrinciplesMarkdown(nonNegotiablePrinciples));
+  writeJson(outDir, "governance/evidence-decision-model.json", evidenceDecisionModel);
+  writeText(outDir, "governance/evidence-decision-model.md", evidenceDecisionModelMarkdown(evidenceDecisionModel));
+  writeJson(outDir, "governance/forbidden-behaviors.json", forbiddenBehaviorAcceptance);
+  writeText(outDir, "governance/forbidden-behaviors.md", forbiddenBehaviorAcceptanceMarkdown(forbiddenBehaviorAcceptance));
+  writeJson(outDir, "governance/convergence-standard.json", convergenceStandard);
+  writeText(outDir, "governance/convergence-standard.md", convergenceStandardMarkdown(convergenceStandard));
+  writeJson(outDir, "governance/frontend-practice-skills.json", frontendPracticeSkills);
+  writeText(outDir, "governance/frontend-practice-skills.md", frontendPracticeSkillsMarkdown(frontendPracticeSkills));
+  for (const skill of FRONTEND_PRACTICE_SKILLS) {
+    writeJson(outDir, skill.output_artifact, frontendPracticeSkillOutput(skill));
+  }
 
   writeJson(outDir, "product/product-model.json", pkg.product.productModel);
   writeJson(outDir, "product/user-roles.json", buildUserRoles(pkg));
@@ -494,6 +735,7 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
     `Project: ${pkg.manifest.project_slug}`,
     `Spec version: ${pkg.manifest.spec_version}`,
     `Readiness score: ${pkg.manifest.readiness_score}`,
+    `Readiness tier: ${pkg.manifest.readiness_tier}`,
     `Ready for frontend agent: ${pkg.manifest.ready_for_frontend_agent}`
   ].join("\n"));
   writeJson(outDir, "00-manifest/implementation-readiness.json", pkg.quality.readiness);
@@ -508,7 +750,7 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeText(outDir, "01-evidence/assumptions.md", listMarkdown("Assumptions", pkg.evidence.assumptions));
   writeText(outDir, "01-evidence/conflicts.md", listMarkdown("Conflicts", pkg.evidence.conflicts));
   writeText(outDir, "01-evidence/risks.md", listMarkdown("Risks", pkg.evidence.risks));
-  writeText(outDir, "01-evidence/missing-context.md", listMarkdown("Missing Context", pkg.evidence.missing_information));
+  writeText(outDir, "01-evidence/missing-context.md", missingContextMarkdown(pkg.evidence, pkg.lifecycle.contextMatrix));
   writeText(outDir, "01-evidence/decision-records.md", listMarkdown("Decision Records", pkg.evidence.decisions));
 
   writeText(outDir, "02-product-model/product-brief.md", [

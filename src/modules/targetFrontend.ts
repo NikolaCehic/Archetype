@@ -193,7 +193,7 @@ export function buildTargetFrontendArtifacts(input: {
       path: "playwright.config.ts",
       kind: "test_config",
       exports: ["default"],
-      reads: ["verification/playwright.config.ts", "verification/playwright-verification-contract.json"],
+      reads: ["test-first/test-quality-standard.json", "verification/playwright.config.ts", "verification/playwright-verification-contract.json"],
       forbidden_behavior: ["Do not remove Playwright browser evidence from the verification loop."]
     }
   ];
@@ -203,7 +203,7 @@ export function buildTargetFrontendArtifacts(input: {
     kind: "test",
     suite_id: suite.suite_id,
     tests: Array.isArray(suite.tests) ? suite.tests.length : 0,
-    reads: ["test-first/test-first-contract.json", "verification/playwright-verification-contract.json", "06-frontend-agent-contract/verification-contracts.json"],
+    reads: ["test-first/test-first-contract.json", "test-first/test-quality-standard.json", "verification/playwright-verification-contract.json", "06-frontend-agent-contract/verification-contracts.json"],
     forbidden_behavior: ["Do not write product UI before creating tests.", "Do not delete failing proof obligations.", "Report contract gaps for failed tests."]
   })));
   const playwrightVerificationFiles = [
@@ -212,7 +212,7 @@ export function buildTargetFrontendArtifacts(input: {
       kind: "playwright_verification",
       suite_id: "playwright_verification",
       tests: 0,
-      reads: ["verification/playwright-verification-contract.json"],
+      reads: ["test-first/test-quality-standard.json", "verification/playwright-verification-contract.json"],
       forbidden_behavior: ["Do not remove browser-observable route, state, flow, responsive, accessibility, or visual-smoke checks."]
     },
     {
@@ -220,7 +220,7 @@ export function buildTargetFrontendArtifacts(input: {
       kind: "playwright_traceability",
       suite_id: "playwright_flow_traceability",
       tests: 0,
-      reads: ["verification/playwright-verification-contract.json"],
+      reads: ["test-first/test-quality-standard.json", "verification/playwright-verification-contract.json"],
       forbidden_behavior: ["Do not remove the required test-first target file."]
     },
     {
@@ -228,7 +228,7 @@ export function buildTargetFrontendArtifacts(input: {
       kind: "playwright_traceability",
       suite_id: "playwright_state_traceability",
       tests: 0,
-      reads: ["verification/playwright-verification-contract.json"],
+      reads: ["test-first/test-quality-standard.json", "verification/playwright-verification-contract.json"],
       forbidden_behavior: ["Do not remove the required test-first target file."]
     },
     {
@@ -236,7 +236,7 @@ export function buildTargetFrontendArtifacts(input: {
       kind: "playwright_traceability",
       suite_id: "playwright_accessibility_traceability",
       tests: 0,
-      reads: ["verification/playwright-verification-contract.json"],
+      reads: ["test-first/test-quality-standard.json", "verification/playwright-verification-contract.json"],
       forbidden_behavior: ["Do not remove the required test-first target file."]
     }
   ];

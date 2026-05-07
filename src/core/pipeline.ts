@@ -1,4 +1,4 @@
-import type { ArchetypeInput, ArchetypePackage, CompilerOptions, Manifest } from "./types";
+import type { ArchetypeInput, ArchetypePackage, CompilerOptions, Manifest, ReadinessTier } from "./types";
 import { hashContent, slugify, stableId } from "./stable";
 import { inferDomainProfile } from "../modules/domain";
 import { buildIngestionArtifacts } from "../modules/sourceNormalization";
@@ -21,6 +21,9 @@ import { buildLifecycleArtifacts } from "../modules/lifecycle";
 import { buildSpecArtifacts } from "../modules/spec";
 import { buildTestFirstArtifacts } from "../modules/testFirstContracts";
 import { buildPlaywrightVerificationArtifacts } from "../modules/playwrightVerification";
+import { buildContractApprovalState, buildReadinessEvidence } from "../modules/nonNegotiablePrinciples";
+import { FRONTEND_PRACTICE_SKILLS } from "../modules/frontendPracticeSkills";
+import { REQUIRED_QA_ARTIFACTS } from "../modules/qaTeam";
 
 const ARTIFACT_INDEX = [
   "README.md",
@@ -34,6 +37,9 @@ const ARTIFACT_INDEX = [
   "spec/archetype-spec.json",
   "test-first/test-first-contract.json",
   "test-first/test-first-plan.md",
+  "test-first/test-quality-standard.json",
+  "test-first/test-quality-standard.md",
+  "test-results/initial-red-test-run.md",
   "test-first/playwright-contract.spec.ts",
   "test-first/vitest-contract.spec.ts",
   "verification/playwright-verification-contract.json",
@@ -42,10 +48,46 @@ const ARTIFACT_INDEX = [
   "verification/playwright-verification.spec.ts",
   "verification/playwright-evidence.json",
   "verification/playwright-evidence.md",
+  ...REQUIRED_QA_ARTIFACTS.filter((artifact) => artifact.startsWith("qa/")),
   "lifecycle/state-machine.json",
+  "lifecycle/start-request.json",
   "lifecycle/context-completion.json",
+  "lifecycle/context-matrix.json",
+  "lifecycle/readiness-tiers.json",
+  "lifecycle/readiness-tiers.md",
+  "lifecycle/implementation-phases.json",
+  "lifecycle/implementation-phases.md",
+  "lifecycle/clarification-turn.json",
+  "lifecycle/clarification-turn.md",
+  "lifecycle/clarification-state.json",
+  "lifecycle/clarification-transcript.md",
+  "lifecycle/approval-request.md",
+  "lifecycle/approval-decision.json",
   "lifecycle/clarification-questions.json",
   "lifecycle/lifecycle-report.md",
+  "lifecycle/final-readiness-report.md",
+  "lifecycle/contract-state.json",
+  "lifecycle/execution-state.json",
+  "lifecycle/execution-state.md",
+  "draft/product-model.draft.json",
+  "draft/experience-architecture.draft.json",
+  "draft/design-system.draft.json",
+  "draft/frontend-contract.draft.json",
+  "draft/assumption-ledger.md",
+  "draft/specialist-review.json",
+  "draft/contract-approval-request.json",
+  "reviews/specialist-review-summary.md",
+  "governance/non-negotiable-principles.json",
+  "governance/non-negotiable-principles.md",
+  "governance/evidence-decision-model.json",
+  "governance/evidence-decision-model.md",
+  "governance/forbidden-behaviors.json",
+  "governance/forbidden-behaviors.md",
+  "governance/convergence-standard.json",
+  "governance/convergence-standard.md",
+  "governance/frontend-practice-skills.json",
+  "governance/frontend-practice-skills.md",
+  ...FRONTEND_PRACTICE_SKILLS.map((skill) => skill.output_artifact),
   "product/product-model.json",
   "product/user-roles.json",
   "experience/route-map.json",
@@ -305,7 +347,64 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     e2e,
     dsag
   });
-  const lifecycle = buildLifecycleArtifacts(input, evidence, quality.readiness);
+  const lifecycle = buildLifecycleArtifacts(input, ingestion, evidence, quality.readiness);
+  const lifecycleGateBlockers = lifecycle.contextCompletion.status === "needs_clarification"
+    ? lifecycle.contextMatrix.blockers
+    : [];
+  const lifecycleGateWarnings = lifecycle.contextMatrix.warnings;
+  const contractApproval = buildContractApprovalState(input);
+  const approvalBlockers = (contractApproval.blockers as string[] | undefined) ?? [];
+  const principleGateBlockers = lifecycle.contextCompletion.status === "complete" ? approvalBlockers : [];
+  const gatedReadinessScore = lifecycleGateBlockers.length > 0 ? Math.min(quality.readiness.score, 49) : quality.readiness.score;
+  const packageReadinessTier: ReadinessTier = lifecycle.contextCompletion.status === "needs_clarification"
+    ? "ready_for_clarification"
+    : principleGateBlockers.length > 0
+      ? "ready_for_contract_approval"
+      : "ready_for_implementation";
+  const qualityForManifest = lifecycleGateBlockers.length === 0 && principleGateBlockers.length === 0
+    ? quality
+    : {
+      ...quality,
+      validation: quality.validation,
+      readiness: {
+        ...quality.readiness,
+        score: gatedReadinessScore,
+        readinessTier: packageReadinessTier,
+        readyForFrontendAgent: false,
+        blockers: [...new Set([...lifecycleGateBlockers, ...principleGateBlockers, ...quality.readiness.blockers])],
+        warnings: [...new Set([...lifecycleGateWarnings, ...quality.readiness.warnings])]
+      },
+      specCoverageAudit: {
+        ...quality.specCoverageAudit,
+        summary: {
+          ...((quality.specCoverageAudit.summary as Record<string, unknown> | undefined) ?? {}),
+          ready_for_frontend_agent: false,
+          readiness_score: gatedReadinessScore
+        }
+      },
+      specCoverageReport: quality.specCoverageReport
+        .replace(/Ready for frontend agent: .*/u, "Ready for frontend agent: false")
+        .replace(/Readiness score: .*/u, `Readiness score: ${gatedReadinessScore}`),
+      implementationReadinessReport: [
+        quality.implementationReadinessReport,
+        "",
+        "## Hardened Lifecycle Gates",
+        "",
+        `Context status: ${lifecycle.contextCompletion.status}`,
+        `Contract approval status: ${String(contractApproval.status)}`,
+        "",
+        ...[...lifecycleGateBlockers, ...principleGateBlockers].map((blocker) => `- ${blocker}`)
+      ].join("\n")
+    };
+  const implementationAuthorized = Boolean(contractApproval.approved) && lifecycleGateBlockers.length === 0 && principleGateBlockers.length === 0;
+  const finalReadinessTier: ReadinessTier = implementationAuthorized ? "ready_for_implementation" : packageReadinessTier;
+  const finalQuality = {
+    ...qualityForManifest,
+    readiness: {
+      ...qualityForManifest.readiness,
+      readinessTier: finalReadinessTier
+    }
+  };
 
   const manifest: Manifest = {
     package_id: stableId("package", projectSlug, sourceHash),
@@ -316,10 +415,20 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     generated_at: new Date().toISOString(),
     operating_mode: operatingMode,
     export_target: "react-typescript-tailwind-css-variables",
-    readiness_score: quality.readiness.score,
-    ready_for_frontend_agent: quality.readiness.readyForFrontendAgent,
-    blockers: quality.readiness.blockers,
-    warnings: quality.readiness.warnings,
+    readiness_score: finalQuality.readiness.score,
+    readiness_tier: finalReadinessTier,
+    ready_for_frontend_agent: finalQuality.readiness.readyForFrontendAgent,
+    implementation_authorized: implementationAuthorized,
+    contract_approval: contractApproval,
+    readiness_evidence: buildReadinessEvidence({
+      readinessScore: finalQuality.readiness.score,
+      readinessTier: finalReadinessTier,
+      readyForFrontendAgent: finalQuality.readiness.readyForFrontendAgent,
+      implementationAuthorized,
+      contextStatus: lifecycle.contextCompletion.status
+    }),
+    blockers: finalQuality.readiness.blockers,
+    warnings: finalQuality.readiness.warnings,
     artifact_index: [
       ...ARTIFACT_INDEX,
       ...experience.screenSpecs.map((screen) => `05-screen-specs/${screen.screen_id.replace(/[.]/g, "-")}.yaml`)
@@ -344,7 +453,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     targetFrontend,
     targetExecution,
     e2e,
-    quality
+    quality: finalQuality
   };
   const spec = buildSpecArtifacts(packageWithoutSpecTestFirstAndPlaywright);
   const packageWithoutTestFirstAndPlaywright: Omit<ArchetypePackage, "testFirst" | "playwright"> = {
