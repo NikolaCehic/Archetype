@@ -164,6 +164,41 @@ for (const expected of [
   assert(experienceArchitect.includes(expected), `Experience architect missing hardened requirement ${expected}.`);
 }
 
+const frontendArchitect = readText("agents/frontend-architect.md");
+for (const expected of [
+  "## Role",
+  "Role ID: `frontend-architect`",
+  "Role Type: Target frontend architecture specialist and source-manifest gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Operating Procedure",
+  "## Frontend Architecture Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Required Target Source Contract",
+  "## Test-First Integration",
+  "## Production Integration Boundary",
+  "lifecycle/approval-decision.json",
+  "12-target-frontend/source-file-manifest.json",
+  "12-target-frontend/route-component-map.json",
+  "12-target-frontend/codegen-tasks.json",
+  "12-target-frontend/adapter-interfaces.ts",
+  "06-frontend-agent-contract/data-operation-contracts.json",
+  "06-frontend-agent-contract/action-contracts.json",
+  "06-frontend-agent-contract/form-contracts.json",
+  "06-frontend-agent-contract/production-integration-contracts.json",
+  "test-first/test-first-contract.json",
+  "test-first/test-quality-standard.json",
+  "verification/playwright-verification-contract.json",
+  "No product UI before tests.",
+  "Never ask a bulk frontend architecture questionnaire",
+  "Do not invent backend behavior",
+  "ready_for_test_authoring",
+  "ready_for_implementation_architecture"
+]) {
+  assert(frontendArchitect.includes(expected), `Frontend architect missing hardened requirement ${expected}.`);
+}
+
 const reviewer = readText("agents/frontend-contract-reviewer.md");
 for (const expected of ["missing evidence", "acceptance criteria", "archetype_validate_package"]) {
   assert(reviewer.toLowerCase().includes(expected), `Frontend contract reviewer missing ${expected}.`);

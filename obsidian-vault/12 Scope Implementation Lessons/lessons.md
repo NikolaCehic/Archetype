@@ -1686,3 +1686,52 @@ Current answer for Scope 17:
 I do not know how to implement this scope better within Scope 17 without turning the review artifact into product implementation, which would violate the harness boundary.
 I cannot identify a technical or architectural mismatch against Scope 17 in the current implementation.
 ```
+
+## Agent Hardening - Frontend Architect
+
+Source files:
+
+- `agents/frontend-architect.md`
+- `plugins/claude-code/agents/frontend-architect.md`
+- `scripts/run-agent-role-files-contract.mjs`
+- `scripts/run-claude-plugin-contract.mjs`
+
+Mismatches found before hardening:
+
+- The frontend architect role named routing, components, state, and manifests, but did not define a full production role, mission, operating procedure, sufficiency gate, output schema, or self-review checklist.
+- The role referenced stale `12-target-frontend/file-manifest.json` instead of the actual generated `12-target-frontend/source-file-manifest.json`.
+- The role did not force architecture to be based on a human-approved canonical contract before implementation.
+- The role did not treat `12-target-frontend/source-file-manifest.json`, `12-target-frontend/route-component-map.json`, `12-target-frontend/codegen-tasks.json`, and `12-target-frontend/adapter-interfaces.ts` as mandatory source architecture.
+- The role did not explicitly enforce test-first ordering before product UI.
+- The role did not distinguish fixture adapters from production backend, auth, and copy integration.
+- The role was not mechanically contract-tested beyond generic section presence.
+
+Corrections applied:
+
+- Rewrote the frontend architect as a target frontend architecture specialist and source-manifest gatekeeper.
+- Added role boundaries, mission, production standard, operating procedure, frontend architecture sufficiency gate, one-question clarification order, output schema, target source contract, test-first integration, production integration boundary, good/bad output signals, blockers, handoff rules, and self-review checklist.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added root and Claude plugin contract assertions for the hardened frontend architect requirements.
+
+Self-healing rules added:
+
+- Frontend architecture is not production-grade unless it reads the generated `12-target-frontend` source artifacts, not memory or stale names.
+- `source-file-manifest.json`, `route-component-map.json`, `codegen-tasks.json`, and `adapter-interfaces.ts` are the minimum target source architecture set.
+- The frontend architect must block implementation when human approval is missing, when source file ownership is ambiguous, or when adapter boundaries require invented backend/auth behavior.
+- Test creation must precede product UI in the architecture handoff; a role file that omits this is not hardened.
+- Fixture adapters are local proof scaffolding only and cannot be described as production integration.
+- Every hardened role upgrade must be mirrored into plugin surfaces and pinned by contract tests.
+
+Agent hardening convergence review:
+
+- The frontend architect now has enough role detail to produce deterministic architecture handoffs from approved Archetype artifacts.
+- The role blocks weak approval, stale manifests, missing route-component maps, missing codegen ordering, missing adapters, missing state mappings, and test-first bypasses.
+- The role explicitly hands off TypeScript, design-system, accessibility, QA, verification, and repair risks instead of self-approving.
+- Contract tests now fail if the hardened frontend architect responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for frontend architect hardening:
+
+```txt
+I do not know how to make the frontend architect role more deterministic without importing requirements outside the approved Archetype package and current hardened lifecycle.
+I cannot identify a technical or architectural mismatch against the frontend architect hardening goal in the current role file.
+```

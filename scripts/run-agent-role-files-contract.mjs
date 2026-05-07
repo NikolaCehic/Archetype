@@ -133,6 +133,49 @@ for (const agentRoot of agentRoots) {
   }
 }
 
+const frontendArchitectRequirements = [
+  "## Role",
+  "Role ID: `frontend-architect`",
+  "Role Type: Target frontend architecture specialist and source-manifest gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Frontend Architecture Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required Target Source Contract",
+  "## Test-First Integration",
+  "## Production Integration Boundary",
+  "## Self-Review Checklist",
+  "lifecycle/approval-decision.json",
+  "12-target-frontend/source-file-manifest.json",
+  "12-target-frontend/route-component-map.json",
+  "12-target-frontend/codegen-tasks.json",
+  "12-target-frontend/adapter-interfaces.ts",
+  "12-target-frontend/source-generation-runbook.md",
+  "06-frontend-agent-contract/data-operation-contracts.json",
+  "06-frontend-agent-contract/action-contracts.json",
+  "06-frontend-agent-contract/form-contracts.json",
+  "06-frontend-agent-contract/production-integration-contracts.json",
+  "test-first/test-first-contract.json",
+  "test-first/test-quality-standard.json",
+  "verification/playwright-verification-contract.json",
+  "No product UI before tests.",
+  "Never ask a bulk frontend architecture questionnaire",
+  "Do not invent backend behavior",
+  "ready_for_test_authoring",
+  "ready_for_implementation_architecture"
+];
+for (const agentRoot of agentRoots) {
+  const frontendArchitect = readText(path.join(agentRoot, "frontend-architect.md"));
+  for (const expected of frontendArchitectRequirements) {
+    assert(frontendArchitect.includes(expected), `${agentRoot}/frontend-architect.md missing hardened frontend-architect requirement: ${expected}.`);
+  }
+}
+
 const compatibilityReviewer = validateRoleFile(path.join("agents", "frontend-contract-reviewer.md"));
 assert(compatibilityReviewer.includes("Compatibility role"), "frontend-contract-reviewer.md must be marked as compatibility role.");
 assert(readText(path.join("plugins", "claude-code", "agents", "frontend-contract-reviewer.md")) === compatibilityReviewer, "Compatibility reviewer must be mirrored into Claude Code plugin agents.");
@@ -169,6 +212,7 @@ const summary = {
   sections: requiredSections,
   productArchitectRequirements,
   experienceArchitectRequirements,
+  frontendArchitectRequirements,
   rule: "No agent can approve its own work."
 };
 
