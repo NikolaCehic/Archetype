@@ -512,6 +512,62 @@ for (const agentRoot of agentRoots) {
   }
 }
 
+const contractVerifierRequirements = [
+  "## Role",
+  "Role ID: `contract-verifier`",
+  "Role Type: Independent lifecycle verifier and completion-readiness gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Verification Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required Verification Evidence Contract",
+  "## Reconciliation Matrix",
+  "## Self-Review Checklist",
+  "ready_for_completion",
+  "blocked_missing_evidence",
+  "blocked_inconsistent_evidence",
+  "blocked_unresolved_repair",
+  "blocked_unapproved_implementation",
+  "needs_repair_or_revision",
+  "archetype_validate_package",
+  "archetype_verify_target",
+  "lifecycle/execution-state.json",
+  "lifecycle/final-readiness-report.md",
+  "lifecycle/approval-decision.json",
+  "governance/non-negotiable-principles.json",
+  "governance/convergence-standard.json",
+  "test-first/test-first-contract.json",
+  "test-first/test-quality-standard.json",
+  "test-results/initial-red-test-run.md",
+  "verification/playwright-verification-contract.json",
+  "verification/playwright-evidence.json",
+  "qa/scenario-catalog.json",
+  "qa/playwright-results.json",
+  "qa/accessibility-results.md",
+  "qa/visual-regression-report.md",
+  "qa/contract-drift-report.md",
+  "14-target-execution/target-execution-report.json",
+  "10-revision/repair-task-queue.json",
+  "10-revision/drift-report.json",
+  "implementation_authorized",
+  "14-target-execution/target-execution-report.json.status",
+  "verification/playwright-evidence.json.status",
+  "10-revision/repair-task-queue.json.task_count",
+  "No agent can approve its own work.",
+  "This role cannot verify artifacts it authored or repaired."
+];
+for (const agentRoot of agentRoots) {
+  const contractVerifier = readText(path.join(agentRoot, "contract-verifier.md"));
+  for (const expected of contractVerifierRequirements) {
+    assert(contractVerifier.includes(expected), `${agentRoot}/contract-verifier.md missing hardened contract-verifier requirement: ${expected}.`);
+  }
+}
+
 const compatibilityReviewer = validateRoleFile(path.join("agents", "frontend-contract-reviewer.md"));
 assert(compatibilityReviewer.includes("Compatibility role"), "frontend-contract-reviewer.md must be marked as compatibility role.");
 assert(readText(path.join("plugins", "claude-code", "agents", "frontend-contract-reviewer.md")) === compatibilityReviewer, "Compatibility reviewer must be mirrored into Claude Code plugin agents.");
@@ -555,6 +611,7 @@ const summary = {
   pixelPerfectDeveloperRequirements,
   accessibilitySpecialistRequirements,
   testFirstDeveloperRequirements,
+  contractVerifierRequirements,
   rule: "No agent can approve its own work."
 };
 

@@ -2038,3 +2038,59 @@ Current answer for test-first developer hardening:
 I do not know how to make the test-first developer role more deterministic without importing requirements outside the approved Archetype package, target repository test evidence, and browser/user-facing testing best practices.
 I cannot identify a technical or architectural mismatch against the test-first developer hardening goal in the current role file.
 ```
+
+## Agent Hardening - Contract Verifier
+
+Source files:
+
+- `agents/contract-verifier.md`
+- `plugins/claude-code/agents/contract-verifier.md`
+- `scripts/run-agent-role-files-contract.mjs`
+- `scripts/run-claude-plugin-contract.mjs`
+
+Browser research anchors:
+
+- Playwright reporters: https://playwright.dev/docs/test-reporters
+- Playwright trace viewer: https://playwright.dev/docs/trace-viewer-intro
+- Specification by Example: https://martinfowler.com/bliki/SpecificationByExample.html
+
+Mismatches found before hardening:
+
+- The verifier role was a thin checklist and did not define a full role, mission, production standard, operating procedure, sufficiency gate, output schema, evidence contract, reconciliation matrix, or self-review loop.
+- The Claude Code plugin copy remained a weaker stub, so the installable plugin could ship a lower-grade verifier than the root repository.
+- The role did not explicitly compute `ready_for_completion` from approval, target execution, Playwright evidence, repair status, and lifecycle state.
+- The role did not expose deterministic blocked statuses for missing evidence, inconsistent evidence, unresolved repair, unapproved implementation, or repair/revision needs.
+- The role did not pin target execution, QA reports, final readiness, marker-only test failures, or self-approval checks strongly enough.
+- Contract tests only enforced generic agent sections, so verifier-specific regressions would not fail CI.
+
+Corrections applied:
+
+- Rewrote the role as an independent lifecycle verifier and completion-readiness gatekeeper.
+- Added explicit authority, mission, production standard, canonical inputs, outputs, blockers, operating procedure, verification sufficiency gate, one-question clarification priority, output schema, decision rules, required verification evidence contract, reconciliation matrix, practice anchors, good/bad output signals, self-review checklist, and handoff rules.
+- Required the verifier to compute completion independently from `lifecycle/approval-decision.json`, `14-target-execution/target-execution-report.json`, `verification/playwright-evidence.json`, `qa/*`, `10-revision/repair-task-queue.json`, and `lifecycle/execution-state.json`.
+- Added deterministic statuses: `ready_for_completion`, `blocked_missing_evidence`, `blocked_inconsistent_evidence`, `blocked_unresolved_repair`, `blocked_unapproved_implementation`, and `needs_repair_or_revision`.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened verifier requirements in both root agent and Claude plugin checks.
+
+Self-healing rules added:
+
+- Completion is not a narrative claim; it must be recomputed from lifecycle state, human approval, target execution, Playwright evidence, QA reports, and an empty repair queue.
+- Warnings are not readiness and missing evidence is not a soft pass.
+- A passing smoke test is not completion.
+- A non-empty repair queue blocks completion even when other checks pass.
+- Contract revision cannot be used to hide implementation drift; repair comes first unless user-approved source evidence proves the contract changed.
+- The installable plugin mirror must be verified against the same hardened requirements as the root agent file.
+
+Agent hardening convergence review:
+
+- The contract verifier now has enough role detail to act as an independent final gate for package readiness.
+- The role blocks missing validation, missing human approval, agent self-approval, target execution failure, Playwright failure, QA contradictions, marker-only tests, unresolved repair tasks, and lifecycle state drift.
+- The role explicitly hands off test gaps, accessibility gaps, visual gaps, implementation failures, repair work, and unapproved contract changes to the right owners.
+- Contract tests now fail if the hardened verifier responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for contract verifier hardening:
+
+```txt
+I do not know how to make the contract verifier role more deterministic without importing requirements outside the approved Archetype lifecycle artifacts, target execution evidence, Playwright/QA reports, and human approval evidence.
+I cannot identify a technical or architectural mismatch against the contract verifier hardening goal in the current role file.
+```

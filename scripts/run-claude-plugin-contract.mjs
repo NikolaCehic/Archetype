@@ -467,6 +467,54 @@ for (const expected of [
   assert(testFirstDeveloper.includes(expected), `Test-first developer missing hardened requirement ${expected}.`);
 }
 
+const contractVerifier = readText("agents/contract-verifier.md");
+for (const expected of [
+  "## Role",
+  "Role ID: `contract-verifier`",
+  "Role Type: Independent lifecycle verifier and completion-readiness gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Operating Procedure",
+  "## Verification Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Required Verification Evidence Contract",
+  "## Reconciliation Matrix",
+  "ready_for_completion",
+  "blocked_missing_evidence",
+  "blocked_inconsistent_evidence",
+  "blocked_unresolved_repair",
+  "blocked_unapproved_implementation",
+  "needs_repair_or_revision",
+  "archetype_validate_package",
+  "archetype_verify_target",
+  "lifecycle/execution-state.json",
+  "lifecycle/final-readiness-report.md",
+  "lifecycle/approval-decision.json",
+  "governance/non-negotiable-principles.json",
+  "test-first/test-first-contract.json",
+  "test-first/test-quality-standard.json",
+  "test-results/initial-red-test-run.md",
+  "verification/playwright-verification-contract.json",
+  "verification/playwright-evidence.json",
+  "qa/scenario-catalog.json",
+  "qa/playwright-results.json",
+  "qa/accessibility-results.md",
+  "qa/visual-regression-report.md",
+  "qa/contract-drift-report.md",
+  "14-target-execution/target-execution-report.json",
+  "10-revision/repair-task-queue.json",
+  "10-revision/drift-report.json",
+  "implementation_authorized",
+  "14-target-execution/target-execution-report.json.status",
+  "verification/playwright-evidence.json.status",
+  "10-revision/repair-task-queue.json.task_count",
+  "No agent can approve its own work.",
+  "This role cannot verify artifacts it authored or repaired."
+]) {
+  assert(contractVerifier.includes(expected), `Contract verifier missing hardened requirement ${expected}.`);
+}
+
 const reviewer = readText("agents/frontend-contract-reviewer.md");
 for (const expected of ["missing evidence", "acceptance criteria", "archetype_validate_package"]) {
   assert(reviewer.toLowerCase().includes(expected), `Frontend contract reviewer missing ${expected}.`);
