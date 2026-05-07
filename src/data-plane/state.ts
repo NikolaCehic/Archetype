@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { stableId } from "../core/stable";
 import { DataPlaneError } from "./errors";
 import type {
   AgentRun,
@@ -12,6 +13,10 @@ import type {
 } from "./types";
 
 export const PROJECTION_NAMES: ProjectionName[] = ["lifecycle", "evidence", "contracts", "verification", "readiness"];
+
+export function dataPlaneRunId(projectSlug: string, sourceHash: string | null): string {
+  return stableId("run", projectSlug, sourceHash ?? "no-source-hash");
+}
 
 export function stableJsonStringify(value: unknown): string {
   if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {

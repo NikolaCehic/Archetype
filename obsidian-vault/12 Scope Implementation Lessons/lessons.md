@@ -2761,3 +2761,60 @@ Phase 02 convergence review:
 I do not know how to make the typed core and local adapters more complete within Phase 02 without pulling in compiler/exporter/CLI/MCP integration that belongs to later phases.
 I cannot identify a Phase 02 mismatch after verifying strict types, adapter behavior, replay, typed errors, and no new `any` usage.
 ```
+
+## Agent Data Plane Phase 03 - Compiler And Exporter Integration
+
+Source:
+
+- `docs/AGENT_DATA_PLANE_PLAN.md`
+- `docs/agent-data-plane.md`
+
+Extracted requirements:
+
+- Add an optional `dataPlane` compiler option.
+- Keep direct compiler behavior unchanged when no data plane is passed.
+- Make CLI and MCP generation create file-backed runs by default.
+- Record intake, evidence, lifecycle, approval/decision, contract, readiness, and verification events.
+- Record generated artifact records only after export files exist.
+- Preserve all existing generated package paths and return values.
+
+Phase critique:
+
+- The exporter deletes the output directory before writing. Creating `archetype-output/data-plane` before export would silently delete the run.
+- Recording only the top-level manifest artifacts would miss many canonical package files from the internal artifact index.
+- Absolute filesystem paths inside artifact metadata would make local run records noisy and less portable.
+- Running two contract commands that both rebuild `dist` in parallel is an avoidable verification drift even though this run passed.
+
+Corrections applied:
+
+- Added `dataPlane?: DataPlane` to compiler options.
+- Added `recordCompiledPackage`, `recordClarificationPackage`, `recordExportedArtifacts`, and `mergeManifestArtifacts`.
+- CLI and MCP `generate` now create `data-plane/runs/<run-id>/` after package export and return `dataPlaneRunId`.
+- Clarification, draft, and canonical generation paths all record run events, projections, and artifact lineage.
+- Canonical artifact recording merges the top-level manifest with the internal `artifact_index` and records every existing exported file.
+- Artifact metadata stores package-relative paths, byte size, SHA-256, producer, phase, and lineage without redundant absolute paths.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run build`: pass.
+- CLI smoke generated clarification, draft, and canonical packages with `dataPlaneRunId`.
+- Data-plane smoke verified one run per package, ordered events, five projections, replay parity, and artifact records.
+- Compiler memory smoke verified optional `dataPlane` creates events/projections while preserving the returned package.
+- `npm run cli:contract`: pass.
+- `npm run mcp:contract`: pass.
+- `rg -n "absolute_path|as any|\\bany\\b" src/data-plane src/cli.ts src/mcp/tools/generatePackage.ts src/core/pipeline.ts src/core/types.ts`: no matches.
+
+Self-healing rules:
+
+- Never create the file-backed data plane inside an output directory before an exporter runs.
+- For canonical packages, record artifact lineage from the merged manifest plus internal artifact index.
+- Keep `ArtifactRecord.ref.path` package-relative; resolve absolute paths from `AgentRun.output_dir` only when needed by a reader.
+- Avoid parallel contract commands when both invoke `npm run build`; builds mutate the same `dist` directory.
+
+Phase 03 convergence review:
+
+```txt
+I do not know how to make compiler/exporter integration more faithful to Phase 03 without adding CLI/MCP query commands that belong to later phases.
+I cannot identify a Phase 03 mismatch after verifying no default compiler behavior change, default CLI/MCP run creation, artifact lineage after export, replay, and existing contract compatibility.
+```

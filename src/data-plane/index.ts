@@ -4,6 +4,15 @@ export { MemoryDataPlane } from "./adapters/memoryDataPlane";
 export { artifactIdForPath, artifactPhaseForPath, artifactTypeForPath, byteSize, sha256File } from "./artifacts";
 export { DataPlaneError, isDataPlaneError } from "./errors";
 export { buildTimeline, replayDataPlaneRun } from "./events";
+export {
+  mergeManifestArtifacts,
+  recordClarificationPackage,
+  recordCompiledPackage,
+  recordExportedArtifacts,
+  type ExportLike,
+  type ManifestArtifact,
+  type RecordPackageOptions
+} from "./packageRecorder";
 export type {
   ArtifactStore,
   DataPlane,
@@ -13,7 +22,7 @@ export type {
   ProjectionStore,
   RunStore
 } from "./ports";
-export { PROJECTION_NAMES, stableJsonStringify, stableSha256 } from "./state";
+export { dataPlaneRunId, PROJECTION_NAMES, stableJsonStringify, stableSha256 } from "./state";
 export type {
   AgentRun,
   AgentSession,

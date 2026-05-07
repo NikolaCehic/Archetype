@@ -15,6 +15,7 @@ import { installAgentPlugins, type InstallTarget } from "./install/pluginInstall
 import { runReleaseDoctor } from "./release/doctor";
 import { validateExportedPackage } from "./quality/validatePackage";
 import { simulateExportedPackage } from "./quality/simulatePackage";
+import { FileDataPlane, mergeManifestArtifacts, recordClarificationPackage, recordCompiledPackage, recordExportedArtifacts } from "./data-plane";
 import type { ArchetypeInput } from "./core/types";
 
 type CommandStatus = "success" | "warning" | "error";
@@ -73,6 +74,10 @@ function artifactType(filePath: string): "json" | "markdown" | "text" {
   if (filePath.endsWith(".json")) return "json";
   if (filePath.endsWith(".md")) return "markdown";
   return "text";
+}
+
+function dataPlaneForOutput(outputDir: string): FileDataPlane {
+  return new FileDataPlane({ rootDir: path.join(outputDir, "data-plane") });
 }
 
 function packageRoot(): string {
@@ -148,6 +153,10 @@ function generateCommand(jsonMode: boolean): void {
 
   if (contextGate.status === "needs_clarification") {
     const clarificationPackage = exportClarificationPackage(input, contextGate, absoluteOut, absoluteInput);
+    const dataPlaneRun = recordClarificationPackage(dataPlaneForOutput(absoluteOut), input, contextGate, clarificationPackage, {
+      outputDir: absoluteOut,
+      sourcePath: absoluteInput
+    });
     const artifacts = clarificationPackage.artifacts.map((artifact) => ({
       id: artifact.id,
       path: path.join(absoluteOut, artifact.path),
@@ -164,6 +173,7 @@ function generateCommand(jsonMode: boolean): void {
       blockers: contextGate.blockers,
       warnings: contextGate.warnings,
       nextQuestion: contextGate.questions[0]?.question ?? null,
+      dataPlaneRunId: dataPlaneRun.run_id,
       artifacts
     };
 
@@ -187,6 +197,12 @@ function generateCommand(jsonMode: boolean): void {
 
   if (compiled.manifest.implementation_authorized !== true) {
     const draftPackage = exportDraftPackage(compiled, absoluteOut);
+    const dataPlane = dataPlaneForOutput(absoluteOut);
+    const dataPlaneRun = recordCompiledPackage(dataPlane, compiled, {
+      outputDir: absoluteOut,
+      sourcePath: absoluteInput
+    });
+    recordExportedArtifacts(dataPlane, dataPlaneRun.run_id, absoluteOut, draftPackage);
     const artifacts = draftPackage.artifacts.map((artifact) => ({
       id: artifact.id,
       path: path.join(absoluteOut, artifact.path),
@@ -204,6 +220,7 @@ function generateCommand(jsonMode: boolean): void {
       readyForFrontendAgent: false,
       blockers,
       warnings,
+      dataPlaneRunId: dataPlaneRun.run_id,
       artifacts
     };
 
@@ -221,8 +238,17 @@ function generateCommand(jsonMode: boolean): void {
 
   exportPackage(compiled, absoluteOut);
   const topManifest = readJson<{
-    artifacts?: Array<{ id: string; path: string; type?: string; required?: boolean }>;
+    artifacts?: Array<{ id?: string; path: string; type?: string; required?: boolean }>;
   }>(path.join(absoluteOut, "manifest.json"));
+  const dataPlane = dataPlaneForOutput(absoluteOut);
+  const dataPlaneRun = recordCompiledPackage(dataPlane, compiled, {
+    outputDir: absoluteOut,
+    sourcePath: absoluteInput
+  });
+  recordExportedArtifacts(dataPlane, dataPlaneRun.run_id, absoluteOut, {
+    artifacts: mergeManifestArtifacts(topManifest.artifacts ?? [], compiled.manifest.artifact_index),
+    manifest: topManifest
+  });
   const artifacts = (topManifest.artifacts ?? []).map((artifact) => ({
     id: artifact.id,
     path: path.join(absoluteOut, artifact.path),
@@ -239,6 +265,7 @@ function generateCommand(jsonMode: boolean): void {
     readyForFrontendAgent: compiled.quality.readiness.readyForFrontendAgent,
     blockers,
     warnings,
+    dataPlaneRunId: dataPlaneRun.run_id,
     artifacts
   };
 

@@ -1,3 +1,5 @@
+import type { DataPlane } from "../data-plane/ports";
+
 export type OperatingMode =
   | "fast_architecture"
   | "full_architecture"
@@ -87,6 +89,7 @@ export interface ArchetypeInput {
 export interface CompilerOptions {
   sourcePath?: string;
   outputDir?: string;
+  dataPlane?: DataPlane;
 }
 
 export interface SourceRecord {

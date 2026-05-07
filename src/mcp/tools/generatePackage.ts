@@ -3,6 +3,7 @@ import path from "node:path";
 import { runArchetypeCompiler } from "../../core/pipeline";
 import type { ArchetypeInput } from "../../core/types";
 import { assessContextGate } from "../../modules/contextGate";
+import { FileDataPlane, mergeManifestArtifacts, recordClarificationPackage, recordCompiledPackage, recordExportedArtifacts } from "../../data-plane";
 import { exportClarificationPackage } from "../../output/exportClarificationPackage";
 import { exportDraftPackage } from "../../output/exportDraftPackage";
 import { exportPackage } from "../../output/exportPackage";
@@ -18,6 +19,10 @@ import {
   type JsonRecord,
   type McpToolDefinition
 } from "./shared";
+
+function dataPlaneForOutput(outputDir: string): FileDataPlane {
+  return new FileDataPlane({ rootDir: path.join(outputDir, "data-plane") });
+}
 
 export const generatePackageTool: McpToolDefinition = {
   name: "archetype_generate_package",
@@ -53,6 +58,10 @@ export const generatePackageTool: McpToolDefinition = {
     const contextGate = assessContextGate(input);
     if (contextGate.status === "needs_clarification") {
       const clarificationPackage = exportClarificationPackage(input, contextGate, outputDir, inputPath);
+      const dataPlaneRun = recordClarificationPackage(dataPlaneForOutput(outputDir), input, contextGate, clarificationPackage, {
+        outputDir,
+        sourcePath: inputPath
+      });
       const artifacts = clarificationPackage.artifacts.map((artifact) => ({
         id: artifact.id,
         path: path.join(outputDir, artifact.path),
@@ -70,6 +79,7 @@ export const generatePackageTool: McpToolDefinition = {
         blockers: contextGate.blockers,
         warnings: contextGate.warnings,
         nextQuestion: contextGate.questions[0]?.question ?? null,
+        dataPlaneRunId: dataPlaneRun.run_id,
         artifacts
       };
     }
@@ -81,6 +91,12 @@ export const generatePackageTool: McpToolDefinition = {
 
     if (compiled.manifest.implementation_authorized !== true) {
       const draftPackage = exportDraftPackage(compiled, outputDir);
+      const dataPlane = dataPlaneForOutput(outputDir);
+      const dataPlaneRun = recordCompiledPackage(dataPlane, compiled, {
+        outputDir,
+        sourcePath: inputPath
+      });
+      recordExportedArtifacts(dataPlane, dataPlaneRun.run_id, outputDir, draftPackage);
       const artifacts = draftPackage.artifacts.map((artifact) => ({
         id: artifact.id,
         path: path.join(outputDir, artifact.path),
@@ -99,6 +115,7 @@ export const generatePackageTool: McpToolDefinition = {
         readyForFrontendAgent: false,
         blockers,
         warnings,
+        dataPlaneRunId: dataPlaneRun.run_id,
         artifacts
       };
     }
@@ -106,8 +123,17 @@ export const generatePackageTool: McpToolDefinition = {
     exportPackage(compiled, outputDir);
 
     const topManifest = readJsonFile<{
-      artifacts?: Array<{ id: string; path: string; type?: string; required?: boolean }>;
+      artifacts?: Array<{ id?: string; path: string; type?: string; required?: boolean }>;
     }>(path.join(outputDir, "manifest.json"));
+    const dataPlane = dataPlaneForOutput(outputDir);
+    const dataPlaneRun = recordCompiledPackage(dataPlane, compiled, {
+      outputDir,
+      sourcePath: inputPath
+    });
+    recordExportedArtifacts(dataPlane, dataPlaneRun.run_id, outputDir, {
+      artifacts: mergeManifestArtifacts(topManifest.artifacts ?? [], compiled.manifest.artifact_index),
+      manifest: topManifest
+    });
     const artifacts = (topManifest.artifacts ?? []).map((artifact) => ({
       id: artifact.id,
       path: path.join(outputDir, artifact.path),
@@ -125,6 +151,7 @@ export const generatePackageTool: McpToolDefinition = {
       readyForFrontendAgent: compiled.quality.readiness.readyForFrontendAgent,
       blockers,
       warnings,
+      dataPlaneRunId: dataPlaneRun.run_id,
       artifacts
     };
   }

@@ -24,6 +24,7 @@ import { buildPlaywrightVerificationArtifacts } from "../modules/playwrightVerif
 import { buildContractApprovalState, buildReadinessEvidence } from "../modules/nonNegotiablePrinciples";
 import { FRONTEND_PRACTICE_SKILLS } from "../modules/frontendPracticeSkills";
 import { REQUIRED_QA_ARTIFACTS } from "../modules/qaTeam";
+import { recordCompiledPackage } from "../data-plane/packageRecorder";
 
 const ARTIFACT_INDEX = [
   "README.md",
@@ -469,8 +470,15 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
   };
   const playwright = buildPlaywrightVerificationArtifacts(packageWithoutPlaywright);
 
-  return {
+  const compiledPackage: ArchetypePackage = {
     ...packageWithoutPlaywright,
     playwright
   };
+  if (_options.dataPlane) {
+    recordCompiledPackage(_options.dataPlane, compiledPackage, {
+      outputDir: _options.outputDir,
+      sourcePath: _options.sourcePath
+    });
+  }
+  return compiledPackage;
 }
