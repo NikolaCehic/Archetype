@@ -2706,3 +2706,58 @@ Phase 01 convergence review:
 I do not know how to make the Agent Data Plane plan more faithful to the current Archetype repo without starting implementation details from later phases.
 I cannot identify a phase-plan mismatch against the hardened lifecycle docs after adding the readiness projection and compiler/exporter boundary.
 ```
+
+## Agent Data Plane Phase 02 - Typed Core And Adapters
+
+Source:
+
+- `docs/AGENT_DATA_PLANE_PLAN.md`
+- `docs/agent-data-plane.md`
+
+Extracted requirements:
+
+- Add `src/data-plane/`.
+- Define strict entity and port types.
+- Implement file and memory adapters.
+- Implement deterministic JSON/JSONL helpers.
+- Implement typed errors.
+- Avoid `any` in new files.
+
+Phase critique:
+
+- Projection writing can easily become non-replayable if projection files are treated as the source of truth. The source of truth must remain `events.jsonl`; projection files are materialized read models.
+- Event ordering must be owned by the adapter, not by caller-supplied sequence values.
+- Artifact records should store metadata and lineage, not duplicate full generated artifact contents.
+- File adapter artifact IDs must be path-safe even if future callers pass custom IDs.
+
+Corrections applied:
+
+- Added strict data-plane entities in `src/data-plane/types.ts`.
+- Added ports in `src/data-plane/ports.ts`.
+- Added typed `DataPlaneError` codes in `src/data-plane/errors.ts`.
+- Added deterministic JSON, JSONL, checksums, validation guards, and timeline helpers in `src/data-plane/state.ts`.
+- Added replay/timeline projection logic in `src/data-plane/events.ts`.
+- Added artifact helpers in `src/data-plane/artifacts.ts`.
+- Added `MemoryDataPlane` and `FileDataPlane` adapters.
+- Exported the public data-plane API from `src/data-plane/index.ts` and root `src/index.ts`.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run build`: pass.
+- Manual Node smoke against `dist` exercised memory and file adapters: create run, append ordered events, write/read artifact, write/read projection, replay, and typed missing-artifact failure.
+- `rg -n "\\bany\\b|as any" src/data-plane`: no matches.
+
+Self-healing rules:
+
+- Treat `events.jsonl` as append-only authority.
+- Treat projection JSON as query acceleration, not source of truth.
+- Do not copy generated artifacts into the data plane; record refs, hashes, size, phase, producer, and lineage.
+- Missing data-plane states must throw `DataPlaneError` with stable codes.
+
+Phase 02 convergence review:
+
+```txt
+I do not know how to make the typed core and local adapters more complete within Phase 02 without pulling in compiler/exporter/CLI/MCP integration that belongs to later phases.
+I cannot identify a Phase 02 mismatch after verifying strict types, adapter behavior, replay, typed errors, and no new `any` usage.
+```
