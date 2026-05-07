@@ -2507,3 +2507,61 @@ Current answer for Visual Regression QA hardening:
 I do not know how to make the Visual Regression QA role more deterministic without importing requirements outside the approved Archetype visual direction, token contracts, responsive rules, QA scenario catalog, Playwright evidence, target visual-smoke screenshots, target execution evidence, accessibility adjacency, repair queue, and contract-drift evidence.
 I cannot identify a technical or architectural mismatch against the Visual Regression QA hardening goal in the current role file.
 ```
+
+## Agent Hardening - Contract Drift QA
+
+Source files:
+
+- `agents/contract-drift-qa.md`
+- `plugins/claude-code/agents/contract-drift-qa.md`
+- `scripts/run-qa-team-contract.mjs`
+
+Browser research anchors:
+
+- Martin Fowler consumer-driven contracts: https://martinfowler.com/articles/consumerDrivenContracts.html
+- Pact "when to use Pact": https://docs.pact.io/getting_started/what_is_pact_good_for
+- Semantic Versioning: https://semver.org/
+- Playwright best practices: https://playwright.dev/docs/best-practices
+
+Mismatches found before hardening:
+
+- The Contract Drift QA role was a short checklist and did not define a role, mission, production standard, operating procedure, sufficiency gate, output schema, evidence contract, drift classification matrix, failure routing matrix, or self-review loop.
+- The role did not reconcile the canonical spec, implementation contract, test-first contract, Playwright contract, target execution, QA reports, repair queue, drift report, lifecycle state, and approval decision as one evidence system.
+- The role did not define deterministic statuses for missing evidence, repair queue mismatch, stale/inconsistent evidence, unapproved contract revision, repair-needed drift, or QA-lead readiness.
+- The role did not require repair task count, drift count, tasks length, task ids, status, classifications, source artifacts, target files, rerun commands, and closure evidence to reconcile.
+- The role did not preserve the patch-first boundary strongly enough: implementation drift must be patched first; contract revision needs new user-approved evidence.
+- The role did not classify drift across dependency, type, build, route, state, flow, responsive, accessibility, visual, Playwright, marker-only, malformed-data, QA, and contract revision categories.
+- Contract tests only checked generic QA role sections and plugin mirroring.
+
+Corrections applied:
+
+- Rewrote the role as a contract drift evidence reconciler and patch-first revision boundary gatekeeper.
+- Added explicit authority, mission, production standard, canonical inputs, outputs, blockers, operating procedure, contract drift QA sufficiency gate, one-question clarification priority, output schema, decision rules, required contract drift evidence contract, drift classification matrix, failure routing matrix, practice anchors, good/bad output signals, self-review checklist, and handoff rules.
+- Added deterministic statuses: `contract_drift_ready_for_qa_lead`, `contract_drift_needs_repair`, `contract_drift_blocked_missing_evidence`, `contract_drift_blocked_stale_or_inconsistent_evidence`, `contract_drift_blocked_unapproved_contract_revision`, and `contract_drift_blocked_repair_queue_mismatch`.
+- Required queue math reconciliation across `10-revision/repair-task-queue.json.status`, `10-revision/repair-task-queue.json.task_count`, `tasks.length`, `10-revision/drift-report.json.status`, `10-revision/drift-report.json.drift_count`, and task ids.
+- Required every drift finding to include drift id, queue task id, classification, action type, source contract, source evidence, target file or artifact, expected behavior, observed behavior, severity, status, owner, rerun command, closure evidence, and contract revision evidence when revision is proposed.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened Contract Drift QA requirements in the QA team contract.
+
+Self-healing rules added:
+
+- Contract drift QA must reconcile canonical contracts, runtime evidence, QA reports, repair queue, drift report, lifecycle state, and approval decision before claiming readiness.
+- Repair task count, drift count, task ids, and statuses must match exactly.
+- Failed Playwright, target execution, or specialist QA evidence must become repair work unless approved revision evidence proves the contract is wrong.
+- Contract revision cannot be used to excuse implementation drift.
+- Tests weakened, skipped, deleted, or made marker-only to hide failures are drift blockers.
+- Plugin mirrors must carry the same hardened contract drift QA role as the root repository.
+
+Agent hardening convergence review:
+
+- The Contract Drift QA role now has enough detail to verify drift evidence deterministically.
+- The role blocks missing artifacts, stale evidence, contradictory statuses, repair queue math mismatches, unowned drift, failed evidence without repair tasks, unapproved contract revision, marker-only test drift, and completion claims with unresolved repair tasks.
+- The role explicitly hands off implementation, approval-sensitive contract changes, Playwright evidence, weak tests, type drift, architecture drift, flow/state drift, visual drift, accessibility drift, malformed-data drift, source ambiguity, and QA reconciliation to the correct owners instead of self-approving.
+- QA team contract tests now fail if the hardened contract drift responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for Contract Drift QA hardening:
+
+```txt
+I do not know how to make the Contract Drift QA role more deterministic without importing requirements outside the approved Archetype canonical contracts, test-first and Playwright contracts, target execution evidence, QA reports, repair queue, drift report, lifecycle approval state, and user-approved revision evidence.
+I cannot identify a technical or architectural mismatch against the Contract Drift QA hardening goal in the current role file.
+```
