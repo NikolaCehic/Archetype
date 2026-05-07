@@ -42,5 +42,28 @@
     "styling": "Tailwind CSS + CSS variables",
     "routing": "Next.js App Router"
   },
+  "dataBoundary": {
+    "mode": "mock",
+    "dataSource": "Local deterministic fixtures for sellers, listings, disputes, payouts, queues, and review states.",
+    "auth": "Mock authenticated operator session.",
+    "permissions": "Marketplace operator, trust and safety lead, and finance reviewer permissions represented in frontend state.",
+    "notes": "No production marketplace, payout, or identity API integration is required for this contract."
+  },
+  "testExecution": {
+    "playwrightAllowed": true,
+    "commandsAllowed": true,
+    "testTypes": ["smoke", "e2e", "ui", "integration", "unit", "accessibility"],
+    "notes": "Generate test-first obligations and Playwright verification scenarios before implementation."
+  },
+  "assumptionApproval": {
+    "approvedForDraft": true,
+    "approvedBy": "example-fixture",
+    "notes": "Archetype may propose candidate assumptions for draft artifacts while keeping trust, payout, and compliance claims non-canonical until human approval."
+  },
+  "safetyConstraints": [
+    "Use mock seller, payout, dispute, and trust data only.",
+    "Do not make legal, compliance, payout-processing, or trust-and-safety enforcement claims.",
+    "Require human review for escalation and finance-review workflows before production."
+  ],
   "operatingMode": "full_architecture"
 }

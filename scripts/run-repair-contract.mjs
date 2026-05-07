@@ -4,6 +4,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "repair-contract");
+const approvedInputPath = path.join(workspace, "approved-intake.json");
 const outputDir = path.join(workspace, "archetype-output");
 const targetDir = path.join(workspace, "generated-frontend");
 
@@ -44,8 +45,21 @@ function readJson(filePath) {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
-const generate = runJson(["generate", "--input", "examples/saas-dashboard-intake.json", "--out", outputDir]);
+const approvedInput = {
+  ...readJson(path.join(root, "examples", "saas-dashboard-intake.json")),
+  contractApproval: {
+    approved: true,
+    approverType: "human",
+    approvedBy: "Repair contract test",
+    approvedAt: "2026-05-06T00:00:00.000Z",
+    artifactRefs: ["spec/archetype-spec.json", "implementation-contract.md", "test-first/test-first-contract.json"]
+  }
+};
+writeFileSync(approvedInputPath, `${JSON.stringify(approvedInput, null, 2)}\n`);
+
+const generate = runJson(["generate", "--input", approvedInputPath, "--out", outputDir]);
 assert(["success", "warning"].includes(generate.status), "repair contract generation should succeed or warn.");
+assert(generate.readyForFrontendAgent === true, "repair contract fixture should be human-approved.");
 
 const repairContractPath = path.join(outputDir, "10-revision", "verification-repair-contract.json");
 const taskQueuePath = path.join(outputDir, "10-revision", "repair-task-queue.json");
@@ -100,6 +114,9 @@ assert(failedPlaywrightTasks.length > 0, "repair queue should classify browser s
 assert(failedQueue.task_count > 2, "repair queue should include scenario-level tasks, not only command-level failure tasks.");
 assert(failedQueue.tasks.every((task) => Array.isArray(task.source_artifacts) && task.source_artifacts.length > 0), "repair tasks must name source artifacts.");
 assert(failedQueue.tasks.every((task) => Array.isArray(task.rerun_commands) && task.rerun_commands.length > 0), "repair tasks must name rerun commands.");
+const failedExecutionState = readJson(path.join(outputDir, "lifecycle", "execution-state.json"));
+assert(failedExecutionState.current_state === "repair_or_revision", "execution state should move to repair_or_revision after verification failure.");
+assert(failedExecutionState.ready_for_completion === false, "execution state must block completion while repair tasks remain.");
 
 const repair = runJson(["repair", "--out", outputDir, "--target", targetDir]);
 assert(repair.status === "fail", "repair command should reflect failed verification status.");
@@ -121,6 +138,9 @@ assert(passingVerify.repair.taskCount === 0, "passing verify-target should clear
 const passingQueue = readJson(taskQueuePath);
 assert(passingQueue.status === "pass", "repair queue should be pass after clean verification.");
 assert(passingQueue.task_count === 0, "passing repair queue should be empty.");
+const passingExecutionState = readJson(path.join(outputDir, "lifecycle", "execution-state.json"));
+assert(passingExecutionState.current_state === "completion", "execution state should move to completion after clean verification.");
+assert(passingExecutionState.ready_for_completion === true, "execution state should unblock completion after clean verification.");
 
 rmSync(repairContractPath);
 const failedValidate = runJsonMaybeFail(["validate", "--out", outputDir]);

@@ -55,12 +55,17 @@ assert(mcp.mcpServers.archetype.args.includes("github:NikolaCehic/Archetype"), "
 assert(mcp.mcpServers.archetype.args.includes("archetype-mcp"), "Codex plugin MCP config must launch archetype-mcp.");
 
 const frontDoor = readText("skills/archetype/SKILL.md");
-for (const expected of ["$archetype", "project idea", "Self-Contained Pipeline", "archetype_release_doctor", "archetype_create_intake", "materials", "Ask at most six", "Do not require the user", "tests first", "Do not end by telling the user what to tell Codex next"]) {
+for (const expected of ["$archetype", "project idea", "Self-Contained Pipeline", "archetype_release_doctor", "archetype_create_intake", "archetype_answer_clarification", "materials", "Ask exactly one", "lifecycle/clarification-turn.json", "draft_contract", "draft/frontend-contract.draft.json", "human approval", "Do not require the user", "tests first", "Do not end by telling the user what to tell Codex next"]) {
   assert(frontDoor.includes(expected), `Codex front-door skill missing ${expected}.`);
 }
+assert(!frontDoor.includes("Ask at most six"), "Codex front-door skill must not ask grouped clarification questions.");
 assert(!frontDoor.includes("@Archetype"), "Codex front-door skill must not claim @Archetype invokes the workflow.");
 assert(frontDoor.includes("spec/archetype-spec.json"), "Codex front-door skill must read the canonical spec.");
 assert(frontDoor.includes("test-first/test-first-contract.json"), "Codex front-door skill must read the test-first contract.");
+assert(frontDoor.includes("test-first/test-quality-standard.json"), "Codex front-door skill must read the test quality standard.");
+assert(frontDoor.includes("governance/forbidden-behaviors.json"), "Codex front-door skill must read the forbidden behavior contract.");
+assert(frontDoor.includes("lifecycle/approval-decision.json"), "Codex front-door skill must read the approval decision.");
+assert(frontDoor.includes("lifecycle/final-readiness-report.md"), "Codex front-door skill must read the final readiness report.");
 assert(frontDoor.includes("verification/playwright-verification-contract.json"), "Codex front-door skill must read the Playwright verification contract.");
 assert(frontDoor.includes("verification/playwright-evidence.json"), "Codex front-door skill must inspect Playwright evidence.");
 assert(!frontDoor.includes("Ask me what is missing, then build and verify"), "Codex front-door skill must not require prompt choreography.");
@@ -71,13 +76,13 @@ for (const expected of ["archetype_create_intake", "archetype_generate_package",
 }
 
 const implement = readText("skills/archetype-implement/SKILL.md");
-for (const expected of ["AGENTS.md", "spec/archetype-spec.json", "test-first/test-first-contract.json", "implementation-contract.md", "experience/route-map.json", "screens/screen-inventory.json", "design-system/tokens.json", "frontend-agent-contract/acceptance-criteria.json"]) {
+for (const expected of ["AGENTS.md", "lifecycle/approval-decision.json", "reviews/specialist-review-summary.md", "spec/archetype-spec.json", "test-first/test-first-contract.json", "test-first/test-quality-standard.json", "governance/forbidden-behaviors.json", "test-results/initial-red-test-run.md", "implementation-contract.md", "experience/route-map.json", "screens/screen-inventory.json", "design-system/tokens.json", "frontend-agent-contract/acceptance-criteria.json"]) {
   assert(implement.includes(expected), `Codex implement skill missing ${expected}.`);
 }
 assert(implement.includes("Preserve the initial red test result"), "Codex implement skill must enforce red-first TDD.");
 
 const verify = readText("skills/archetype-verify/SKILL.md");
-for (const expected of ["archetype_validate_package", "archetype_verify_target", "archetype_plan_repair", "skipInstall: false", "verify-target", "verification/playwright-verification-contract.json", "verification/playwright-evidence.json", "10-revision/repair-task-queue.json", "visual-smoke"]) {
+for (const expected of ["archetype_validate_package", "archetype_verify_target", "archetype_plan_repair", "skipInstall: false", "verify-target", "test-first/test-quality-standard.json", "governance/forbidden-behaviors.json", "verification/playwright-verification-contract.json", "verification/playwright-evidence.json", "10-revision/repair-task-queue.json", "visual-smoke", "Marker-only tests fail"]) {
   assert(verify.includes(expected), `Codex verify skill missing ${expected}.`);
 }
 

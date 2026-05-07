@@ -103,6 +103,7 @@ assert(sourceDoctor.plugin_setup.claude_code.front_door.includes("/archetype"), 
 assert(sourceDoctor.plugin_setup.codex.front_door.includes("$archetype"), "doctor should expose Codex front door.");
 assert(sourceDoctor.lifecycle.includes("Clarify missing context"), "doctor should expose lifecycle steps.");
 assert(sourceDoctor.mcp_tools.includes("archetype_release_doctor"), "doctor should name release doctor MCP tool.");
+assert(sourceDoctor.mcp_tools.includes("archetype_answer_clarification"), "doctor should name one-question clarification MCP tool.");
 
 for (const [file, expected] of [
   ["README.md", ["archetype install --target all --json", "docs/quickstart.md", "docs/agent-lifecycle.md", "docs/release-readiness.md"]],
@@ -158,6 +159,7 @@ try {
   const mcpTools = await requestMcp(mcpBin, [], "tools/list");
   const toolNames = new Set((mcpTools.tools ?? []).map((tool) => tool.name));
   assert(toolNames.has("archetype_release_doctor"), "installed MCP server should expose archetype_release_doctor.");
+  assert(toolNames.has("archetype_answer_clarification"), "installed MCP server should expose archetype_answer_clarification.");
   const doctorToolResult = await requestMcp(mcpBin, [], "tools/call", {
     name: "archetype_release_doctor",
     arguments: {}

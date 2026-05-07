@@ -42,5 +42,28 @@
     "styling": "Tailwind CSS + CSS variables",
     "routing": "Next.js App Router"
   },
+  "dataBoundary": {
+    "mode": "mock",
+    "dataSource": "Local deterministic fixtures for campaigns, workspaces, billing, reports, and settings.",
+    "auth": "Mock authenticated workspace user.",
+    "permissions": "Marketing manager, growth analyst, and workspace admin permissions represented in frontend state.",
+    "notes": "No production backend integration is required for the generated frontend contract."
+  },
+  "testExecution": {
+    "playwrightAllowed": true,
+    "commandsAllowed": true,
+    "testTypes": ["smoke", "e2e", "ui", "integration", "unit", "accessibility"],
+    "notes": "Generate test-first obligations and Playwright verification scenarios before implementation."
+  },
+  "assumptionApproval": {
+    "approvedForDraft": true,
+    "approvedBy": "example-fixture",
+    "notes": "Archetype may propose candidate assumptions for draft artifacts while keeping them non-canonical until human approval."
+  },
+  "safetyConstraints": [
+    "Use mock billing data only.",
+    "Do not make financial, compliance, or production integration claims.",
+    "Expose permission and billing states as frontend fixtures requiring human review before production."
+  ],
   "operatingMode": "full_architecture"
 }

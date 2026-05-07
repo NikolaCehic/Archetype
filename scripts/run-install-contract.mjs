@@ -110,7 +110,8 @@ try {
 
   const generate = runJson(cliBin, ["generate", "--input", intakePath, "--out", outputDir, "--json"]);
   assert(["success", "warning"].includes(generate.status), "Installed CLI generate should succeed or warn.");
-  assert(generate.readyForFrontendAgent === true, "Installed CLI output should be ready for a frontend agent.");
+  assert(generate.readyForFrontendAgent === false, "Installed CLI draft output should not be implementation-ready before human approval.");
+  assert(generate.blockers.some((blocker) => blocker.includes("canonical contract is not approved by a human reviewer")), "Installed CLI output should expose the approval gate.");
 
   const validate = runJson(cliBin, ["validate", "--out", outputDir, "--json"]);
   assert(validate.status === "pass", "Installed CLI validate should pass.");
@@ -129,7 +130,7 @@ try {
 
   const mcpTools = await requestMcp(mcpBin, [], "tools/list");
   const toolNames = new Set((mcpTools.tools ?? []).map((tool) => tool.name));
-  for (const toolName of ["archetype_release_doctor", "archetype_generate_package", "archetype_validate_package", "archetype_summarize_package", "archetype_read_artifact", "archetype_verify_target", "archetype_plan_repair"]) {
+  for (const toolName of ["archetype_release_doctor", "archetype_create_intake", "archetype_answer_clarification", "archetype_generate_package", "archetype_validate_package", "archetype_summarize_package", "archetype_read_artifact", "archetype_verify_target", "archetype_plan_repair"]) {
     assert(toolNames.has(toolName), `Installed MCP server missing ${toolName}.`);
   }
 
@@ -157,6 +158,12 @@ try {
     "scripts/run-lifecycle-contract.mjs",
     "scripts/run-spec-contract.mjs",
     "scripts/run-test-first-contract.mjs",
+    "scripts/run-test-quality-standard-contract.mjs",
+    "scripts/run-required-package-artifacts-contract.mjs",
+    "scripts/run-forbidden-behaviors-contract.mjs",
+    "scripts/run-marketing-dashboard-replay-contract.mjs",
+    "scripts/run-implementation-phases-contract.mjs",
+    "scripts/run-convergence-standard-contract.mjs",
     "scripts/run-playwright-verification-contract.mjs",
     "scripts/run-repair-contract.mjs",
     "scripts/run-plugin-install-contract.mjs",
@@ -182,7 +189,8 @@ try {
 
   const npxGenerate = runJson("npx", ["-y", "-p", tarballPath, "archetype", "generate", "--input", npxIntakePath, "--out", npxOutputDir, "--json"]);
   assert(["success", "warning"].includes(npxGenerate.status), "npx CLI generate should succeed or warn.");
-  assert(npxGenerate.readyForFrontendAgent === true, "npx CLI output should be ready for a frontend agent.");
+  assert(npxGenerate.readyForFrontendAgent === false, "npx CLI draft output should not be implementation-ready before human approval.");
+  assert(npxGenerate.blockers.some((blocker) => blocker.includes("canonical contract is not approved by a human reviewer")), "npx CLI output should expose the approval gate.");
 
   const npxValidate = runJson("npx", ["-y", "-p", tarballPath, "archetype", "validate", "--out", npxOutputDir, "--json"]);
   assert(npxValidate.status === "pass", "npx CLI validate should pass.");

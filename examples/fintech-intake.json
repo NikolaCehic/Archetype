@@ -41,5 +41,28 @@
     "styling": "Tailwind CSS + CSS variables",
     "routing": "Next.js App Router"
   },
+  "dataBoundary": {
+    "mode": "mock",
+    "dataSource": "Local deterministic fixtures for cash flow, invoices, expenses, reports, and payment risk.",
+    "auth": "Mock authenticated business workspace.",
+    "permissions": "Owner and bookkeeper permissions represented in frontend state.",
+    "notes": "No production banking, payment processor, or accounting API integration is required for this contract."
+  },
+  "testExecution": {
+    "playwrightAllowed": true,
+    "commandsAllowed": true,
+    "testTypes": ["smoke", "e2e", "ui", "integration", "unit", "accessibility"],
+    "notes": "Generate tests first and verify the generated frontend with Playwright."
+  },
+  "assumptionApproval": {
+    "approvedForDraft": true,
+    "approvedBy": "example-fixture",
+    "notes": "Archetype may propose candidate assumptions for the draft; financial and compliance claims remain non-canonical until human review."
+  },
+  "safetyConstraints": [
+    "Use mock financial data only.",
+    "Do not make accounting, banking, lending, compliance, tax, or payment-processing claims.",
+    "Require human review for financial-risk language before production."
+  ],
   "operatingMode": "full_architecture"
 }

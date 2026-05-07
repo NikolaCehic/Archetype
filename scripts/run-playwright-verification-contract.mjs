@@ -4,6 +4,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "playwright-contract");
+const approvedInputPath = path.join(workspace, "approved-intake.json");
 const outputDir = path.join(workspace, "archetype-output");
 const targetDir = path.join(workspace, "generated-frontend");
 
@@ -30,8 +31,21 @@ function readJson(filePath) {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
-const generate = runJson(["generate", "--input", "examples/saas-dashboard-intake.json", "--out", outputDir]);
+const approvedInput = {
+  ...readJson(path.join(root, "examples", "saas-dashboard-intake.json")),
+  contractApproval: {
+    approved: true,
+    approverType: "human",
+    approvedBy: "Playwright contract test",
+    approvedAt: "2026-05-06T00:00:00.000Z",
+    artifactRefs: ["spec/archetype-spec.json", "implementation-contract.md", "test-first/test-first-contract.json"]
+  }
+};
+writeFileSync(approvedInputPath, `${JSON.stringify(approvedInput, null, 2)}\n`);
+
+const generate = runJson(["generate", "--input", approvedInputPath, "--out", outputDir]);
 assert(["success", "warning"].includes(generate.status), "Playwright verification generation should succeed or warn.");
+assert(generate.readyForFrontendAgent === true, "Playwright verification fixture should be human-approved.");
 
 const contractPath = path.join(outputDir, "verification", "playwright-verification-contract.json");
 const planPath = path.join(outputDir, "verification", "playwright-verification-plan.md");
@@ -102,6 +116,9 @@ assert(existsSync(path.join(targetDir, "test-results", "archetype-playwright-res
 const repairQueue = readJson(path.join(outputDir, "10-revision", "repair-task-queue.json"));
 assert(repairQueue.status === "pass", "repair task queue should be pass after Playwright verification.");
 assert(repairQueue.task_count === 0, "repair task queue should be empty after passing verification.");
+const executionState = readJson(path.join(outputDir, "lifecycle", "execution-state.json"));
+assert(executionState.current_state === "completion", "execution state should move to completion after passing verification.");
+assert(executionState.ready_for_completion === true, "execution state should mark ready_for_completion after passing verification and empty repair queue.");
 const screenshots = execFileSync("find", [path.join(targetDir, "test-results", "archetype-visual-smoke"), "-type", "f"], { encoding: "utf8" }).trim().split("\n").filter(Boolean);
 assert(screenshots.length === contract.coverage.visual_smoke_scenarios, "visual-smoke screenshot count should match contract.");
 

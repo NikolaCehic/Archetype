@@ -5,6 +5,7 @@ import path from "node:path";
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "test-first-contract");
 const outputDir = path.join(workspace, "archetype-output");
+const approvedInputPath = path.join(workspace, "approved-intake.json");
 
 rmSync(workspace, { recursive: true, force: true });
 mkdirSync(workspace, { recursive: true });
@@ -29,8 +30,20 @@ function readJson(filePath) {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
-const generate = runJson(["generate", "--input", "examples/saas-dashboard-intake.json", "--out", outputDir]);
+const baseInput = readJson(path.join(root, "examples", "saas-dashboard-intake.json"));
+writeFileSync(approvedInputPath, `${JSON.stringify({
+  ...baseInput,
+  contractApproval: {
+    approved: true,
+    approverType: "human",
+    approvedBy: "Test-first contract test",
+    approvedAt: "2026-05-06T00:00:00.000Z",
+    artifactRefs: ["draft/contract-approval-request.json", "spec/archetype-spec.json"]
+  }
+}, null, 2)}\n`);
+const generate = runJson(["generate", "--input", approvedInputPath, "--out", outputDir]);
 assert(["success", "warning"].includes(generate.status), "test-first contract generation should succeed or warn.");
+assert(generate.readyForFrontendAgent === true, "test-first contract generation requires approved canonical spec.");
 
 const contractPath = path.join(outputDir, "test-first", "test-first-contract.json");
 const planPath = path.join(outputDir, "test-first", "test-first-plan.md");
@@ -99,7 +112,9 @@ for (const expected of ["vitest", "Archetype integration and unit contracts", "s
 const agents = readFileSync(path.join(outputDir, "AGENTS.md"), "utf8");
 const claude = readFileSync(path.join(outputDir, "CLAUDE.md"), "utf8");
 assert(agents.includes("test-first/test-first-contract.json"), "AGENTS.md must point to the test-first contract.");
+assert(agents.includes("test-first/test-quality-standard.json"), "AGENTS.md must point to the test quality standard.");
 assert(claude.includes("test-first/test-first-contract.json"), "CLAUDE.md must point to the test-first contract.");
+assert(claude.includes("test-first/test-quality-standard.json"), "CLAUDE.md must point to the test quality standard.");
 
 const implementationRules = readJson(path.join(outputDir, "frontend-agent-contract", "implementation-rules.json"));
 assert(implementationRules.testFirstContract?.path === "test-first/test-first-contract.json", "implementation rules must point to the test-first contract.");
@@ -113,14 +128,16 @@ const sourceManifest = readJson(path.join(outputDir, "12-target-frontend", "sour
 const targetTestFiles = (sourceManifest.files ?? []).filter((file) => file.kind === "test");
 assert(targetTestFiles.length > 0, "source manifest must include target test files.");
 assert(targetTestFiles.every((file) => (file.reads ?? []).includes("test-first/test-first-contract.json")), "target test files must read the test-first contract.");
+assert(targetTestFiles.every((file) => (file.reads ?? []).includes("test-first/test-quality-standard.json")), "target test files must read the test quality standard.");
 
 const manifest = readJson(path.join(outputDir, "manifest.json"));
-for (const artifactId of ["test-first-contract", "test-first-plan", "test-first-playwright-template", "test-first-vitest-template"]) {
+for (const artifactId of ["test-first-contract", "test-first-plan", "test-quality-standard", "test-quality-standard-report", "test-first-playwright-template", "test-first-vitest-template"]) {
   assert((manifest.artifacts ?? []).some((artifact) => artifact.id === artifactId), `top-level manifest missing ${artifactId}.`);
 }
 
 const summarize = runJson(["summarize", "--out", outputDir]);
 assert(summarize.entrypoints.includes("test-first/test-first-contract.json"), "summarize should include test-first contract entrypoint.");
+assert(summarize.entrypoints.includes("test-first/test-quality-standard.json"), "summarize should include test quality standard entrypoint.");
 
 const validate = runJson(["validate", "--out", outputDir]);
 assert(validate.status === "pass", "validate should pass with test-first artifacts.");

@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -6,7 +6,11 @@ const root = process.cwd();
 const workspace = path.join(root, "tmp", "mcp-contract");
 const intakePath = path.join(workspace, "archetype.intake.json");
 const outputDir = path.join(workspace, "archetype-output");
+const approvedIntakePath = path.join(workspace, "archetype.approved.intake.json");
+const approvedOutputDir = path.join(workspace, "archetype-approved-output");
 const targetDir = path.join(workspace, "generated-frontend");
+const weakIntakePath = path.join(workspace, "weak.intake.json");
+const weakAnsweredPath = path.join(workspace, "weak.answered.intake.json");
 
 rmSync(workspace, { recursive: true, force: true });
 mkdirSync(workspace, { recursive: true });
@@ -114,6 +118,7 @@ try {
   for (const required of [
     "archetype_release_doctor",
     "archetype_create_intake",
+    "archetype_answer_clarification",
     "archetype_generate_package",
     "archetype_validate_package",
     "archetype_summarize_package",
@@ -129,12 +134,50 @@ try {
   assert(releaseDoctor.quickstart?.published_package?.some((command) => String(command).includes("archetype install --target all --json")), "release doctor should expose one-command plugin install.");
   assert(releaseDoctor.docs?.some((doc) => doc.path === "docs/agent-lifecycle.md"), "release doctor should expose lifecycle docs.");
 
+  writeFileSync(weakIntakePath, `${JSON.stringify({
+    projectName: "Marketing Admin",
+    context: "I want to build a admin dashboard for a marketing team",
+    operatingMode: "full_architecture"
+  }, null, 2)}\n`);
+  const answerClarification = await callTool("archetype_answer_clarification", {
+    inputPath: weakIntakePath,
+    outputPath: weakAnsweredPath,
+    questionId: "primary_users",
+    answer: "Marketing operations manager",
+    answeredBy: "mcp-contract"
+  });
+  assert(answerClarification.status === "warning", "answer clarification should update weak intake while more context remains missing.");
+  assert(answerClarification.nextQuestionId === "target_stack", "answer clarification should return the next one-question blocker.");
+  assert(answerClarification.clarificationTurn?.question_count === 1, "answer clarification should return one current question.");
+
   const createIntake = await callTool("archetype_create_intake", {
     projectName: "SignalDesk",
     brief: "Build a dense premium B2B SaaS analytics dashboard for marketing teams with onboarding, workspace selection, campaign overview, report builder, billing, and settings.",
     targetStack: "React, TypeScript, Next.js App Router, Tailwind CSS",
     brandNotes: "Premium, dense, dark, enterprise, direct, operational.",
     existingRepoContext: "The target frontend should be deterministic and should not invent routes or screen states.",
+    dataBoundary: {
+      mode: "mock",
+      dataSource: "Local deterministic fixtures for campaigns, workspaces, billing, reports, and settings.",
+      auth: "Mock authenticated workspace user.",
+      permissions: "Marketing manager, growth analyst, and workspace admin permissions represented in frontend state.",
+      notes: "No production backend integration is required for the generated frontend contract."
+    },
+    testExecution: {
+      playwrightAllowed: true,
+      commandsAllowed: true,
+      testTypes: ["smoke", "e2e", "ui", "integration", "unit", "accessibility"],
+      notes: "Generate test-first obligations and Playwright verification scenarios before implementation."
+    },
+    assumptionApproval: {
+      approvedForDraft: true,
+      approvedBy: "mcp-contract",
+      notes: "Archetype may propose candidate assumptions for draft artifacts while keeping them non-canonical until human approval."
+    },
+    safetyConstraints: [
+      "Use mock billing and analytics data only.",
+      "Do not make financial, compliance, or production integration claims."
+    ],
     outputPath: intakePath,
     users: ["Marketing manager", "Growth analyst", "Workspace admin"],
     materials: [
@@ -180,8 +223,11 @@ try {
     overwrite: true
   });
   assert(["success", "warning"].includes(generate.status), "generate should succeed or warn.");
-  assert(generate.readyForFrontendAgent === true, "generated package should be ready for a frontend agent.");
-  assert(generate.artifacts.some((artifact) => artifact.id === "implementation-contract"), "generate should return implementation-contract artifact.");
+  assert(generate.packageType === "draft_contract", "generated draft package should identify draft_contract.");
+  assert(generate.readyForFrontendAgent === false, "generated draft package should not be implementation-ready before human contract approval.");
+  assert(generate.readinessTier === "ready_for_contract_approval", "generated draft package should be waiting for contract approval.");
+  assert(generate.blockers.some((blocker) => blocker.includes("canonical contract is not approved by a human reviewer")), "MCP generate should expose the human approval implementation gate.");
+  assert(generate.artifacts.some((artifact) => artifact.id === "frontend-contract-draft"), "generate should return frontend draft artifact.");
 
   const validate = await callTool("archetype_validate_package", { outputDir });
   assert(validate.status === "pass", "validate should pass.");
@@ -191,23 +237,61 @@ try {
   assert(summarize.product === "SignalDesk", "summarize should include product name.");
   assert(summarize.routes > 0, "summarize should include route count.");
   assert(summarize.screens > 0, "summarize should include screen count.");
-  assert(summarize.entrypoints.includes("test-first/test-first-contract.json"), "summarize should include test-first contract entrypoint.");
-  assert(summarize.entrypoints.includes("verification/playwright-verification-contract.json"), "summarize should include Playwright verification entrypoint.");
-  assert(summarize.entrypoints.includes("10-revision/repair-task-queue.json"), "summarize should include repair task queue entrypoint.");
+  assert(summarize.entrypoints.includes("lifecycle/readiness-tiers.json"), "summarize should include readiness tiers entrypoint.");
+  assert(summarize.entrypoints.includes("lifecycle/implementation-phases.json"), "summarize should include implementation phases entrypoint.");
+  assert(summarize.entrypoints.includes("lifecycle/contract-state.json"), "summarize should include contract state entrypoint.");
+  assert(summarize.entrypoints.includes("draft/frontend-contract.draft.json"), "summarize should include frontend draft entrypoint.");
+  assert(!summarize.entrypoints.includes("test-first/test-first-contract.json"), "draft summarize should not include test-first contract entrypoint.");
+  assert(summarize.entrypoints.includes("governance/non-negotiable-principles.json"), "summarize should include non-negotiable principles entrypoint.");
+  assert(summarize.entrypoints.includes("governance/evidence-decision-model.json"), "summarize should include evidence decision model entrypoint.");
+  assert(summarize.entrypoints.includes("governance/forbidden-behaviors.json"), "summarize should include forbidden behavior entrypoint.");
+  assert(summarize.entrypoints.includes("governance/convergence-standard.json"), "summarize should include convergence standard entrypoint.");
 
   const artifact = await callTool("archetype_read_artifact", {
     outputDir,
-    artifactId: "implementation-contract"
+    artifactId: "frontend-contract-draft"
   });
   assert(artifact.status === "success", "read artifact should succeed.");
-  assert(artifact.content.includes("# Implementation Contract"), "read artifact should return implementation contract content.");
+  assert(artifact.content.includes("agent_instruction_policy"), "read artifact should return frontend contract draft content.");
 
-  execFileSync("node", ["dist/cli.js", "write-target", "--out", outputDir, "--target", targetDir, "--force"], {
+  const blockedWriteTarget = spawnSync("node", ["dist/cli.js", "write-target", "--out", outputDir, "--target", targetDir, "--force", "--json"], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"]
+  });
+  const blockedWriteJson = JSON.parse(blockedWriteTarget.stdout);
+  assert(blockedWriteTarget.status === 1, "unapproved write-target should exit non-zero.");
+  assert(blockedWriteJson.status === "fail", "write-target should fail for an unapproved MCP draft package.");
+
+  const approvedIntake = {
+    ...createdIntake,
+    contractApproval: {
+      approved: true,
+      approverType: "human",
+      approvedBy: "MCP contract test",
+      approvedAt: "2026-05-06T00:00:00.000Z",
+      artifactRefs: ["spec/archetype-spec.json", "implementation-contract.md", "test-first/test-first-contract.json"]
+    }
+  };
+  writeFileSync(approvedIntakePath, `${JSON.stringify(approvedIntake, null, 2)}\n`);
+  const approvedGenerate = await callTool("archetype_generate_package", {
+    inputPath: approvedIntakePath,
+    outputDir: approvedOutputDir,
+    overwrite: true
+  });
+  assert(approvedGenerate.readyForFrontendAgent === true, "human-approved MCP package should be ready for frontend implementation.");
+  assert(approvedGenerate.readinessTier === "ready_for_implementation", "human-approved MCP package should be ready for implementation.");
+  const approvedSummarize = await callTool("archetype_summarize_package", { outputDir: approvedOutputDir });
+  assert(approvedSummarize.entrypoints.includes("test-first/test-quality-standard.json"), "approved MCP summarize should expose the test quality standard.");
+  assert(approvedSummarize.entrypoints.includes("governance/forbidden-behaviors.json"), "approved MCP summarize should expose the forbidden behavior contract.");
+  assert(approvedSummarize.entrypoints.includes("governance/convergence-standard.json"), "approved MCP summarize should expose the convergence standard.");
+
+  execFileSync("node", ["dist/cli.js", "write-target", "--out", approvedOutputDir, "--target", targetDir, "--force"], {
     cwd: root,
     stdio: ["ignore", "pipe", "pipe"]
   });
   const verify = await callTool("archetype_verify_target", {
-    outputDir,
+    outputDir: approvedOutputDir,
     targetDir,
     skipInstall: false
   }, 360000);
@@ -218,7 +302,7 @@ try {
   assert(verify.repair?.status === "pass", "verify target should write passing repair status.");
 
   const repair = await callTool("archetype_plan_repair", {
-    outputDir,
+    outputDir: approvedOutputDir,
     targetDir
   });
   assert(repair.status === "pass", "repair planning should pass after successful verification.");

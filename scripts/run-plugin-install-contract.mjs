@@ -8,6 +8,26 @@ const sourceHome = path.join(workspace, "source-home");
 const dryHome = path.join(workspace, "dry-home");
 const npxHome = path.join(workspace, "npx-home");
 const started = Date.now();
+const requiredAgentRoles = [
+  "product-architect.md",
+  "experience-architect.md",
+  "frontend-architect.md",
+  "design-system-architect.md",
+  "frontend-practice-enforcer.md",
+  "strict-typescript-developer.md",
+  "pixel-perfect-developer.md",
+  "accessibility-specialist.md",
+  "test-first-developer.md",
+  "contract-verifier.md",
+  "repair-planner.md",
+  "qa-lead.md",
+  "playwright-e2e-engineer.md",
+  "ui-state-qa.md",
+  "malformed-data-qa.md",
+  "accessibility-qa.md",
+  "visual-regression-qa.md",
+  "contract-drift-qa.md"
+];
 
 rmSync(workspace, { recursive: true, force: true });
 mkdirSync(workspace, { recursive: true });
@@ -59,6 +79,10 @@ function assertInstalledHome(homeDir, label) {
   assert(readJson(path.join(codexPlugin, ".mcp.json")).mcpServers?.archetype?.args?.includes("github:NikolaCehic/Archetype"), `${label}: Codex MCP config should use the GitHub package source until npm publish.`);
   assert(existsSync(path.join(codexPlugin, "skills", "archetype", "SKILL.md")), `${label}: Codex install missing front-door skill.`);
   assert(existsSync(path.join(codexPlugin, "skills", "implement", "SKILL.md")), `${label}: Codex install missing implementation skill.`);
+  for (const role of requiredAgentRoles) {
+    assert(existsSync(path.join(codexPlugin, "agents", role)), `${label}: Codex install missing agent role ${role}.`);
+    assert(existsSync(path.join(codexNativePlugin, "agents", role)), `${label}: Codex native plugin install missing agent role ${role}.`);
+  }
   assert(existsSync(path.join(codexSkills, "archetype", "SKILL.md")), `${label}: Codex home skills missing front-door skill.`);
   assert(existsSync(path.join(codexSkills, "archetype-blueprint", "SKILL.md")), `${label}: Codex home skills missing blueprint skill.`);
   assert(existsSync(path.join(codexSkills, "archetype-implement", "SKILL.md")), `${label}: Codex home skills missing implementation skill.`);
@@ -76,7 +100,9 @@ function assertInstalledHome(homeDir, label) {
   assert(readJson(path.join(claudePlugin, ".mcp.json")).mcpServers?.archetype?.args?.includes("github:NikolaCehic/Archetype"), `${label}: Claude MCP config should use the GitHub package source until npm publish.`);
   assert(existsSync(path.join(claudePlugin, "commands", "archetype.md")), `${label}: Claude install missing /archetype slash command.`);
   assert(existsSync(path.join(claudePlugin, "skills", "archetype", "SKILL.md")), `${label}: Claude install missing front-door skill.`);
-  assert(existsSync(path.join(claudePlugin, "agents", "product-architect.md")), `${label}: Claude install missing product architect agent.`);
+  for (const role of requiredAgentRoles) {
+    assert(existsSync(path.join(claudePlugin, "agents", role)), `${label}: Claude install missing agent role ${role}.`);
+  }
   assert(existsSync(path.join(claudePlugin, "docs", "quickstart.md")), `${label}: Claude install missing quickstart docs.`);
   assert(existsSync(path.join(homeDir, ".claude", "skills", "archetype", "SKILL.md")), `${label}: Claude home skills missing /archetype front-door skill.`);
   assert(existsSync(path.join(homeDir, ".claude", "skills", "archetype-blueprint", "SKILL.md")), `${label}: Claude home skills missing blueprint skill.`);
@@ -140,7 +166,15 @@ try {
     "skills/archetype/SKILL.md",
     "skills/implement/SKILL.md",
     "agents/product-architect.md",
+    "agents/contract-verifier.md",
+    "agents/repair-planner.md",
     "dist/install/pluginInstaller.js",
+    "scripts/run-test-quality-standard-contract.mjs",
+    "scripts/run-required-package-artifacts-contract.mjs",
+    "scripts/run-forbidden-behaviors-contract.mjs",
+    "scripts/run-marketing-dashboard-replay-contract.mjs",
+    "scripts/run-implementation-phases-contract.mjs",
+    "scripts/run-convergence-standard-contract.mjs",
     "scripts/run-plugin-install-contract.mjs"
   ]) {
     assert(packed.packedPaths.has(required), `Packed package missing ${required}.`);
