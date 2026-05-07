@@ -67,6 +67,66 @@ for (const role of qaAgents) {
   assert(readText(path.join(root, "agents", role)) === readText(path.join(root, "plugins", "claude-code", "agents", role)), `${role} must be mirrored into the Claude Code plugin.`);
 }
 
+const qaLeadRequirements = [
+  "## Role",
+  "Role ID: `qa-lead`",
+  "Role Type: QA orchestration specialist and evidence-coverage gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## QA Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required QA Artifact Contract",
+  "## Specialist Assignment Matrix",
+  "## Self-Review Checklist",
+  "QA produces evidence, not vibes.",
+  "qa_ready_for_verifier",
+  "qa_needs_repair",
+  "qa_blocked_missing_evidence",
+  "qa_blocked_stale_evidence",
+  "qa_warning_named_external_confirmation",
+  "REQUIRED_QA_ARTIFACTS",
+  "qa/scenario-catalog.json",
+  "qa/playwright-results.json",
+  "qa/malformed-data-results.json",
+  "qa/accessibility-results.md",
+  "qa/visual-regression-report.md",
+  "qa/contract-drift-report.md",
+  "10-revision/repair-task-queue.json",
+  "10-revision/drift-report.json",
+  "verification/playwright-evidence.json",
+  "verification/playwright-evidence.md",
+  "14-target-execution/target-execution-report.json",
+  "target:test-results/archetype-playwright-results.json",
+  "target:test-results/archetype-visual-smoke/",
+  "target:playwright-report/",
+  "target:test-results/**/*.zip",
+  "route",
+  "screen_state",
+  "flow",
+  "responsive",
+  "accessibility",
+  "visual_smoke",
+  "malformed_data",
+  "owner_agent",
+  "source_contract",
+  "evidence_artifacts",
+  "qualified human review",
+  "Marker-only tests treated as user-visible behavior",
+  "No agent can approve its own work.",
+  "This role cannot verify or close QA evidence it created."
+];
+for (const base of ["agents", path.join("plugins", "claude-code", "agents")]) {
+  const qaLead = readText(path.join(root, base, "qa-lead.md"));
+  for (const expected of qaLeadRequirements) {
+    assert(qaLead.includes(expected), `${base}/qa-lead.md missing hardened QA lead requirement: ${expected}.`);
+  }
+}
+
 const approvedInput = {
   ...readJson(path.join(root, "examples", "saas-dashboard-intake.json")),
   contractApproval: {

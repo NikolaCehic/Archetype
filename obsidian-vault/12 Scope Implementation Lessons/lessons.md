@@ -2152,3 +2152,61 @@ Current answer for repair planner hardening:
 I do not know how to make the repair planner role more deterministic without importing requirements outside the approved Archetype lifecycle artifacts, target execution evidence, Playwright/QA reports, repair artifacts, and human-approved contract revision evidence.
 I cannot identify a technical or architectural mismatch against the repair planner hardening goal in the current role file.
 ```
+
+## Agent Hardening - QA Lead
+
+Source files:
+
+- `agents/qa-lead.md`
+- `plugins/claude-code/agents/qa-lead.md`
+- `scripts/run-qa-team-contract.mjs`
+
+Browser research anchors:
+
+- Playwright best practices: https://playwright.dev/docs/best-practices
+- Playwright reporters: https://playwright.dev/docs/test-reporters
+- Playwright trace viewer: https://playwright.dev/docs/trace-viewer-intro
+- Testing Library guiding principles: https://testing-library.com/docs/guiding-principles/
+- W3C accessibility evaluation overview: https://www.w3.org/WAI/test-evaluate/
+
+Mismatches found before hardening:
+
+- The QA lead role coordinated QA specialists, but did not define a role, mission, production standard, operating procedure, sufficiency gate, output schema, artifact contract, specialist assignment matrix, or self-review loop.
+- The role did not require scenario family coverage for route, screen state, flow, responsive, accessibility, visual-smoke, and malformed-data obligations.
+- The role did not reconcile Playwright results, Playwright evidence, target execution, specialist reports, contract drift, and repair queue status as one evidence system.
+- The role did not define stale or contradictory QA evidence as a blocker.
+- The role did not preserve the accessibility boundary that automated evidence is not qualified human compliance review.
+- Contract tests only checked generic QA role sections and mirroring, so QA-lead-specific responsibilities could regress.
+
+Corrections applied:
+
+- Rewrote the role as a QA orchestration specialist and evidence-coverage gatekeeper.
+- Added explicit authority, mission, production standard, canonical inputs, outputs, blockers, operating procedure, QA sufficiency gate, one-question clarification priority, output schema, decision rules, required QA artifact contract, specialist assignment matrix, external practice anchors, good/bad output signals, self-review checklist, and handoff rules.
+- Added deterministic statuses: `qa_ready_for_verifier`, `qa_needs_repair`, `qa_blocked_missing_evidence`, `qa_blocked_stale_evidence`, and `qa_warning_named_external_confirmation`.
+- Required reconciliation of `qa/scenario-catalog.json`, `qa/playwright-results.json`, `qa/malformed-data-results.json`, `qa/accessibility-results.md`, `qa/visual-regression-report.md`, `qa/contract-drift-report.md`, `10-revision/repair-task-queue.json`, Playwright evidence, and target execution.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened QA lead requirements in the QA team contract.
+
+Self-healing rules added:
+
+- QA status must be computed from artifacts, not narrative summary.
+- Missing QA artifacts are blockers.
+- Stale or contradictory QA artifacts are blockers.
+- Scenario coverage must name owner, source contract, evidence artifact, and status.
+- Accessibility automation cannot become a compliance claim without qualified human review.
+- Visual QA requires screenshot/browser evidence.
+- A non-empty repair queue blocks QA handoff to completion verification.
+
+Agent hardening convergence review:
+
+- The QA lead now has enough role detail to coordinate specialist QA evidence deterministically.
+- The role blocks missing reports, stale Playwright/QA contradictions, missing scenario ownership, unresolved repair tasks, marker-only behavior proof, accessibility overclaims, visual proof gaps, and narrative QA confidence.
+- The role explicitly hands off Playwright, UI state, malformed data, accessibility, visual, contract drift, repair, and verification concerns to the correct owners.
+- QA team contract tests now fail if the hardened QA lead responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for QA lead hardening:
+
+```txt
+I do not know how to make the QA lead role more deterministic without importing requirements outside the approved Archetype QA artifacts, target execution evidence, Playwright evidence, repair artifacts, and bounded human-review evidence.
+I cannot identify a technical or architectural mismatch against the QA lead hardening goal in the current role file.
+```
