@@ -2565,3 +2565,60 @@ Current answer for Contract Drift QA hardening:
 I do not know how to make the Contract Drift QA role more deterministic without importing requirements outside the approved Archetype canonical contracts, test-first and Playwright contracts, target execution evidence, QA reports, repair queue, drift report, lifecycle approval state, and user-approved revision evidence.
 I cannot identify a technical or architectural mismatch against the Contract Drift QA hardening goal in the current role file.
 ```
+
+## Agent Hardening - Frontend Contract Reviewer Compatibility Role
+
+Source files:
+
+- `agents/frontend-contract-reviewer.md`
+- `plugins/claude-code/agents/frontend-contract-reviewer.md`
+- `scripts/run-agent-role-files-contract.mjs`
+
+Browser research anchors:
+
+- Playwright best practices: https://playwright.dev/docs/best-practices
+- Testing Library guiding principles: https://testing-library.com/docs/guiding-principles/
+- W3C WAI accessibility evaluation overview: https://www.w3.org/WAI/test-evaluate/
+- Pact "when to use Pact": https://docs.pact.io/getting_started/what_is_pact_good_for
+- Semantic Versioning: https://semver.org/
+
+Mismatches found before hardening:
+
+- The compatibility reviewer was a short checklist and did not define a role, mission, production standard, operating procedure, preflight gate, output schema, evidence contract, review matrix, failure routing matrix, or self-review loop.
+- The role said it was compatible and non-approving, but did not make the approval boundary enforceable enough.
+- The role did not define deterministic statuses for verifier-ready, revision-needed, missing evidence, draft-used-as-canonical, unverifiable criteria, or specialist-gate blockers.
+- The role did not reconcile draft/canonical artifacts, approval decision, readiness tiers, context, experience architecture, design system, frontend contracts, test-first contract, Playwright contract, QA catalog, repair queue, and MCP tools as one compatibility preflight.
+- The role did not require findings to explain what implementation guessing a missing artifact would force.
+- Contract tests only checked the compatibility label and plugin mirroring.
+
+Corrections applied:
+
+- Rewrote the role as a compatibility frontend contract preflight reviewer and implementation-guesswork blocker.
+- Added explicit authority, mission, production standard, canonical inputs, outputs, blockers, operating procedure, compatibility contract review gate, one-question clarification priority, output schema, decision rules, required frontend contract evidence contract, review matrix, failure routing matrix, good/bad output signals, self-review checklist, and handoff rules.
+- Added deterministic statuses: `frontend_contract_review_ready_for_contract_verifier`, `frontend_contract_review_needs_revision`, `frontend_contract_review_blocked_missing_evidence`, `frontend_contract_review_blocked_draft_used_as_canonical`, `frontend_contract_review_blocked_unverifiable_criteria`, and `frontend_contract_review_blocked_specialist_gate`.
+- Required every finding to include severity, artifact path, missing or weak evidence, why it would force implementation guessing or verifier risk, owner role, recommended correction, and handoff target.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened compatibility reviewer requirements in the agent-role contract.
+
+Self-healing rules added:
+
+- Compatibility does not mean weaker governance.
+- The compatibility reviewer can review and route, but final approval always belongs to `contract-verifier.md`.
+- Draft artifacts remain drafts until approval state and readiness tiers authorize implementation.
+- Missing evidence must be described in terms of the implementation guessing it would force.
+- Acceptance criteria must have test or Playwright verification paths.
+- Plugin mirrors must carry the same hardened compatibility role as the root repository.
+
+Agent hardening convergence review:
+
+- The Frontend Contract Reviewer role now has enough detail to preserve old-install compatibility without reopening weak approval behavior.
+- The role blocks missing evidence, draft/canonical confusion, stale or inconsistent approval state, candidate assumptions used as facts, unverifiable criteria, marker-only tests, unresolved specialist gates, design-preview-only implementation authority, accessibility/visual evidence gaps, unresolved repair drift, and self-approval attempts.
+- The role explicitly hands off product, UX, architecture, design-system, practice, type, visual, accessibility, test, QA, drift, repair, and final approval gaps to the correct owners instead of self-approving.
+- Agent-role contract tests now fail if the hardened compatibility responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for Frontend Contract Reviewer hardening:
+
+```txt
+I do not know how to make the Frontend Contract Reviewer compatibility role more deterministic without importing requirements outside the approved Archetype draft/canonical package artifacts, approval decision, readiness tiers, frontend contracts, test-first and Playwright contracts, QA catalog, repair queue, MCP tool surfaces, and final verifier boundary.
+I cannot identify a technical or architectural mismatch against the Frontend Contract Reviewer compatibility hardening goal in the current role file.
+```
