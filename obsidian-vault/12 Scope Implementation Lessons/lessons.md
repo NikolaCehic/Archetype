@@ -2924,3 +2924,53 @@ Phase 05 convergence review:
 I do not know how to make the MCP query surface more complete within Phase 05 without adding the dedicated data-plane contract script that belongs to Phase 06.
 I cannot identify a Phase 05 mismatch after verifying tool registration, shared CLI/MCP semantics, typed MCP data-plane errors, and existing CLI/MCP contract compatibility.
 ```
+
+## Agent Data Plane Phase 06 - Contract Tests And Hardening
+
+Source:
+
+- `docs/AGENT_DATA_PLANE_PLAN.md`
+- `docs/agent-data-plane.md`
+
+Extracted requirements:
+
+- Add `scripts/run-data-plane-contract.mjs`.
+- Add `npm run data-plane:contract`.
+- Cover run creation, ordered events, artifact write/read, replay, CLI, MCP, generation integration, and malformed reads.
+- Verify targeted existing CLI/MCP contracts.
+- Run full `npm run check` if time and disk allow.
+
+Phase critique:
+
+- Manual smoke tests from Phases 03-05 were useful but not durable. The repository needs a repeatable contract script.
+- A data-plane contract that only tests adapters would miss the actual product path: `archetype generate` writing `archetype-output/data-plane`.
+- A data-plane contract that only tests CLI would not protect MCP agents from semantic drift.
+- Full `npm run check` is expensive but appropriate after touching package scripts and MCP/CLI surfaces.
+
+Corrections applied:
+
+- Added `scripts/run-data-plane-contract.mjs`.
+- Added `data-plane:contract` to package scripts and inserted it into `test` and `check`.
+- Added `tmp/data-plane-contract` to `npm run clean`.
+- Data-plane contract now verifies memory and file adapters, event ordering, artifact records, projection reads, replay, generation integration, CLI queries, MCP query tools, typed CLI malformed failures, and typed MCP malformed failures.
+- Added the contract command to data-plane docs.
+
+Verification evidence:
+
+- `npm run data-plane:contract`: pass.
+- `npm run cli:contract`: pass.
+- `npm run mcp:contract`: pass.
+- `npm run check`: pass.
+
+Self-healing rules:
+
+- Any future data-plane behavior change must update `scripts/run-data-plane-contract.mjs`.
+- Keep `data-plane:contract` near the front of `test` and `check` because it validates shared CLI/MCP query semantics.
+- Prefer durable contract tests over one-off smoke scripts once a phase stabilizes.
+
+Phase 06 convergence review:
+
+```txt
+I do not know how to make the data-plane hardening phase more complete within the current Agent Data Plane plan.
+I cannot identify a Phase 06 mismatch after adding the dedicated contract, proving adapters, CLI, MCP, generation integration, malformed failures, and passing the full repository check.
+```

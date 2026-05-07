@@ -160,6 +160,12 @@ MCP query tools expose the same read-only behavior for agent hosts:
 - `archetype_data_plane_read_artifact`
 - `archetype_data_plane_replay_run`
 
+The dedicated contract is:
+
+```bash
+npm run data-plane:contract
+```
+
 ## Adapter Strategy
 
 The first implementation uses two adapters:
