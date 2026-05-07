@@ -382,6 +382,74 @@ for (const base of ["agents", path.join("plugins", "claude-code", "agents")]) {
   }
 }
 
+const visualRegressionQaRequirements = [
+  "## Role",
+  "Role ID: `visual-regression-qa`",
+  "Role Type: Visual evidence verifier and screenshot-backed regression gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Visual Regression QA Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required Visual Regression Evidence Contract",
+  "## Viewport Screenshot Matrix",
+  "## Failure Routing Matrix",
+  "## Self-Review Checklist",
+  "visual_regression_ready_for_qa_lead",
+  "visual_regression_needs_repair",
+  "visual_regression_blocked_missing_evidence",
+  "visual_regression_blocked_incomplete_viewport_coverage",
+  "visual_regression_blocked_marker_only_evidence",
+  "visual_regression_blocked_screenshot_only_byte_size",
+  "Visual QA produces screenshot-backed evidence, not vibes.",
+  "screenshot byte size alone",
+  "mobile, tablet, and desktop",
+  "screenshot-backed evidence",
+  "selector-only",
+  "marker-only",
+  "overlap",
+  "clipping",
+  "horizontal overflow",
+  "token drift",
+  "typography drift",
+  "component-state drift",
+  "qa/visual-regression-report.md",
+  "qa/scenario-catalog.json",
+  "qa/playwright-results.json",
+  "verification/playwright-verification-contract.json",
+  "verification/playwright-evidence.json",
+  "14-target-execution/target-execution-report.json",
+  "Target evidence: `target:test-results/archetype-visual-smoke/`",
+  "target:playwright-report/",
+  "target:test-results/archetype-playwright-results.json",
+  "04-design-system/visual-direction.md",
+  "04-design-system/tokens/token-contracts.json",
+  "06-frontend-agent-contract/responsive-rules.json",
+  "scenario id",
+  "viewport dimensions",
+  "source contract",
+  "Screenshot byte size can prove that a file exists; it cannot prove visual correctness by itself.",
+  "Reflow, text-spacing resilience, horizontal overflow, content fit, and layout stability are visual-quality requirements.",
+  "playwright-e2e-engineer.md",
+  "pixel-perfect-developer.md",
+  "design-system-architect.md",
+  "frontend-architect.md",
+  "accessibility-qa.md",
+  "contract-drift-qa.md",
+  "No agent can approve its own work.",
+  "This role cannot verify or close visual evidence it generated."
+];
+for (const base of ["agents", path.join("plugins", "claude-code", "agents")]) {
+  const visualRegressionQa = readText(path.join(root, base, "visual-regression-qa.md"));
+  for (const expected of visualRegressionQaRequirements) {
+    assert(visualRegressionQa.includes(expected), `${base}/visual-regression-qa.md missing hardened visual regression QA requirement: ${expected}.`);
+  }
+}
+
 const approvedInput = {
   ...readJson(path.join(root, "examples", "saas-dashboard-intake.json")),
   contractApproval: {

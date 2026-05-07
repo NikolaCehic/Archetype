@@ -2446,3 +2446,64 @@ Current answer for Accessibility QA hardening:
 I do not know how to make the Accessibility QA role more deterministic without importing requirements outside the approved Archetype accessibility rules, QA accessibility report, scenario catalog, Playwright evidence, raw target results, screen/form/action contracts, quality accessibility report, repair queue, and bounded human-review evidence.
 I cannot identify a technical or architectural mismatch against the Accessibility QA hardening goal in the current role file.
 ```
+
+## Agent Hardening - Visual Regression QA
+
+Source files:
+
+- `agents/visual-regression-qa.md`
+- `plugins/claude-code/agents/visual-regression-qa.md`
+- `scripts/run-qa-team-contract.mjs`
+
+Browser research anchors:
+
+- Playwright screenshots: https://playwright.dev/docs/screenshots
+- Playwright visual comparisons: https://playwright.dev/docs/test-snapshots
+- Playwright best practices: https://playwright.dev/docs/best-practices
+- WCAG reflow understanding: https://www.w3.org/WAI/WCAG22/Understanding/reflow.html
+- WCAG text spacing understanding: https://www.w3.org/WAI/WCAG22/Understanding/text-spacing.html
+- Tailwind responsive design: https://tailwindcss.com/docs/responsive-design
+
+Mismatches found before hardening:
+
+- The Visual Regression QA role was a short checklist and did not define a role, mission, production standard, operating procedure, sufficiency gate, output schema, evidence contract, viewport matrix, failure routing matrix, or self-review loop.
+- The role did not distinguish screenshot existence from visual correctness.
+- The role did not reject selector-only, marker-only, static-inspection-only, or screenshot byte size-only proof.
+- The role did not require screenshot provenance tied to scenario id, route, screen, state, viewport, dimensions, source contract, raw result/report, status, and owner.
+- The role named viewport coverage but did not make mobile, tablet, and desktop coverage a deterministic gate.
+- The role did not reconcile visual evidence with Playwright results, target execution, visual direction, token contracts, responsive rules, accessibility adjacency, repair queue, and contract drift.
+- Contract tests only checked generic QA role sections and plugin mirroring.
+
+Corrections applied:
+
+- Rewrote the role as a visual evidence verifier and screenshot-backed regression gatekeeper.
+- Added explicit authority, mission, production standard, canonical inputs, outputs, blockers, operating procedure, visual regression QA sufficiency gate, one-question clarification priority, output schema, decision rules, required visual regression evidence contract, viewport screenshot matrix, failure routing matrix, practice anchors, good/bad output signals, self-review checklist, and handoff rules.
+- Added deterministic statuses: `visual_regression_ready_for_qa_lead`, `visual_regression_needs_repair`, `visual_regression_blocked_missing_evidence`, `visual_regression_blocked_incomplete_viewport_coverage`, `visual_regression_blocked_marker_only_evidence`, and `visual_regression_blocked_screenshot_only_byte_size`.
+- Required visual-smoke evidence to include scenario id, route, screen, state, viewport, dimensions, source contract, screenshot path, supporting raw result/report path, expected visual contract, observed result, status, and owner.
+- Required QA to block overlap, clipping, hidden critical actions, horizontal overflow, unstable dimensions, token drift, typography drift, component-state drift, responsive drift, missing screenshots, incomplete viewport coverage, and accessibility conflicts caused by visual repairs.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened Visual Regression QA requirements in the QA team contract.
+
+Self-healing rules added:
+
+- Visual QA must build the expected screenshot matrix from contracts, not memory.
+- Screenshot byte size proves file existence only; it cannot prove visual correctness.
+- Selector-only and marker-only visual proof is a blocker.
+- Mobile, tablet, and desktop coverage is required unless explicitly excluded by source contract.
+- Visual QA verifies evidence and routes defects; it does not implement visual fixes or approve its own generated evidence.
+- Reflow, text-spacing resilience, horizontal overflow, content fit, and layout stability are visual QA constraints.
+- Plugin mirrors must carry the same hardened visual regression QA role as the root repository.
+
+Agent hardening convergence review:
+
+- The Visual Regression QA role now has enough detail to verify visual evidence deterministically.
+- The role blocks missing reports/screenshots/raw evidence, incomplete viewport matrices, marker-only proof, screenshot byte-size-only proof, untraceable screenshot paths, layout failures, token drift, typography drift, component-state drift, responsive drift, accessibility conflicts, and unresolved visual repair tasks.
+- The role explicitly hands off Playwright evidence gaps, visual implementation defects, token/design-system drift, responsive architecture gaps, accessibility conflicts, QA contradictions, and contract drift to the correct owners instead of self-approving.
+- QA team contract tests now fail if the hardened visual regression responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for Visual Regression QA hardening:
+
+```txt
+I do not know how to make the Visual Regression QA role more deterministic without importing requirements outside the approved Archetype visual direction, token contracts, responsive rules, QA scenario catalog, Playwright evidence, target visual-smoke screenshots, target execution evidence, accessibility adjacency, repair queue, and contract-drift evidence.
+I cannot identify a technical or architectural mismatch against the Visual Regression QA hardening goal in the current role file.
+```
