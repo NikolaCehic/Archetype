@@ -29,6 +29,9 @@ npx --yes --package github:NikolaCehic/Archetype archetype repair --out archetyp
 
 ## Review Focus
 
+- `test-first/test-quality-standard.json`
+- `governance/forbidden-behaviors.json`
+- `governance/convergence-standard.json`
 - `verification/playwright-verification-contract.json`
 - `verification/playwright-evidence.json`
 - `verification/playwright-evidence.md`
@@ -42,5 +45,6 @@ npx --yes --package github:NikolaCehic/Archetype archetype repair --out archetyp
 - data, action, and form contracts
 - accessibility expectations
 - acceptance criteria
+- marker-only tests fail `verify-target`
 
 Return pass, warning, or fail with concrete fixes.

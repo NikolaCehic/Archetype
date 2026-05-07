@@ -25,6 +25,6 @@ npx --yes --package github:NikolaCehic/Archetype archetype repair --out archetyp
 
 ## Review
 
-Read `verification/playwright-verification-contract.json` before running verification. After verification, inspect `verification/playwright-evidence.json`, `verification/playwright-evidence.md`, and `10-revision/repair-task-queue.json`.
+Read `test-first/test-quality-standard.json`, `governance/forbidden-behaviors.json`, `governance/convergence-standard.json`, and `verification/playwright-verification-contract.json` before running verification. After verification, inspect `verification/playwright-evidence.json`, `verification/playwright-evidence.md`, and `10-revision/repair-task-queue.json`. Marker-only tests fail `verify-target`.
 
 Check routes, screens, required states, flow coverage, responsive behavior, visual-smoke screenshots, component contracts, tokens, data contracts, action contracts, form contracts, accessibility expectations, and acceptance criteria. Return pass, warning, or fail with concrete fixes.

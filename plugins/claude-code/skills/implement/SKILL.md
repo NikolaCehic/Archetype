@@ -19,8 +19,15 @@ Read these files before writing UI code:
 - `archetype-output/CLAUDE.md`
 - `archetype-output/spec/archetype-spec.md`
 - `archetype-output/spec/archetype-spec.json`
+- `archetype-output/lifecycle/approval-decision.json`
+- `archetype-output/lifecycle/implementation-phases.json`
+- `archetype-output/reviews/specialist-review-summary.md`
 - `archetype-output/test-first/test-first-contract.json`
 - `archetype-output/test-first/test-first-plan.md`
+- `archetype-output/test-first/test-quality-standard.json`
+- `archetype-output/test-results/initial-red-test-run.md`
+- `archetype-output/governance/forbidden-behaviors.json`
+- `archetype-output/governance/convergence-standard.json`
 - `archetype-output/implementation-contract.md`
 - `archetype-output/experience/route-map.json`
 - `archetype-output/screens/screen-inventory.json`
@@ -36,7 +43,11 @@ Use MCP tool `archetype_read_artifact` when available. If MCP is unavailable, re
 
 - Implement only routes declared in `experience/route-map.json`.
 - Treat `spec/archetype-spec.json` as the canonical source of truth.
+- Do not skip any gate in `lifecycle/implementation-phases.json`.
 - Create the smoke, E2E, UI, integration, and unit tests from `test-first/test-first-contract.json` before product UI implementation.
+- Follow `test-first/test-quality-standard.json`; marker-only tests fail verification.
+- Reject every behavior listed in `governance/forbidden-behaviors.json`.
+- Keep every convergence question in `governance/convergence-standard.json` answered `No.` with evidence.
 - Preserve the initial red test result, then implement until the same tests are green.
 - Implement all required screens and states from `screens/screen-inventory.json`.
 - Use only tokens and component contracts declared in `design-system/`.
