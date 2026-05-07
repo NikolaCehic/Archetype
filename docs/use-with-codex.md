@@ -22,6 +22,7 @@ Codex should:
 - implement from the generated contract
 - verify the target frontend
 - patch or revise until verification is acceptable
+- use the Agent Data Plane for deterministic run status, timeline, artifact lineage, verification, and repair queries when available
 
 The user should not need to know `generate`, `validate`, `verify-target`, or which generated file to hand back to Codex.
 
@@ -44,6 +45,8 @@ If verification fails, Codex calls `archetype_plan_repair` or `archetype repair 
 ## Use The MCP Server
 
 For MCP-capable Codex workflows, use `docs/use-with-mcp.md` and `mcp.example.json`. The server exposes `archetype_release_doctor`, `archetype_create_intake`, `archetype_answer_clarification`, `archetype_generate_package`, `archetype_validate_package`, `archetype_summarize_package`, `archetype_read_artifact`, `archetype_verify_target`, and `archetype_plan_repair`.
+
+When the Agent Data Plane is present, Codex can query run state instead of rereading large artifacts. The data plane lives under `archetype-output/data-plane/` and is documented in `docs/agent-data-plane.md`.
 
 ## Verify Before Completion
 

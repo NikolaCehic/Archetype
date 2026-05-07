@@ -56,6 +56,8 @@ governance/frontend-practice-skills.json
 draft/contract-approval-request.json
 ```
 
+The Agent Data Plane augments those artifacts with replayable run records under `data-plane/runs/<run-id>/`. It records lifecycle gates, evidence summaries, contract refs, verification status, repair provenance, and generated artifact lineage without replacing the contract artifacts themselves. See `docs/agent-data-plane.md`.
+
 ## Agent Rule
 
 Spec-driven development starts from the approved canonical `spec/archetype-spec.json`. Before approval, Archetype emits draft artifacts only and must not ask an implementation agent to write product UI.

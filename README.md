@@ -33,6 +33,8 @@ npx --yes --package github:NikolaCehic/Archetype archetype generate --input arch
 
 See `docs/quickstart.md`, `docs/agent-lifecycle.md`, and `docs/release-readiness.md`.
 
+Archetype also has a planned deterministic local Agent Data Plane. It records run state, lifecycle gates, evidence, generated artifact lineage, verification status, and repair provenance under `archetype-output/data-plane/` so humans and agents can inspect and replay what happened without relying on hidden memory. See `docs/agent-data-plane.md` and `docs/AGENT_DATA_PLANE_PLAN.md`.
+
 ## What It Does
 
 Archetype compiles product intent into a frontend implementation package:
@@ -61,6 +63,8 @@ Product brief / screenshots / brand notes / repo context
 Archetype clarifies context and optionally ingests files
         ↓
 archetype-output contract package
+        ↓
+Agent Data Plane records run events, artifact lineage, and projections
         ↓
 Claude Code / Codex writes tests first and implements from the contract
         ↓

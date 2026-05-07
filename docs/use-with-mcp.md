@@ -72,6 +72,8 @@ Current GitHub package form:
 
 The tools are deterministic wrappers around intake creation, one-question clarification updates, compiler output, package validation, artifact reading, target verification, and repair-task planning. They do not run a general-purpose agent.
 
+The Agent Data Plane adds deterministic query tools for run status, event timelines, artifact records, and replay. Those tools read `archetype-output/data-plane/` and do not call an LLM. See `docs/agent-data-plane.md`.
+
 When `archetype_generate_package` returns a `draft_contract`, hosts should surface `draft/design-system-preview.html` for browser review and `draft/design-system-review.md` for the review loop. The preview is static HTML generated from `draft/design-system.draft.json`; it is not app code and must not be used as implementation authority.
 
 `archetype_verify_target` defaults `skipInstall` to `true` for MCP safety. Pass `skipInstall: false` only when the user or host explicitly allows dependency installation in the target frontend.

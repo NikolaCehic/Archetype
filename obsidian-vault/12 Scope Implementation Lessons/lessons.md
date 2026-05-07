@@ -2622,3 +2622,87 @@ Current answer for Frontend Contract Reviewer hardening:
 I do not know how to make the Frontend Contract Reviewer compatibility role more deterministic without importing requirements outside the approved Archetype draft/canonical package artifacts, approval decision, readiness tiers, frontend contracts, test-first and Playwright contracts, QA catalog, repair queue, MCP tool surfaces, and final verifier boundary.
 I cannot identify a technical or architectural mismatch against the Frontend Contract Reviewer compatibility hardening goal in the current role file.
 ```
+
+## Multiagent Product Quality Review - 2026-05-07
+
+Source report:
+
+- `obsidian-vault/13 Quality Reviews/Archetype Multiagent Quality Review - 2026-05-07.md`
+
+Reviews gathered:
+
+- Scope A: lifecycle, gates, approval, repair, convergence.
+- Scope B: CLI, MCP, plugin install, distribution, release readiness.
+- Scope C: code architecture, modules, typing, artifact readers/writers.
+- Scope D: test system, QA, Playwright, repair, golden/replay.
+- Scope E: agents, skills, docs, onboarding, natural-language UX.
+- Scope F: performance, token budget, artifact size, read/write speed.
+
+Reinforced product lessons:
+
+- Governance prose is not enough; lifecycle boundaries must be enforced before artifacts are constructed.
+- First-run trust is product quality; unsafe CLI output deletion is a release blocker.
+- A central artifact registry is the keystone for future hardening.
+- Scaffold verification and independent product behavior verification must be separate evidence grades.
+- Agent instructions should not carry workflow state; tools and artifacts should carry workflow state.
+- Optimize the default read path, not only total artifact size.
+- Approval must be a bound product artifact, not a boolean field in intake JSON.
+- Schema validation must be real nested validation, not top-level presence checks.
+- Full release checks can stay rigorous, but daily checks need a build-once runner and cached target installs.
+- The next work should harden safety, artifact architecture, runtime proof, bounded context, and executable lifecycle primitives instead of adding more role prose.
+
+Perfected investment priorities:
+
+1. P0: Add CLI output safety guard before recursive exporter deletion.
+2. P0: Split scaffold verification from independent implementation verification.
+3. P0: Stop draft generation before canonical/test/Playwright artifact construction.
+4. P0: Add explicit approval artifact/command bound to draft id, source hash, reviewed refs, and assumptions.
+5. P0: Create a single artifact registry for manifests, exports, validators, docs, and read plans.
+6. P0: Bound MCP artifact reads and add compact phase context bundles.
+7. P0: Replace repeated build/install/test loops with build-once runner and target dependency caching.
+8. P1: Add Ajv-backed schema validation and split `validatePackage.ts`.
+9. P1: Require real red-run, malformed-data, per-scenario Playwright, visual, and accessibility evidence.
+10. P1: Add a first-class natural-language lifecycle primitive behind `/archetype` and `$archetype`.
+
+## Agent Data Plane Phase 01 - Plan And Documentation
+
+Source:
+
+- `docs/AGENT_DATA_PLANE_PLAN.md`
+- `docs/agent-data-plane.md`
+- `obsidian-vault/13 Quality Reviews/Archetype Multiagent Quality Review - 2026-05-07.md`
+
+Extracted requirements:
+
+- Rename the concept correctly as Agent Data Plane.
+- Keep the first implementation local, deterministic, file-backed, replayable, and queryable.
+- Do not replace generated artifacts.
+- Preserve current lifecycle gates and existing CLI/MCP behavior.
+- Provide an agent-friendly query substrate for run state, events, artifact lineage, projections, verification status, and repair provenance.
+
+Plan critique:
+
+- The original prompt was strong but mixed compiler and exporter responsibilities.
+- The original projection layout omitted readiness even though readiness is required.
+- Broad "read entire repository" language needed to become phase-specific critical-file reads.
+- Agent UX requires compact run queries first, not full artifact dumping.
+
+Corrections applied:
+
+- Created `docs/AGENT_DATA_PLANE_PLAN.md` with phased implementation, critique, non-goals, risks, and hard-loop rules.
+- Created `docs/agent-data-plane.md` defining control plane, runtime, data plane, lifecycle mapping, events, artifacts, projections, adapters, and non-goals.
+- Updated README, lifecycle docs, MCP docs, and Codex docs to introduce the data plane as deterministic and non-autonomous.
+
+Self-healing rules:
+
+- Say "Agent Data Plane", not "data layer".
+- Compiler integration records lifecycle facts; exporter integration records written artifacts.
+- CLI/MCP should query projections and artifact records before asking agents to read large generated files.
+- Direct compiler API behavior must remain unchanged unless a data plane is explicitly supplied.
+
+Phase 01 convergence review:
+
+```txt
+I do not know how to make the Agent Data Plane plan more faithful to the current Archetype repo without starting implementation details from later phases.
+I cannot identify a phase-plan mismatch against the hardened lifecycle docs after adding the readiness projection and compiler/exporter boundary.
+```
