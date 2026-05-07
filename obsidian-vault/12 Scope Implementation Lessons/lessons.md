@@ -2327,3 +2327,62 @@ Current answer for UI State QA hardening:
 I do not know how to make the UI State QA role more deterministic without importing requirements outside the approved Archetype screen-state contracts, UX flow state completeness, test-first UI tests, Playwright evidence, QA artifacts, target execution evidence, and accessibility/visual reports.
 I cannot identify a technical or architectural mismatch against the UI State QA hardening goal in the current role file.
 ```
+
+## Agent Hardening - Malformed Data QA
+
+Source files:
+
+- `agents/malformed-data-qa.md`
+- `plugins/claude-code/agents/malformed-data-qa.md`
+- `scripts/run-qa-team-contract.mjs`
+
+Browser research anchors:
+
+- OWASP input validation cheat sheet: https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html
+- MDN client-side form validation: https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Forms/Form_validation
+- W3C WAI form notifications: https://www.w3.org/WAI/tutorials/forms/notifications/
+- Playwright best practices: https://playwright.dev/docs/best-practices
+- Testing Library guiding principles: https://testing-library.com/docs/guiding-principles/
+
+Mismatches found before hardening:
+
+- The Malformed Data QA role was a short checklist and did not define a role, mission, production standard, operating procedure, sufficiency gate, output schema, evidence contract, malformed case taxonomy, failure routing matrix, or self-review loop.
+- The role did not require every malformed case to name exact malformed input, contract source, expected user-facing result, runtime command, raw artifact, and owner.
+- The role did not distinguish narrative-only malformed-data summaries from runtime evidence.
+- The role did not define deterministic statuses for missing evidence, unexecuted runtime, untraceable cases, narrative-only results, repair-needed failures, or QA-lead readiness.
+- The role did not cover high-risk malformed cases beyond the currently generated set, such as null non-nullable values, wrong types, invalid enum values, invalid dates/currencies, unexpected extra fields, and oversized labels.
+- The role did not preserve the boundary that frontend malformed-data QA cannot claim backend/security validation completion.
+- Contract tests only checked generic QA role sections and plugin mirroring.
+
+Corrections applied:
+
+- Rewrote the role as a data-boundary QA specialist and invalid-input evidence gatekeeper.
+- Added explicit authority, mission, production standard, canonical inputs, outputs, blockers, operating procedure, malformed-data sufficiency gate, one-question clarification priority, output schema, decision rules, required evidence contract, malformed case matrix, failure routing matrix, practice anchors, good/bad output signals, self-review checklist, and handoff rules.
+- Added deterministic statuses: `malformed_data_ready_for_qa_lead`, `malformed_data_needs_repair`, `malformed_data_blocked_missing_evidence`, `malformed_data_blocked_unexecuted_runtime`, `malformed_data_blocked_untraceable_case`, and `malformed_data_blocked_narrative_only`.
+- Required canonical malformed coverage for `missing_required_value`, `null_non_nullable`, `wrong_type`, `invalid_identifier`, `invalid_enum_value`, `invalid_date_or_currency`, `empty_payload`, `unexpected_extra_field`, `oversized_or_long_label`, `permission_denied_fixture`, and `stale_or_conflicting_payload`.
+- Required every malformed-data finding to include scenario id, case id, malformed case, source test, contract kind, source contract/path, target file, malformed input, expected state, expected user result, runtime command, runtime artifact, actual result, status, owner, and repair handoff.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened Malformed Data QA requirements in the QA team contract.
+
+Self-healing rules added:
+
+- Malformed-data QA must prove exact invalid input and expected visible recovery, not just scenario existence.
+- Runtime evidence is mandatory before completion; pending or narrative-only evidence blocks completion claims.
+- Invalid data accepted as success is implementation drift.
+- Client-side validation improves UX, but backend/security validation remains externally unconfirmed unless separately evidenced.
+- Type/schema gaps go to `strict-typescript-developer.md`; missing form/action/data contract semantics go to `frontend-architect.md`; runtime implementation failures go to `repair-planner.md`.
+- Plugin mirrors must carry the same hardened malformed-data role as the root repository.
+
+Agent hardening convergence review:
+
+- The Malformed Data QA role now has enough detail to verify invalid-input evidence deterministically.
+- The role blocks missing malformed scenarios, unexecuted runtime proof, untraceable cases, narrative-only summaries, silent invalid acceptance, generic success after bad input, inaccessible errors, permission bypasses, stale/conflict blind spots, and backend/security overclaims.
+- The role explicitly hands off test, type, contract, implementation, accessibility, visual, QA contradiction, and contract-drift findings to the correct owners instead of self-approving.
+- QA team contract tests now fail if the hardened malformed-data responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for Malformed Data QA hardening:
+
+```txt
+I do not know how to make the Malformed Data QA role more deterministic without importing requirements outside the approved Archetype QA scenario catalog, malformed-data results, test-first contract, frontend data/form/action contracts, target execution evidence, raw runtime artifacts, and bounded backend/security confirmation.
+I cannot identify a technical or architectural mismatch against the Malformed Data QA hardening goal in the current role file.
+```

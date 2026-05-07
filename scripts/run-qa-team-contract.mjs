@@ -251,6 +251,69 @@ for (const base of ["agents", path.join("plugins", "claude-code", "agents")]) {
   }
 }
 
+const malformedDataQaRequirements = [
+  "## Role",
+  "Role ID: `malformed-data-qa`",
+  "Role Type: Data-boundary QA specialist and invalid-input evidence gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Malformed Data Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required Malformed Data Evidence Contract",
+  "## Malformed Case Matrix",
+  "## Failure Routing Matrix",
+  "## Self-Review Checklist",
+  "malformed_data_ready_for_qa_lead",
+  "malformed_data_needs_repair",
+  "malformed_data_blocked_missing_evidence",
+  "malformed_data_blocked_unexecuted_runtime",
+  "malformed_data_blocked_untraceable_case",
+  "malformed_data_blocked_narrative_only",
+  "QA produces evidence, not vibes.",
+  "missing_required_value",
+  "null_non_nullable",
+  "wrong_type",
+  "invalid_identifier",
+  "invalid_enum_value",
+  "invalid_date_or_currency",
+  "empty_payload",
+  "unexpected_extra_field",
+  "oversized_or_long_label",
+  "permission_denied_fixture",
+  "stale_or_conflicting_payload",
+  "qa/scenario-catalog.json",
+  "qa/malformed-data-results.json",
+  "test-first/test-first-contract.json",
+  "test-first/test-quality-standard.json",
+  "06-frontend-agent-contract/data-operation-contracts.json",
+  "06-frontend-agent-contract/form-contracts.json",
+  "06-frontend-agent-contract/action-contracts.json",
+  "12-target-frontend/adapter-interfaces.ts",
+  "14-target-execution/target-execution-report.json",
+  "Target evidence: `target:tests/integration/archetype-contracts.spec.ts`",
+  "target:test-results/archetype-contracts.json",
+  "runtime target evidence",
+  "malformed_input",
+  "expected_user_result",
+  "backend/security validation",
+  "strict-typescript-developer.md",
+  "frontend-architect.md",
+  "repair-planner.md",
+  "No agent can approve its own work.",
+  "This role cannot verify or close malformed-data evidence it generated."
+];
+for (const base of ["agents", path.join("plugins", "claude-code", "agents")]) {
+  const malformedDataQa = readText(path.join(root, base, "malformed-data-qa.md"));
+  for (const expected of malformedDataQaRequirements) {
+    assert(malformedDataQa.includes(expected), `${base}/malformed-data-qa.md missing hardened malformed-data QA requirement: ${expected}.`);
+  }
+}
+
 const approvedInput = {
   ...readJson(path.join(root, "examples", "saas-dashboard-intake.json")),
   contractApproval: {
