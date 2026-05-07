@@ -2210,3 +2210,59 @@ Current answer for QA lead hardening:
 I do not know how to make the QA lead role more deterministic without importing requirements outside the approved Archetype QA artifacts, target execution evidence, Playwright evidence, repair artifacts, and bounded human-review evidence.
 I cannot identify a technical or architectural mismatch against the QA lead hardening goal in the current role file.
 ```
+
+## Agent Hardening - Playwright E2E Engineer
+
+Source files:
+
+- `agents/playwright-e2e-engineer.md`
+- `plugins/claude-code/agents/playwright-e2e-engineer.md`
+- `scripts/run-qa-team-contract.mjs`
+
+Browser research anchors:
+
+- Playwright best practices: https://playwright.dev/docs/best-practices
+- Playwright locators: https://playwright.dev/docs/locators
+- Playwright reporters: https://playwright.dev/docs/test-reporters
+- Playwright trace viewer: https://playwright.dev/docs/trace-viewer-intro
+- Playwright accessibility testing: https://playwright.dev/docs/accessibility-testing
+
+Mismatches found before hardening:
+
+- The Playwright E2E role owned browser evidence but did not define a role, mission, production standard, operating procedure, sufficiency gate, output schema, evidence contract, scenario matrix, failure routing matrix, or self-review loop.
+- The role did not require reconciliation across contract scenarios, QA catalog, target execution, Playwright evidence, raw JSON results, HTML report, traces, screenshots, and repair queue.
+- The role did not explicitly reject marker-only Playwright evidence or screenshot byte-size-only visual proof.
+- The role did not define scenario family coverage for route, screen state, flow, responsive, accessibility, and visual-smoke obligations.
+- The role did not bound accessibility-smoke as smoke evidence rather than compliance proof.
+- Contract tests only checked generic QA role sections and mirroring.
+
+Corrections applied:
+
+- Rewrote the role as a browser verification specialist and Playwright evidence gatekeeper.
+- Added explicit authority, mission, production standard, canonical inputs, outputs, blockers, operating procedure, Playwright sufficiency gate, one-question clarification priority, output schema, decision rules, required Playwright evidence contract, scenario family matrix, failure routing matrix, external practice anchors, good/bad output signals, self-review checklist, and handoff rules.
+- Added deterministic statuses: `playwright_ready_for_qa_lead`, `playwright_needs_repair`, `playwright_blocked_missing_evidence`, `playwright_blocked_contract_mismatch`, and `playwright_blocked_marker_only_evidence`.
+- Required user-visible behavior evidence, JSON results, HTML reports, traces/failure details, visual-smoke screenshots, and coverage reconciliation.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened Playwright E2E requirements in the QA team contract.
+
+Self-healing rules added:
+
+- A passing Playwright command is not enough without raw JSON, QA status, target execution, and scenario coverage agreement.
+- Browser evidence must prove user-visible behavior, not only generated selectors.
+- Visual-smoke cannot pass from screenshot byte size alone.
+- Accessibility-smoke evidence cannot become a compliance claim.
+- Failure triage must preserve raw JSON, report, trace, screenshot, scenario id, route/screen/viewport, owner, and rerun command.
+
+Agent hardening convergence review:
+
+- The Playwright E2E engineer now has enough role detail to verify browser evidence deterministically.
+- The role blocks missing raw results, missing reports/traces for failures, scenario count mismatches, missing scenario families, marker-only checks, screenshot-byte-only visual proof, status contradictions, and unresolved Playwright drift.
+- The role explicitly hands off state, visual, accessibility, marker-only, status contradiction, and implementation drift to the correct owners instead of self-approving.
+- QA team contract tests now fail if the hardened Playwright responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for Playwright E2E engineer hardening:
+
+```txt
+I do not know how to make the Playwright E2E engineer role more deterministic without importing requirements outside the approved Archetype Playwright contract, target execution evidence, raw browser results, QA artifacts, and repair evidence.
+I cannot identify a technical or architectural mismatch against the Playwright E2E engineer hardening goal in the current role file.
+```

@@ -127,6 +127,67 @@ for (const base of ["agents", path.join("plugins", "claude-code", "agents")]) {
   }
 }
 
+const playwrightE2EEngineerRequirements = [
+  "## Role",
+  "Role ID: `playwright-e2e-engineer`",
+  "Role Type: Browser verification specialist and Playwright evidence gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Playwright Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required Playwright Evidence Contract",
+  "## Scenario Family Matrix",
+  "## Failure Routing Matrix",
+  "## Self-Review Checklist",
+  "playwright_ready_for_qa_lead",
+  "playwright_needs_repair",
+  "playwright_blocked_missing_evidence",
+  "playwright_blocked_contract_mismatch",
+  "playwright_blocked_marker_only_evidence",
+  "Test user-visible behavior",
+  "Marker-only tests fail the verifier.",
+  "verification/playwright-verification-contract.json",
+  "verification/playwright-verification-plan.md",
+  "verification/playwright-verification.spec.ts",
+  "verification/playwright.config.ts",
+  "verification/playwright-evidence.json",
+  "verification/playwright-evidence.md",
+  "qa/scenario-catalog.json",
+  "qa/playwright-results.json",
+  "14-target-execution/target-execution-report.json",
+  "test-first/test-quality-standard.json",
+  "target:playwright.config.ts",
+  "target:test-results/archetype-playwright-results.json",
+  "target:test-results/archetype-visual-smoke/",
+  "target:playwright-report/",
+  "target:test-results/**/*.zip",
+  "route",
+  "screen_state",
+  "flow",
+  "responsive",
+  "accessibility",
+  "visual_smoke",
+  "mobile, tablet, and desktop",
+  "screenshot byte size alone",
+  "JSON results",
+  "HTML report",
+  "trace",
+  "screenshot",
+  "No agent can approve its own work.",
+  "This role cannot verify or close Playwright evidence it generated."
+];
+for (const base of ["agents", path.join("plugins", "claude-code", "agents")]) {
+  const playwrightE2EEngineer = readText(path.join(root, base, "playwright-e2e-engineer.md"));
+  for (const expected of playwrightE2EEngineerRequirements) {
+    assert(playwrightE2EEngineer.includes(expected), `${base}/playwright-e2e-engineer.md missing hardened Playwright E2E requirement: ${expected}.`);
+  }
+}
+
 const approvedInput = {
   ...readJson(path.join(root, "examples", "saas-dashboard-intake.json")),
   contractApproval: {
