@@ -119,6 +119,26 @@ for (const expected of ["archetype.intake.json", "archetype_generate_package", "
 const productArchitect = readText("agents/product-architect.md");
 assert(productArchitect.includes("archetype_create_intake"), "Product architect must reference intake creation.");
 assert(productArchitect.includes("missing inputs"), "Product architect must surface missing inputs.");
+for (const expected of [
+  "## Role",
+  "Role ID: `product-architect`",
+  "Role Type: Product-context specialist and context-sufficiency gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Operating Procedure",
+  "## Context Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "lifecycle/context-matrix.json",
+  "archetype_answer_clarification",
+  "confirmed_facts",
+  "candidate_assumptions",
+  "missing_inputs",
+  "scope_boundaries",
+  "Never ask a grouped form"
+]) {
+  assert(productArchitect.includes(expected), `Product architect missing hardened requirement ${expected}.`);
+}
 
 const reviewer = readText("agents/frontend-contract-reviewer.md");
 for (const expected of ["missing evidence", "acceptance criteria", "archetype_validate_package"]) {

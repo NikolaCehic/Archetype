@@ -61,6 +61,38 @@ for (const role of requiredRoles) {
   assert(rootText === claudeText, `${role} must be mirrored between root agents and Claude Code plugin agents.`);
 }
 
+const productArchitectRequirements = [
+  "## Role",
+  "Role ID: `product-architect`",
+  "Role Type: Product-context specialist and context-sufficiency gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Context Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Self-Review Checklist",
+  "lifecycle/context-completion.json",
+  "lifecycle/context-matrix.json",
+  "lifecycle/readiness-tiers.json",
+  "archetype_answer_clarification",
+  "confirmed_facts",
+  "candidate_assumptions",
+  "missing_inputs",
+  "scope_boundaries",
+  "Never ask a grouped form",
+  "Weak context means the next artifact would depend on unapproved invention"
+];
+for (const agentRoot of agentRoots) {
+  const productArchitect = readText(path.join(agentRoot, "product-architect.md"));
+  for (const expected of productArchitectRequirements) {
+    assert(productArchitect.includes(expected), `${agentRoot}/product-architect.md missing hardened product-architect requirement: ${expected}.`);
+  }
+}
+
 const compatibilityReviewer = validateRoleFile(path.join("agents", "frontend-contract-reviewer.md"));
 assert(compatibilityReviewer.includes("Compatibility role"), "frontend-contract-reviewer.md must be marked as compatibility role.");
 assert(readText(path.join("plugins", "claude-code", "agents", "frontend-contract-reviewer.md")) === compatibilityReviewer, "Compatibility reviewer must be mirrored into Claude Code plugin agents.");
@@ -95,6 +127,7 @@ const summary = {
   compatibilityRoles: ["frontend-contract-reviewer.md"],
   rootFiles,
   sections: requiredSections,
+  productArchitectRequirements,
   rule: "No agent can approve its own work."
 };
 
