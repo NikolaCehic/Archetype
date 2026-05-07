@@ -334,6 +334,60 @@ for (const agentRoot of agentRoots) {
   }
 }
 
+const pixelPerfectDeveloperRequirements = [
+  "## Role",
+  "Role ID: `pixel-perfect-developer`",
+  "Role Type: Visual precision implementation specialist and screenshot-evidence gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Visual Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required Visual Evidence Contract",
+  "## Viewport And Screenshot Matrix",
+  "## Repair Handoff Format",
+  "## Self-Review Checklist",
+  "04-design-system/visual-direction.md",
+  "04-design-system/tokens/token-contracts.json",
+  "04-design-system/tokens/typography-system.json",
+  "04-design-system/components/component-contracts.json",
+  "04-design-system/patterns/pattern-contracts.json",
+  "04-design-system/accessibility/accessibility-rules.json",
+  "05-screen-specs/*.yaml",
+  "06-frontend-agent-contract/responsive-rules.json",
+  "12-target-frontend/route-component-map.json",
+  "14-target-execution/target-execution-report.json",
+  "specialist-gate/frontend-practices/visual-polish-practices.json",
+  "specialist-gate/frontend-practices/responsive-practices.json",
+  "verification/playwright-verification-contract.json",
+  "verification/playwright-evidence.json",
+  "qa/visual-regression-report.md",
+  "qa/scenario-catalog.json",
+  "target:test-results/archetype-visual-smoke/",
+  "ready_for_visual_verification",
+  "needs_visual_repair",
+  "blocked_missing_visual_evidence",
+  "visual-smoke",
+  "mobile, tablet, and desktop",
+  "overlap",
+  "clipped controls",
+  "horizontal overflow",
+  "hidden critical actions",
+  "raw styling",
+  "screenshot-backed evidence",
+  "Never ask a bulk pixel-perfect questionnaire"
+];
+for (const agentRoot of agentRoots) {
+  const pixelPerfectDeveloper = readText(path.join(agentRoot, "pixel-perfect-developer.md"));
+  for (const expected of pixelPerfectDeveloperRequirements) {
+    assert(pixelPerfectDeveloper.includes(expected), `${agentRoot}/pixel-perfect-developer.md missing hardened pixel-perfect-developer requirement: ${expected}.`);
+  }
+}
+
 const compatibilityReviewer = validateRoleFile(path.join("agents", "frontend-contract-reviewer.md"));
 assert(compatibilityReviewer.includes("Compatibility role"), "frontend-contract-reviewer.md must be marked as compatibility role.");
 assert(readText(path.join("plugins", "claude-code", "agents", "frontend-contract-reviewer.md")) === compatibilityReviewer, "Compatibility reviewer must be mirrored into Claude Code plugin agents.");
@@ -374,6 +428,7 @@ const summary = {
   designSystemArchitectRequirements,
   frontendPracticeEnforcerRequirements,
   strictTypescriptDeveloperRequirements,
+  pixelPerfectDeveloperRequirements,
   rule: "No agent can approve its own work."
 };
 

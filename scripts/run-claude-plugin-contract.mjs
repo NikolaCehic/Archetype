@@ -324,6 +324,49 @@ for (const expected of [
   assert(strictTypescriptDeveloper.includes(expected), `Strict TypeScript developer missing hardened requirement ${expected}.`);
 }
 
+const pixelPerfectDeveloper = readText("agents/pixel-perfect-developer.md");
+for (const expected of [
+  "## Role",
+  "Role ID: `pixel-perfect-developer`",
+  "Role Type: Visual precision implementation specialist and screenshot-evidence gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Operating Procedure",
+  "## Visual Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Required Visual Evidence Contract",
+  "## Viewport And Screenshot Matrix",
+  "04-design-system/visual-direction.md",
+  "04-design-system/tokens/token-contracts.json",
+  "04-design-system/tokens/typography-system.json",
+  "04-design-system/components/component-contracts.json",
+  "05-screen-specs/*.yaml",
+  "06-frontend-agent-contract/responsive-rules.json",
+  "12-target-frontend/route-component-map.json",
+  "14-target-execution/target-execution-report.json",
+  "specialist-gate/frontend-practices/visual-polish-practices.json",
+  "verification/playwright-verification-contract.json",
+  "verification/playwright-evidence.json",
+  "qa/visual-regression-report.md",
+  "qa/scenario-catalog.json",
+  "target:test-results/archetype-visual-smoke/",
+  "ready_for_visual_verification",
+  "needs_visual_repair",
+  "blocked_missing_visual_evidence",
+  "visual-smoke",
+  "mobile, tablet, and desktop",
+  "overlap",
+  "clipped controls",
+  "horizontal overflow",
+  "hidden critical actions",
+  "raw styling",
+  "screenshot-backed evidence",
+  "Never ask a bulk pixel-perfect questionnaire"
+]) {
+  assert(pixelPerfectDeveloper.includes(expected), `Pixel-perfect developer missing hardened requirement ${expected}.`);
+}
+
 const reviewer = readText("agents/frontend-contract-reviewer.md");
 for (const expected of ["missing evidence", "acceptance criteria", "archetype_validate_package"]) {
   assert(reviewer.toLowerCase().includes(expected), `Frontend contract reviewer missing ${expected}.`);

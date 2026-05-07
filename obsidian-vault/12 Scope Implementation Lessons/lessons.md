@@ -208,6 +208,48 @@ I do not know how to implement this scope better within Scope 01 without importi
 I cannot identify a technical or architectural mismatch against Scope 01 in the current implementation.
 ```
 
+## Agent Hardening - Pixel Perfect Developer
+
+Source:
+
+- `agents/pixel-perfect-developer.md`
+- `plugins/claude-code/agents/pixel-perfect-developer.md`
+- [[11 Hardened Lifecycle Scopes/Scope 09 - Agent Role Files]]
+- [[03 Agents/Frontend Best Practice Skills]]
+
+Browser research anchors:
+
+- Playwright visual comparisons: https://playwright.dev/docs/test-snapshots
+- WCAG Reflow: https://www.w3.org/WAI/WCAG22/Understanding/reflow.html
+- WCAG Text Spacing: https://www.w3.org/WAI/WCAG22/Understanding/text-spacing.html
+- Tailwind responsive design: https://tailwindcss.com/docs/responsive-design
+
+Weaknesses found before hardening:
+
+- The role said it owned visual polish, but did not define how to judge polish without subjective taste.
+- The role mentioned screenshot evidence, but did not require route, screen, state, viewport, screenshot, and artifact traceability for each visual claim.
+- The role did not enforce mobile, tablet, and desktop visual-smoke coverage.
+- The role did not connect visual polish to `specialist-gate/frontend-practices/visual-polish-practices.json`, responsive practices, design-system practices, QA reports, or target execution artifacts.
+- The role could miss text-spacing, reflow, typography fit, layout stability, content-fit, and state-specific polish failures.
+- The role did not provide a deterministic repair handoff schema.
+
+Corrections applied:
+
+- Expanded the role into a visual precision implementation specialist and screenshot-evidence gatekeeper.
+- Added explicit mission, production standard, operating procedure, visual sufficiency gate, one-question clarification priority, output schema, decision rules, required visual evidence contract, viewport matrix, repair handoff format, good/bad output signals, and self-review checklist.
+- Required visual evidence from `verification/playwright-evidence.json`, `qa/visual-regression-report.md`, `qa/scenario-catalog.json`, `qa/playwright-results.json`, `target:test-results/archetype-visual-smoke/`, and `target:playwright-report/`.
+- Required mobile, tablet, and desktop coverage for visual-smoke scenarios.
+- Added blockers for overlap, clipped controls, horizontal overflow, hidden critical actions, raw styling, token drift, typography shrinkage, viewport-width font scaling, negative letter spacing, and generic visual output.
+- Added output statuses: `ready_for_visual_verification`, `needs_visual_repair`, and `blocked_missing_visual_evidence`.
+- Added deterministic repair tasks with route, screen, state, viewport, component/selector, screenshot, contract refs, implementation constraint, and verification command.
+- Mirrored the role into the Claude Code plugin and added contract checks so future edits cannot regress the hardened guarantees.
+
+Self-healing rule:
+
+- A visual readiness claim is invalid unless it points to browser screenshot evidence for the affected route, screen, state, and viewport.
+- Selector-only or marker-only evidence cannot prove visual quality.
+- Pixel-perfect repair must use approved design-system and screen contracts. If the contract is weak, the correct repair is a handoff or one clarification question, not visual invention.
+
 ## Scope 02 - Evidence And Decision Model
 
 Source:
