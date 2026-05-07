@@ -314,6 +314,74 @@ for (const base of ["agents", path.join("plugins", "claude-code", "agents")]) {
   }
 }
 
+const accessibilityQaRequirements = [
+  "## Role",
+  "Role ID: `accessibility-qa`",
+  "Role Type: Accessibility evidence verifier and compliance-claim boundary gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Accessibility QA Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required Accessibility QA Evidence Contract",
+  "## Accessibility QA Matrix",
+  "## Failure Routing Matrix",
+  "## Self-Review Checklist",
+  "accessibility_qa_ready_for_qa_lead",
+  "accessibility_qa_needs_repair",
+  "accessibility_qa_blocked_missing_evidence",
+  "accessibility_qa_blocked_marker_only_evidence",
+  "accessibility_qa_blocked_compliance_overclaim",
+  "accessibility_qa_blocked_untraceable_finding",
+  "Accessibility QA produces evidence, not vibes.",
+  "Automated accessibility checks are useful but cannot certify accessibility compliance.",
+  "Qualified human evaluation is required before compliance claims.",
+  "No ARIA is better than Bad ARIA",
+  "qa/accessibility-results.md",
+  "qa/scenario-catalog.json",
+  "qa/playwright-results.json",
+  "verification/playwright-verification-contract.json",
+  "verification/playwright-evidence.json",
+  "test-first/test-first-contract.json",
+  "test-first/test-quality-standard.json",
+  "04-design-system/accessibility/accessibility-rules.json",
+  "04-design-system/components/component-contracts.json",
+  "05-screen-specs/*.yaml",
+  "08-quality/accessibility-report.md",
+  "14-target-execution/target-execution-report.json",
+  "Target evidence: `target:tests/e2e/archetype-accessibility.spec.ts`",
+  "target:test-results/archetype-playwright-results.json",
+  "target:playwright-report/",
+  "headings_landmarks",
+  "names_labels",
+  "roles_semantics",
+  "keyboard_path",
+  "focus_visibility",
+  "forms_errors",
+  "status_feedback",
+  "color_contrast_meaning",
+  "motion_reduced",
+  "chart_table_fallback",
+  "compliance_boundary",
+  "WCAG AA compliance is claimed from Playwright alone",
+  "accessibility-specialist.md",
+  "design-system-architect.md",
+  "repair-planner.md",
+  "visual-regression-qa.md",
+  "No agent can approve its own work.",
+  "This role cannot verify or close accessibility evidence it generated."
+];
+for (const base of ["agents", path.join("plugins", "claude-code", "agents")]) {
+  const accessibilityQa = readText(path.join(root, base, "accessibility-qa.md"));
+  for (const expected of accessibilityQaRequirements) {
+    assert(accessibilityQa.includes(expected), `${base}/accessibility-qa.md missing hardened accessibility QA requirement: ${expected}.`);
+  }
+}
+
 const approvedInput = {
   ...readJson(path.join(root, "examples", "saas-dashboard-intake.json")),
   contractApproval: {

@@ -2386,3 +2386,63 @@ Current answer for Malformed Data QA hardening:
 I do not know how to make the Malformed Data QA role more deterministic without importing requirements outside the approved Archetype QA scenario catalog, malformed-data results, test-first contract, frontend data/form/action contracts, target execution evidence, raw runtime artifacts, and bounded backend/security confirmation.
 I cannot identify a technical or architectural mismatch against the Malformed Data QA hardening goal in the current role file.
 ```
+
+## Agent Hardening - Accessibility QA
+
+Source files:
+
+- `agents/accessibility-qa.md`
+- `plugins/claude-code/agents/accessibility-qa.md`
+- `scripts/run-qa-team-contract.mjs`
+
+Browser research anchors:
+
+- W3C WAI accessibility evaluation overview: https://www.w3.org/WAI/test-evaluate/
+- WCAG 2.2 Quick Reference: https://www.w3.org/WAI/WCAG22/quickref/
+- WAI-ARIA Authoring Practices read-me-first: https://www.w3.org/WAI/ARIA/apg/practices/read-me-first/
+- MDN ARIA overview: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA
+- Playwright accessibility testing: https://playwright.dev/docs/accessibility-testing
+- Playwright best practices: https://playwright.dev/docs/best-practices
+
+Mismatches found before hardening:
+
+- The Accessibility QA role was a short checklist and did not define a role, mission, production standard, operating procedure, sufficiency gate, output schema, evidence contract, QA matrix, failure routing matrix, or self-review loop.
+- The role did not clearly distinguish QA evidence verification from accessibility requirement authoring or WCAG/legal compliance certification.
+- The role did not define deterministic blocked statuses for missing evidence, marker-only evidence, compliance overclaim, untraceable findings, repair-needed failures, or QA-lead readiness.
+- The role did not require reconciliation across `qa/accessibility-results.md`, QA scenario catalog, Playwright evidence, raw target results, design-system accessibility rules, screen/form/action contracts, quality accessibility report, target execution, and repair queue.
+- The role did not explicitly reject accessibility evidence based only on route rendering, generated markers, or screenshot byte size.
+- The role did not enforce the boundary that automated checks can support smoke/accessibility evidence but cannot certify compliance without qualified human evaluation.
+- Contract tests only checked generic QA role sections and plugin mirroring.
+
+Corrections applied:
+
+- Rewrote the role as an accessibility evidence verifier and compliance-claim boundary gatekeeper.
+- Added explicit authority, mission, production standard, canonical inputs, outputs, blockers, operating procedure, accessibility QA sufficiency gate, one-question clarification priority, output schema, decision rules, required evidence contract, accessibility QA matrix, failure routing matrix, practice anchors, good/bad output signals, self-review checklist, and handoff rules.
+- Added deterministic statuses: `accessibility_qa_ready_for_qa_lead`, `accessibility_qa_needs_repair`, `accessibility_qa_blocked_missing_evidence`, `accessibility_qa_blocked_marker_only_evidence`, `accessibility_qa_blocked_compliance_overclaim`, and `accessibility_qa_blocked_untraceable_finding`.
+- Required evidence for headings/landmarks, names/labels, roles/semantics, keyboard path, focus visibility, form errors, status feedback, color/contrast meaning, reduced motion, chart/table fallback, and compliance boundary.
+- Required every accessibility QA finding to include finding id, severity, route, screen, state, component/selector, check type, source contract, observed failure, expected behavior, evidence artifacts, manual review status, status, owner, and repair handoff.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened Accessibility QA requirements in the QA team contract.
+
+Self-healing rules added:
+
+- Accessibility QA verifies evidence and blocks overclaims; it does not author requirements or certify compliance.
+- Automated checks can support smoke/accessibility evidence but cannot prove WCAG/legal compliance without qualified human review.
+- Marker-only accessibility proof is a blocker.
+- Every accessibility finding must be traceable to route, screen, component/state/form/interactions, expected behavior, raw evidence, and owner.
+- Compliance claims must be downgraded to the evidence actually present.
+- Plugin mirrors must carry the same hardened accessibility QA role as the root repository.
+
+Agent hardening convergence review:
+
+- The Accessibility QA role now has enough detail to verify accessibility evidence deterministically.
+- The role blocks missing reports/scenarios/raw results, marker-only evidence, missing keyboard/focus/name/form/status/color/fallback proof, inaccessible recovery, compliance overclaims, untraceable findings, and unresolved accessibility repair tasks.
+- The role explicitly hands off requirement, test, Playwright, design-system, implementation, visual, contract-drift, QA-lead, and verifier concerns to the correct owners instead of self-approving.
+- QA team contract tests now fail if the hardened accessibility QA responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for Accessibility QA hardening:
+
+```txt
+I do not know how to make the Accessibility QA role more deterministic without importing requirements outside the approved Archetype accessibility rules, QA accessibility report, scenario catalog, Playwright evidence, raw target results, screen/form/action contracts, quality accessibility report, repair queue, and bounded human-review evidence.
+I cannot identify a technical or architectural mismatch against the Accessibility QA hardening goal in the current role file.
+```
