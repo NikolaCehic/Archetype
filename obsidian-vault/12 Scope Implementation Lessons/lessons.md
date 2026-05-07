@@ -1784,3 +1784,52 @@ Current answer for design-system architect hardening:
 I do not know how to make the design-system architect role more deterministic without importing requirements outside the approved Archetype package and current hardened lifecycle.
 I cannot identify a technical or architectural mismatch against the design-system architect hardening goal in the current role file.
 ```
+
+## Agent Hardening - Frontend Practice Enforcer
+
+Source files:
+
+- `agents/frontend-practice-enforcer.md`
+- `plugins/claude-code/agents/frontend-practice-enforcer.md`
+- `scripts/run-agent-role-files-contract.mjs`
+- `scripts/run-claude-plugin-contract.mjs`
+
+Mismatches found before hardening:
+
+- The frontend practice enforcer listed the 11 HL-08 practices but did not define a full role, mission, operating procedure, enforcement gate, output schema, evidence rules, or self-review checklist.
+- The role did not require every individual `specialist-gate/frontend-practices/*.json` artifact.
+- The role did not explain how to block implementation when practice checks are missing, prose-only, failed, or self-approved.
+- The role did not distinguish artifact-backed pass/fail evidence from generic best-practice recommendations.
+- The role did not explicitly reject marker-only tests, missing browser evidence, or tests that fail to assert user-visible behavior.
+- The role was not contract-tested beyond generic required sections.
+
+Corrections applied:
+
+- Rewrote the role as a frontend quality gate specialist and pass/fail practice enforcer.
+- Added required artifact lists, required fields per practice, practice-specific enforcement matrix, evidence rules, one-question clarification priority, output schema, decision rules, handoff rules, and self-review checklist.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened frontend practice enforcer requirements in both root agent and Claude plugin checks.
+
+Self-healing rules added:
+
+- Frontend practices are not optional recommendations; they are pass/fail checks in the specialist gate.
+- A practice is not real unless it has an owner, lifecycle gates, input artifacts, blocker list, output artifact, status, and enforcement rule.
+- `draft/specialist-review.json` must include `frontend_practice_gate` with every required practice.
+- Missing individual practice artifacts must block validation even when the master artifact exists.
+- Marker-only tests are traceability aids, not evidence of user-visible correctness.
+- Practice failures must route to owners and remain blockers until repaired or explicitly revised in the contract.
+- Every hardened role upgrade must be mirrored into plugin surfaces and pinned by contract tests.
+
+Agent hardening convergence review:
+
+- The frontend practice enforcer now has enough role detail to enforce HL-08 deterministically.
+- The role blocks missing practices, prose-only findings, missing output artifacts, weak evidence, marker-only tests, self-approval, and implementation before gate completion.
+- The role maps each practice to its specialist ownership and repair path.
+- Contract tests now fail if the hardened frontend practice enforcer responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for frontend practice enforcer hardening:
+
+```txt
+I do not know how to make the frontend practice enforcer role more deterministic without importing requirements outside HL-08 and the approved Archetype package.
+I cannot identify a technical or architectural mismatch against the frontend practice enforcer hardening goal in the current role file.
+```

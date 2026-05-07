@@ -227,6 +227,62 @@ for (const agentRoot of agentRoots) {
   }
 }
 
+const frontendPracticeEnforcerRequirements = [
+  "## Role",
+  "Role ID: `frontend-practice-enforcer`",
+  "Role Type: Frontend quality gate specialist and pass/fail practice enforcer.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## Frontend Practice Enforcement Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required Frontend Practice Contract",
+  "## Practice-Specific Enforcement Matrix",
+  "## Evidence Rules",
+  "## Self-Review Checklist",
+  "governance/frontend-practice-skills.json",
+  "governance/frontend-practice-skills.md",
+  "draft/specialist-review.json",
+  "specialist-gate/frontend-practices/frontend-architecture.json",
+  "specialist-gate/frontend-practices/react-practices.json",
+  "specialist-gate/frontend-practices/typescript-strictness.json",
+  "specialist-gate/frontend-practices/design-system-practices.json",
+  "specialist-gate/frontend-practices/accessibility-practices.json",
+  "specialist-gate/frontend-practices/forms-and-validation.json",
+  "specialist-gate/frontend-practices/data-contract-practices.json",
+  "specialist-gate/frontend-practices/responsive-practices.json",
+  "specialist-gate/frontend-practices/performance-practices.json",
+  "specialist-gate/frontend-practices/visual-polish-practices.json",
+  "specialist-gate/frontend-practices/testing-practices.json",
+  "frontend-architecture",
+  "react-practices",
+  "typescript-strictness",
+  "design-system-practices",
+  "accessibility-practices",
+  "forms-and-validation",
+  "data-contract-practices",
+  "responsive-practices",
+  "performance-practices",
+  "visual-polish-practices",
+  "testing-practices",
+  "not optional recommendations",
+  "pass/fail checks",
+  "frontend_practice_gate",
+  "marker-only",
+  "user-visible behavior",
+  "Never ask a bulk frontend-practice questionnaire"
+];
+for (const agentRoot of agentRoots) {
+  const frontendPracticeEnforcer = readText(path.join(agentRoot, "frontend-practice-enforcer.md"));
+  for (const expected of frontendPracticeEnforcerRequirements) {
+    assert(frontendPracticeEnforcer.includes(expected), `${agentRoot}/frontend-practice-enforcer.md missing hardened frontend-practice-enforcer requirement: ${expected}.`);
+  }
+}
+
 const compatibilityReviewer = validateRoleFile(path.join("agents", "frontend-contract-reviewer.md"));
 assert(compatibilityReviewer.includes("Compatibility role"), "frontend-contract-reviewer.md must be marked as compatibility role.");
 assert(readText(path.join("plugins", "claude-code", "agents", "frontend-contract-reviewer.md")) === compatibilityReviewer, "Compatibility reviewer must be mirrored into Claude Code plugin agents.");
@@ -265,6 +321,7 @@ const summary = {
   experienceArchitectRequirements,
   frontendArchitectRequirements,
   designSystemArchitectRequirements,
+  frontendPracticeEnforcerRequirements,
   rule: "No agent can approve its own work."
 };
 

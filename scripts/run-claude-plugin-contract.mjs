@@ -237,6 +237,54 @@ for (const expected of [
   assert(designSystemArchitect.includes(expected), `Design-system architect missing hardened requirement ${expected}.`);
 }
 
+const frontendPracticeEnforcer = readText("agents/frontend-practice-enforcer.md");
+for (const expected of [
+  "## Role",
+  "Role ID: `frontend-practice-enforcer`",
+  "Role Type: Frontend quality gate specialist and pass/fail practice enforcer.",
+  "Does Not Own",
+  "Success Condition",
+  "## Operating Procedure",
+  "## Frontend Practice Enforcement Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Required Frontend Practice Contract",
+  "## Practice-Specific Enforcement Matrix",
+  "## Evidence Rules",
+  "governance/frontend-practice-skills.json",
+  "draft/specialist-review.json",
+  "specialist-gate/frontend-practices/frontend-architecture.json",
+  "specialist-gate/frontend-practices/react-practices.json",
+  "specialist-gate/frontend-practices/typescript-strictness.json",
+  "specialist-gate/frontend-practices/design-system-practices.json",
+  "specialist-gate/frontend-practices/accessibility-practices.json",
+  "specialist-gate/frontend-practices/forms-and-validation.json",
+  "specialist-gate/frontend-practices/data-contract-practices.json",
+  "specialist-gate/frontend-practices/responsive-practices.json",
+  "specialist-gate/frontend-practices/performance-practices.json",
+  "specialist-gate/frontend-practices/visual-polish-practices.json",
+  "specialist-gate/frontend-practices/testing-practices.json",
+  "frontend-architecture",
+  "react-practices",
+  "typescript-strictness",
+  "design-system-practices",
+  "accessibility-practices",
+  "forms-and-validation",
+  "data-contract-practices",
+  "responsive-practices",
+  "performance-practices",
+  "visual-polish-practices",
+  "testing-practices",
+  "not optional recommendations",
+  "pass/fail checks",
+  "frontend_practice_gate",
+  "marker-only",
+  "user-visible behavior",
+  "Never ask a bulk frontend-practice questionnaire"
+]) {
+  assert(frontendPracticeEnforcer.includes(expected), `Frontend practice enforcer missing hardened requirement ${expected}.`);
+}
+
 const reviewer = readText("agents/frontend-contract-reviewer.md");
 for (const expected of ["missing evidence", "acceptance criteria", "archetype_validate_package"]) {
   assert(reviewer.toLowerCase().includes(expected), `Frontend contract reviewer missing ${expected}.`);
