@@ -49,6 +49,8 @@ Read first:
 ```txt
 archetype-output/lifecycle/contract-state.json
 archetype-output/lifecycle/execution-state.json
+archetype-output/draft/design-system-preview.html
+archetype-output/draft/design-system-review.md
 archetype-output/draft/frontend-contract.draft.json
 archetype-output/draft/assumption-ledger.md
 archetype-output/draft/contract-approval-request.json

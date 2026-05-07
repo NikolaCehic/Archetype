@@ -2,6 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { ArchetypePackage } from "../core/types";
 import { buildConvergenceStandardArtifact, convergenceStandardMarkdown } from "../modules/convergenceStandard";
+import { designSystemPreviewHtml, designSystemReviewMarkdown } from "../modules/designSystemPreview";
 import { buildEvidenceDecisionModelArtifact, evidenceDecisionModelMarkdown } from "../modules/evidenceDecisionModel";
 import { buildForbiddenBehaviorAcceptanceArtifact, forbiddenBehaviorAcceptanceMarkdown } from "../modules/forbiddenBehaviorAcceptance";
 import { buildFrontendPracticeSkillsArtifact, frontendPracticeSkillOutput, frontendPracticeSkillsMarkdown, FRONTEND_PRACTICE_SKILLS } from "../modules/frontendPracticeSkills";
@@ -162,6 +163,8 @@ function buildTopLevelManifest(pkg: ArchetypePackage): Record<string, unknown> {
     { id: "product-model-draft", path: "draft/product-model.draft.json", type: "json", required: true },
     { id: "experience-architecture-draft", path: "draft/experience-architecture.draft.json", type: "json", required: true },
     { id: "design-system-draft", path: "draft/design-system.draft.json", type: "json", required: true },
+    { id: "design-system-preview", path: "draft/design-system-preview.html", type: "html", required: true },
+    { id: "design-system-review", path: "draft/design-system-review.md", type: "markdown", required: true },
     { id: "frontend-contract-draft", path: "draft/frontend-contract.draft.json", type: "json", required: true },
     { id: "assumption-ledger", path: "draft/assumption-ledger.md", type: "markdown", required: true },
     { id: "specialist-review", path: "draft/specialist-review.json", type: "json", required: true },
@@ -635,6 +638,8 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
     contractApprovalStatus: String(pkg.manifest.contract_approval.status ?? "unknown")
   });
   const draft = buildContractDraftArtifacts(pkg);
+  const designPreviewHtml = designSystemPreviewHtml(pkg, draft.designSystemDraft);
+  const designReviewMarkdown = designSystemReviewMarkdown(pkg);
   const execution = buildLifecycleExecutionStateArtifacts(pkg);
   const qa = buildPendingQaArtifacts(pkg);
   const testQualityStandard = buildTestQualityStandardArtifact();
@@ -695,6 +700,8 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
   writeJson(outDir, "draft/product-model.draft.json", draft.productModelDraft);
   writeJson(outDir, "draft/experience-architecture.draft.json", draft.experienceArchitectureDraft);
   writeJson(outDir, "draft/design-system.draft.json", draft.designSystemDraft);
+  writeText(outDir, "draft/design-system-preview.html", designPreviewHtml);
+  writeText(outDir, "draft/design-system-review.md", designReviewMarkdown);
   writeJson(outDir, "draft/frontend-contract.draft.json", draft.frontendContractDraft);
   writeText(outDir, "draft/assumption-ledger.md", draft.assumptionLedger);
   writeJson(outDir, "draft/specialist-review.json", draft.specialistReview);

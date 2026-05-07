@@ -240,6 +240,8 @@ try {
   assert(summarize.entrypoints.includes("lifecycle/readiness-tiers.json"), "summarize should include readiness tiers entrypoint.");
   assert(summarize.entrypoints.includes("lifecycle/implementation-phases.json"), "summarize should include implementation phases entrypoint.");
   assert(summarize.entrypoints.includes("lifecycle/contract-state.json"), "summarize should include contract state entrypoint.");
+  assert(summarize.entrypoints.includes("draft/design-system-preview.html"), "summarize should include design preview entrypoint.");
+  assert(summarize.entrypoints.includes("draft/design-system-review.md"), "summarize should include design review entrypoint.");
   assert(summarize.entrypoints.includes("draft/frontend-contract.draft.json"), "summarize should include frontend draft entrypoint.");
   assert(!summarize.entrypoints.includes("test-first/test-first-contract.json"), "draft summarize should not include test-first contract entrypoint.");
   assert(summarize.entrypoints.includes("governance/non-negotiable-principles.json"), "summarize should include non-negotiable principles entrypoint.");
@@ -283,6 +285,7 @@ try {
   assert(approvedGenerate.readinessTier === "ready_for_implementation", "human-approved MCP package should be ready for implementation.");
   const approvedSummarize = await callTool("archetype_summarize_package", { outputDir: approvedOutputDir });
   assert(approvedSummarize.entrypoints.includes("test-first/test-quality-standard.json"), "approved MCP summarize should expose the test quality standard.");
+  assert(approvedSummarize.entrypoints.includes("draft/design-system-preview.html"), "approved MCP summarize should expose the design preview.");
   assert(approvedSummarize.entrypoints.includes("governance/forbidden-behaviors.json"), "approved MCP summarize should expose the forbidden behavior contract.");
   assert(approvedSummarize.entrypoints.includes("governance/convergence-standard.json"), "approved MCP summarize should expose the convergence standard.");
 

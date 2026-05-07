@@ -1600,3 +1600,89 @@ Current answer for Scope 16:
 I do not know how to implement this scope better within Scope 16 without importing requirements outside the hardened lifecycle scope set.
 I cannot identify a technical or architectural mismatch against Scope 16 in the current implementation.
 ```
+
+## Scope 17 - Draft Design System Preview
+
+Source node:
+
+- `obsidian-vault/11 Hardened Lifecycle Scopes/Scope 17 - Draft Design System Preview.md`
+
+Exact requirement extracted:
+
+- Draft design systems must be reviewable in a browser before they can become canonical.
+- Required artifacts are `draft/design-system.draft.json`, `draft/design-system-preview.html`, and `draft/design-system-review.md`.
+- The preview HTML is a static human review projection of the draft JSON.
+- The preview HTML is not app implementation and not the source of truth.
+- Every visible preview section traces back to `draft/design-system.draft.json`.
+- The preview includes colors, typography, component examples, component states, token tables, patterns, and accessibility review data.
+- Users can ask questions or request changes before approval.
+- Ambiguous design feedback returns to one clarification question.
+- Archetype revises the draft JSON first, then regenerates the preview.
+- Canonical design-system generation remains blocked until human approval.
+
+Mismatches found before implementation:
+
+- Draft packages exposed `draft/design-system.draft.json`, but users had no browser-viewable design-system review artifact.
+- Draft review instructions asked users to read structured JSON rather than inspect colors, typography, states, and components visually.
+- Validation could not fail a draft package that lacked a human-readable design preview.
+- Agent skills and docs did not tell Codex or Claude Code to surface a design-system preview before asking for approval.
+
+Corrections applied:
+
+- Added `src/modules/designSystemPreview.ts` to render `draft/design-system-preview.html` and `draft/design-system-review.md` from the draft design-system JSON.
+- Exported the preview and review artifacts from draft packages and approved complete packages.
+- Added both artifacts to manifests, canonical artifact index, CLI/MCP summarize entrypoints, required complete package artifacts, docs, quickstart, MCP usage docs, Codex/Claude usage docs, front-door skills, and Claude slash-command behavior.
+- Extended validation so missing preview/review artifacts fail, preview traceability to `draft/design-system.draft.json` is required, and script-bearing preview HTML is rejected.
+- Added `scripts/run-design-system-preview-contract.mjs` and wired `design-preview:contract` into `npm test`, `npm run check`, cleanup, distribution, install, plugin-install, CLI, MCP, required-artifact, and lifecycle contract checks.
+- Added the new Obsidian scope node and linked it from lifecycle maps.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run design-preview:contract`: pass.
+- `node scripts/run-lifecycle-contract-states-contract.mjs`: pass after shared build.
+- `node scripts/run-cli-contract.mjs`: pass after shared build.
+- `node scripts/run-mcp-contract.mjs`: pass after shared build.
+- `node scripts/run-required-package-artifacts-contract.mjs`: pass after shared build.
+- `node scripts/run-distribution-contract.mjs`: pass.
+- `node scripts/run-codex-plugin-contract.mjs`: pass.
+- `node scripts/run-claude-plugin-contract.mjs`: pass.
+- `npm run plugin-install:contract`: pass.
+- `npm run install:contract`: pass.
+- `npm run golden`: pass.
+- `npm test`: pass end to end.
+
+Mismatches found during verification:
+
+- Complete-package summarize entrypoints originally exposed the preview only for draft packages. The required-artifacts contract needed complete packages to expose the retained draft preview too.
+- The install and plugin-install contracts needed the new design preview contract script in their packed package assertions.
+
+Corrections applied during verification:
+
+- Added `draft/design-system-preview.html` and `draft/design-system-review.md` to complete-package summarize entrypoints.
+- Added `scripts/run-design-system-preview-contract.mjs` to install and plugin-install packed package assertions.
+- Added the preview and review artifacts to the complete package required artifact set.
+
+Self-healing rules added:
+
+- Browser-viewable draft previews must be generated from structured draft artifacts, not hand-authored as parallel truth.
+- Preview HTML must be static, script-free, and traceable to the source draft JSON.
+- A design preview can support human approval, but it can never authorize implementation by itself.
+- Any requested design change revises `draft/design-system.draft.json` first, then regenerates the preview.
+- If a user request about the preview is ambiguous, return to one clarification question before revising.
+
+Scope 17 convergence review:
+
+- Draft packages now include `draft/design-system-preview.html` and `draft/design-system-review.md`.
+- Complete packages retain those artifacts for approval traceability.
+- The preview exposes colors, typography, components, states, tokens, patterns, accessibility data, and full draft JSON details.
+- Validation fails when preview traceability is broken or the preview is missing.
+- Docs and skills tell agents to surface the preview for browser review before approval.
+- Full repository test suite passes with Scope 17 wired into generation, validation, summaries, distribution, install, plugins, required artifacts, and golden examples.
+
+Current answer for Scope 17:
+
+```txt
+I do not know how to implement this scope better within Scope 17 without turning the review artifact into product implementation, which would violate the harness boundary.
+I cannot identify a technical or architectural mismatch against Scope 17 in the current implementation.
+```

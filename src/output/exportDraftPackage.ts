@@ -2,6 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { ArchetypePackage } from "../core/types";
 import { buildConvergenceStandardArtifact, convergenceStandardMarkdown } from "../modules/convergenceStandard";
+import { designSystemPreviewHtml, designSystemReviewMarkdown } from "../modules/designSystemPreview";
 import { buildEvidenceDecisionModelArtifact, evidenceDecisionModelMarkdown } from "../modules/evidenceDecisionModel";
 import { buildForbiddenBehaviorAcceptanceArtifact, forbiddenBehaviorAcceptanceMarkdown } from "../modules/forbiddenBehaviorAcceptance";
 import { buildFrontendPracticeSkillsArtifact, frontendPracticeSkillOutput, frontendPracticeSkillsMarkdown, FRONTEND_PRACTICE_SKILLS } from "../modules/frontendPracticeSkills";
@@ -14,7 +15,7 @@ import { buildPackageReadinessTiersArtifact, readinessTiersMarkdown } from "../m
 interface DraftArtifact {
   id: string;
   path: string;
-  type: "json" | "markdown";
+  type: "json" | "markdown" | "html";
   required: boolean;
 }
 
@@ -59,12 +60,14 @@ function buildReadme(pkg: ArchetypePackage): string {
     "2. Review `draft/product-model.draft.json`.",
     "3. Review `draft/experience-architecture.draft.json`.",
     "4. Review `draft/design-system.draft.json`.",
-    "5. Review `draft/frontend-contract.draft.json`.",
-    "6. Review `draft/assumption-ledger.md`.",
-    "7. Review `draft/specialist-review.json`.",
-    "8. Review `lifecycle/implementation-phases.json`.",
-    "9. Review `governance/convergence-standard.json`.",
-    "10. Approve or edit using `draft/contract-approval-request.json`.",
+    "5. Open `draft/design-system-preview.html` in a browser.",
+    "6. Review `draft/design-system-review.md` before approval.",
+    "7. Review `draft/frontend-contract.draft.json`.",
+    "8. Review `draft/assumption-ledger.md`.",
+    "9. Review `draft/specialist-review.json`.",
+    "10. Review `lifecycle/implementation-phases.json`.",
+    "11. Review `governance/convergence-standard.json`.",
+    "12. Approve or edit using `draft/contract-approval-request.json`.",
     "",
     "## Not Generated",
     "",
@@ -115,6 +118,8 @@ export function exportDraftPackage(pkg: ArchetypePackage, outDir: string): Draft
   mkdirSync(outDir, { recursive: true });
 
   const draft = buildContractDraftArtifacts(pkg);
+  const designPreviewHtml = designSystemPreviewHtml(pkg, draft.designSystemDraft);
+  const designReviewMarkdown = designSystemReviewMarkdown(pkg);
   const readinessTiers = buildPackageReadinessTiersArtifact(pkg);
   const nonNegotiablePrinciples = buildNonNegotiablePrinciplesArtifact(pkg);
   const evidenceDecisionModel = buildEvidenceDecisionModelArtifact(pkg);
@@ -177,6 +182,8 @@ export function exportDraftPackage(pkg: ArchetypePackage, outDir: string): Draft
     { id: "product-model-draft", path: "draft/product-model.draft.json", type: "json", required: true },
     { id: "experience-architecture-draft", path: "draft/experience-architecture.draft.json", type: "json", required: true },
     { id: "design-system-draft", path: "draft/design-system.draft.json", type: "json", required: true },
+    { id: "design-system-preview", path: "draft/design-system-preview.html", type: "html", required: true },
+    { id: "design-system-review", path: "draft/design-system-review.md", type: "markdown", required: true },
     { id: "frontend-contract-draft", path: "draft/frontend-contract.draft.json", type: "json", required: true },
     { id: "assumption-ledger", path: "draft/assumption-ledger.md", type: "markdown", required: true },
     { id: "specialist-review", path: "draft/specialist-review.json", type: "json", required: true },
@@ -254,6 +261,8 @@ export function exportDraftPackage(pkg: ArchetypePackage, outDir: string): Draft
   writeJson(outDir, "draft/product-model.draft.json", draft.productModelDraft);
   writeJson(outDir, "draft/experience-architecture.draft.json", draft.experienceArchitectureDraft);
   writeJson(outDir, "draft/design-system.draft.json", draft.designSystemDraft);
+  writeText(outDir, "draft/design-system-preview.html", designPreviewHtml);
+  writeText(outDir, "draft/design-system-review.md", designReviewMarkdown);
   writeJson(outDir, "draft/frontend-contract.draft.json", draft.frontendContractDraft);
   writeText(outDir, "draft/assumption-ledger.md", draft.assumptionLedger);
   writeJson(outDir, "draft/specialist-review.json", draft.specialistReview);

@@ -28,6 +28,7 @@ The lifecycle must stop before canonical output when context is weak.
 - [[Readiness Tiers]]
 - [[Clarification UX]]
 - [[Lifecycle State Machine]]
+- [[Scope 17 - Draft Design System Preview]]
 
 ## Non-Negotiables
 

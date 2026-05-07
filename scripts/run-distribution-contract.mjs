@@ -33,6 +33,7 @@ for (const file of [
   "scripts/run-clarification-ux-contract.mjs",
   "scripts/run-lifecycle-intake-states-contract.mjs",
   "scripts/run-lifecycle-contract-states-contract.mjs",
+  "scripts/run-design-system-preview-contract.mjs",
   "scripts/run-lifecycle-execution-states-contract.mjs",
   "scripts/run-frontend-practice-skills-contract.mjs",
   "scripts/run-agent-role-files-contract.mjs",
@@ -92,6 +93,7 @@ assert(pkg.scripts?.["lifecycle:contract"], "package must expose lifecycle:contr
 assert(pkg.scripts?.["clarification-ux:contract"], "package must expose clarification-ux:contract.");
 assert(pkg.scripts?.["lifecycle-intake:contract"], "package must expose lifecycle-intake:contract.");
 assert(pkg.scripts?.["lifecycle-contract:contract"], "package must expose lifecycle-contract:contract.");
+assert(pkg.scripts?.["design-preview:contract"], "package must expose design-preview:contract.");
 assert(pkg.scripts?.["lifecycle-execution:contract"], "package must expose lifecycle-execution:contract.");
 assert(pkg.scripts?.["frontend-practices:contract"], "package must expose frontend-practices:contract.");
 assert(pkg.scripts?.["agent-roles:contract"], "package must expose agent-roles:contract.");
@@ -134,6 +136,7 @@ for (const expected of [
   "governance/forbidden-behaviors.json",
   "governance/convergence-standard.json",
   "lifecycle/implementation-phases.json",
+  "draft/design-system-preview.html",
   "spec/archetype-spec.json",
   "test-first/",
   "verification/playwright-verification-contract.json",
@@ -160,7 +163,7 @@ for (const expected of ["60 seconds", "archetype install --target all --json", "
   assert(quickstart.includes(expected), `quickstart docs missing ${expected}.`);
 }
 const lifecycle = readText("docs/agent-lifecycle.md");
-for (const expected of ["clarify missing context", "optional materials", "canonical spec", "tests first", "Playwright", "repair", "governance/forbidden-behaviors.json", "governance/convergence-standard.json", "lifecycle/implementation-phases.json"]) {
+for (const expected of ["clarify missing context", "optional materials", "draft/design-system-preview.html", "canonical spec", "tests first", "Playwright", "repair", "governance/forbidden-behaviors.json", "governance/convergence-standard.json", "lifecycle/implementation-phases.json"]) {
   assert(lifecycle.includes(expected), `agent lifecycle docs missing ${expected}.`);
 }
 const releaseReadiness = readText("docs/release-readiness.md");
@@ -195,5 +198,5 @@ console.log(JSON.stringify({
     "docs/demo-script.md",
     "RELEASE_NOTES.md"
   ],
-  scripts: ["demo:run", "distribution:contract", "release:contract", "plugin-install:contract", "repo:audit", "install:contract", "lifecycle:contract", "clarification-ux:contract", "lifecycle-intake:contract", "lifecycle-contract:contract", "lifecycle-execution:contract", "frontend-practices:contract", "agent-roles:contract", "qa-team:contract", "test-quality:contract", "required-artifacts:contract", "forbidden-behaviors:contract", "marketing-replay:contract", "implementation-phases:contract", "convergence:contract", "spec:contract", "test-first:contract", "playwright:contract", "repair:contract"]
+  scripts: ["demo:run", "distribution:contract", "release:contract", "plugin-install:contract", "repo:audit", "install:contract", "lifecycle:contract", "clarification-ux:contract", "lifecycle-intake:contract", "lifecycle-contract:contract", "design-preview:contract", "lifecycle-execution:contract", "frontend-practices:contract", "agent-roles:contract", "qa-team:contract", "test-quality:contract", "required-artifacts:contract", "forbidden-behaviors:contract", "marketing-replay:contract", "implementation-phases:contract", "convergence:contract", "spec:contract", "test-first:contract", "playwright:contract", "repair:contract"]
 }, null, 2));

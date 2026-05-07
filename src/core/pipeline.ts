@@ -72,6 +72,8 @@ const ARTIFACT_INDEX = [
   "draft/product-model.draft.json",
   "draft/experience-architecture.draft.json",
   "draft/design-system.draft.json",
+  "draft/design-system-preview.html",
+  "draft/design-system-review.md",
   "draft/frontend-contract.draft.json",
   "draft/assumption-ledger.md",
   "draft/specialist-review.json",

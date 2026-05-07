@@ -40,8 +40,8 @@ Prevent weak context from becoming fake certainty.
 - [[11 Hardened Lifecycle Scopes/Scope 14 - Marketing Dashboard Replay]]
 - [[11 Hardened Lifecycle Scopes/Scope 15 - Implementation Phases]]
 - [[11 Hardened Lifecycle Scopes/Scope 16 - Convergence Standard]]
+- [[11 Hardened Lifecycle Scopes/Scope 17 - Draft Design System Preview]]
 
 ## Graph Reading
 
 In graph view this node should behave as the trunk. The `11 Hardened Lifecycle Scopes` notes are the leaves.
-

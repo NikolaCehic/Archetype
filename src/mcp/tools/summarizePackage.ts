@@ -78,6 +78,8 @@ function summarizePackage(outputDir: string): JsonRecord {
         "draft/product-model.draft.json",
         "draft/experience-architecture.draft.json",
         "draft/design-system.draft.json",
+        "draft/design-system-preview.html",
+        "draft/design-system-review.md",
         "draft/frontend-contract.draft.json",
         "draft/assumption-ledger.md",
         "draft/contract-approval-request.json"
@@ -92,6 +94,8 @@ function summarizePackage(outputDir: string): JsonRecord {
         "lifecycle/contract-state.json",
         "lifecycle/execution-state.json",
         "lifecycle/final-readiness-report.md",
+        "draft/design-system-preview.html",
+        "draft/design-system-review.md",
         "spec/archetype-spec.md",
         "spec/archetype-spec.json",
         "test-first/test-first-contract.json",

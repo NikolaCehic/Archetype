@@ -11,6 +11,8 @@ export const REQUIRED_COMPLETE_PACKAGE_ARTIFACTS = [
   "01-evidence/evidence-ledger.json",
   "01-evidence/missing-context.md",
   "draft/assumption-ledger.md",
+  "draft/design-system-preview.html",
+  "draft/design-system-review.md",
   "reviews/specialist-review-summary.md",
   "spec/archetype-spec.json",
   "spec/archetype-spec.md",

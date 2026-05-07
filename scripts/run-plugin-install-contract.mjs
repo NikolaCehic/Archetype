@@ -175,6 +175,7 @@ try {
     "scripts/run-marketing-dashboard-replay-contract.mjs",
     "scripts/run-implementation-phases-contract.mjs",
     "scripts/run-convergence-standard-contract.mjs",
+    "scripts/run-design-system-preview-contract.mjs",
     "scripts/run-plugin-install-contract.mjs"
   ]) {
     assert(packed.packedPaths.has(required), `Packed package missing ${required}.`);

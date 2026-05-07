@@ -161,8 +161,8 @@ Installation details are in `docs/install.md`.
 `archetype-output/` is gated by lifecycle readiness:
 
 - Clarification packages include `lifecycle/start-request.json`, `lifecycle/context-matrix.json`, `lifecycle/implementation-phases.json`, `lifecycle/clarification-turn.json`, `lifecycle/clarification-state.json`, `01-evidence/evidence-ledger.json`, `01-evidence/missing-context.md`, `governance/forbidden-behaviors.json`, and `governance/convergence-standard.json`.
-- Draft contract packages include `lifecycle/implementation-phases.json`, `draft/product-model.draft.json`, `draft/experience-architecture.draft.json`, `draft/design-system.draft.json`, `draft/frontend-contract.draft.json`, `draft/assumption-ledger.md`, `draft/specialist-review.json`, `governance/frontend-practice-skills.json`, `governance/forbidden-behaviors.json`, `governance/convergence-standard.json`, and `draft/contract-approval-request.json`.
-- Canonical packages are generated only after human approval and include `spec/archetype-spec.md`, `spec/archetype-spec.json`, `governance/forbidden-behaviors.json`, `governance/convergence-standard.json`, `test-first/test-first-contract.json`, `test-first/test-quality-standard.json`, `test-results/initial-red-test-run.md`, `lifecycle/approval-request.md`, `lifecycle/approval-decision.json`, `lifecycle/execution-state.json`, `lifecycle/implementation-phases.json`, `lifecycle/final-readiness-report.md`, `reviews/specialist-review-summary.md`, `verification/playwright-verification-contract.json`, `verification/playwright-evidence.json`, `implementation-contract.md`, `AGENTS.md`, `CLAUDE.md`, `frontend-agent-contract/`, `10-revision/repair-task-queue.json`, and target generation artifacts.
+- Draft contract packages include `lifecycle/implementation-phases.json`, `draft/product-model.draft.json`, `draft/experience-architecture.draft.json`, `draft/design-system.draft.json`, `draft/design-system-preview.html`, `draft/design-system-review.md`, `draft/frontend-contract.draft.json`, `draft/assumption-ledger.md`, `draft/specialist-review.json`, `governance/frontend-practice-skills.json`, `governance/forbidden-behaviors.json`, `governance/convergence-standard.json`, and `draft/contract-approval-request.json`.
+- Canonical packages are generated only after human approval and include `spec/archetype-spec.md`, `spec/archetype-spec.json`, `governance/forbidden-behaviors.json`, `governance/convergence-standard.json`, `test-first/test-first-contract.json`, `test-first/test-quality-standard.json`, `test-results/initial-red-test-run.md`, `lifecycle/approval-request.md`, `lifecycle/approval-decision.json`, `lifecycle/execution-state.json`, `lifecycle/implementation-phases.json`, `lifecycle/final-readiness-report.md`, `draft/design-system-preview.html`, `reviews/specialist-review-summary.md`, `verification/playwright-verification-contract.json`, `verification/playwright-evidence.json`, `implementation-contract.md`, `AGENTS.md`, `CLAUDE.md`, `frontend-agent-contract/`, `10-revision/repair-task-queue.json`, and target generation artifacts.
 - Every package includes `manifest.json`, readiness artifacts, evidence artifacts, and lifecycle state artifacts.
 
 ## Use With Claude Code
@@ -254,6 +254,7 @@ npm run release:contract
 npm run plugin-install:contract
 npm run repo:audit
 npm run lifecycle:contract
+npm run design-preview:contract
 npm run lifecycle-execution:contract
 npm run frontend-practices:contract
 npm run agent-roles:contract

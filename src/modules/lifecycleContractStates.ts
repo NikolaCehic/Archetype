@@ -143,6 +143,8 @@ export function buildContractDraftArtifacts(pkg: ArchetypePackage): {
           "draft/product-model.draft.json",
           "draft/experience-architecture.draft.json",
           "draft/design-system.draft.json",
+          "draft/design-system-preview.html",
+          "draft/design-system-review.md",
           "draft/frontend-contract.draft.json",
           "draft/assumption-ledger.md"
         ]

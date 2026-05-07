@@ -106,6 +106,8 @@ for (const requiredArtifact of [
   "draft/product-model.draft.json",
   "draft/experience-architecture.draft.json",
   "draft/design-system.draft.json",
+  "draft/design-system-preview.html",
+  "draft/design-system-review.md",
   "draft/frontend-contract.draft.json",
   "draft/assumption-ledger.md",
   "draft/specialist-review.json",
@@ -139,6 +141,8 @@ assert(summarize.entrypoints.includes("lifecycle/clarification-turn.json"), "sum
 assert(summarize.entrypoints.includes("lifecycle/clarification-state.json"), "summarize should include clarification state entrypoint.");
 assert(summarize.entrypoints.includes("01-evidence/evidence-ledger.json"), "summarize should include evidence ledger entrypoint.");
 assert(summarize.entrypoints.includes("lifecycle/contract-state.json"), "summarize should include contract state entrypoint.");
+assert(summarize.entrypoints.includes("draft/design-system-preview.html"), "summarize should include design preview entrypoint.");
+assert(summarize.entrypoints.includes("draft/design-system-review.md"), "summarize should include design review entrypoint.");
 assert(summarize.entrypoints.includes("draft/frontend-contract.draft.json"), "summarize should include frontend draft entrypoint.");
 assert(summarize.entrypoints.includes("governance/non-negotiable-principles.json"), "summarize should include non-negotiable principles entrypoint.");
 assert(summarize.entrypoints.includes("governance/evidence-decision-model.json"), "summarize should include evidence decision model entrypoint.");
@@ -185,6 +189,7 @@ const approvedValidate = runJson(["validate", "--out", approvedOutputDir]);
 assert(approvedValidate.status === "pass", "approved validate --json should pass.");
 const approvedSummarize = runJson(["summarize", "--out", approvedOutputDir]);
 assert(approvedSummarize.entrypoints.includes("test-first/test-quality-standard.json"), "approved summarize should expose the test quality standard.");
+assert(approvedSummarize.entrypoints.includes("draft/design-system-preview.html"), "approved summarize should expose the design preview.");
 assert(approvedSummarize.entrypoints.includes("governance/forbidden-behaviors.json"), "approved summarize should expose the forbidden behavior contract.");
 assert(approvedSummarize.entrypoints.includes("governance/convergence-standard.json"), "approved summarize should expose the convergence standard.");
 const simulate = runJson(["simulate", "--out", approvedOutputDir]);

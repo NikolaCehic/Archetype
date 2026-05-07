@@ -55,6 +55,8 @@ for (const relativePath of [
   "draft/product-model.draft.json",
   "draft/experience-architecture.draft.json",
   "draft/design-system.draft.json",
+  "draft/design-system-preview.html",
+  "draft/design-system-review.md",
   "draft/frontend-contract.draft.json",
   "draft/assumption-ledger.md",
   "draft/specialist-review.json",
@@ -91,6 +93,8 @@ assert(contractDraftState.forbidden.includes("Produce implementation-ready instr
 const productDraft = readJson(path.join(draftOutputDir, "draft", "product-model.draft.json"));
 const experienceDraft = readJson(path.join(draftOutputDir, "draft", "experience-architecture.draft.json"));
 const designDraft = readJson(path.join(draftOutputDir, "draft", "design-system.draft.json"));
+const designPreview = readFileSync(path.join(draftOutputDir, "draft", "design-system-preview.html"), "utf8");
+const designReview = readFileSync(path.join(draftOutputDir, "draft", "design-system-review.md"), "utf8");
 const frontendDraft = readJson(path.join(draftOutputDir, "draft", "frontend-contract.draft.json"));
 const specialistReview = readJson(path.join(draftOutputDir, "draft", "specialist-review.json"));
 const approvalRequest = readJson(path.join(draftOutputDir, "draft", "contract-approval-request.json"));
@@ -100,6 +104,11 @@ assert(productDraft.unconfirmed_items_default_status === "candidate", "product d
 assert(experienceDraft.routes.every((route) => ["confirmed", "candidate", "missing", "conflicted", "blocked"].includes(route.draft_status)), "routes must expose draft statuses.");
 assert(experienceDraft.routes.some((route) => route.acceptance_state === "candidate_until_contract_approval"), "draft routes must include candidate acceptance state.");
 assert(designDraft.tokens.draft_status === "candidate_until_contract_approval", "draft tokens must remain candidate until approval.");
+assert(designPreview.includes("data-source-artifact=\"draft/design-system.draft.json\""), "design preview must trace to design-system draft JSON.");
+assert(designPreview.includes("not app code"), "design preview must state it is not app code.");
+assert(designPreview.includes("Colors") && designPreview.includes("Typography") && designPreview.includes("Components") && designPreview.includes("Component States"), "design preview must expose reviewable design system sections.");
+assert(designReview.includes("Source scope: HL-17"), "design review must identify HL-17.");
+assert(designReview.includes("one clarification question"), "design review must preserve one-question revision UX.");
 assert(frontendDraft.implementation_ready === false, "frontend draft must not be implementation-ready.");
 assert(frontendDraft.agent_instruction_policy.includes("Do not tell an implementation agent"), "frontend draft must not tell an agent to write code.");
 assert(specialistReview.reviewers.every((reviewer) => reviewer.may_approve === false), "specialist reviewers must not approve their own review.");

@@ -47,6 +47,8 @@ lifecycle/contract-state.json
 lifecycle/execution-state.json
 lifecycle/lifecycle-report.md
 draft/frontend-contract.draft.json
+draft/design-system-preview.html
+draft/design-system-review.md
 draft/assumption-ledger.md
 governance/forbidden-behaviors.json
 governance/convergence-standard.json
@@ -57,6 +59,8 @@ draft/contract-approval-request.json
 ## Agent Rule
 
 Spec-driven development starts from the approved canonical `spec/archetype-spec.json`. Before approval, Archetype emits draft artifacts only and must not ask an implementation agent to write product UI.
+
+Draft design-system review is encoded in `draft/design-system-preview.html` and `draft/design-system-review.md`. The preview is static browser-viewable HTML generated from `draft/design-system.draft.json`; it is not app code and not the source of truth. Users can ask questions or request changes, ambiguous requests return to one clarification question, and Archetype revises the draft JSON before regenerating the preview.
 
 Test-driven implementation starts from `test-first/test-first-contract.json` only after the canonical spec package exists.
 

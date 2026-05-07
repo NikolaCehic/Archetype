@@ -640,6 +640,44 @@ function validateConvergenceStandard(input: {
   }
 }
 
+function validateDesignSystemPreview(input: {
+  previewHtml: string;
+  reviewMarkdown: string;
+  blockers: string[];
+}): void {
+  const html = input.previewHtml;
+  const review = input.reviewMarkdown;
+  for (const expected of [
+    "data-archetype-artifact=\"draft-design-system-preview\"",
+    "data-source-artifact=\"draft/design-system.draft.json\"",
+    "data-source-scope=\"HL-17\"",
+    "Colors",
+    "Typography",
+    "Components",
+    "Component States",
+    "Token Tables",
+    "Full Draft Contract Data",
+    "not app code",
+    "not the source of truth"
+  ]) {
+    if (!html.includes(expected)) input.blockers.push(`Draft design system preview missing ${expected}.`);
+  }
+  if (/<script\b/i.test(html)) {
+    input.blockers.push("Draft design system preview must be static HTML without scripts.");
+  }
+  for (const expected of [
+    "Source scope: HL-17",
+    "draft/design-system.draft.json",
+    "draft/design-system-preview.html",
+    "one clarification question",
+    "not app implementation",
+    "not the source of truth",
+    "No implementation agent may build product UI from this preview alone."
+  ]) {
+    if (!review.includes(expected)) input.blockers.push(`Draft design system review missing ${expected}.`);
+  }
+}
+
 function validateDraftPackage(outputDir: string): PackageValidationResult {
   const blockers: string[] = [];
   const warnings: string[] = [];
@@ -676,6 +714,8 @@ function validateDraftPackage(outputDir: string): PackageValidationResult {
     "draft/product-model.draft.json",
     "draft/experience-architecture.draft.json",
     "draft/design-system.draft.json",
+    "draft/design-system-preview.html",
+    "draft/design-system-review.md",
     "draft/frontend-contract.draft.json",
     "draft/assumption-ledger.md",
     "draft/specialist-review.json",
@@ -839,10 +879,10 @@ function validateDraftPackage(outputDir: string): PackageValidationResult {
   if (manifest.readyForFrontendAgent !== false || manifest.implementationAuthorized !== false || internalManifest.ready_for_frontend_agent !== false || internalManifest.implementation_authorized !== false || readiness.readyForFrontendAgent !== false) {
     blockers.push("Draft package must not be frontend-agent ready or implementation authorized.");
   }
-  for (const artifactId of ["product-model-draft", "experience-architecture-draft", "design-system-draft", "frontend-contract-draft", "assumption-ledger", "specialist-review", "contract-approval-request", "lifecycle-contract-state", "implementation-phases", "implementation-phases-report", "forbidden-behaviors", "forbidden-behaviors-report", "convergence-standard", "convergence-standard-report", "frontend-practice-skills", "frontend-practice-skills-report"]) {
+  for (const artifactId of ["product-model-draft", "experience-architecture-draft", "design-system-draft", "design-system-preview", "design-system-review", "frontend-contract-draft", "assumption-ledger", "specialist-review", "contract-approval-request", "lifecycle-contract-state", "implementation-phases", "implementation-phases-report", "forbidden-behaviors", "forbidden-behaviors-report", "convergence-standard", "convergence-standard-report", "frontend-practice-skills", "frontend-practice-skills-report"]) {
     if (!manifest.artifacts?.some((artifact) => artifact.id === artifactId)) blockers.push(`Draft manifest missing ${artifactId}.`);
   }
-  for (const relativePath of ["lifecycle/implementation-phases.json", "lifecycle/implementation-phases.md", "governance/convergence-standard.json", "governance/convergence-standard.md"]) {
+  for (const relativePath of ["lifecycle/implementation-phases.json", "lifecycle/implementation-phases.md", "draft/design-system-preview.html", "draft/design-system-review.md", "governance/convergence-standard.json", "governance/convergence-standard.md"]) {
     if (!internalManifest.artifact_index?.includes(relativePath)) blockers.push(`Draft internal manifest missing ${relativePath}.`);
   }
   for (const skill of REQUIRED_FRONTEND_PRACTICE_SKILLS) {
@@ -875,6 +915,11 @@ function validateDraftPackage(outputDir: string): PackageValidationResult {
   if (designDraft.tokens?.draft_status !== "candidate_until_contract_approval") {
     blockers.push("Design token draft must remain candidate until contract approval.");
   }
+  validateDesignSystemPreview({
+    previewHtml: readFileSync(path.join(outputDir, "draft", "design-system-preview.html"), "utf8"),
+    reviewMarkdown: readFileSync(path.join(outputDir, "draft", "design-system-review.md"), "utf8"),
+    blockers
+  });
   if (frontendDraft.source_scope !== "HL-06" || frontendDraft.implementation_ready !== false || !String(frontendDraft.agent_instruction_policy ?? "").includes("Do not tell an implementation agent")) {
     blockers.push("Frontend contract draft must not be implementation-ready or tell the agent to write code.");
   }
@@ -1005,6 +1050,8 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   const convergenceStandardMarkdownPath = path.join(outputDir, "governance", "convergence-standard.md");
   const frontendPracticeSkillsPath = path.join(outputDir, "governance", "frontend-practice-skills.json");
   const frontendPracticeSkillsMarkdownPath = path.join(outputDir, "governance", "frontend-practice-skills.md");
+  const designSystemPreviewPath = path.join(outputDir, "draft", "design-system-preview.html");
+  const designSystemReviewPath = path.join(outputDir, "draft", "design-system-review.md");
   const specialistReviewPath = path.join(outputDir, "draft", "specialist-review.json");
   const specialistReviewSummaryPath = path.join(outputDir, "reviews", "specialist-review-summary.md");
   const manifestPath = path.join(outputDir, "00-manifest", "manifest.json");
@@ -1087,6 +1134,8 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   if (!existsSync(convergenceStandardMarkdownPath)) blockers.push("Missing governance/convergence-standard.md.");
   if (!existsSync(frontendPracticeSkillsPath)) blockers.push("Missing governance/frontend-practice-skills.json.");
   if (!existsSync(frontendPracticeSkillsMarkdownPath)) blockers.push("Missing governance/frontend-practice-skills.md.");
+  if (!existsSync(designSystemPreviewPath)) blockers.push("Missing draft/design-system-preview.html.");
+  if (!existsSync(designSystemReviewPath)) blockers.push("Missing draft/design-system-review.md.");
   for (const skill of REQUIRED_FRONTEND_PRACTICE_SKILLS) {
     if (!existsSync(path.join(outputDir, frontendPracticePath(skill)))) blockers.push(`Missing ${frontendPracticePath(skill)}.`);
   }
@@ -1585,6 +1634,11 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   validateConvergenceStandard({
     convergenceStandard,
     convergenceStandardMarkdown: readFileSync(convergenceStandardMarkdownPath, "utf8"),
+    blockers
+  });
+  validateDesignSystemPreview({
+    previewHtml: readFileSync(designSystemPreviewPath, "utf8"),
+    reviewMarkdown: readFileSync(designSystemReviewPath, "utf8"),
     blockers
   });
   if (playwrightContract.source_spec_path !== "spec/archetype-spec.json") {
