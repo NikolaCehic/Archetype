@@ -1,0 +1,23 @@
+# Template — Claude Code Plugin Manifest
+
+File path:
+
+```txt
+plugins/claude-code/.claude-plugin/plugin.json
+```
+
+Template:
+
+```json
+{
+  "name": "archetype",
+  "description": "Generate frontend implementation contracts from product intent and use them to guide implementation.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Nikola Cehic"
+  },
+  "homepage": "https://github.com/NikolaCehic/Archetype",
+  "repository": "https://github.com/NikolaCehic/Archetype",
+  "license": "MIT"
+}
+```

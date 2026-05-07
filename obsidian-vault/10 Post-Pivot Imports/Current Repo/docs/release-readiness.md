@@ -1,0 +1,56 @@
+# Release Readiness
+
+Release readiness means a user or AI agent can install Archetype into Codex and Claude Code, verify setup, start the MCP server, and understand the lifecycle without reverse-engineering the repository.
+
+## One-Command Install
+
+```bash
+npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json
+```
+
+This is the primary 60-second setup path. It writes the Codex home-local marketplace, the Claude Code local marketplace, direct Codex and Claude Code skills, slash command files, agents, and MCP config. When the `claude` CLI is available, it also installs/enables `archetype@archetype-local`.
+
+## Doctor
+
+Run the package doctor before claiming a release is ready:
+
+```bash
+npm run build
+npx . doctor --json
+```
+
+For the current GitHub package:
+
+```bash
+npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json
+npx --yes --package github:NikolaCehic/Archetype archetype doctor --json
+```
+
+The doctor checks package metadata, CLI and MCP bins, packaged file allowlist, root plugin surfaces, docs, plugin wrappers, MCP configs, examples, and release contract files.
+
+## Contracts
+
+```bash
+npm run release:contract
+npm run plugin-install:contract
+npm run repo:audit
+npm run install:contract
+npm pack --dry-run --json
+npm run check
+```
+
+`release:contract` validates the source and packed package readiness surface. `plugin-install:contract` proves the host installer writes Codex and Claude Code plugin surfaces from source and packed `npx`. `repo:audit` blocks internal logs, generated outputs, private env files, and package tarballs from the tracked repository. `install:contract` proves a clean consumer install, `npx` setup, MCP startup, plugin files, and the 60-second setup contract.
+
+## Completion Gate
+
+Do not claim release readiness unless all of these pass:
+
+```txt
+archetype doctor --json
+npm run release:contract
+npm run plugin-install:contract
+npm run repo:audit
+npm run install:contract
+npm pack --dry-run --json
+npm run check
+```
