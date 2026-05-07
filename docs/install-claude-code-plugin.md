@@ -22,8 +22,9 @@ The installer writes a local Claude Code marketplace plus the plugin surface:
 - `~/.claude/skills/archetype-implement/SKILL.md`
 - `~/.claude/skills/archetype-verify/SKILL.md`
 - `~/.claude/skills/archetype-revise/SKILL.md`
-- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/agents/product-architect.md`
-- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/agents/frontend-contract-reviewer.md`
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/agents/`
+
+The `agents/` folder includes product, experience, frontend architecture, design-system, practice-enforcement, strict TypeScript, pixel-perfect, accessibility, test-first, contract-verifier, repair-planner, and QA role files. Each role has authority, inputs, outputs, blockers, handoff rules, and the rule that no agent can approve its own work.
 
 When the `claude` CLI is available, the installer also runs:
 

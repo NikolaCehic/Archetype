@@ -21,7 +21,10 @@ The installer writes:
 - `~/plugins/archetype/skills/implement/SKILL.md`
 - `~/plugins/archetype/skills/verify/SKILL.md`
 - `~/plugins/archetype/skills/revise/SKILL.md`
+- `~/plugins/archetype/agents/`
 - `~/.agents/plugins/marketplace.json`
+
+The `agents/` folder includes specialist role files for product, experience, frontend architecture, design-system, practice enforcement, strict typing, pixel-perfect UI, accessibility, test-first implementation, contract verification, repair planning, and QA. Each role states authority, inputs, outputs, blockers, handoff rules, and the rule that no agent can approve its own work.
 
 For local source testing:
 

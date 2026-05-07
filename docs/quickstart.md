@@ -15,6 +15,7 @@ This writes:
 - `~/.codex/skills/archetype/` for the Codex front-door skill
 - `~/.codex/skills/archetype-blueprint/`, `~/.codex/skills/archetype-implement/`, `~/.codex/skills/archetype-verify/`, and `~/.codex/skills/archetype-revise/`
 - `~/.codex/plugins/archetype/` and `~/plugins/archetype/` for the Codex plugin surface
+- `~/plugins/archetype/agents/` for specialist role files
 - `~/.agents/plugins/marketplace.json` for Codex plugin discovery
 - `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/` for Claude Code
 - `~/.claude/plugins/marketplaces/archetype-local/.claude-plugin/marketplace.json` for Claude Code marketplace discovery
@@ -33,7 +34,7 @@ Claude Code: /archetype "I want to build a premium B2B analytics app for marketi
 
 In Codex, use `@` only to attach project files and folders, for example `@SPEC.md` or `@screenshots/login.png`.
 
-The plugin flow should clarify missing context, ask for optional materials, generate `archetype-output`, drive tests first, verify with Playwright, and plan repair tasks without making the user learn internal commands.
+The plugin flow should clarify missing context, ask for optional materials, generate `archetype-output`, stop for draft approval when needed, drive tests first after canonical spec approval, verify with Playwright, and plan repair tasks without making the user learn internal commands.
 
 ## Diagnostics And CLI Fallback
 
@@ -46,11 +47,14 @@ npx --yes --package github:NikolaCehic/Archetype archetype generate --input arch
 Read first:
 
 ```txt
-archetype-output/AGENTS.md
-archetype-output/CLAUDE.md
-archetype-output/spec/archetype-spec.md
-archetype-output/test-first/test-first-plan.md
+archetype-output/lifecycle/contract-state.json
+archetype-output/lifecycle/execution-state.json
+archetype-output/draft/frontend-contract.draft.json
+archetype-output/draft/assumption-ledger.md
+archetype-output/draft/contract-approval-request.json
 ```
+
+After human approval, regenerate and read `archetype-output/spec/archetype-spec.md`, `archetype-output/test-first/test-first-plan.md`, `archetype-output/AGENTS.md`, or `archetype-output/CLAUDE.md`.
 
 ## Local Source
 

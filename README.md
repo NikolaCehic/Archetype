@@ -47,9 +47,11 @@ Archetype compiles product intent into a frontend implementation package:
 - acceptance criteria
 - test-first contracts
 - Playwright-backed verification contract and evidence
+- QA scenario catalog and evidence reports
 - revision and repair task queue
 - verification plan
 - readiness report
+- specialist agent role files under `agents/`
 
 ## Core Flow
 
@@ -142,6 +144,7 @@ The server exposes deterministic tools for agent hosts:
 
 - `archetype_release_doctor`
 - `archetype_create_intake`
+- `archetype_answer_clarification`
 - `archetype_generate_package`
 - `archetype_validate_package`
 - `archetype_summarize_package`
@@ -155,31 +158,12 @@ Installation details are in `docs/install.md`.
 
 ## What Archetype Generates
 
-`archetype-output/` includes:
+`archetype-output/` is gated by lifecycle readiness:
 
-- `implementation-contract.md` - the main frontend build contract
-- `spec/archetype-spec.md` - canonical human-readable source of truth
-- `spec/archetype-spec.json` - canonical machine-readable source of truth
-- `test-first/` - spec-derived smoke, E2E, UI, integration, and unit test contracts
-- `verification/playwright-verification-contract.json` - browser verification obligations
-- `verification/playwright-verification-plan.md` - human-readable browser verification plan
-- `verification/playwright-verification.spec.ts` - generated Playwright browser checks
-- `verification/playwright-evidence.json` - pending or completed Playwright evidence
-- `10-revision/repair-task-queue.json` - concrete fix or revise tasks from verification evidence
-- `10-revision/repair-plan.md` - human-readable repair plan
-- `lifecycle/` - state machine, context completion, and clarification questions
-- `AGENTS.md` - instructions for Codex and agentic coding tools
-- `CLAUDE.md` - instructions for Claude Code
-- `manifest.json` - machine-readable artifact map
-- `readiness-report.md` - blockers, warnings, assumptions, readiness score
-- `verification-plan.md` - checks required before completion
-- `product/product-model.json` - product summary and core entities
-- `experience/route-map.json` - app routes and navigation structure
-- `screens/screen-inventory.json` - required screens and states
-- `design-system/tokens.json` - design-system constraints
-- `design-system/component-contracts.json` - reusable component contracts
-- `frontend-agent-contract/` - implementation rules and acceptance criteria
-- `validation/` - package validation and simulation reports
+- Clarification packages include `lifecycle/start-request.json`, `lifecycle/context-matrix.json`, `lifecycle/implementation-phases.json`, `lifecycle/clarification-turn.json`, `lifecycle/clarification-state.json`, `01-evidence/evidence-ledger.json`, `01-evidence/missing-context.md`, `governance/forbidden-behaviors.json`, and `governance/convergence-standard.json`.
+- Draft contract packages include `lifecycle/implementation-phases.json`, `draft/product-model.draft.json`, `draft/experience-architecture.draft.json`, `draft/design-system.draft.json`, `draft/frontend-contract.draft.json`, `draft/assumption-ledger.md`, `draft/specialist-review.json`, `governance/frontend-practice-skills.json`, `governance/forbidden-behaviors.json`, `governance/convergence-standard.json`, and `draft/contract-approval-request.json`.
+- Canonical packages are generated only after human approval and include `spec/archetype-spec.md`, `spec/archetype-spec.json`, `governance/forbidden-behaviors.json`, `governance/convergence-standard.json`, `test-first/test-first-contract.json`, `test-first/test-quality-standard.json`, `test-results/initial-red-test-run.md`, `lifecycle/approval-request.md`, `lifecycle/approval-decision.json`, `lifecycle/execution-state.json`, `lifecycle/implementation-phases.json`, `lifecycle/final-readiness-report.md`, `reviews/specialist-review-summary.md`, `verification/playwright-verification-contract.json`, `verification/playwright-evidence.json`, `implementation-contract.md`, `AGENTS.md`, `CLAUDE.md`, `frontend-agent-contract/`, `10-revision/repair-task-queue.json`, and target generation artifacts.
+- Every package includes `manifest.json`, readiness artifacts, evidence artifacts, and lifecycle state artifacts.
 
 ## Use With Claude Code
 
@@ -232,6 +216,7 @@ Installed Codex plugin surface:
 - `~/.codex/plugins/archetype/.codex-plugin/plugin.json`
 - `~/plugins/archetype/.codex-plugin/plugin.json`
 - `~/plugins/archetype/skills/`
+- `~/plugins/archetype/agents/`
 - `~/plugins/archetype/.mcp.json`
 - `~/.agents/plugins/marketplace.json`
 
@@ -252,6 +237,7 @@ Narration and expected artifacts are in `docs/demo-script.md`.
 - `examples/saas-dashboard-intake.json`
 - `examples/fintech-intake.json`
 - `examples/marketplace-admin-intake.json`
+- `examples/vague-marketing-dashboard-intake.json`
 
 ## Development
 
@@ -268,6 +254,14 @@ npm run release:contract
 npm run plugin-install:contract
 npm run repo:audit
 npm run lifecycle:contract
+npm run lifecycle-execution:contract
+npm run frontend-practices:contract
+npm run agent-roles:contract
+npm run qa-team:contract
+npm run forbidden-behaviors:contract
+npm run marketing-replay:contract
+npm run implementation-phases:contract
+npm run convergence:contract
 npm run spec:contract
 npm run test-first:contract
 npm run playwright:contract
