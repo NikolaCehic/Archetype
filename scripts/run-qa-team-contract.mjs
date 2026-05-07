@@ -188,6 +188,69 @@ for (const base of ["agents", path.join("plugins", "claude-code", "agents")]) {
   }
 }
 
+const uiStateQaRequirements = [
+  "## Role",
+  "Role ID: `ui-state-qa`",
+  "Role Type: UI state coverage specialist and forced-state evidence gatekeeper.",
+  "Does Not Own",
+  "Success Condition",
+  "## Mission",
+  "## Production Standard",
+  "## Operating Procedure",
+  "## UI State Sufficiency Gate",
+  "## One-Question Clarification Priority",
+  "## Output Schema",
+  "## Decision Rules",
+  "## Required UI State Evidence Contract",
+  "## State Family Matrix",
+  "## Failure Routing Matrix",
+  "## Self-Review Checklist",
+  "ui_state_ready_for_qa_lead",
+  "ui_state_needs_repair",
+  "ui_state_blocked_missing_evidence",
+  "ui_state_blocked_unreachable_state",
+  "ui_state_blocked_marker_only_evidence",
+  "ui_state_blocked_accessibility_gap",
+  "default",
+  "loading",
+  "empty",
+  "filtered_empty",
+  "error",
+  "permission_denied",
+  "offline",
+  "partial_data",
+  "stale_data",
+  "validation_error",
+  "success_confirmation",
+  "?archetype_state=...",
+  "archetype_state",
+  "screen_state",
+  "Target evidence: `target:tests/ui/archetype-screen-states.spec.ts`",
+  "target:test-results/archetype-playwright-results.json",
+  "target:playwright-report/",
+  "visible user-facing copy",
+  "not marker-only",
+  "role, status, alert, error, progress, form association, or accessible feedback",
+  "Status messages must not steal focus",
+  "screens/screen-specs.json",
+  "03-experience-architecture/ux-flow-state-completeness.json",
+  "verification/playwright-verification-contract.json",
+  "qa/scenario-catalog.json",
+  "qa/playwright-results.json",
+  "14-target-execution/target-execution-report.json",
+  "repair-planner.md",
+  "accessibility-qa.md",
+  "visual-regression-qa.md",
+  "No agent can approve its own work.",
+  "This role cannot verify or close UI state evidence it generated."
+];
+for (const base of ["agents", path.join("plugins", "claude-code", "agents")]) {
+  const uiStateQa = readText(path.join(root, base, "ui-state-qa.md"));
+  for (const expected of uiStateQaRequirements) {
+    assert(uiStateQa.includes(expected), `${base}/ui-state-qa.md missing hardened UI state QA requirement: ${expected}.`);
+  }
+}
+
 const approvedInput = {
   ...readJson(path.join(root, "examples", "saas-dashboard-intake.json")),
   contractApproval: {

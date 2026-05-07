@@ -2266,3 +2266,64 @@ Current answer for Playwright E2E engineer hardening:
 I do not know how to make the Playwright E2E engineer role more deterministic without importing requirements outside the approved Archetype Playwright contract, target execution evidence, raw browser results, QA artifacts, and repair evidence.
 I cannot identify a technical or architectural mismatch against the Playwright E2E engineer hardening goal in the current role file.
 ```
+
+## Agent Hardening - UI State QA
+
+Source files:
+
+- `agents/ui-state-qa.md`
+- `plugins/claude-code/agents/ui-state-qa.md`
+- `scripts/run-qa-team-contract.mjs`
+
+Browser research anchors:
+
+- Playwright best practices: https://playwright.dev/docs/best-practices
+- Playwright locators: https://playwright.dev/docs/locators
+- Testing Library guiding principles: https://testing-library.com/docs/guiding-principles/
+- Testing Library query priority: https://testing-library.com/docs/queries/about/#priority
+- MDN ARIA status role: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/status_role
+- WCAG 2.2 status messages: https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html
+
+Mismatches found before hardening:
+
+- The UI State QA role was a short checklist and did not define a role, mission, production standard, operating procedure, sufficiency gate, output schema, evidence contract, state taxonomy, failure routing matrix, or self-review loop.
+- The role named loading, empty, error, success, permission, offline, stale, and forced states, but did not cover the canonical Archetype state set: `default`, `loading`, `empty`, `filtered_empty`, `error`, `permission_denied`, `offline`, `partial_data`, `stale_data`, `validation_error`, and `success_confirmation`.
+- The role did not require deterministic reachability through `?archetype_state=...`, fixture routes, or documented user triggers.
+- The role did not distinguish visible user-facing state content from marker-only proof.
+- The role did not require semantic status, alert, error, progress, form association, focus behavior, accessible recovery, or status-message boundaries.
+- The role did not reconcile screen specs, UX flow state completeness, test-first UI tests, Playwright screen-state scenarios, QA catalog, accessibility report, visual report, target execution, and repair queue as one evidence system.
+- Contract tests only checked generic QA role sections and plugin mirroring.
+
+Corrections applied:
+
+- Rewrote the role as a UI state coverage specialist and forced-state evidence gatekeeper.
+- Added explicit authority, mission, production standard, canonical inputs, outputs, blockers, operating procedure, UI state sufficiency gate, one-question clarification priority, output schema, decision rules, required evidence contract, state family matrix, failure routing matrix, practice anchors, good/bad output signals, self-review checklist, and handoff rules.
+- Added deterministic statuses: `ui_state_ready_for_qa_lead`, `ui_state_needs_repair`, `ui_state_blocked_missing_evidence`, `ui_state_blocked_unreachable_state`, `ui_state_blocked_marker_only_evidence`, and `ui_state_blocked_accessibility_gap`.
+- Required every state finding to include screen, route, state, required source, trigger, visible feedback, status semantics, recovery action, scenario ids, target test file, raw result artifact, screenshot/trace artifact, status, and owner.
+- Required UI state evidence to prove visible copy, route orientation, recovery, semantic feedback, state-specific meaning, and target evidence instead of selector-only presence.
+- Mirrored the hardened role into the Claude Code plugin agent surface.
+- Added contract assertions for the hardened UI State QA requirements in the QA team contract.
+
+Self-healing rules added:
+
+- UI state QA must build its state matrix from artifacts, not memory.
+- A state is not verified unless it is both contract-declared and deterministic to reach.
+- Selector-only proof is a blocker, not a weak pass.
+- Status-like state changes need semantic feedback that assistive technology can announce without an unnecessary focus change.
+- Recovery states without visible next steps remain repair tasks.
+- Empty, filtered-empty, error, permission, offline, partial, stale, validation, and success states must not collapse into one generic panel.
+- Plugin mirrors must carry the same hardened UI-state role as the root repository.
+
+Agent hardening convergence review:
+
+- The UI State QA role now has enough role detail to verify non-happy-path screen states deterministically.
+- The role blocks missing state contracts, unreachable forced states, marker-only proof, inaccessible status/recovery, generic state copy, visual collapse, stale evidence, contradictory QA/target status, and unresolved UI-state repair work.
+- The role explicitly hands off implementation, ambiguous contract, accessibility, visual, marker-only, drift, and QA reconciliation findings to the correct owners instead of self-approving.
+- QA team contract tests now fail if the hardened UI State QA responsibilities are removed from root or Claude plugin agent files.
+
+Current answer for UI State QA hardening:
+
+```txt
+I do not know how to make the UI State QA role more deterministic without importing requirements outside the approved Archetype screen-state contracts, UX flow state completeness, test-first UI tests, Playwright evidence, QA artifacts, target execution evidence, and accessibility/visual reports.
+I cannot identify a technical or architectural mismatch against the UI State QA hardening goal in the current role file.
+```
