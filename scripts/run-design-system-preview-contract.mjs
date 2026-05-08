@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { createApprovedIntakeFixture } from "./helpers/approve-draft-fixture.mjs";
 
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "design-system-preview-contract");
@@ -108,21 +109,13 @@ const missingPreviewValidate = runJsonMaybeFail(["validate", "--out", draftOutpu
 assert(missingPreviewValidate.exitCode === 1, "validate must fail when preview HTML is missing.");
 assert(missingPreviewValidate.json?.blockers?.some((blocker) => String(blocker).includes("draft/design-system-preview.html")), "validate should name missing preview HTML.");
 
-const baseInput = readJson(path.join(root, "examples", "saas-dashboard-intake.json"));
-writeFileSync(approvedInputPath, `${JSON.stringify({
-  ...baseInput,
-  contractApproval: {
-    approved: true,
-    approverType: "human",
-    approvedBy: "Design preview contract",
-    approvedAt: "2026-05-07T00:00:00.000Z",
-    artifactRefs: [
-      "draft/contract-approval-request.json",
-      "draft/design-system.draft.json",
-      "draft/design-system-preview.html"
-    ]
-  }
-}, null, 2)}\n`);
+createApprovedIntakeFixture({
+  root,
+  workspace,
+  approvedInputPath,
+  approvedBy: "Design preview contract",
+  approvedAt: "2026-05-07T00:00:00.000Z"
+});
 const approvedGenerate = runJson(["generate", "--input", approvedInputPath, "--out", approvedOutputDir]);
 assert(approvedGenerate.readyForFrontendAgent === true, "approved fixture should be ready for implementation.");
 assertPreview(approvedOutputDir, "approved");

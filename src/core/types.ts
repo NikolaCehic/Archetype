@@ -55,6 +55,12 @@ export interface ContractApprovalInput {
   approverType?: "human" | "agent" | "system";
   approvedAt?: string;
   artifactRefs?: string[];
+  approvalArtifactPath?: string;
+  approvalDigest?: string;
+  draftPackageId?: string;
+  sourceHash?: string;
+  packageChecksum?: string;
+  approvedAssumptionIds?: string[];
 }
 
 export type SourceMaterialType = "document" | "code" | "design_file" | "screenshot" | "brand" | "other";

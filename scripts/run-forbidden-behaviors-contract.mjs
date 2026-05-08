@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { createApprovedIntakeFixture } from "./helpers/approve-draft-fixture.mjs";
 
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "forbidden-behaviors-contract");
@@ -86,17 +87,13 @@ assert(weakTurn.question_count === 1, "Weak prompt must ask exactly one clarific
 assert(weakQuestions.length === 1, "Weak prompt clarification questions artifact must contain exactly one question.");
 assert(existsSync(path.join(weakOutputDir, "governance", "forbidden-behaviors.json")), "Clarification package must include the forbidden behavior contract.");
 
-const approvedInput = {
-  ...readJson(path.join(root, "examples", "saas-dashboard-intake.json")),
-  contractApproval: {
-    approved: true,
-    approverType: "human",
-    approvedBy: "Forbidden behavior contract",
-    approvedAt: "2026-05-06T00:00:00.000Z",
-    artifactRefs: ["spec/archetype-spec.json", "implementation-contract.md", "test-first/test-first-contract.json"]
-  }
-};
-writeFileSync(approvedInputPath, `${JSON.stringify(approvedInput, null, 2)}\n`);
+createApprovedIntakeFixture({
+  root,
+  workspace,
+  approvedInputPath,
+  approvedBy: "Forbidden behavior contract",
+  approvedAt: "2026-05-06T00:00:00.000Z"
+});
 
 const generate = runJson(["generate", "--input", approvedInputPath, "--out", outputDir]);
 assert(generate.readyForFrontendAgent === true, "Approved fixture should be implementation-authorized.");

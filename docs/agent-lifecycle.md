@@ -62,6 +62,16 @@ The Agent Data Plane augments those artifacts with replayable run records under 
 
 Spec-driven development starts from the approved canonical `spec/archetype-spec.json`. Before approval, Archetype emits draft artifacts only and must not ask an implementation agent to write product UI.
 
+Approval is bound to generated evidence, not to a mutable boolean in the intake file. The CLI path is:
+
+```bash
+archetype generate --input archetype.intake.json --out archetype-output --json
+archetype approve-draft --draft archetype-output --input archetype.intake.json --out archetype.approved.intake.json --approved-by "Human reviewer" --json
+archetype generate --input archetype.approved.intake.json --out archetype-output --force --json
+```
+
+`approve-draft` records the draft package id, source hash, package checksum, approval digest, and hashes for required draft artifacts. A raw `contractApproval` object without the approval proof remains blocked.
+
 Draft design-system review is encoded in `draft/design-system-preview.html` and `draft/design-system-review.md`. The preview is static browser-viewable HTML generated from `draft/design-system.draft.json`; it is not app code and not the source of truth. Users can ask questions or request changes, ambiguous requests return to one clarification question, and Archetype revises the draft JSON before regenerating the preview.
 
 Test-driven implementation starts from `test-first/test-first-contract.json` only after the canonical spec package exists.
@@ -71,6 +81,8 @@ The test quality standard lives at `test-first/test-quality-standard.json`. Test
 Complete packages preserve approval and evidence traceability through `lifecycle/approval-request.md`, `lifecycle/approval-decision.json`, `reviews/specialist-review-summary.md`, `test-results/initial-red-test-run.md`, and `lifecycle/final-readiness-report.md`.
 
 Forbidden lifecycle behavior is encoded in `governance/forbidden-behaviors.json`. The package must reject weak-context code generation, inferred routes treated as accepted routes, warning-based readiness claims, bulk clarification, hidden assumptions, default Vite READMEs, mock-only production claims, generic success-state workflows, marker-only tests, unapproved contract mutation, and QA without Playwright evidence.
+
+Generated output safety is part of the lifecycle. `archetype-output/` and generated target frontends carry marker files so commands can distinguish Archetype-owned output from user projects. Recursive overwrite is refused for unmarked non-empty directories and project roots.
 
 Phase sequencing is encoded in `lifecycle/implementation-phases.json`. It defines the seven phases after plan approval: Gate Model, One-Question Clarification UX, Candidate vs Canonical Contracts, Specialist Skills And Agent Roles, Test And QA Hardening, Verification And Drift Enforcement, and Regression Fixtures. Phase 1 is a hard gate: `needs_clarification` blocks implementation readiness.
 

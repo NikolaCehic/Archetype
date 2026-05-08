@@ -1,5 +1,6 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { prepareGeneratedOutputDirectory } from "../safety/pathSafety";
 import type { ArchetypePackage } from "../core/types";
 import { buildConvergenceStandardArtifact, convergenceStandardMarkdown } from "../modules/convergenceStandard";
 import { designSystemPreviewHtml, designSystemReviewMarkdown } from "../modules/designSystemPreview";
@@ -113,9 +114,12 @@ function artifactIndex(artifacts: DraftArtifact[]): string[] {
   return artifacts.map((artifact) => artifact.path).sort();
 }
 
-export function exportDraftPackage(pkg: ArchetypePackage, outDir: string): DraftPackageExport {
-  rmSync(outDir, { recursive: true, force: true });
-  mkdirSync(outDir, { recursive: true });
+export interface ExportDraftPackageOptions {
+  force?: boolean;
+}
+
+export function exportDraftPackage(pkg: ArchetypePackage, outDir: string, options: ExportDraftPackageOptions = {}): DraftPackageExport {
+  prepareGeneratedOutputDirectory(outDir, { force: options.force === true });
 
   const draft = buildContractDraftArtifacts(pkg);
   const designPreviewHtml = designSystemPreviewHtml(pkg, draft.designSystemDraft);

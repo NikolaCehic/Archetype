@@ -1,6 +1,7 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { createApprovedIntakeFixture } from "./helpers/approve-draft-fixture.mjs";
 
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "mcp-contract");
@@ -216,8 +217,9 @@ try {
     outputDir: root,
     overwrite: true
   });
+  const unsafeGenerateMessage = JSON.stringify(unsafeGenerate);
   assert(
-    unsafeGenerate.message.includes("dedicated output directory") || unsafeGenerate.message.includes("existing project directory"),
+    unsafeGenerateMessage.includes("dedicated generated directory") || unsafeGenerateMessage.includes("existing project directory"),
     "generate should reject unsafe output directories."
   );
 
@@ -294,17 +296,14 @@ try {
   assert(blockedWriteTarget.status === 1, "unapproved write-target should exit non-zero.");
   assert(blockedWriteJson.status === "fail", "write-target should fail for an unapproved MCP draft package.");
 
-  const approvedIntake = {
-    ...createdIntake,
-    contractApproval: {
-      approved: true,
-      approverType: "human",
-      approvedBy: "MCP contract test",
-      approvedAt: "2026-05-06T00:00:00.000Z",
-      artifactRefs: ["spec/archetype-spec.json", "implementation-contract.md", "test-first/test-first-contract.json"]
-    }
-  };
-  writeFileSync(approvedIntakePath, `${JSON.stringify(approvedIntake, null, 2)}\n`);
+  createApprovedIntakeFixture({
+    root,
+    workspace,
+    approvedInputPath: approvedIntakePath,
+    baseInput: createdIntake,
+    approvedBy: "MCP contract test",
+    approvedAt: "2026-05-06T00:00:00.000Z"
+  });
   const approvedGenerate = await callTool("archetype_generate_package", {
     inputPath: approvedIntakePath,
     outputDir: approvedOutputDir,

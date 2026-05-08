@@ -19,6 +19,7 @@ This is the working second brain for hardening Archetype into a context-locked, 
 - [[Source Documents]]
 - [[Open Questions]]
 - [[../12 Scope Implementation Lessons/lessons|Scope Implementation Lessons]]
+- [[../13 Quality Reviews/Quality Reviews MOC|Quality Reviews MOC]]
 
 ## Current Focus
 
@@ -54,6 +55,7 @@ Weak context cannot produce canonical spec, tests, or implementation instruction
 - [[Specialist Gate Model]]
 - [[QA Team]]
 - [[Test Quality Standard]]
+- [[../13 Quality Reviews/Archetype Six-Agent Scope Audit Convergence - 2026-05-07|Six-Agent Scope Audit Convergence]]
 
 ## Post-Pivot Archive
 

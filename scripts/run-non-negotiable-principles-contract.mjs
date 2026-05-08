@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { createApprovedIntakeFixture } from "./helpers/approve-draft-fixture.mjs";
 
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "non-negotiable-principles-contract");
@@ -71,16 +72,7 @@ const draftWrite = runJsonMaybeFail(["write-target", "--out", draftOutputDir, "-
 assert(draftWrite.exitCode === 1, "write-target must hard-block unapproved draft packages.");
 assert(draftWrite.json.blockers.some((blocker) => String(blocker).includes("Implementation is not authorized")), "write-target must expose implementation authorization blocker.");
 
-writeFileSync(humanApprovedInputPath, `${JSON.stringify({
-  ...baseInput,
-  contractApproval: {
-    approved: true,
-    approverType: "human",
-    approvedBy: "Scope 01 Contract Test",
-    approvedAt: "2026-05-06T00:00:00.000Z",
-    artifactRefs: ["spec/archetype-spec.json", "implementation-contract.md", "test-first/test-first-contract.json"]
-  }
-}, null, 2)}\n`);
+createApprovedIntakeFixture({ root, workspace, approvedInputPath: humanApprovedInputPath, baseInput, approvedBy: "Scope 01 Contract Test" });
 const humanGenerate = runJson(["generate", "--input", humanApprovedInputPath, "--out", humanApprovedOutputDir]);
 assert(humanGenerate.readyForFrontendAgent === true, "human-approved package should be ready for frontend agents.");
 const humanManifest = readJson(path.join(humanApprovedOutputDir, "manifest.json"));

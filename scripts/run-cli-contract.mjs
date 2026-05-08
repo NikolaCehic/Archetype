@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { createApprovedIntakeFixture } from "./helpers/approve-draft-fixture.mjs";
 
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "cli-contract");
@@ -171,17 +172,13 @@ const blockedWriteTarget = runJsonMaybeFail(["write-target", "--out", outputDir,
 assert(blockedWriteTarget.exitCode === 1, "write-target should reject an unapproved draft package.");
 assert(blockedWriteTarget.json.blockers.some((blocker) => String(blocker).includes("Implementation is not authorized")), "write-target should name the approval blocker.");
 
-const approvedIntake = {
-  ...JSON.parse(readFileSync(intakePath, "utf8")),
-  contractApproval: {
-    approved: true,
-    approverType: "human",
-    approvedBy: "CLI contract test",
-    approvedAt: "2026-05-06T00:00:00.000Z",
-    artifactRefs: ["spec/archetype-spec.json", "implementation-contract.md", "test-first/test-first-contract.json"]
-  }
-};
-writeFileSync(approvedIntakePath, `${JSON.stringify(approvedIntake, null, 2)}\n`);
+createApprovedIntakeFixture({
+  root,
+  workspace,
+  approvedInputPath: approvedIntakePath,
+  baseInput: JSON.parse(readFileSync(intakePath, "utf8")),
+  approvedBy: "CLI contract test"
+});
 const approvedGenerate = runJson(["generate", "--input", approvedIntakePath, "--out", approvedOutputDir]);
 assert(approvedGenerate.readyForFrontendAgent === true, "human-approved package should be ready for frontend implementation.");
 assert(approvedGenerate.readinessTier === "ready_for_implementation", "human-approved package should be ready for implementation.");

@@ -1,4 +1,7 @@
 import type { ArchetypeInput, ArchetypePackage, DecisionRecord } from "../core/types";
+import path from "node:path";
+import { existsSync } from "node:fs";
+import { inputSourceHashForApproval, readDraftApprovalProof, verifyDraftApprovalProofDigest } from "../approval/draftApproval";
 import { decisionStatusForEvidenceRefs as hl02DecisionStatusForEvidenceRefs, evidenceLevelCanBecomeCanonical, evidenceLevelForReference, humanApprovedPackage } from "./evidenceDecisionModel";
 
 type GateStatus = "pass" | "blocked" | "fail";
@@ -49,25 +52,85 @@ export function decisionStatusForEvidenceRefs(refs: string[]): DecisionRecord["s
   return hl02DecisionStatusForEvidenceRefs(refs);
 }
 
-export function buildContractApprovalState(input: ArchetypeInput): Record<string, unknown> {
+export interface ContractApprovalStateOptions {
+  sourcePath?: string;
+}
+
+function resolveApprovalArtifactPath(approvalArtifactPath: string | undefined, options: ContractApprovalStateOptions): string | null {
+  if (!approvalArtifactPath || approvalArtifactPath.trim().length === 0) return null;
+  if (approvalArtifactPath.includes("\0")) return null;
+  if (path.isAbsolute(approvalArtifactPath)) return path.resolve(approvalArtifactPath);
+  if (!options.sourcePath) return null;
+  return path.resolve(path.dirname(options.sourcePath), approvalArtifactPath);
+}
+
+function approvalProofBlockers(input: ArchetypeInput, options: ContractApprovalStateOptions): string[] {
+  const approval = input.contractApproval;
+  if (!approval || approval.approved !== true || approval.approverType !== "human") return [];
+
+  const blockers: string[] = [];
+  const approvalArtifactPath = resolveApprovalArtifactPath(approval.approvalArtifactPath, options);
+  const expectedSourceHash = inputSourceHashForApproval(input);
+  if (!approvalArtifactPath) {
+    blockers.push("HL-01 approval gate blocked: approvalArtifactPath must point to a bound draft approval proof.");
+    return blockers;
+  }
+  if (!existsSync(approvalArtifactPath)) {
+    blockers.push(`HL-01 approval gate blocked: approval proof artifact does not exist: ${approvalArtifactPath}.`);
+    return blockers;
+  }
+
+  try {
+    const proof = readDraftApprovalProof(approvalArtifactPath);
+    if (!verifyDraftApprovalProofDigest(proof)) blockers.push("HL-01 approval gate blocked: approval proof digest does not match its contents.");
+    if (approval.approvalDigest !== proof.approval_digest) blockers.push("HL-01 approval gate blocked: intake approval digest does not match approval proof.");
+    if (approval.draftPackageId !== proof.draft_package_id) blockers.push("HL-01 approval gate blocked: draft package id does not match approval proof.");
+    if (approval.sourceHash !== proof.draft_source_hash) blockers.push("HL-01 approval gate blocked: source hash does not match approval proof.");
+    if (approval.packageChecksum !== proof.draft_package_checksum) blockers.push("HL-01 approval gate blocked: draft package checksum does not match approval proof.");
+    if (proof.draft_source_hash !== expectedSourceHash) blockers.push("HL-01 approval gate blocked: approval proof source hash does not match current intake without approval.");
+    if (approval.approvedBy !== proof.approved_by) blockers.push("HL-01 approval gate blocked: approvedBy does not match approval proof.");
+    if (approval.approvedAt !== proof.approved_at) blockers.push("HL-01 approval gate blocked: approvedAt does not match approval proof.");
+    if (!Array.isArray(proof.artifact_hashes) || proof.artifact_hashes.length === 0) {
+      blockers.push("HL-01 approval gate blocked: approval proof must include draft artifact hashes.");
+    }
+    const refs = new Set(approval.artifactRefs ?? []);
+    for (const ref of proof.approved_artifact_refs) {
+      if (!refs.has(ref)) blockers.push(`HL-01 approval gate blocked: intake approval is missing proof artifact ref ${ref}.`);
+    }
+  } catch (error) {
+    blockers.push(`HL-01 approval gate blocked: ${(error instanceof Error ? error.message : String(error))}`);
+  }
+
+  return blockers;
+}
+
+export function buildContractApprovalState(input: ArchetypeInput, options: ContractApprovalStateOptions = {}): Record<string, unknown> {
   const approval = input.contractApproval;
   const approved = approval?.approved === true;
   const approverType = approval?.approverType ?? "none";
   const approvedBy = approval?.approvedBy ?? null;
   const artifactRefs = approval?.artifactRefs ?? [];
-  const humanApproved = approved && approverType === "human" && typeof approvedBy === "string" && approvedBy.trim().length > 0;
+  const proofBlockers = approvalProofBlockers(input, options);
+  const humanApproved = approved && approverType === "human" && typeof approvedBy === "string" && approvedBy.trim().length > 0 && proofBlockers.length === 0;
   const blockers = [
     ...(humanApproved ? [] : ["HL-01 implementation gate blocked: canonical contract is not approved by a human reviewer."]),
-    ...(approved && approverType === "agent" ? ["HL-01 approval gate blocked: an agent may not approve its own output."] : [])
+    ...(approved && approverType === "agent" ? ["HL-01 approval gate blocked: an agent may not approve its own output."] : []),
+    ...proofBlockers
   ];
 
   return {
-    status: humanApproved ? "approved" : approved && approverType === "agent" ? "invalid_agent_approval" : "pending_human_review",
+    status: humanApproved ? "approved" : approved && approverType === "agent" ? "invalid_agent_approval" : approved && approverType === "human" ? "invalid_unbound_approval" : "pending_human_review",
     approved: humanApproved,
     approved_by: approvedBy,
     approver_type: approverType,
     approved_at: approval?.approvedAt ?? null,
     artifact_refs: artifactRefs,
+    approval_artifact_path: approval?.approvalArtifactPath ?? null,
+    approval_digest: approval?.approvalDigest ?? null,
+    draft_package_id: approval?.draftPackageId ?? null,
+    source_hash: approval?.sourceHash ?? null,
+    package_checksum: approval?.packageChecksum ?? null,
+    approved_assumption_ids: approval?.approvedAssumptionIds ?? [],
     blockers
   };
 }

@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { HL16_CONVERGENCE_QUESTIONS } from "../dist/modules/convergenceStandard.js";
+import { createApprovedIntakeFixture } from "./helpers/approve-draft-fixture.mjs";
 
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "convergence-standard-contract");
@@ -96,21 +97,13 @@ assertConvergence(draftOutputDir, {
 });
 assert(runJson(["validate", "--out", draftOutputDir]).status === "pass", "Draft package should validate with convergence standard.");
 
-const baseInput = readJson(path.join(root, "examples", "saas-dashboard-intake.json"));
-writeFileSync(approvedInputPath, `${JSON.stringify({
-  ...baseInput,
-  contractApproval: {
-    approved: true,
-    approverType: "human",
-    approvedBy: "Scope 16 Convergence Standard Test",
-    approvedAt: "2026-05-07T00:00:00.000Z",
-    artifactRefs: [
-      "governance/convergence-standard.json",
-      "spec/archetype-spec.json",
-      "test-first/test-first-contract.json"
-    ]
-  }
-}, null, 2)}\n`);
+createApprovedIntakeFixture({
+  root,
+  workspace,
+  approvedInputPath,
+  approvedBy: "Scope 16 Convergence Standard Test",
+  approvedAt: "2026-05-07T00:00:00.000Z"
+});
 const approvedGenerate = runJson(["generate", "--input", approvedInputPath, "--out", approvedOutputDir]);
 assert(approvedGenerate.readyForFrontendAgent === true, "Approved fixture should be frontend-agent ready.");
 assertConvergence(approvedOutputDir, {

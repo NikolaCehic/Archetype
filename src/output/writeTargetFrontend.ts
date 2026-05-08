@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { prepareGeneratedTargetDirectory } from "../safety/pathSafety";
 
 interface TargetWriteOptions {
   force?: boolean;
@@ -344,10 +345,16 @@ export function writeTargetFrontendSource(outputDir: string, targetDir: string, 
   if (!existsSync(routeMapPath)) blockers.push("Missing 12-target-frontend/route-component-map.json.");
   if (!existsSync(adapterPath)) blockers.push("Missing 12-target-frontend/adapter-interfaces.ts.");
   if (existsSync(targetDir) && !options.force) blockers.push("Target directory already exists. Pass --force to replace it.");
+  if (options.force) {
+    try {
+      prepareGeneratedTargetDirectory(targetDir, { force: true });
+    } catch (error) {
+      blockers.push(error instanceof Error ? error.message : String(error));
+    }
+  }
   if (blockers.length > 0) return { status: "fail", outputDir, targetDir, filesWritten: 0, blockers, warnings, files: [] };
 
-  if (options.force) rmSync(targetDir, { recursive: true, force: true });
-  mkdirSync(targetDir, { recursive: true });
+  if (!options.force) prepareGeneratedTargetDirectory(targetDir, { force: false });
 
   const manifest = readJson<{ files?: SourceManifestFile[] }>(manifestPath);
   const routeMap = readJson<{ routes?: Array<Record<string, unknown>> }>(routeMapPath);

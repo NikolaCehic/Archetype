@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { createApprovedIntakeFixture } from "./helpers/approve-draft-fixture.mjs";
 
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "lifecycle-contract-states-contract");
@@ -126,20 +127,7 @@ assert(draftWrite.exitCode === 1, "write-target must reject draft packages.");
 assert(draftWrite.json.blockers.some((blocker) => String(blocker).includes("Implementation is not authorized")), "write-target must explain implementation authorization blocker.");
 
 const baseInput = readJson(path.join(root, "examples", "saas-dashboard-intake.json"));
-writeFileSync(approvedInputPath, `${JSON.stringify({
-  ...baseInput,
-  contractApproval: {
-    approved: true,
-    approverType: "human",
-    approvedBy: "Scope 06 Contract Test",
-    approvedAt: "2026-05-06T00:00:00.000Z",
-    artifactRefs: [
-      "draft/contract-approval-request.json",
-      "draft/assumption-ledger.md",
-      "draft/frontend-contract.draft.json"
-    ]
-  }
-}, null, 2)}\n`);
+createApprovedIntakeFixture({ root, workspace, approvedInputPath, baseInput, approvedBy: "Scope 06 Contract Test" });
 const approvedGenerate = runJson(["generate", "--input", approvedInputPath, "--out", approvedOutputDir]);
 assert(approvedGenerate.packageType === undefined, "approved package should be the canonical contract package.");
 assert(approvedGenerate.readyForFrontendAgent === true, "approved package should be ready for frontend implementation.");

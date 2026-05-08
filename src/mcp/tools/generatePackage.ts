@@ -57,7 +57,7 @@ export const generatePackageTool: McpToolDefinition = {
     const input = readJsonFile<ArchetypeInput>(inputPath);
     const contextGate = assessContextGate(input);
     if (contextGate.status === "needs_clarification") {
-      const clarificationPackage = exportClarificationPackage(input, contextGate, outputDir, inputPath);
+      const clarificationPackage = exportClarificationPackage(input, contextGate, outputDir, inputPath, { force: overwrite });
       const dataPlaneRun = recordClarificationPackage(dataPlaneForOutput(outputDir), input, contextGate, clarificationPackage, {
         outputDir,
         sourcePath: inputPath
@@ -90,7 +90,7 @@ export const generatePackageTool: McpToolDefinition = {
     });
 
     if (compiled.manifest.implementation_authorized !== true) {
-      const draftPackage = exportDraftPackage(compiled, outputDir);
+      const draftPackage = exportDraftPackage(compiled, outputDir, { force: overwrite });
       const dataPlane = dataPlaneForOutput(outputDir);
       const dataPlaneRun = recordCompiledPackage(dataPlane, compiled, {
         outputDir,
@@ -120,7 +120,7 @@ export const generatePackageTool: McpToolDefinition = {
       };
     }
 
-    exportPackage(compiled, outputDir);
+    exportPackage(compiled, outputDir, { force: overwrite });
 
     const topManifest = readJsonFile<{
       artifacts?: Array<{ id?: string; path: string; type?: string; required?: boolean }>;

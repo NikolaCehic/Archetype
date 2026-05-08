@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { createApprovedIntakeFixture } from "./helpers/approve-draft-fixture.mjs";
 
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "spec-contract");
@@ -30,17 +31,7 @@ function readJson(filePath) {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
-const baseInput = readJson(path.join(root, "examples", "saas-dashboard-intake.json"));
-writeFileSync(approvedInputPath, `${JSON.stringify({
-  ...baseInput,
-  contractApproval: {
-    approved: true,
-    approverType: "human",
-    approvedBy: "Spec contract test",
-    approvedAt: "2026-05-06T00:00:00.000Z",
-    artifactRefs: ["draft/contract-approval-request.json", "draft/assumption-ledger.md"]
-  }
-}, null, 2)}\n`);
+createApprovedIntakeFixture({ root, workspace, approvedInputPath, approvedBy: "Spec contract test" });
 const generate = runJson(["generate", "--input", approvedInputPath, "--out", outputDir]);
 assert(["success", "warning"].includes(generate.status), "spec contract generation should succeed or warn.");
 assert(generate.readyForFrontendAgent === true, "canonical spec generation requires human approval.");

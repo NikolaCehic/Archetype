@@ -1,10 +1,12 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { createApprovedIntakeFixture } from "./helpers/approve-draft-fixture.mjs";
 
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "demo");
 const intakePath = path.join(workspace, "archetype.intake.json");
+const approvedIntakePath = path.join(workspace, "archetype.approved.intake.json");
 const outputDir = path.join(workspace, "archetype-output");
 const targetDir = path.join(workspace, "generated-frontend");
 
@@ -22,18 +24,15 @@ function runJson(args) {
 
 const doctor = runJson(["doctor"]);
 const init = runJson(["init", "--template", "saas-dashboard", "--out", intakePath, "--force"]);
-const approvedIntake = {
-  ...JSON.parse(readFileSync(intakePath, "utf8")),
-  contractApproval: {
-    approved: true,
-    approverType: "human",
-    approvedBy: "Demo script",
-    approvedAt: "2026-05-06T00:00:00.000Z",
-    artifactRefs: ["spec/archetype-spec.json", "implementation-contract.md", "test-first/test-first-contract.json"]
-  }
-};
-writeFileSync(intakePath, `${JSON.stringify(approvedIntake, null, 2)}\n`);
-const generate = runJson(["generate", "--input", intakePath, "--out", outputDir]);
+createApprovedIntakeFixture({
+  root,
+  workspace,
+  approvedInputPath,
+  sourceInputPath: intakePath,
+  approvedBy: "Demo script",
+  approvedAt: "2026-05-06T00:00:00.000Z"
+});
+const generate = runJson(["generate", "--input", approvedIntakePath, "--out", outputDir]);
 const validate = runJson(["validate", "--out", outputDir]);
 const summarize = runJson(["summarize", "--out", outputDir]);
 const writeTarget = runJson(["write-target", "--out", outputDir, "--target", targetDir, "--force"]);

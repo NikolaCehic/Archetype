@@ -32,6 +32,66 @@ Read this file at the start of every scope. Update it at the end of every scope 
 - If a generated artifact can imply readiness, it must also expose the gate that made that readiness valid.
 - If context is weak, Archetype must stop before canonical spec, test contracts, or implementation contracts are generated.
 - Clarification output must be actionable to a human user and machine-readable to an agent.
+- Recursive writes and deletes must be marker-protected; `--force` means overwrite Archetype-owned generated output, not arbitrary user folders.
+- Human approval must be proof-bound to a draft package and source hash. A hand-edited intake boolean is not implementation authorization.
+
+## Six-Agent Audit Phase 01 - Safety And Approval Integrity
+
+Source:
+
+- [[13 Quality Reviews/Archetype Six-Agent Scope Audit Convergence - 2026-05-07]]
+
+Extracted requirements:
+
+- No CLI or MCP command may recursively delete arbitrary directories.
+- Output directories and generated target directories need explicit generated-output markers.
+- Draft approval must be a lifecycle primitive, not a hand-edited intake field.
+- Approval must bind to draft/source/artifact hashes so implementation authorization cannot be structurally spoofed.
+
+Mismatches found before implementation:
+
+- Package exporters and target generation could remove output directories directly when `--force` was present.
+- Several contract fixtures authorized implementation by injecting `contractApproval` into intake JSON.
+- Approval validation recognized human approval shape but did not require a proof sidecar tied to draft package identity and source content.
+- Docs described “human approval” without showing the concrete proof-bound command path.
+
+Corrections applied:
+
+- Added marker-based path safety for generated package output and generated target frontend output.
+- Added `archetype approve-draft`, which writes an approved intake plus a sidecar proof bound to the draft package id, intake source hash, package checksum, and required draft artifact hashes.
+- Updated approval validation so raw hand-edited approval is blocked as `invalid_unbound_approval`.
+- Updated evidence generation so only the validated approval state can canonicalize inference-backed evidence as user-confirmed assumptions.
+- Updated CLI, MCP, package exporters, and target writing to use the safety layer.
+- Updated contract fixtures to generate a draft first, run `approve-draft`, and only then generate canonical packages.
+- Added a dedicated safety and approval contract test.
+- Updated quickstart/install/lifecycle/docs for the new approval command and output marker behavior.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run safety-approval:contract`: pass.
+- `npm run mcp:contract`: pass after repairing an overly narrow error-message assertion.
+- `npm run check`: pass.
+
+Mismatches found during verification:
+
+- The MCP safety contract expected old wording even though the new safety layer was rejecting the repo root correctly.
+- Older contract fixtures still depended on raw `contractApproval` injection and had to be moved to the bound approval helper.
+- Raw hand-edited approval was blocked for implementation, but evidence generation still treated the raw approval flag as human-approved.
+
+Self-healing rules added:
+
+- Tests that require canonical artifacts must exercise the same approval path a real user would use.
+- Safety tests should assert the invariant and preserved sentinel files, not brittle exact wording.
+- Approval artifacts must be verified relative to the source intake path and must match the current intake without its approval field.
+- Evidence canonicalization must consume the validated approval state, not raw input shape.
+
+Current answer for Six-Agent Audit Phase 01:
+
+```txt
+I do not know how to implement this phase better within the current scope.
+I cannot identify a technical or architectural mismatch against the Phase 01 safety and approval requirements in the current implementation.
+```
 
 ## Scope 00 - Core Problem And Purpose
 

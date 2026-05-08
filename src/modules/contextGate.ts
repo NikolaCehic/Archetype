@@ -126,7 +126,6 @@ function hasTestExecutionPermission(input: ArchetypeInput, context: string): boo
 
 function hasAssumptionApproval(input: ArchetypeInput, context: string): boolean {
   return input.assumptionApproval?.approvedForDraft === true
-    || (input.contractApproval?.approved === true && input.contractApproval.approverType === "human")
     || mentionsAny(context, ["approve assumptions", "approved assumptions", "permission to create assumptions", "you may propose assumptions", "assumptions for draft"]);
 }
 

@@ -41,3 +41,8 @@ The lifecycle must stop before canonical output when context is weak.
 ## Source
 
 - [[Source Documents]]
+
+## Quality Reviews
+
+- [[../13 Quality Reviews/Quality Reviews MOC|Quality Reviews MOC]]
+- [[../13 Quality Reviews/Archetype Six-Agent Scope Audit Convergence - 2026-05-07|Six-Agent Scope Audit Convergence]]

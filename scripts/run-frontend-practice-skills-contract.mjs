@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { createApprovedIntakeFixture } from "./helpers/approve-draft-fixture.mjs";
 
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "frontend-practice-skills-contract");
@@ -112,21 +113,13 @@ const draftGenerate = runJson(["generate", "--input", "examples/saas-dashboard-i
 assert(draftGenerate.packageType === "draft_contract", "unapproved complete context should generate a draft contract.");
 assertPracticePackage(draftOutputDir, "draft package");
 
-const approvedInput = {
-  ...readJson(path.join(root, "examples", "saas-dashboard-intake.json")),
-  contractApproval: {
-    approved: true,
-    approverType: "human",
-    approvedBy: "Scope 08 Frontend Practice Test",
-    approvedAt: "2026-05-06T00:00:00.000Z",
-    artifactRefs: [
-      "draft/specialist-review.json",
-      "governance/frontend-practice-skills.json",
-      "spec/archetype-spec.json"
-    ]
-  }
-};
-writeFileSync(approvedInputPath, `${JSON.stringify(approvedInput, null, 2)}\n`);
+createApprovedIntakeFixture({
+  root,
+  workspace,
+  approvedInputPath,
+  approvedBy: "Scope 08 Frontend Practice Test",
+  approvedAt: "2026-05-06T00:00:00.000Z"
+});
 const approvedGenerate = runJson(["generate", "--input", approvedInputPath, "--out", approvedOutputDir]);
 assert(approvedGenerate.readyForFrontendAgent === true, "approved context should generate a canonical package.");
 assertPracticePackage(approvedOutputDir, "approved package");

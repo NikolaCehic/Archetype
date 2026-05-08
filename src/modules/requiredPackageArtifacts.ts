@@ -93,6 +93,12 @@ export function approvalDecisionArtifact(manifest: JsonRecord): JsonRecord {
     approved_by: approval.approved_by ?? null,
     approved_at: approval.approved_at ?? null,
     artifact_refs: asArray(approval.artifact_refs).map(String),
+    approval_artifact_path: approval.approval_artifact_path ?? null,
+    approval_digest: approval.approval_digest ?? null,
+    draft_package_id: approval.draft_package_id ?? null,
+    source_hash: approval.source_hash ?? null,
+    package_checksum: approval.package_checksum ?? null,
+    approved_assumption_ids: asArray(approval.approved_assumption_ids).map(String),
     blockers: asArray(approval.blockers).map(String),
     traceability: {
       approval_request: "lifecycle/approval-request.md",

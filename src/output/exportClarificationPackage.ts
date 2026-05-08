@@ -1,5 +1,6 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { prepareGeneratedOutputDirectory } from "../safety/pathSafety";
 import type { ArchetypeInput } from "../core/types";
 import type { ContextGateAssessment } from "../modules/contextGate";
 import { buildClarificationTurnArtifact, clarificationTurnMarkdown } from "../modules/clarificationUx";
@@ -181,10 +182,10 @@ export function exportClarificationPackage(
   input: ArchetypeInput,
   assessment: ContextGateAssessment,
   outDir: string,
-  sourcePath?: string
+  sourcePath?: string,
+  options: { force?: boolean } = {}
 ): ClarificationPackageExport {
-  rmSync(outDir, { recursive: true, force: true });
-  mkdirSync(outDir, { recursive: true });
+  prepareGeneratedOutputDirectory(outDir, { force: options.force === true });
   const { ingestion, evidence } = buildClarificationEvidenceForInput(input);
 
   const artifacts: ClarificationArtifact[] = [

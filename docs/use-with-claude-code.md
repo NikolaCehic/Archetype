@@ -39,6 +39,10 @@ After implementation, Claude Code runs Playwright-backed verification through `a
 
 If verification fails, Claude Code calls `archetype_plan_repair` or `archetype repair --out archetype-output --target . --json`, patches implementation tasks first, and revises the contract only when user-approved source evidence proves the canonical spec is wrong.
 
+## Approval Safety
+
+Claude Code must not authorize implementation by editing intake JSON. A draft becomes canonical only after `archetype approve-draft` writes a bound approval proof and the follow-up `archetype generate --input archetype.approved.intake.json --out archetype-output --force --json` succeeds. The proof binds the draft package id, source hash, package checksum, and required artifact hashes.
+
 ## Use The MCP Server
 
 For MCP-capable Claude Code workflows, use `docs/use-with-mcp.md` and `mcp.example.json`. The server exposes `archetype_release_doctor`, `archetype_create_intake`, `archetype_answer_clarification`, `archetype_generate_package`, `archetype_validate_package`, `archetype_summarize_package`, `archetype_read_artifact`, `archetype_verify_target`, and `archetype_plan_repair`.

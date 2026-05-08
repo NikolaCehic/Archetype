@@ -2,6 +2,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { createApprovedIntakeFixture } from "./helpers/approve-draft-fixture.mjs";
 
 const require = createRequire(import.meta.url);
 const {
@@ -161,20 +162,13 @@ function mcpTool(name) {
 assertAdapterContract(new MemoryDataPlane(), "memory");
 assertAdapterContract(new FileDataPlane({ rootDir: fileRoot }), "file");
 
-const intake = JSON.parse(readFileSync(path.join(root, "examples", "saas-dashboard-intake.json"), "utf8"));
-intake.contractApproval = {
-  approved: true,
-  approverType: "human",
+createApprovedIntakeFixture({
+  root,
+  workspace,
+  approvedInputPath: approvedIntakePath,
   approvedBy: "data-plane-contract",
-  approvedAt: "2026-05-07T00:00:00.000Z",
-  artifactRefs: [
-    "draft/product-model.draft.json",
-    "draft/experience-architecture.draft.json",
-    "draft/design-system.draft.json",
-    "draft/frontend-contract.draft.json"
-  ]
-};
-writeFileSync(approvedIntakePath, `${JSON.stringify(intake, null, 2)}\n`);
+  approvedAt: "2026-05-07T00:00:00.000Z"
+});
 
 const generate = runCliJson(["generate", "--input", approvedIntakePath, "--out", outputDir]);
 assert(generate.readyForFrontendAgent === true, "approved generate should be ready for frontend agents.");

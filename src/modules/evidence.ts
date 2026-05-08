@@ -7,8 +7,12 @@ import {
   sourceTypeEvidenceLevel
 } from "./evidenceDecisionModel";
 
-export function buildEvidenceLedger(input: ArchetypeInput, profile: DomainProfile, projectId: string, ingestion: IngestionArtifacts): EvidenceLedger {
-  const humanApproved = input.contractApproval?.approved === true && input.contractApproval.approverType === "human";
+export interface EvidenceLedgerOptions {
+  humanApproved?: boolean;
+}
+
+export function buildEvidenceLedger(input: ArchetypeInput, profile: DomainProfile, projectId: string, ingestion: IngestionArtifacts, options: EvidenceLedgerOptions = {}): EvidenceLedger {
+  const humanApproved = options.humanApproved === true;
   const candidateEvidenceLevel = humanApproved ? "user_confirmed_assumption" : "archetype_inference";
   const sources: SourceRecord[] = ingestion.normalizedSources.map((source) => ({
     source_id: source.source_id,

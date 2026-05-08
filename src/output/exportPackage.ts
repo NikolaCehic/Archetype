@@ -1,5 +1,6 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { prepareGeneratedOutputDirectory } from "../safety/pathSafety";
 import type { ArchetypePackage } from "../core/types";
 import { buildConvergenceStandardArtifact, convergenceStandardMarkdown } from "../modules/convergenceStandard";
 import { designSystemPreviewHtml, designSystemReviewMarkdown } from "../modules/designSystemPreview";
@@ -614,9 +615,12 @@ function buildImplementationRules(pkg: ArchetypePackage): Record<string, unknown
   };
 }
 
-export function exportPackage(pkg: ArchetypePackage, outDir: string): void {
-  rmSync(outDir, { recursive: true, force: true });
-  mkdirSync(outDir, { recursive: true });
+export interface ExportPackageOptions {
+  force?: boolean;
+}
+
+export function exportPackage(pkg: ArchetypePackage, outDir: string, options: ExportPackageOptions = {}): void {
+  prepareGeneratedOutputDirectory(outDir, { force: options.force === true });
   const nonNegotiablePrinciples = buildNonNegotiablePrinciplesArtifact(pkg);
   const evidenceDecisionModel = buildEvidenceDecisionModelArtifact(pkg);
   const frontendPracticeSkills = buildFrontendPracticeSkillsArtifact(pkg);

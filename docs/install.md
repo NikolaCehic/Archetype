@@ -34,8 +34,12 @@ Generate a demo contract without cloning the repo:
 npx --yes --package github:NikolaCehic/Archetype archetype doctor --json
 npx --yes --package github:NikolaCehic/Archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
 npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype approve-draft --draft archetype-output --input archetype.intake.json --out archetype.approved.intake.json --approved-by "Your name" --json
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.approved.intake.json --out archetype-output --force --json
 npx --yes --package github:NikolaCehic/Archetype archetype validate --out archetype-output --json
 ```
+
+The first `generate` creates a draft package. `approve-draft` binds human approval to the draft package id, source hash, package checksum, and required artifact hashes. Hand-editing `contractApproval` into the intake does not authorize implementation.
 
 Start the MCP server from the package:
 
@@ -56,6 +60,8 @@ npx . install --target all --json
 npx . doctor --json
 npx . init --template saas-dashboard --out archetype.intake.json --force --json
 npx . generate --input archetype.intake.json --out archetype-output --json
+npx . approve-draft --draft archetype-output --input archetype.intake.json --out archetype.approved.intake.json --approved-by "Your name" --json
+npx . generate --input archetype.approved.intake.json --out archetype-output --force --json
 ```
 
 ## Verify

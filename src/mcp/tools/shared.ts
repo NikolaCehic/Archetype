@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { assertSafeGeneratedOutputDirectory } from "../../safety/pathSafety";
 
 export type ToolStatus = "success" | "warning" | "pass" | "fail" | "error";
 export type JsonRecord = Record<string, unknown>;
@@ -46,22 +47,10 @@ export function resolveDeclaredPath(value: unknown, fallback: string, label: str
 }
 
 export function assertSafeOutputDirectory(outputDir: string, label: string): void {
-  const resolved = path.resolve(outputDir);
-  const forbiddenExact = [
-    path.resolve(process.cwd()),
-    process.env.HOME ? path.resolve(process.env.HOME) : "",
-    path.parse(resolved).root
-  ].filter(Boolean);
-  if (forbiddenExact.includes(resolved)) {
-    throw new Error(`${label} must be a dedicated output directory, not ${resolved}.`);
-  }
-  if (!existsSync(resolved)) return;
-  if (!statSync(resolved).isDirectory()) throw new Error(`${label} exists but is not a directory: ${resolved}`);
-
-  const projectMarkers = [".git", "package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "src", "node_modules", "tsconfig.json"];
-  const presentMarkers = projectMarkers.filter((marker) => existsSync(path.join(resolved, marker)));
-  if (presentMarkers.length > 0) {
-    throw new Error(`${label} must not replace an existing project directory. Found: ${presentMarkers.join(", ")}.`);
+  try {
+    assertSafeGeneratedOutputDirectory(outputDir, { force: true });
+  } catch (error) {
+    throw new Error((error instanceof Error ? error.message : String(error)).replace(/^outputDir/u, label));
   }
 }
 

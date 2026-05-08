@@ -85,6 +85,10 @@ The Agent Data Plane query tools read `archetype-output/data-plane/` and do not 
 
 Use them before broad artifact reads when an agent only needs run status, event history, artifact lineage, or replay state. See `docs/agent-data-plane.md`.
 
+## Approval Safety
+
+MCP generation follows the same approval gate as the CLI. `archetype_generate_package` emits a draft package until the input includes a proof created by `archetype approve-draft`; a hand-edited `contractApproval` object is reported as unbound and remains implementation-blocked.
+
 When `archetype_generate_package` returns a `draft_contract`, hosts should surface `draft/design-system-preview.html` for browser review and `draft/design-system-review.md` for the review loop. The preview is static HTML generated from `draft/design-system.draft.json`; it is not app code and must not be used as implementation authority.
 
 `archetype_verify_target` defaults `skipInstall` to `true` for MCP safety. Pass `skipInstall: false` only when the user or host explicitly allows dependency installation in the target frontend.

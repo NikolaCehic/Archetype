@@ -48,6 +48,10 @@ For MCP-capable Codex workflows, use `docs/use-with-mcp.md` and `mcp.example.jso
 
 When the Agent Data Plane is present, Codex can query run state instead of rereading large artifacts. The data plane lives under `archetype-output/data-plane/` and is documented in `docs/agent-data-plane.md`.
 
+## Approval Safety
+
+Codex must not authorize implementation by editing intake JSON. A draft becomes canonical only after `archetype approve-draft` writes a bound approval proof and the follow-up `archetype generate --input archetype.approved.intake.json --out archetype-output --force --json` succeeds. The proof binds the draft package id, source hash, package checksum, and required artifact hashes.
+
 ## Verify Before Completion
 
 ```bash

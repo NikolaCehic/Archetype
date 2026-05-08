@@ -29,6 +29,8 @@ CLI fallback and diagnostics:
 npx --yes --package github:NikolaCehic/Archetype archetype doctor --json
 npx --yes --package github:NikolaCehic/Archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
 npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype approve-draft --draft archetype-output --input archetype.intake.json --out archetype.approved.intake.json --approved-by "Your name" --json
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.approved.intake.json --out archetype-output --force --json
 ```
 
 See `docs/quickstart.md`, `docs/agent-lifecycle.md`, and `docs/release-readiness.md`.
@@ -62,7 +64,11 @@ Product brief / screenshots / brand notes / repo context
         ↓
 Archetype clarifies context and optionally ingests files
         ↓
-archetype-output contract package
+draft archetype-output contract package with a browser-viewable design-system preview
+        ↓
+bound human approval proof via `archetype approve-draft`
+        ↓
+canonical archetype-output contract package
         ↓
 Agent Data Plane records run events, artifact lineage, and projections
         ↓
@@ -98,6 +104,15 @@ Generate a contract package:
 ```bash
 npx . generate --input examples/saas-dashboard-intake.json --out archetype-output --json
 ```
+
+Approve a draft contract after human review:
+
+```bash
+npx . approve-draft --draft archetype-output --input examples/saas-dashboard-intake.json --out archetype.approved.intake.json --approved-by "Your name" --json
+npx . generate --input archetype.approved.intake.json --out archetype-output --force --json
+```
+
+`approve-draft` writes a sidecar approval proof and binds the approved intake to the draft package id, source hash, package checksum, and required draft artifact hashes. Editing `contractApproval` into intake JSON by hand is not an implementation authorization path.
 
 Validate the package:
 
@@ -175,6 +190,8 @@ See `docs/use-with-mcp.md` and `mcp.example.json`.
 Installation details are in `docs/install.md`.
 
 ## What Archetype Generates
+
+`archetype-output/` is a generated directory and is protected by a `.archetype-output-marker`. Archetype refuses to recursively overwrite arbitrary non-empty folders or project roots. Target frontend scaffolds use `.archetype-target-marker` with the same safety rule.
 
 `archetype-output/` is gated by lifecycle readiness:
 

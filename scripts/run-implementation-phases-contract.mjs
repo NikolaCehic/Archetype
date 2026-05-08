@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { HL15_IMPLEMENTATION_PHASE_NAMES } from "../dist/modules/implementationPhases.js";
+import { createApprovedIntakeFixture } from "./helpers/approve-draft-fixture.mjs";
 
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "implementation-phases-contract");
@@ -113,21 +114,13 @@ const draftPhases = assertImplementationPhases(draftOutputDir, {
 assert(draftPhases.implementation_readiness_gate.blockers.includes("implementation_authorized is false"), "Draft package must block implementation on authorization.");
 assert(runJson(["validate", "--out", draftOutputDir]).status === "pass", "Draft package should validate with implementation phases.");
 
-const baseInput = readJson(path.join(root, "examples", "saas-dashboard-intake.json"));
-writeFileSync(approvedInputPath, `${JSON.stringify({
-  ...baseInput,
-  contractApproval: {
-    approved: true,
-    approverType: "human",
-    approvedBy: "Scope 15 Implementation Phases Test",
-    approvedAt: "2026-05-07T00:00:00.000Z",
-    artifactRefs: [
-      "lifecycle/implementation-phases.json",
-      "spec/archetype-spec.json",
-      "test-first/test-first-contract.json"
-    ]
-  }
-}, null, 2)}\n`);
+createApprovedIntakeFixture({
+  root,
+  workspace,
+  approvedInputPath,
+  approvedBy: "Scope 15 Implementation Phases Test",
+  approvedAt: "2026-05-07T00:00:00.000Z"
+});
 const approvedGenerate = runJson(["generate", "--input", approvedInputPath, "--out", approvedOutputDir]);
 assert(approvedGenerate.readinessTier === "ready_for_implementation", "Approved fixture should reach implementation readiness.");
 assert(approvedGenerate.readyForFrontendAgent === true, "Approved fixture should be frontend-agent ready.");

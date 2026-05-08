@@ -283,9 +283,12 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
   const sourceHash = hashContent(input);
   const projectId = stableId("project", projectSlug, sourceHash);
   const operatingMode = input.operatingMode ?? "full_architecture";
+  const contractApproval = buildContractApprovalState(input, { sourcePath: _options.sourcePath });
 
   const ingestion = buildIngestionArtifacts(input);
-  const evidence = buildEvidenceLedger(input, profile, projectId, ingestion);
+  const evidence = buildEvidenceLedger(input, profile, projectId, ingestion, {
+    humanApproved: contractApproval.approved === true
+  });
   const product = buildProductArtifacts(input, profile, evidence);
   const experience = buildExperienceArtifacts(input, profile, product, evidence);
   const designSystem = buildDesignSystemArtifacts(input, profile, experience);
@@ -355,7 +358,6 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     ? lifecycle.contextMatrix.blockers
     : [];
   const lifecycleGateWarnings = lifecycle.contextMatrix.warnings;
-  const contractApproval = buildContractApprovalState(input);
   const approvalBlockers = (contractApproval.blockers as string[] | undefined) ?? [];
   const principleGateBlockers = lifecycle.contextCompletion.status === "complete" ? approvalBlockers : [];
   const gatedReadinessScore = lifecycleGateBlockers.length > 0 ? Math.min(quality.readiness.score, 49) : quality.readiness.score;

@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { createApprovedIntakeFixture } from "./helpers/approve-draft-fixture.mjs";
 
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "context-readiness-contract");
@@ -95,16 +96,7 @@ assert(draftReadiness.readinessTier === "ready_for_contract_approval", "readines
 assert(draftInternalManifest.readiness_evidence.some((item) => item.claim === "readiness_tier:ready_for_contract_approval"), "readiness evidence must support the tier claim.");
 assert(runJson(["validate", "--out", draftOutputDir]).status === "pass", "draft package should validate with tiered readiness.");
 
-writeFileSync(approvedInputPath, `${JSON.stringify({
-  ...baseInput,
-  contractApproval: {
-    approved: true,
-    approverType: "human",
-    approvedBy: "Scope 03 Contract Test",
-    approvedAt: "2026-05-06T00:00:00.000Z",
-    artifactRefs: ["lifecycle/readiness-tiers.json", "spec/archetype-spec.json", "test-first/test-first-contract.json"]
-  }
-}, null, 2)}\n`);
+createApprovedIntakeFixture({ root, workspace, approvedInputPath, baseInput, approvedBy: "Scope 03 Contract Test" });
 const approvedGenerate = runJson(["generate", "--input", approvedInputPath, "--out", approvedOutputDir]);
 assert(approvedGenerate.readinessTier === "ready_for_implementation", "approved package should be ready for implementation.");
 assert(approvedGenerate.readyForFrontendAgent === true, "approved package should be frontend-agent-ready.");

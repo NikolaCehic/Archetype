@@ -178,7 +178,12 @@ function approvalDecisionPayload(pkg: ArchetypePackage): JsonObject {
     approved_by: stringField(approval, "approvedBy") ?? stringField(approval, "approved_by"),
     approver_type: stringField(approval, "approverType") ?? stringField(approval, "approver_type"),
     approved_at: stringField(approval, "approvedAt") ?? stringField(approval, "approved_at"),
-    artifact_refs: stringArrayField(approval, "artifactRefs")
+    artifact_refs: stringArrayField(approval, "artifactRefs").length > 0 ? stringArrayField(approval, "artifactRefs") : stringArrayField(approval, "artifact_refs"),
+    approval_artifact_path: stringField(approval, "approvalArtifactPath") ?? stringField(approval, "approval_artifact_path"),
+    approval_digest: stringField(approval, "approvalDigest") ?? stringField(approval, "approval_digest"),
+    draft_package_id: stringField(approval, "draftPackageId") ?? stringField(approval, "draft_package_id"),
+    source_hash: stringField(approval, "sourceHash") ?? stringField(approval, "source_hash"),
+    package_checksum: stringField(approval, "packageChecksum") ?? stringField(approval, "package_checksum")
   };
 }
 

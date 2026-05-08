@@ -3,6 +3,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { runArchetypeCompiler } from "./core/pipeline";
+import { createDraftApproval } from "./approval/draftApproval";
 import { exportPackage } from "./output/exportPackage";
 import { exportClarificationPackage } from "./output/exportClarificationPackage";
 import { exportDraftPackage } from "./output/exportDraftPackage";
@@ -33,7 +34,7 @@ import type { ArchetypeInput } from "./core/types";
 
 type CommandStatus = "success" | "warning" | "error";
 
-const VALID_COMMANDS = new Set(["doctor", "install", "init", "generate", "answer-clarification", "validate", "summarize", "simulate", "write-target", "verify-target", "repair", "data-plane"]);
+const VALID_COMMANDS = new Set(["doctor", "install", "init", "generate", "approve-draft", "answer-clarification", "validate", "summarize", "simulate", "write-target", "verify-target", "repair", "data-plane"]);
 const TEMPLATE_FILES: Record<string, string> = {
   "saas-dashboard": "saas-dashboard-intake.json",
   fintech: "fintech-intake.json",
@@ -47,7 +48,8 @@ function usage(exitCode = 1): never {
   console.log("  archetype doctor");
   console.log("  archetype install [--target codex|claude|all] [--home <dir>] [--dry-run] [--json]");
   console.log("  archetype init --out <intake.json> [--template saas-dashboard|fintech|marketplace-admin] [--force]");
-  console.log("  archetype generate --input <intake.json> --out <output-dir>");
+  console.log("  archetype generate --input <intake.json> --out <output-dir> [--force]");
+  console.log("  archetype approve-draft --draft <draft-output-dir> --input <intake.json> --out <approved-intake.json> --approved-by <name> [--force]");
   console.log("  archetype answer-clarification --input <intake.json> --out <next-intake.json> --question-id <id> --answer <text> [--answered-by <name>]");
   console.log("  archetype validate --out <output-dir>");
   console.log("  archetype summarize --out <output-dir>");
@@ -185,11 +187,12 @@ function generateCommand(jsonMode: boolean): void {
 
   const absoluteInput = path.resolve(inputPath);
   const absoluteOut = path.resolve(outDir);
+  const force = hasFlag("--force");
   const input = readJson<ArchetypeInput>(absoluteInput);
   const contextGate = assessContextGate(input);
 
   if (contextGate.status === "needs_clarification") {
-    const clarificationPackage = exportClarificationPackage(input, contextGate, absoluteOut, absoluteInput);
+    const clarificationPackage = exportClarificationPackage(input, contextGate, absoluteOut, absoluteInput, { force });
     const dataPlaneRun = recordClarificationPackage(dataPlaneForOutput(absoluteOut), input, contextGate, clarificationPackage, {
       outputDir: absoluteOut,
       sourcePath: absoluteInput
@@ -233,7 +236,7 @@ function generateCommand(jsonMode: boolean): void {
   });
 
   if (compiled.manifest.implementation_authorized !== true) {
-    const draftPackage = exportDraftPackage(compiled, absoluteOut);
+    const draftPackage = exportDraftPackage(compiled, absoluteOut, { force });
     const dataPlane = dataPlaneForOutput(absoluteOut);
     const dataPlaneRun = recordCompiledPackage(dataPlane, compiled, {
       outputDir: absoluteOut,
@@ -273,7 +276,7 @@ function generateCommand(jsonMode: boolean): void {
     return;
   }
 
-  exportPackage(compiled, absoluteOut);
+  exportPackage(compiled, absoluteOut, { force });
   const topManifest = readJson<{
     artifacts?: Array<{ id?: string; path: string; type?: string; required?: boolean }>;
   }>(path.join(absoluteOut, "manifest.json"));
@@ -313,6 +316,51 @@ function generateCommand(jsonMode: boolean): void {
     `Ready for frontend agent: ${compiled.quality.readiness.readyForFrontendAgent}`,
     ...(blockers.length > 0 ? ["Blockers:", ...blockers.map((blocker) => `- ${blocker}`)] : []),
     ...(warnings.length > 0 ? ["Warnings:", ...warnings.map((warning) => `- ${warning}`)] : [])
+  ]);
+}
+
+function approveDraftCommand(jsonMode: boolean): void {
+  const draftDir = getArg("--draft");
+  const inputPath = getArg("--input");
+  const outPath = getArg("--out");
+  const approvedBy = getArg("--approved-by");
+  if (!draftDir || !inputPath || !outPath || !approvedBy) usage();
+
+  const absoluteInput = path.resolve(inputPath);
+  const absoluteOut = path.resolve(outPath);
+  if (existsSync(absoluteOut) && !hasFlag("--force")) {
+    errorExit(`Approved intake already exists: ${absoluteOut}. Use --force to overwrite.`, jsonMode);
+  }
+  const intake = readJson<ArchetypeInput>(absoluteInput);
+  const approvedAssumptionIds = (getArg("--approved-assumption-ids") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  const result = createDraftApproval({
+    intake,
+    intakePath: absoluteInput,
+    draftDir: path.resolve(draftDir),
+    approvedInputPath: absoluteOut,
+    approvedBy,
+    approvedAt: getArg("--approved-at"),
+    approvedAssumptionIds
+  });
+
+  const output = {
+    status: "success" as const,
+    approvedInputPath: absoluteOut,
+    approvalArtifactPath: result.approvalArtifactPath,
+    draftPackageId: result.approvalProof.draft_package_id,
+    sourceHash: result.approvalProof.draft_source_hash,
+    packageChecksum: result.approvalProof.draft_package_checksum,
+    approvalDigest: result.approvalProof.approval_digest,
+    artifactRefs: result.approvalProof.approved_artifact_refs
+  };
+  resultOutput(output, jsonMode, [
+    `Archetype draft approved: ${absoluteOut}`,
+    `Approval proof: ${result.approvalArtifactPath}`,
+    `Draft package: ${result.approvalProof.draft_package_id}`,
+    `Source hash: ${result.approvalProof.draft_source_hash}`
   ]);
 }
 
@@ -596,6 +644,11 @@ async function main(): Promise<void> {
 
   if (command === "data-plane") {
     dataPlaneCommand(jsonMode);
+    return;
+  }
+
+  if (command === "approve-draft") {
+    approveDraftCommand(jsonMode);
     return;
   }
 
