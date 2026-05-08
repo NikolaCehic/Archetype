@@ -8,7 +8,7 @@
   },
   "homepage": "https://github.com/NikolaCehic/Archetype",
   "repository": "https://github.com/NikolaCehic/Archetype",
-  "license": "MIT",
+  "license": "MIT OR Apache-2.0",
   "keywords": ["frontend", "design-system", "agents", "codex", "ui"],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",

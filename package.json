@@ -1,8 +1,8 @@
 {
   "name": "@nikolacehic/archetype",
   "version": "0.1.0",
-  "description": "Frontend implementation contracts for AI coding agents.",
-  "license": "MIT",
+  "description": "Local agent harness for deterministic frontend contracts, tests-first implementation, and verification.",
+  "license": "MIT OR Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/NikolaCehic/Archetype.git"
@@ -50,7 +50,9 @@
     "scripts",
     "mcp.example.json",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "LICENSE-MIT",
+    "LICENSE-APACHE"
   ],
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.json",

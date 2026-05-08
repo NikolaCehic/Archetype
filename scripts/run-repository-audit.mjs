@@ -82,7 +82,7 @@ for (const forbidden of ["iterations", "reinforcement-learning", "archetype-plug
   assert(!(pkg.files ?? []).includes(forbidden), `package files must not publish ${forbidden}.`);
 }
 
-for (const required of ["dist", "examples", "docs", ".codex-plugin", ".claude-plugin", ".agents", ".mcp.json", "skills", "agents", "plugins", "scripts", "mcp.example.json", "README.md", "LICENSE"]) {
+for (const required of ["dist", "examples", "docs", ".codex-plugin", ".claude-plugin", ".agents", ".mcp.json", "skills", "agents", "plugins", "scripts", "mcp.example.json", "README.md", "LICENSE", "LICENSE-MIT", "LICENSE-APACHE"]) {
   assert((pkg.files ?? []).includes(required), `package files missing required publish surface ${required}.`);
 }
 

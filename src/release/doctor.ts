@@ -145,9 +145,9 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     checks,
     "package.license",
     "License",
-    pkg.license === "MIT",
-    "MIT license is declared.",
-    "package.json must declare the MIT license.",
+    pkg.license === "MIT OR Apache-2.0",
+    "Dual MIT/Apache-2.0 license is declared.",
+    "package.json must declare MIT OR Apache-2.0.",
     [pkgPath]
   );
   check(
@@ -173,7 +173,9 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     "plugins",
     "scripts",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "LICENSE-MIT",
+    "LICENSE-APACHE"
   ];
   const files = pkg.files ?? [];
   check(
@@ -181,7 +183,7 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     "package.files",
     "Published file allowlist",
     requiredFiles.every((item) => files.includes(item)),
-    "Package file allowlist includes dist, docs, examples, root plugin surfaces, plugins, scripts, README, and LICENSE.",
+    "Package file allowlist includes dist, docs, examples, root plugin surfaces, plugins, scripts, README, and license files.",
     `package.json files must include: ${requiredFiles.join(", ")}.`,
     [pkgPath]
   );
@@ -190,6 +192,9 @@ export function runReleaseDoctor(packageRoot: string): ReleaseDoctorReport {
     "dist/cli.js",
     "dist/mcp/server.js",
     "README.md",
+    "LICENSE",
+    "LICENSE-MIT",
+    "LICENSE-APACHE",
     "docs/install.md",
     "docs/quickstart.md",
     "docs/agent-lifecycle.md",

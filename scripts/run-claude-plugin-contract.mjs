@@ -67,7 +67,7 @@ for (const file of requiredFiles) {
 const manifest = readJson(".claude-plugin/plugin.json");
 assert(manifest.name === "archetype", "Claude plugin manifest name must be archetype.");
 assert(manifest.version === "0.1.0", "Claude plugin manifest version must be 0.1.0.");
-assert(manifest.license === "MIT", "Claude plugin manifest license must be MIT.");
+assert(manifest.license === "MIT OR Apache-2.0", "Claude plugin manifest license must be dual MIT/Apache-2.0.");
 assert(manifest.repository === "https://github.com/NikolaCehic/Archetype", "Claude plugin manifest repository must point to Archetype.");
 
 const mcp = readJson(".mcp.json");

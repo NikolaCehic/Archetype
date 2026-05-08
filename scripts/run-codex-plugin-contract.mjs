@@ -44,7 +44,7 @@ for (const file of requiredFiles) {
 const manifest = readJson(".codex-plugin/plugin.json");
 assert(manifest.name === "archetype", "Codex plugin manifest name must be archetype.");
 assert(manifest.version === "0.1.0", "Codex plugin manifest version must be 0.1.0.");
-assert(manifest.license === "MIT", "Codex plugin manifest license must be MIT.");
+assert(manifest.license === "MIT OR Apache-2.0", "Codex plugin manifest license must be dual MIT/Apache-2.0.");
 assert(manifest.skills === "./skills/", "Codex plugin manifest must point to skills.");
 assert(manifest.mcpServers === "./.mcp.json", "Codex plugin manifest must point to MCP config.");
 assert(manifest.interface?.displayName === "Archetype", "Codex plugin manifest display name must be Archetype.");

@@ -1,183 +1,222 @@
 # Archetype
 
-Frontend implementation contracts for AI coding agents.
+Archetype is a local agent harness for Codex and Claude Code.
 
-Archetype turns product briefs, screenshots, brand notes, and existing frontend context into structured contracts that Claude Code, Codex, and other coding agents can follow.
+It turns a natural-language product idea, plus optional screenshots, specs, brand notes, wireframes, or repo context, into a deterministic frontend contract package that an AI coding agent can implement tests-first and verify with evidence.
 
-Instead of asking an agent to guess routes, screens, states, design tokens, data contracts, and acceptance criteria, generate an Archetype contract first.
+Archetype is not a hosted web app, a backend platform, or a general-purpose autonomous agent. It is the missing harness around coding agents: clarify the product, freeze the contract, generate implementation instructions, require tests first, verify the result, and plan repair when the implementation drifts.
 
-## Quickstart
+## Why It Exists
 
-Install Archetype into Codex and Claude Code:
+AI coding agents can build quickly, but they often invent missing product details, skip edge states, produce shallow tests, or claim success from a pretty screenshot. Archetype makes the work explicit before code is written.
 
-```bash
-npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json
-```
+Archetype gives the agent:
 
-Then start a fresh agent session and use Archetype as one natural-language workflow:
-
-```txt
-Codex: $archetype "I want to build a premium B2B analytics app for marketing teams."
-Claude Code: /archetype "I want to build a premium B2B analytics app for marketing teams."
-```
-
-Archetype should then ask any needed clarification questions, invite optional materials such as designs, screenshots, wireframes, `SPEC.md`, or `PRD.md`, generate the spec and agent contract, drive tests-first implementation, verify the target, and patch or revise without making you learn internal commands.
-
-CLI fallback and diagnostics:
-
-```bash
-npx --yes --package github:NikolaCehic/Archetype archetype doctor --json
-npx --yes --package github:NikolaCehic/Archetype archetype run "I want to build a premium B2B analytics app for marketing teams." --out archetype-output --force --json
-npx --yes --package github:NikolaCehic/Archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
-npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output --json
-npx --yes --package github:NikolaCehic/Archetype archetype approve-draft --draft archetype-output --input archetype.intake.json --out archetype.approved.intake.json --approved-by "Your name" --json
-npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.approved.intake.json --out archetype-output --force --json
-```
-
-See `docs/quickstart.md`, `docs/agent-lifecycle.md`, and `docs/release-readiness.md`.
-
-Archetype includes a deterministic local Agent Data Plane. It records run state, lifecycle gates, evidence, generated artifact lineage, verification status, and repair provenance under `archetype-output/data-plane/` so humans and agents can inspect and replay what happened without relying on hidden memory. See `docs/agent-data-plane.md` and `docs/AGENT_DATA_PLANE_PLAN.md`.
-
-Archetype also includes a central artifact registry in `src/artifacts/registry.ts`. It is the source of truth for generated manifest entries, internal artifact indexes, validator required paths, data-plane artifact metadata, and agent read order. See `docs/artifact-registry.md`.
-
-## What It Does
-
-Archetype compiles product intent into a frontend implementation package:
-
-- product model
-- route map
-- screen inventory
-- screen states
-- design-system tokens
-- component contracts
+- a product model
+- user flows and route architecture
+- screen inventory and screen states
+- design-system tokens and component contracts
 - data, action, and form contracts
 - acceptance criteria
 - test-first contracts
-- Playwright-backed verification contract and evidence
-- QA scenario catalog and evidence reports
-- revision and repair task queue
-- verification plan
-- readiness report
-- specialist agent role files under `agents/`
+- Playwright verification requirements
+- QA scenarios and malformed-data coverage
+- repair tasks when contract drift is found
+- an Agent Data Plane for replayable run history
 
-Verification evidence is per-scenario, not just aggregate. `verification/playwright-evidence.json` records evidence grades for scaffold/runtime, browser behavior, accessibility, visual screenshots, malformed-data handling, manual review, and production integration. Runtime grades can pass while manual review and production integration remain pending; scaffold verification is not treated as production launch approval.
+## 60-Second Install
 
-## Core Flow
-
-```txt
-Product brief / screenshots / brand notes / repo context
-        ↓
-Archetype clarifies context and optionally ingests files
-        ↓
-draft archetype-output contract package with a browser-viewable design-system preview
-        ↓
-bound human approval proof via `archetype approve-draft`
-        ↓
-canonical archetype-output contract package
-        ↓
-Agent Data Plane records run events, artifact lineage, and projections
-        ↓
-Claude Code / Codex writes tests first and implements from the contract
-        ↓
-Archetype verifies the implementation against the contract
-```
-
-## CLI
-
-Install paths are in `docs/install.md`.
-
-Install the agent-host plugin surfaces:
+Install Archetype into both Codex and Claude Code:
 
 ```bash
 npx --yes --package github:NikolaCehic/Archetype archetype install --target all --json
 ```
 
-Check package, plugin, MCP, and lifecycle readiness:
+Then start a fresh Codex or Claude Code session.
 
-```bash
-npx . doctor --json
+Use Archetype in Codex:
+
+```txt
+$archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
 
-Run the natural-language lifecycle primitive directly:
+Use Archetype in Claude Code:
 
-```bash
-npx . run "I want to build a premium B2B analytics app for marketing teams." --material ./SPEC.md --out archetype-output --force --json
+```txt
+/archetype "I want to build a premium B2B analytics app for marketing teams."
 ```
 
-`archetype run` safely ingests material paths, stores `lifecycle/source-graph.json` with material hashes, writes `lifecycle/run-state.json`, asks exactly one clarification question when context is weak, emits the draft design-system preview and approval request when ready, and continues approval through the same command:
+Archetype should ask one clarification question at a time when context is weak, invite optional materials, generate the contract, require human review before canonical approval, drive tests-first implementation, verify with Playwright evidence, and repair drift.
+
+Useful docs:
+
+- `docs/quickstart.md`
+- `docs/install.md`
+- `docs/agent-lifecycle.md`
+- `docs/release-readiness.md`
+- `docs/demo-script.md`
+
+## CLI Fallback
+
+You can also run Archetype directly from a terminal.
+
+Check install and release readiness:
 
 ```bash
-npx . run --intake archetype.intake.json --out archetype-output --question-id primary_users --answer "Marketing operations manager" --force --json
-npx . run --intake archetype.intake.json --out archetype-output --approve --approved-by "Your name" --force --json
+npx --yes --package github:NikolaCehic/Archetype archetype doctor --json
+```
+
+Run the natural-language lifecycle primitive:
+
+```bash
+npx --yes --package github:NikolaCehic/Archetype archetype run "I want to build a premium B2B analytics app for marketing teams." --out archetype-output --force --json
 ```
 
 Create a starter intake:
 
 ```bash
-npx . init --template saas-dashboard --out archetype.intake.json --json
+npx --yes --package github:NikolaCehic/Archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
 ```
 
-Generate a contract package:
+Generate a contract package from an intake:
 
 ```bash
-npx . generate --input examples/saas-dashboard-intake.json --out archetype-output --json
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output --json
 ```
 
-Approve a draft contract after human review:
+Approve a reviewed draft, then generate the canonical package:
 
 ```bash
-npx . approve-draft --draft archetype-output --input examples/saas-dashboard-intake.json --out archetype.approved.intake.json --approved-by "Your name" --json
-npx . generate --input archetype.approved.intake.json --out archetype-output --force --json
+npx --yes --package github:NikolaCehic/Archetype archetype approve-draft --draft archetype-output --input archetype.intake.json --out archetype.approved.intake.json --approved-by "Your name" --json
+npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.approved.intake.json --out archetype-output --force --json
 ```
 
-`approve-draft` writes a sidecar approval proof and binds the approved intake to the draft package id, source hash, package checksum, and required draft artifact hashes. Editing `contractApproval` into intake JSON by hand is not an implementation authorization path.
+## Lifecycle
 
-Draft generation is phase-safe: before bound approval, Archetype writes only clarification, evidence, governance, review, and draft artifacts. Canonical spec, test-first, Playwright verification, target, QA, and repair artifacts are constructed only after the approved intake is regenerated.
+Archetype follows a gated lifecycle:
 
-Validate the package:
+```txt
+idea or brief
+  -> clarify missing context
+  -> optional materials and source evidence
+  -> draft contract and design-system preview
+  -> human review and approval
+  -> canonical spec
+  -> test-first contracts
+  -> coding agent implementation
+  -> Playwright verification
+  -> QA evidence
+  -> repair or revision
+```
+
+The generated package keeps these gates visible under `lifecycle/`, including `lifecycle/implementation-phases.json`.
+
+Important governance files include:
+
+- `governance/forbidden-behaviors.json`
+- `governance/convergence-standard.json`
+
+The design-system draft includes a browser-viewable preview:
+
+- `draft/design-system-preview.html`
+
+Canonical implementation files include:
+
+- `spec/archetype-spec.json`
+- `test-first/`
+- `verification/playwright-verification-contract.json`
+- `verification/playwright-evidence.json`
+- `10-revision/repair-task-queue.json`
+
+Try a weak-context example to see the clarification gate:
+
+- `examples/vague-marketing-dashboard-intake.json`
+
+## What Gets Installed
+
+Codex install writes the local skill and plugin surfaces used by fresh Codex sessions:
+
+- `~/.codex/skills/archetype`
+- `~/.codex/skills/archetype-blueprint`
+- `~/.codex/skills/archetype-implement`
+- `~/.codex/skills/archetype-verify`
+- `~/.codex/skills/archetype-revise`
+- `~/plugins/archetype`
+- `~/.agents/plugins/marketplace.json`
+
+Claude Code install writes a local marketplace plugin and skill surface:
+
+- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype`
+- `~/.claude/skills/archetype`
+- `archetype@archetype-local`
+
+The installer also writes MCP configuration so hosts can call deterministic Archetype tools.
+
+## Agent Data Plane
+
+Archetype includes a deterministic local Agent Data Plane under `archetype-output/data-plane/`.
+
+It records:
+
+- run and session state
+- lifecycle gate events
+- source evidence
+- generated artifact lineage
+- contract versions
+- verification state
+- repair provenance
+
+Inspect it without rereading large artifacts:
 
 ```bash
-npx . validate --out archetype-output --json
+npx . data-plane status --out archetype-output --json
+npx . data-plane timeline --out archetype-output --run <run-id> --json
+npx . data-plane artifacts --out archetype-output --run <run-id> --priority hot --limit 10 --json
+npx . data-plane read-artifact --out archetype-output --artifact <artifact-id> --json
+npx . data-plane replay --out archetype-output --run <run-id> --json
 ```
 
-Summarize compact agent context:
+See `docs/agent-data-plane.md`.
+
+## MCP Tools
+
+Start the MCP server:
 
 ```bash
-npx . summarize --out archetype-output --json
-npx . summarize --out archetype-output --compact --json
+npm run build
+npm run mcp
 ```
 
-Every generated package now includes a token-bounded agent context surface. Start with `agent-context/context-summary.json`, then open one current file from `agent-context/phase-bundles/` such as `draft-review.json`, `test-first.json`, `implementation.json`, `verification.json`, `qa.json`, or `repair.json`. Agents should only request full artifacts when the active phase bundle names them.
+The server exposes deterministic tools such as:
 
-Simulate implementation readiness:
+- `archetype_release_doctor`
+- `archetype_run_lifecycle`
+- `archetype_create_intake`
+- `archetype_answer_clarification`
+- `archetype_generate_package`
+- `archetype_validate_package`
+- `archetype_summarize_package`
+- `archetype_read_artifact`
+- `archetype_verify_target`
+- `archetype_plan_repair`
+- `archetype_data_plane_status`
+- `archetype_data_plane_timeline`
+- `archetype_data_plane_artifacts`
+- `archetype_data_plane_read_artifact`
+- `archetype_data_plane_replay_run`
+
+See `docs/use-with-mcp.md` and `mcp.example.json`.
+
+## Development
+
+Install dependencies and build:
 
 ```bash
-npx . simulate --out archetype-output --json
+npm install
+npm run build
 ```
 
-Write a deterministic target frontend scaffold:
-
-```bash
-npx . write-target --out archetype-output --target tmp/generated-frontend --force --json
-```
-
-Verify a target frontend:
-
-```bash
-npx . verify-target --out archetype-output --target tmp/generated-frontend --json
-```
-
-The verifier ingests the target Playwright JSON report, records every route/state/flow/responsive/accessibility/visual/malformed-data scenario, checks screenshot files, and fails independently implemented targets that drift from the contract.
-
-Plan repair tasks from the latest verification evidence:
-
-```bash
-npx . repair --out archetype-output --target tmp/generated-frontend --json
-```
-
-## Release Checks
-
-Local release checks use the build-once `contract-suite` runner:
+Run the core checks:
 
 ```bash
 npm run check:fast
@@ -186,120 +225,32 @@ npm run check:release
 npm run check
 ```
 
-The runner writes timing and budget reports under `tmp/contract-suite/`, uses the `ARCHETYPE_TARGET_NPM_CACHE_DIR` target dependency cache for target installs, and tracks workspace disk plus source-context token budgets. Use `npm run clean:tmp-heavy` when target `node_modules`, `.next`, Playwright reports, or test results need to be cleared without deleting every diagnostic artifact.
-
-Inspect the Agent Data Plane without rereading large artifacts:
+Run focused release and plugin checks:
 
 ```bash
-npx . data-plane status --out archetype-output --json
-npx . data-plane timeline --out archetype-output --run <run-id> --json
-npx . data-plane artifacts --out archetype-output --run <run-id> --priority hot --limit 10 --json
-npx . data-plane read-artifact --out archetype-output --artifact <artifact-id> --json
-npx . data-plane lifecycle --out archetype-output --run <run-id> --json
-npx . data-plane replay --out archetype-output --run <run-id> --json
+npm run doctor
+npm run plugin:claude:contract
+npm run plugin:codex:contract
+npm run distribution:contract
+npm run release:contract
+npm run plugin-install:contract
+npm run install:contract
+npm run repo:audit
 ```
 
-## MCP
-
-Start the local MCP server:
+Run lifecycle and frontend-contract checks:
 
 ```bash
-npm run build
-npm run mcp
+npm run lifecycle:contract
+npm run design-preview:contract
+npm run frontend-practices:contract
+npm run agent-roles:contract
+npm run qa-team:contract
+npm run spec:contract
+npm run test-first:contract
+npm run playwright:contract
+npm run repair:contract
 ```
-
-The server exposes deterministic tools for agent hosts:
-
-- `archetype_release_doctor`
-- `archetype_run_lifecycle`
-- `archetype_create_intake`
-- `archetype_answer_clarification`
-- `archetype_generate_package`
-- `archetype_data_plane_status`
-- `archetype_data_plane_timeline`
-- `archetype_data_plane_artifacts`
-- `archetype_data_plane_read_artifact`
-- `archetype_data_plane_lifecycle`
-- `archetype_data_plane_replay_run`
-- `archetype_validate_package`
-- `archetype_summarize_package`
-- `archetype_read_artifact`
-- `archetype_verify_target`
-- `archetype_plan_repair`
-
-See `docs/use-with-mcp.md` and `mcp.example.json`.
-
-Installation details are in `docs/install.md`.
-
-## What Archetype Generates
-
-`archetype-output/` is a generated directory and is protected by a `.archetype-output-marker`. Archetype refuses to recursively overwrite arbitrary non-empty folders or project roots. Target frontend scaffolds use `.archetype-target-marker` with the same safety rule.
-
-`archetype-output/` is gated by lifecycle readiness:
-
-- Clarification packages include `lifecycle/start-request.json`, `lifecycle/context-matrix.json`, `lifecycle/implementation-phases.json`, `lifecycle/clarification-turn.json`, `lifecycle/clarification-state.json`, `01-evidence/evidence-ledger.json`, `01-evidence/missing-context.md`, `governance/forbidden-behaviors.json`, and `governance/convergence-standard.json`.
-- Draft contract packages include `lifecycle/implementation-phases.json`, `draft/product-model.draft.json`, `draft/experience-architecture.draft.json`, `draft/design-system.draft.json`, `draft/design-system-preview.html`, `draft/design-system-review.md`, `draft/frontend-contract.draft.json`, `draft/assumption-ledger.md`, `draft/specialist-review.json`, `governance/frontend-practice-skills.json`, `governance/forbidden-behaviors.json`, `governance/convergence-standard.json`, and `draft/contract-approval-request.json`.
-- Canonical packages are generated only after human approval and include `spec/archetype-spec.md`, `spec/archetype-spec.json`, `governance/forbidden-behaviors.json`, `governance/convergence-standard.json`, `test-first/test-first-contract.json`, `test-first/test-quality-standard.json`, `test-results/initial-red-test-run.md`, `lifecycle/approval-request.md`, `lifecycle/approval-decision.json`, `lifecycle/execution-state.json`, `lifecycle/implementation-phases.json`, `lifecycle/final-readiness-report.md`, `draft/design-system-preview.html`, `reviews/specialist-review-summary.md`, `verification/playwright-verification-contract.json`, `verification/playwright-evidence.json`, `implementation-contract.md`, `AGENTS.md`, `CLAUDE.md`, `frontend-agent-contract/`, `10-revision/repair-task-queue.json`, and target generation artifacts.
-- Every package includes `manifest.json`, `agent-context/context-summary.json`, `agent-context/phase-bundles/index.json`, readiness artifacts, evidence artifacts, and lifecycle state artifacts.
-
-## Use With Claude Code
-
-Install:
-
-```bash
-npx --yes --package github:NikolaCehic/Archetype archetype install --target claude --json
-```
-
-Then use:
-
-```txt
-/archetype "I want to build a premium B2B analytics app for marketing teams."
-```
-
-Installed Claude Code plugin surface:
-
-- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/.claude-plugin/plugin.json`
-- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/commands/archetype.md`
-- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/skills/`
-- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/agents/`
-- `~/.claude/plugins/marketplaces/archetype-local/plugins/archetype/.mcp.json`
-- `~/.claude/skills/archetype/SKILL.md`
-
-Install notes: `docs/install-claude-code-plugin.md`.
-
-The Claude Code installer writes both the plugin surface and `~/.claude/skills/archetype/`, then installs/enables `archetype@archetype-local` when the `claude` CLI is available.
-
-## Use With Codex
-
-Install:
-
-```bash
-npx --yes --package github:NikolaCehic/Archetype archetype install --target codex --json
-```
-
-Then use:
-
-```txt
-$archetype "I want to build a premium B2B analytics app for marketing teams."
-```
-
-Installed Codex plugin surface:
-
-- `~/.codex/skills/archetype/SKILL.md`
-- `~/.codex/skills/archetype-blueprint/SKILL.md`
-- `~/.codex/skills/archetype-implement/SKILL.md`
-- `~/.codex/skills/archetype-verify/SKILL.md`
-- `~/.codex/skills/archetype-revise/SKILL.md`
-- `~/.codex/plugins/archetype/.codex-plugin/plugin.json`
-- `~/plugins/archetype/.codex-plugin/plugin.json`
-- `~/plugins/archetype/skills/`
-- `~/plugins/archetype/agents/`
-- `~/plugins/archetype/.mcp.json`
-- `~/.agents/plugins/marketplace.json`
-
-Install notes: `docs/install-codex-plugin.md`.
-
-## Demo
 
 Run the reproducible demo:
 
@@ -307,44 +258,11 @@ Run the reproducible demo:
 npm run demo:run
 ```
 
-Narration and expected artifacts are in `docs/demo-script.md`.
+## License
 
-## Examples
+Archetype is dual-licensed under either:
 
-- `examples/saas-dashboard-intake.json`
-- `examples/fintech-intake.json`
-- `examples/marketplace-admin-intake.json`
-- `examples/vague-marketing-dashboard-intake.json`
+- MIT License, in `LICENSE-MIT`
+- Apache License, Version 2.0, in `LICENSE-APACHE`
 
-## Development
-
-```bash
-npm run build
-npm run doctor
-npm run smoke
-npm run cli:contract
-npm run mcp:contract
-npm run plugin:claude:contract
-npm run plugin:codex:contract
-npm run distribution:contract
-npm run release:contract
-npm run plugin-install:contract
-npm run repo:audit
-npm run lifecycle:contract
-npm run design-preview:contract
-npm run lifecycle-execution:contract
-npm run frontend-practices:contract
-npm run agent-roles:contract
-npm run qa-team:contract
-npm run forbidden-behaviors:contract
-npm run marketing-replay:contract
-npm run implementation-phases:contract
-npm run convergence:contract
-npm run spec:contract
-npm run test-first:contract
-npm run playwright:contract
-npm run install:contract
-npm run check
-```
-
-Release notes live in `RELEASE_NOTES.md`.
+You may use Archetype under either license, at your option. The root `LICENSE` file contains the short dual-license notice.
