@@ -110,7 +110,7 @@ Phase sequencing is encoded in `lifecycle/implementation-phases.json`. It define
 
 Lifecycle convergence is encoded in `governance/convergence-standard.json`. The required answer is `No.` to weak-context code generation, inferred canonical scope without approval, marker-only tests passing, QA without Playwright evidence, and completion with unresolved repair tasks.
 
-Verification is complete only after `verify-target` writes Playwright evidence, the repair queue is empty, and `lifecycle/execution-state.json` reports `ready_for_completion: true`.
+Verification is complete only after `verify-target` writes per-scenario Playwright evidence, the repair queue is empty, and `lifecycle/execution-state.json` reports `ready_for_completion: true`. The evidence file grades runtime proof separately from production readiness: `runtime_overall` can pass only when route, state, flow, responsive, accessibility, visual screenshot, and malformed-data scenarios pass, while `manual_reviewed` and `production_integrated` remain pending until external review confirms them.
 
 QA is a lifecycle phase, not a mood. It produces `qa/scenario-catalog.json`, `qa/playwright-results.json`, `qa/malformed-data-results.json`, `qa/accessibility-results.md`, `qa/visual-regression-report.md`, `qa/contract-drift-report.md`, and `10-revision/repair-task-queue.json`.
 

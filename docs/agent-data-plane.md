@@ -76,7 +76,7 @@ The run directory is intentionally plain JSON and JSONL so users and agents can 
 | canonical spec | contract event, canonical artifact records |
 | test-first contracts | contract and verification events |
 | implementation | task events from downstream agents |
-| Playwright verification | verification event and projection |
+| Playwright verification | verification event and projection with per-scenario evidence grades |
 | QA | evidence and verification events |
 | repair or revision | repair events, task records |
 
@@ -141,7 +141,7 @@ Projections are deterministic read models:
 - `lifecycle`: current lifecycle state and gates.
 - `evidence`: source and evidence summary.
 - `contracts`: draft/canonical/test/verification contract refs.
-- `verification`: verification and repair status.
+- `verification`: verification and repair status, including runtime evidence grades, per-scenario Playwright results, malformed-data proof, visual screenshot proof, and pending manual/production review boundaries.
 - `readiness`: readiness tier, blockers, warnings, and authorization.
 
 CLI query commands read these projections without calling an LLM:

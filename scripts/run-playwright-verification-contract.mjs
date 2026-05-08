@@ -64,6 +64,7 @@ assert(contract.coverage.flow_scenarios > 0, "Playwright contract must include f
 assert(contract.coverage.responsive_scenarios >= routeMap.routes.length, "Playwright contract must include responsive scenarios.");
 assert(contract.coverage.accessibility_scenarios >= routeMap.routes.length, "Playwright contract must include accessibility scenarios.");
 assert(contract.coverage.visual_smoke_scenarios >= routeMap.routes.length, "Playwright contract must include visual-smoke scenarios.");
+assert(contract.coverage.malformed_data_scenarios >= routeMap.routes.length, "Playwright contract must include malformed-data scenarios.");
 assert(contract.scenarios.length === contract.coverage.total_scenarios, "Playwright scenarios must match coverage total.");
 
 const pendingEvidence = readJson(evidencePath);
@@ -71,7 +72,7 @@ assert(pendingEvidence.status === "pending", "Generated Playwright evidence shou
 assert(pendingEvidence.source_contract === "verification/playwright-verification-contract.json", "Pending evidence must point to contract.");
 
 const playwrightSpec = readFileSync(specPath, "utf8");
-for (const expected of ["@playwright/test", "Archetype route verification", "Archetype screen-state verification", "Archetype flow verification", "Archetype responsive verification", "Archetype accessibility verification", "Archetype visual-smoke verification"]) {
+for (const expected of ["@playwright/test", "Archetype route verification", "Archetype screen-state verification", "Archetype flow verification", "Archetype responsive verification", "Archetype accessibility verification", "Archetype malformed-data verification", "Archetype visual-smoke verification"]) {
   assert(playwrightSpec.includes(expected), `Playwright spec missing ${expected}.`);
 }
 const playwrightConfig = readFileSync(configPath, "utf8");
@@ -103,6 +104,15 @@ assert(evidence.status === "pass", "Playwright evidence should be pass after ver
 assert(evidence.summary.passed === contract.coverage.total_scenarios, "Playwright evidence pass count should match contract scenario count.");
 assert(evidence.summary.failed === 0, "Playwright evidence should have zero failures.");
 assert(evidence.coverage.total_scenarios === contract.coverage.total_scenarios, "Playwright evidence coverage should match contract.");
+assert(evidence.evidence_grades.runtime_overall === "pass", "Playwright evidence runtime grade should pass.");
+assert(evidence.evidence_grades.behavior_verified === "pass", "Playwright evidence behavior grade should pass.");
+assert(evidence.evidence_grades.accessibility_verified === "pass", "Playwright evidence accessibility grade should pass.");
+assert(evidence.evidence_grades.visual_verified === "pass", "Playwright evidence visual grade should pass.");
+assert(evidence.evidence_grades.malformed_data_verified === "pass", "Playwright evidence malformed-data grade should pass.");
+assert(evidence.evidence_grades.production_integrated === "pending", "Playwright evidence must not claim production integration.");
+assert(evidence.scenario_results.length === contract.coverage.total_scenarios, "Playwright evidence should ingest one result per scenario.");
+assert(evidence.scenario_results.some((scenario) => scenario.type === "malformed_data" && scenario.status === "pass"), "Playwright evidence should include passing malformed-data runtime results.");
+assert(evidence.visual_screenshot_summary.length === contract.coverage.visual_smoke_scenarios, "Playwright evidence should summarize every visual screenshot.");
 assert(existsSync(path.join(targetDir, "test-results", "archetype-playwright-results.json")), "target should contain Playwright JSON results.");
 const repairQueue = readJson(path.join(outputDir, "10-revision", "repair-task-queue.json"));
 assert(repairQueue.status === "pass", "repair task queue should be pass after Playwright verification.");

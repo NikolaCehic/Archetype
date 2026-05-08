@@ -3284,3 +3284,77 @@ Phase 05 convergence review:
 I do not know how to make the token-bounded agent context phase more complete without moving into Phase 06 real verification evidence grading.
 I cannot identify a Phase 05 mismatch after proving compact generated phase bundles, compact default MCP summary, bounded artifact reads with continuation, bounded data-plane MCP queries, mirror drift protection, updated skills/docs, and a full repository check.
 ```
+
+## Six-Agent Audit Phase 06 - Real Verification
+
+Source:
+
+- `obsidian-vault/13 Quality Reviews/Archetype Six-Agent Scope Audit Convergence - 2026-05-07.md`
+- `docs/agent-lifecycle.md`
+- `docs/use-with-mcp.md`
+- `docs/agent-data-plane.md`
+
+Extracted requirements:
+
+- Add evidence grades.
+- Add independent target fixtures.
+- Ingest Playwright JSON per scenario.
+- Add real malformed-data execution.
+- Strengthen accessibility and visual proof.
+- Prove Archetype catches failures in a target it did not generate itself.
+
+Phase critique:
+
+- Previous verification could prove the generated scaffold path more strongly than independent product behavior.
+- Playwright evidence had aggregate pass/fail counts but not a durable scenario-by-scenario proof surface.
+- QA scenario statuses were derived from global evidence status instead of the raw Playwright scenario result.
+- Malformed-data QA was narrative/pending even after a browser run.
+- Visual proof counted screenshots but did not bind screenshot files and byte sizes back into scenario evidence.
+- Verification language risked implying runtime scaffold proof was production readiness.
+
+Corrections applied:
+
+- Added Playwright malformed-data scenarios for every route and generated browser tests that reject invalid forced state/payload input.
+- Added per-scenario Playwright JSON ingestion in `verify-target`, including scenario id, type, route, screen id, duration, errors, attachments, screenshot path, and screenshot byte count.
+- Added evidence grades: `scaffold_verified`, `browser_smoke_verified`, `behavior_verified`, `accessibility_verified`, `visual_verified`, `malformed_data_verified`, `scenario_coverage`, `runtime_overall`, `manual_reviewed`, `production_integrated`, and `overall`.
+- Added `scenario_summary`, `visual_screenshot_summary`, `scenario_results`, and `readiness_boundary` to `verification/playwright-evidence.json`.
+- Made `verify-target` fail when Playwright passes but raw result coverage, accessibility, visual screenshots, behavior, or malformed-data proof is incomplete.
+- Updated QA artifacts so scenario catalog status comes from per-scenario Playwright results and malformed-data QA passes only after executed malformed-data browser evidence.
+- Added stronger accessibility and visual QA reports with evidence grades, runtime result counts, and screenshot byte totals.
+- Added `scripts/run-real-verification-contract.mjs` and `npm run real-verification:contract`.
+- The real-verification contract now verifies a generated target, a hand-written independent passing target, and a hand-written independent failing target.
+- Added the real-verification contract to `npm run test` and `npm run check`.
+- Updated README and lifecycle/MCP/Codex/Claude docs to explain runtime evidence grades and the production-readiness boundary.
+
+Repair notes:
+
+- First independent fixture attempt used a symlinked `node_modules`; Next/Turbopack rejected the symlink as outside the filesystem root. The repair was to install independent fixtures normally so the proof is portable.
+- First failing independent fixture broke route selectors and caused slow locator timeouts across many scenarios. The repair was to make normal route/state/accessibility/visual behavior pass and fail only malformed-data handling immediately.
+- The first malformed-data QA artifact moved `source_contract` away from the test-first contract and broke validation. The repair preserved `source_contract: test-first/test-first-contract.json` and added `source_playwright_contract` for runtime proof.
+- `buildPlaywrightResults` was briefly given the malformed-data source shape by mistake. The repair restored Playwright results to the verification contract while keeping malformed-data results traceable to test-first and Playwright.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run real-verification:contract`: pass.
+- `npm run playwright:contract`: pass.
+- `npm run qa-team:contract`: pass.
+- `npm run test-quality:contract`: pass.
+- `npm run repair:contract`: pass.
+- `npm run check`: pass.
+
+Self-healing rules:
+
+- Independent verification fixtures must not rely on generated scaffold internals, symlinked dependency trees, or marker-only failures.
+- A failing fixture should fail the exact proof family under test quickly and keep unrelated proof families stable.
+- Runtime evidence must include per-scenario result ingestion before QA scenarios may be marked pass.
+- Malformed-data QA must keep test-first as the source contract and Playwright as runtime evidence.
+- Visual proof must bind screenshot obligations to actual files and byte counts.
+- `runtime_overall: pass` must not imply `manual_reviewed` or `production_integrated`.
+
+Phase 06 convergence review:
+
+```txt
+I do not know how to make the real verification phase more complete without moving into Phase 07 speed and release discipline.
+I cannot identify a Phase 06 mismatch after proving evidence grades, independent pass/fail targets, per-scenario Playwright ingestion, executed malformed-data browser proof, accessibility/visual proof, QA reconciliation, repair compatibility, and a full repository check.
+```

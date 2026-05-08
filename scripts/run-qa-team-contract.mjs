@@ -588,8 +588,12 @@ assert(verify.status === "pass", "verify-target should pass for QA verification.
 
 const passedPlaywright = readJson(path.join(outputDir, "qa", "playwright-results.json"));
 assert(passedPlaywright.status === "pass", "QA Playwright results should pass after verify-target.");
+const passedMalformed = readJson(path.join(outputDir, "qa", "malformed-data-results.json"));
+assert(passedMalformed.status === "pass", "Malformed-data QA should pass after executed Playwright malformed-data evidence.");
+assert(passedMalformed.results.some((result) => result.status === "pass"), "Malformed-data QA should include executed passing runtime results.");
 const updatedCatalog = readJson(path.join(outputDir, "qa", "scenario-catalog.json"));
 assert(updatedCatalog.scenarios.some((scenario) => scenario.type === "visual_smoke" && scenario.status === "pass"), "Visual-smoke QA scenarios should pass after verify-target.");
+assert(updatedCatalog.scenarios.some((scenario) => scenario.type === "malformed_data" && scenario.status === "pass"), "Malformed-data QA scenarios should pass after verify-target.");
 assert(readText(path.join(outputDir, "qa", "accessibility-results.md")).includes("Status: pass"), "Accessibility QA report should pass after verify-target.");
 assert(readText(path.join(outputDir, "qa", "visual-regression-report.md")).includes("Status: pass"), "Visual QA report should pass after verify-target.");
 assert(readText(path.join(outputDir, "qa", "contract-drift-report.md")).includes("Status: pass"), "Contract drift QA report should pass after verify-target.");

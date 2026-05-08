@@ -103,6 +103,8 @@ When `archetype_generate_package` returns a `draft_contract`, hosts should surfa
 
 `archetype_verify_target` also enforces `test-first/test-quality-standard.json`; target tests that only check generated markers fail before Playwright runs.
 
+When verification runs, `archetype_verify_target` writes per-scenario evidence to `verification/playwright-evidence.json`. Agents should inspect `evidence_grades`, `scenario_results`, `scenario_summary`, and `visual_screenshot_summary` before claiming completion. `runtime_overall: pass` proves the browser contract passed; `manual_reviewed` and `production_integrated` stay pending until external production review closes them.
+
 Use `archetype_release_doctor` before setup demos or plugin install support to verify the package, docs, plugin wrappers, MCP configs, and lifecycle readiness surface.
 
 Use `archetype_plan_repair` after target verification to write `10-revision/repair-task-queue.json` and `10-revision/repair-plan.md` from the latest evidence.

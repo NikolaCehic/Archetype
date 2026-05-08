@@ -59,6 +59,8 @@ Archetype compiles product intent into a frontend implementation package:
 - readiness report
 - specialist agent role files under `agents/`
 
+Verification evidence is per-scenario, not just aggregate. `verification/playwright-evidence.json` records evidence grades for scaffold/runtime, browser behavior, accessibility, visual screenshots, malformed-data handling, manual review, and production integration. Runtime grades can pass while manual review and production integration remain pending; scaffold verification is not treated as production launch approval.
+
 ## Core Flow
 
 ```txt
@@ -150,6 +152,8 @@ Verify a target frontend:
 ```bash
 npx . verify-target --out archetype-output --target tmp/generated-frontend --json
 ```
+
+The verifier ingests the target Playwright JSON report, records every route/state/flow/responsive/accessibility/visual/malformed-data scenario, checks screenshot files, and fails independently implemented targets that drift from the contract.
 
 Plan repair tasks from the latest verification evidence:
 

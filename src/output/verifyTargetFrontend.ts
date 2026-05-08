@@ -336,6 +336,224 @@ function collectPlaywrightSummary(targetDir: string): {
   }
 }
 
+interface PlaywrightScenarioResult {
+  scenario_id: string;
+  title: string;
+  type: string;
+  route?: string;
+  screen_id?: string;
+  status: "pass" | "fail" | "skipped" | "missing";
+  duration_ms: number;
+  error_messages: string[];
+  attachments: string[];
+  screenshot_path?: string;
+  screenshot_bytes?: number;
+}
+
+interface PlaywrightEvidenceDetails {
+  scenarioResults: PlaywrightScenarioResult[];
+  grades: Record<string, "pass" | "fail" | "pending">;
+  summary: {
+    contract_scenarios: number;
+    raw_specs: number;
+    passed: number;
+    failed: number;
+    skipped: number;
+    missing: number;
+  };
+  visualProof: Array<{ scenario_id: string; screenshot_path: string; screenshot_bytes: number }>;
+  blockers: string[];
+  warnings: string[];
+}
+
+interface RawPlaywrightSpecs {
+  specs: Map<string, { status: PlaywrightScenarioResult["status"]; duration_ms: number; error_messages: string[]; attachments: string[] }>;
+  rawAvailable: boolean;
+  parseError?: string;
+}
+
+function collectRawPlaywrightSpecs(targetDir: string): RawPlaywrightSpecs {
+  const resultPath = path.join(targetDir, "test-results", "archetype-playwright-results.json");
+  const specs = new Map<string, { status: PlaywrightScenarioResult["status"]; duration_ms: number; error_messages: string[]; attachments: string[] }>();
+  if (!existsSync(resultPath)) return { specs, rawAvailable: false };
+  let raw: { suites?: unknown[] };
+  try {
+    raw = readJson<{ suites?: unknown[] }>(resultPath);
+  } catch (error) {
+    return {
+      specs,
+      rawAvailable: false,
+      parseError: error instanceof Error ? error.message : String(error)
+    };
+  }
+  const visitSuite = (suite: unknown): void => {
+    const record = typeof suite === "object" && suite !== null ? suite as Record<string, unknown> : {};
+    for (const spec of Array.isArray(record.specs) ? record.specs : []) {
+      const specRecord = typeof spec === "object" && spec !== null ? spec as Record<string, unknown> : {};
+      const title = typeof specRecord.title === "string" ? specRecord.title : "";
+      const tests = Array.isArray(specRecord.tests) ? specRecord.tests as Array<Record<string, unknown>> : [];
+      const results = tests.flatMap((test) => Array.isArray(test.results) ? test.results as Array<Record<string, unknown>> : []);
+      const failed = specRecord.ok === false || tests.some((test) => test.status === "unexpected" || test.status === "flaky");
+      const skipped = tests.length > 0 && tests.every((test) => test.status === "skipped");
+      const duration = results.reduce((total, result) => total + (typeof result.duration === "number" ? result.duration : 0), 0);
+      const errors = results.flatMap((result) =>
+        [
+          ...(Array.isArray(result.errors) ? result.errors : []),
+          ...(typeof result.error === "object" && result.error !== null ? [result.error] : [])
+        ].map((error) => {
+          const errorRecord = typeof error === "object" && error !== null ? error as Record<string, unknown> : {};
+          return String(errorRecord.message ?? errorRecord.stack ?? "Unknown Playwright error.");
+        })
+      );
+      const attachments = results.flatMap((result) =>
+        (Array.isArray(result.attachments) ? result.attachments : []).map((attachment) => {
+          const attachmentRecord = typeof attachment === "object" && attachment !== null ? attachment as Record<string, unknown> : {};
+          return String(attachmentRecord.path ?? attachmentRecord.name ?? "attachment");
+        })
+      );
+      if (title.trim().length > 0) {
+        specs.set(title, {
+          status: skipped ? "skipped" : failed ? "fail" : "pass",
+          duration_ms: duration,
+          error_messages: errors,
+          attachments
+        });
+      }
+    }
+    for (const child of Array.isArray(record.suites) ? record.suites : []) visitSuite(child);
+  };
+  for (const suite of raw.suites ?? []) visitSuite(suite);
+  return { specs, rawAvailable: true };
+}
+
+function scenarioTypeForId(scenarioId: string): string {
+  if (scenarioId.startsWith("PW-ROUTE")) return "route";
+  if (scenarioId.startsWith("PW-STATE")) return "screen_state";
+  if (scenarioId.startsWith("PW-FLOW")) return "flow";
+  if (scenarioId.startsWith("PW-RESP")) return "responsive";
+  if (scenarioId.startsWith("PW-A11Y")) return "accessibility";
+  if (scenarioId.startsWith("PW-VISUAL")) return "visual_smoke";
+  if (scenarioId.startsWith("PW-MALFORMED")) return "malformed_data";
+  return "unknown";
+}
+
+function screenshotProof(targetDir: string, scenario: Record<string, unknown>): { path?: string; bytes?: number } {
+  if (typeof scenario.screenshot_path !== "string") return {};
+  const screenshotPath = path.join(targetDir, scenario.screenshot_path);
+  if (!existsSync(screenshotPath)) return { path: scenario.screenshot_path, bytes: 0 };
+  return { path: scenario.screenshot_path, bytes: readFileSync(screenshotPath).byteLength };
+}
+
+function gradeScenarioType(results: PlaywrightScenarioResult[], type: string): "pass" | "fail" | "pending" {
+  const scoped = results.filter((result) => result.type === type);
+  if (scoped.length === 0) return "pending";
+  if (scoped.every((result) => result.status === "pass")) return "pass";
+  return "fail";
+}
+
+function gradeScenarioFamily(results: PlaywrightScenarioResult[], types: string[]): "pass" | "fail" | "pending" {
+  const family = results.filter((result) => types.includes(result.type));
+  if (family.length === 0) return "pending";
+  if (family.every((result) => result.status === "pass")) return "pass";
+  return "fail";
+}
+
+function collectPlaywrightEvidenceDetails(outputDir: string, targetDir: string): PlaywrightEvidenceDetails {
+  const contractPath = path.join(outputDir, "verification", "playwright-verification-contract.json");
+  if (!existsSync(contractPath)) {
+    return {
+      scenarioResults: [],
+      grades: { overall: "fail" },
+      summary: { contract_scenarios: 0, raw_specs: 0, passed: 0, failed: 0, skipped: 0, missing: 0 },
+      visualProof: [],
+      blockers: ["Missing verification/playwright-verification-contract.json."],
+      warnings: []
+    };
+  }
+  const contract = readJson<{ scenarios?: Array<Record<string, unknown>>; coverage?: Record<string, unknown> }>(contractPath);
+  const rawSpecs = collectRawPlaywrightSpecs(targetDir);
+  const scenarios = contract.scenarios ?? [];
+  const scenarioResults = scenarios.map((scenario): PlaywrightScenarioResult => {
+    const scenarioId = String(scenario.scenario_id ?? "unknown");
+    const raw = rawSpecs.specs.get(scenarioId);
+    const screenshot = screenshotProof(targetDir, scenario);
+    return {
+      scenario_id: scenarioId,
+      title: typeof scenario.title === "string" ? scenario.title : scenarioId,
+      type: String(scenario.type ?? scenarioTypeForId(scenarioId)),
+      ...(typeof scenario.route === "string" ? { route: scenario.route } : {}),
+      ...(typeof scenario.screen_id === "string" ? { screen_id: scenario.screen_id } : {}),
+      status: raw?.status ?? "missing",
+      duration_ms: raw?.duration_ms ?? 0,
+      error_messages: raw?.error_messages ?? [`Missing Playwright result for ${scenarioId}.`],
+      attachments: raw?.attachments ?? [],
+      ...(screenshot.path ? { screenshot_path: screenshot.path } : {}),
+      ...(typeof screenshot.bytes === "number" ? { screenshot_bytes: screenshot.bytes } : {})
+    };
+  });
+  const behaviorTypes = ["route", "screen_state", "flow", "responsive"];
+  const visualResults = scenarioResults.filter((result) => result.type === "visual_smoke");
+  const visualGrade = visualResults.length > 0 && visualResults.every((result) => result.status === "pass" && (result.screenshot_bytes ?? 0) > 0) ? "pass" : "fail";
+  const summary = {
+    contract_scenarios: scenarios.length,
+    raw_specs: rawSpecs.specs.size,
+    passed: scenarioResults.filter((result) => result.status === "pass").length,
+    failed: scenarioResults.filter((result) => result.status === "fail").length,
+    skipped: scenarioResults.filter((result) => result.status === "skipped").length,
+    missing: scenarioResults.filter((result) => result.status === "missing").length
+  };
+  const executableGrades: Record<string, "pass" | "fail" | "pending"> = {
+    scaffold_verified: existsSync(path.join(targetDir, "package.json")) ? "pass" : "fail",
+    browser_smoke_verified: gradeScenarioType(scenarioResults, "route"),
+    behavior_verified: gradeScenarioFamily(scenarioResults, behaviorTypes),
+    accessibility_verified: gradeScenarioType(scenarioResults, "accessibility"),
+    visual_verified: visualGrade,
+    malformed_data_verified: gradeScenarioType(scenarioResults, "malformed_data"),
+    scenario_coverage: rawSpecs.rawAvailable && rawSpecs.specs.size >= scenarios.length && scenarioResults.every((result) => result.status !== "missing") ? "pass" : "fail"
+  };
+  executableGrades.runtime_overall = Object.values(executableGrades).every((grade) => grade === "pass") ? "pass" : "fail";
+  const grades: Record<string, "pass" | "fail" | "pending"> = {
+    ...executableGrades,
+    manual_reviewed: "pending",
+    production_integrated: "pending",
+    overall: executableGrades.runtime_overall
+  };
+  const visualProof = visualResults.map((result) => ({
+    scenario_id: result.scenario_id,
+    screenshot_path: result.screenshot_path ?? "",
+    screenshot_bytes: result.screenshot_bytes ?? 0
+  }));
+  const blockers = [
+    ...(rawSpecs.rawAvailable ? [] : [`Playwright raw result JSON is missing or unreadable${rawSpecs.parseError ? `: ${rawSpecs.parseError}` : "."}`]),
+    ...(grades.scenario_coverage === "pass" ? [] : ["Playwright raw results do not cover every verification scenario."]),
+    ...(grades.browser_smoke_verified === "pass" ? [] : ["Browser route smoke scenarios did not all pass."]),
+    ...(grades.behavior_verified === "pass" ? [] : ["Browser behavior scenarios did not all pass."]),
+    ...(grades.accessibility_verified === "pass" ? [] : ["Accessibility scenarios did not all pass."]),
+    ...(grades.visual_verified === "pass" ? [] : ["Visual-smoke screenshots are missing or failed."]),
+    ...(grades.malformed_data_verified === "pass" ? [] : ["Malformed-data browser scenarios did not all pass."])
+  ];
+  return {
+    scenarioResults,
+    grades,
+    summary,
+    visualProof,
+    blockers,
+    warnings: [
+      ...(rawSpecs.specs.size > scenarios.length ? ["Raw Playwright results include additional target tests beyond the contract scenario set."] : []),
+      "Manual review and production integration grades remain pending; runtime verification is not a production launch approval."
+    ]
+  };
+}
+
+function auditPlaywrightEvidenceQuality(outputDir: string, targetDir: string, playwrightStatus: "pass" | "fail" | "pending"): { blockers: string[]; warnings: string[] } {
+  if (playwrightStatus !== "pass") return { blockers: [], warnings: [] };
+  const details = collectPlaywrightEvidenceDetails(outputDir, targetDir);
+  return {
+    blockers: details.blockers,
+    warnings: details.warnings
+  };
+}
+
 function writePlaywrightEvidence(outputDir: string, targetDir: string, report: TargetVerificationResult): void {
   const contractPath = path.join(outputDir, "verification", "playwright-verification-contract.json");
   if (!existsSync(contractPath)) return;
@@ -345,8 +563,12 @@ function writePlaywrightEvidence(outputDir: string, targetDir: string, report: T
   }>(contractPath);
   const playwrightSummary = collectPlaywrightSummary(targetDir);
   const playwrightCommand = report.commands.find((item) => item.id === "playwright");
-  const status = playwrightCommand?.status === "pass" ? "pass" : "fail";
-  const blockers = status === "pass" ? [] : ["Playwright verification did not pass for the target frontend."];
+  const details = collectPlaywrightEvidenceDetails(outputDir, targetDir);
+  const status = playwrightCommand?.status === "pass" && details.grades.overall === "pass" && report.status === "pass" ? "pass" : "fail";
+  const blockers = [
+    ...(playwrightCommand?.status === "pass" ? [] : ["Playwright verification did not pass for the target frontend."]),
+    ...details.blockers
+  ];
   const evidence = {
     evidence_version: "1.0",
     status,
@@ -356,6 +578,17 @@ function writePlaywrightEvidence(outputDir: string, targetDir: string, report: T
     target_dir: targetDir,
     coverage: contract.coverage ?? {},
     summary: playwrightSummary,
+    scenario_summary: details.summary,
+    visual_screenshot_summary: details.visualProof,
+    evidence_grades: details.grades,
+    scenario_results: details.scenarioResults,
+    readiness_boundary: {
+      runtime_verification: details.grades.runtime_overall ?? "fail",
+      production_readiness: details.grades.production_integrated === "pass" && details.grades.manual_reviewed === "pass" ? "pass" : "pending",
+      manual_reviewed: details.grades.manual_reviewed,
+      production_integrated: details.grades.production_integrated,
+      note: "Passing runtime evidence proves browser contract adherence; it does not certify production backend, auth, content, compliance, or human launch review."
+    },
     proof_artifacts: [
       "verification/playwright-evidence.json",
       "verification/playwright-evidence.md",
@@ -365,8 +598,8 @@ function writePlaywrightEvidence(outputDir: string, targetDir: string, report: T
     ],
     blockers,
     warnings: status === "pass"
-      ? ["Playwright verifies generated target behavior, but production backend, auth, and final compliance review remain external confirmations."]
-      : ["Inspect target:test-results/archetype-playwright-results.json and target:playwright-report for failing browser evidence."],
+      ? ["Playwright verifies target behavior, malformed-data handling, accessibility, and visual-smoke evidence; production backend, auth, and final compliance review remain external confirmations.", ...details.warnings]
+      : ["Inspect target:test-results/archetype-playwright-results.json and target:playwright-report for failing browser evidence.", ...details.warnings],
     raw_summary_available: playwrightSummary.rawAvailable
   };
   writeJson(path.join(outputDir, "verification", "playwright-evidence.json"), evidence);
@@ -478,10 +711,14 @@ export function verifyTargetFrontendExecution(outputDir: string, targetDir: stri
     const audit = auditTargetDependencies(targetDir);
     blockers.push(...audit.blockers);
     warnings.push(...audit.warnings);
-    warnings.push("Generated target source still uses fixture adapters until production backend and auth mappings are confirmed.");
+    warnings.push("Target source may still use fixture adapters until production backend and auth mappings are confirmed.");
   }
 
   const commandStatus = (id: string): "pass" | "fail" | "pending" => commands.find((item) => item.id === id)?.status ?? "pending";
+  const proofAudit = auditPlaywrightEvidenceQuality(outputDir, targetDir, commandStatus("playwright"));
+  blockers.push(...proofAudit.blockers);
+  warnings.push(...proofAudit.warnings);
+
   const requiredCommandStatus = (id: string): "pass" | "fail" => {
     const status = commandStatus(id);
     return status === "pass" ? "pass" : "fail";

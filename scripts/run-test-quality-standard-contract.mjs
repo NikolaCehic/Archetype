@@ -91,7 +91,7 @@ for (const scenario of visualScenarios) {
 }
 
 const playwrightSpec = readFileSync(playwrightSpecPath, "utf8");
-for (const signal of ["getByRole(\"heading\"", "innerText()", "getByRole(\"status\"", "getByRole(\"main\"", "keyboard.press", "setViewportSize", "boundingBox", "screenshot"]) {
+for (const signal of ["getByRole(\"heading\"", "innerText()", "getByRole(\"status\"", "getByRole(\"main\"", "keyboard.press", "setViewportSize", "boundingBox", "screenshot", "Archetype malformed-data verification"]) {
   assert(playwrightSpec.includes(signal), `Playwright spec missing non-marker behavior signal ${signal}.`);
 }
 
@@ -123,6 +123,7 @@ assert(failedVerify.json?.summary?.playwright === "pending", "Playwright should 
 
 const failedEvidence = readJson(path.join(outputDir, "verification", "playwright-evidence.json"));
 assert(failedEvidence.status === "fail", "Playwright evidence should fail when marker-only audit blocks verification.");
+assert(failedEvidence.evidence_grades.runtime_overall === "fail", "Failed Playwright evidence should fail runtime grade.");
 const failedQueue = readJson(path.join(outputDir, "10-revision", "repair-task-queue.json"));
 assert(failedQueue.status === "fail", "repair queue should fail when marker-only tests are detected.");
 assert(failedQueue.task_count > 0, "repair queue should contain tasks for marker-only verification failure.");

@@ -154,13 +154,31 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
       };
     })
   );
+  const malformedDataScenarios = routes.map((route, index) => {
+    const routePath = String(route.route ?? "/");
+    const screenId = String(route.screen_id ?? `screen_${index + 1}`);
+    return {
+      scenario_id: `PW-MALFORMED-${String(index + 1).padStart(3, "0")}`,
+      type: "malformed_data",
+      route: routePath,
+      resolved_route: `${routeUrl(routePath)}?archetype_state=__malformed__&archetype_payload=%7Bnot-json`,
+      screen_id: screenId,
+      malformed_case: "invalid_state_and_malformed_payload",
+      assertions: [
+        "Route still renders when malformed query data is supplied.",
+        "Invalid forced state does not become the active screen state.",
+        "Status feedback remains visible after malformed input."
+      ]
+    };
+  });
   const scenarios = [
     ...routeScenarios,
     ...stateScenarios,
     ...flowScenarios,
     ...responsiveScenarios,
     ...accessibilityScenarios,
-    ...visualScenarios
+    ...visualScenarios,
+    ...malformedDataScenarios
   ];
 
   return {
@@ -192,12 +210,13 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
       responsive_scenarios: responsiveScenarios.length,
       accessibility_scenarios: accessibilityScenarios.length,
       visual_smoke_scenarios: visualScenarios.length,
+      malformed_data_scenarios: malformedDataScenarios.length,
       total_scenarios: scenarios.length,
       viewports
     },
     pass_criteria: [
       "Install, typecheck, and production build pass.",
-      "Playwright route, state, flow, responsive, accessibility, and visual-smoke scenarios pass.",
+      "Playwright route, state, flow, responsive, accessibility, malformed-data, and visual-smoke scenarios pass.",
       "Evidence JSON and markdown are written back into archetype-output.",
       "Every warning that remains is named as external production confirmation or target limitation."
     ],
@@ -231,6 +250,7 @@ function buildPlanMarkdown(contract: JsonRecord): string {
     `- Responsive scenarios: ${String(coverage.responsive_scenarios ?? 0)}`,
     `- Accessibility scenarios: ${String(coverage.accessibility_scenarios ?? 0)}`,
     `- Visual-smoke scenarios: ${String(coverage.visual_smoke_scenarios ?? 0)}`,
+    `- Malformed-data scenarios: ${String(coverage.malformed_data_scenarios ?? 0)}`,
     `- Total scenarios: ${String(coverage.total_scenarios ?? 0)}`,
     "",
     "## Evidence",
@@ -295,6 +315,7 @@ function buildSpecSource(contract: JsonRecord): string {
   const responsiveScenarios = specData(contract, "responsive");
   const accessibilityScenarios = specData(contract, "accessibility");
   const visualScenarios = specData(contract, "visual_smoke");
+  const malformedDataScenarios = specData(contract, "malformed_data");
   return [
     "import { expect, test } from \"@playwright/test\";",
     "import { mkdir } from \"node:fs/promises\";",
@@ -307,6 +328,7 @@ function buildSpecSource(contract: JsonRecord): string {
     "const responsiveScenarios = " + JSON.stringify(responsiveScenarios, null, 2) + " as ArchetypeScenario[];",
     "const accessibilityScenarios = " + JSON.stringify(accessibilityScenarios, null, 2) + " as ArchetypeScenario[];",
     "const visualScenarios = " + JSON.stringify(visualScenarios, null, 2) + " as ArchetypeScenario[];",
+    "const malformedDataScenarios = " + JSON.stringify(malformedDataScenarios, null, 2) + " as ArchetypeScenario[];",
     "",
     "test.describe(\"Archetype route verification\", () => {",
     "  for (const scenario of routeScenarios) {",
@@ -378,6 +400,21 @@ function buildSpecSource(contract: JsonRecord): string {
     "  }",
     "});",
     "",
+    "test.describe(\"Archetype malformed-data verification\", () => {",
+    "  for (const scenario of malformedDataScenarios) {",
+    "    test(scenario.scenario_id, async ({ page }) => {",
+    "      await page.goto(scenario.resolved_route);",
+    "      const root = page.locator(`[data-archetype-screen=\"${scenario.screen_id}\"]`);",
+    "      await expect(root).toBeVisible();",
+    "      await expect(page.getByRole(\"status\")).toBeVisible();",
+    "      const activeState = await root.getAttribute(\"data-state\");",
+    "      expect(activeState).not.toBe(\"__malformed__\");",
+    "      const statusText = (await page.getByRole(\"status\").innerText()).trim();",
+    "      expect(statusText.length).toBeGreaterThan(0);",
+    "    });",
+    "  }",
+    "});",
+    "",
     "test.describe(\"Archetype visual-smoke verification\", () => {",
     "  for (const scenario of visualScenarios) {",
     "    test(scenario.scenario_id, async ({ page }) => {",
@@ -409,10 +446,21 @@ function buildEvidenceMarkdown(evidence: JsonRecord): string {
     `- Routes: ${String(coverage.route_count ?? 0)}`,
     `- Screens: ${String(coverage.screen_count ?? 0)}`,
     `- Total scenarios: ${String(coverage.total_scenarios ?? 0)}`,
+    `- Malformed-data scenarios: ${String(coverage.malformed_data_scenarios ?? 0)}`,
+    `- Evidence grade: ${String(asRecord(evidence.evidence_grades).overall ?? "pending")}`,
+    `- Runtime grade: ${String(asRecord(evidence.evidence_grades).runtime_overall ?? "pending")}`,
+    `- Production integration: ${String(asRecord(evidence.evidence_grades).production_integrated ?? "pending")}`,
     "",
     "## Evidence Artifacts",
     "",
     ...asArray(evidence.proof_artifacts).map((artifact) => `- ${String(artifact)}`),
+    "",
+    "## Scenario Results",
+    "",
+    ...asArray(evidence.scenario_results).slice(0, 20).map((scenario) => {
+      const record = asRecord(scenario);
+      return `- ${String(record.scenario_id ?? "unknown")}: ${String(record.status ?? "pending")} (${String(record.type ?? "unknown")})`;
+    }),
     "",
     "## Notes",
     "",
@@ -434,6 +482,36 @@ function pendingEvidence(contract: JsonRecord): JsonRecord {
       failed: 0,
       skipped: 0,
       total: Number(coverage.total_scenarios ?? 0)
+    },
+    scenario_summary: {
+      contract_scenarios: Number(coverage.total_scenarios ?? 0),
+      raw_specs: 0,
+      passed: 0,
+      failed: 0,
+      skipped: 0,
+      missing: Number(coverage.total_scenarios ?? 0)
+    },
+    visual_screenshot_summary: [],
+    evidence_grades: {
+      scaffold_verified: "pending",
+      browser_smoke_verified: "pending",
+      behavior_verified: "pending",
+      accessibility_verified: "pending",
+      visual_verified: "pending",
+      malformed_data_verified: "pending",
+      scenario_coverage: "pending",
+      runtime_overall: "pending",
+      manual_reviewed: "pending",
+      production_integrated: "pending",
+      overall: "pending"
+    },
+    scenario_results: [],
+    readiness_boundary: {
+      runtime_verification: "pending",
+      production_readiness: "pending",
+      manual_reviewed: "pending",
+      production_integrated: "pending",
+      note: "Runtime evidence is pending and cannot certify production readiness."
     },
     proof_artifacts: asArray(contract.required_evidence_paths),
     blockers: [],

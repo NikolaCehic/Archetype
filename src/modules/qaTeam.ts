@@ -70,10 +70,15 @@ function qaOwnerForScenario(type: string): string {
   return owners[type] ?? "qa-lead.md";
 }
 
-function scenarioStatus(evidenceStatus: string): string {
-  if (evidenceStatus === "pass") return "pass";
-  if (evidenceStatus === "fail") return "fail";
-  return "pending";
+function scenarioStatusFromResult(result: JsonRecord | undefined, evidenceStatus: string): string {
+  if (!result) return evidenceStatus === "pending" ? "pending" : "warning";
+  const status = String(result.status ?? "pending");
+  if (status === "pass" || status === "fail") return status;
+  return status === "skipped" || status === "missing" ? "fail" : "pending";
+}
+
+function scenarioResultsById(playwrightEvidence: JsonRecord): Map<string, JsonRecord> {
+  return new Map(records(playwrightEvidence.scenario_results).map((result) => [String(result.scenario_id ?? "unknown"), result]));
 }
 
 function buildMalformedScenarios(testFirstContract: JsonRecord): JsonRecord[] {
@@ -112,10 +117,13 @@ function buildScenarioCatalog(input: {
   playwrightEvidence: JsonRecord;
 }): JsonRecord {
   const evidenceStatus = statusValue(input.playwrightEvidence.status);
+  const resultsById = scenarioResultsById(input.playwrightEvidence);
   const playwrightScenarios = records(input.playwrightContract.scenarios).map((scenario) => {
     const type = stringValue(scenario.type, "unknown");
+    const scenarioId = stringValue(scenario.scenario_id, "unknown");
+    const evidenceResult = resultsById.get(scenarioId);
     return {
-      scenario_id: stringValue(scenario.scenario_id, "unknown"),
+      scenario_id: scenarioId,
       type,
       owner_agent: qaOwnerForScenario(type),
       source_contract: "verification/playwright-verification-contract.json",
@@ -128,7 +136,13 @@ function buildScenarioCatalog(input: {
         ...(type === "accessibility" ? ["qa/accessibility-results.md"] : []),
         ...(type === "visual_smoke" ? ["qa/visual-regression-report.md"] : [])
       ],
-      status: scenarioStatus(evidenceStatus)
+      status: scenarioStatusFromResult(evidenceResult, evidenceStatus),
+      runtime_evidence: evidenceResult ? {
+        status: evidenceResult.status,
+        duration_ms: evidenceResult.duration_ms,
+        screenshot_path: evidenceResult.screenshot_path,
+        screenshot_bytes: evidenceResult.screenshot_bytes
+      } : null
     };
   });
   const malformedScenarios = buildMalformedScenarios(input.testFirstContract);
@@ -187,32 +201,63 @@ function buildPlaywrightResults(input: {
 function buildMalformedDataResults(input: {
   scenarioCatalog: JsonRecord;
   targetExecution: JsonRecord;
+  playwrightEvidence: JsonRecord;
 }): JsonRecord {
   const scenarios = records(input.scenarioCatalog.scenarios).filter((scenario) => scenario.type === "malformed_data");
-  const executed = input.targetExecution.status === "pass" && String(asRecord(input.targetExecution.summary).playwright) === "pass";
+  const executedResults = records(input.playwrightEvidence.scenario_results).filter((result) => result.type === "malformed_data");
+  const grades = asRecord(input.playwrightEvidence.evidence_grades);
+  const grade = String(grades.malformed_data_verified ?? grades.malformed_data ?? "pending");
+  const executed = executedResults.length > 0 && input.targetExecution.status === "pass" && String(asRecord(input.targetExecution.summary).playwright) === "pass";
+  const failedResults = executedResults.filter((result) => result.status !== "pass");
+  const status = scenarios.length === 0 || (executedResults.length > 0 && (failedResults.length > 0 || grade !== "pass"))
+    ? "fail"
+    : executed
+      ? "pass"
+      : "pending";
   return {
     artifact_version: "1.0",
     source_scope: "HL-10",
     lifecycle_phase: "qa_verification",
     owner_agent: "malformed-data-qa.md",
     rule: "QA produces evidence, not vibes.",
-    status: executed ? "warning" : "pending",
+    status,
     source_contract: "test-first/test-first-contract.json",
+    source_playwright_contract: "verification/playwright-verification-contract.json",
+    evidence_grade: grade,
     scenarios,
-    results: scenarios.map((scenario) => ({
+    results: executedResults.map((result) => ({
+      scenario_id: result.scenario_id,
+      status: result.status,
+      route: result.route,
+      screen_id: result.screen_id,
+      duration_ms: result.duration_ms,
+      errors: result.error_messages,
+      evidence: "Executed by Playwright malformed-data browser scenario.",
+      runtime_artifact: "target:test-results/archetype-playwright-results.json"
+    })),
+    test_first_obligations: scenarios.filter((scenario) => String(scenario.scenario_id ?? "").startsWith("QA-MALFORMED")).map((scenario) => ({
       scenario_id: scenario.scenario_id,
-      status: "pending",
-      evidence: "Defined from test-first integration obligations; runtime malformed-data execution is not complete until a target test runner records results.",
+      status: status === "pass" ? "covered_by_browser_malformed_family" : "pending",
+      source_test_id: scenario.source_test_id,
+      malformed_cases: scenario.malformed_cases,
       required_evidence_artifact: "qa/malformed-data-results.json"
     })),
     proof_artifacts: [
       "qa/malformed-data-results.json",
+      "verification/playwright-evidence.json",
+      "target:test-results/archetype-playwright-results.json",
       "test-first/test-first-contract.json",
       "06-frontend-agent-contract/form-contracts.json",
       "06-frontend-agent-contract/data-operation-contracts.json"
     ],
-    blockers: scenarios.length === 0 ? ["No malformed-data scenarios were generated from test-first obligations."] : [],
-    warnings: ["Malformed-data QA is evidence-tracked but remains pending until the target executes the generated malformed data tests."]
+    blockers: [
+      ...(scenarios.length === 0 ? ["No malformed-data scenarios were generated from test-first obligations."] : []),
+      ...(executedResults.length === 0 && input.targetExecution.status === "pass" ? ["Target verification passed without executed malformed-data scenario evidence."] : []),
+      ...failedResults.map((result) => `Malformed-data scenario failed: ${String(result.scenario_id ?? "unknown")}.`)
+    ],
+    warnings: status === "pass"
+      ? ["Malformed-data browser proof covers invalid state/query payload handling; backend input validation and security abuse cases remain production integration confirmations."]
+      : ["Malformed-data QA is not complete until Playwright records passing malformed-data browser scenario results."]
   };
 }
 
@@ -222,9 +267,13 @@ function markdownReport(title: string, lines: string[]): string {
 
 function buildAccessibilityResults(input: { playwrightContract: JsonRecord; playwrightEvidence: JsonRecord }): string {
   const accessibilityScenarios = records(input.playwrightContract.scenarios).filter((scenario) => scenario.type === "accessibility");
-  const status = statusValue(input.playwrightEvidence.status);
+  const grades = asRecord(input.playwrightEvidence.evidence_grades);
+  const status = String(grades.accessibility_verified ?? input.playwrightEvidence.status ?? "pending");
+  const results = records(input.playwrightEvidence.scenario_results).filter((result) => result.type === "accessibility");
+  const passed = results.filter((result) => result.status === "pass").length;
   return markdownReport("# QA Accessibility Results", [
     `Status: ${status}`,
+    `Evidence grade: ${status}`,
     "Source scope: HL-10",
     "Owner agent: accessibility-qa.md",
     "Rule: QA produces evidence, not vibes.",
@@ -240,6 +289,11 @@ function buildAccessibilityResults(input: { playwrightContract: JsonRecord; play
     "",
     String(accessibilityScenarios.length),
     "",
+    "## Executed Results",
+    "",
+    `- Passed: ${passed}`,
+    `- Total runtime results: ${results.length}`,
+    "",
     "## Result",
     "",
     status === "pass"
@@ -250,9 +304,13 @@ function buildAccessibilityResults(input: { playwrightContract: JsonRecord; play
 
 function buildVisualRegressionReport(input: { playwrightContract: JsonRecord; playwrightEvidence: JsonRecord }): string {
   const visualScenarios = records(input.playwrightContract.scenarios).filter((scenario) => scenario.type === "visual_smoke");
-  const status = statusValue(input.playwrightEvidence.status);
+  const grades = asRecord(input.playwrightEvidence.evidence_grades);
+  const status = String(grades.visual_verified ?? input.playwrightEvidence.status ?? "pending");
+  const results = records(input.playwrightEvidence.scenario_results).filter((result) => result.type === "visual_smoke");
+  const screenshotBytes = results.reduce((total, result) => total + Number(result.screenshot_bytes ?? 0), 0);
   return markdownReport("# QA Visual Regression Report", [
     `Status: ${status}`,
+    `Evidence grade: ${status}`,
     "Source scope: HL-10",
     "Owner agent: visual-regression-qa.md",
     "Rule: QA produces evidence, not vibes.",
@@ -267,6 +325,11 @@ function buildVisualRegressionReport(input: { playwrightContract: JsonRecord; pl
     "## Screenshot Obligations",
     "",
     ...visualScenarios.map((scenario) => `- ${String(scenario.scenario_id)}: ${String(scenario.screenshot_path ?? "screenshot required")}`),
+    "",
+    "## Runtime Screenshot Proof",
+    "",
+    `- Runtime screenshot results: ${results.length}`,
+    `- Total screenshot bytes: ${screenshotBytes}`,
     "",
     "## Result",
     "",
@@ -338,7 +401,11 @@ export function buildQaArtifactsFromRecords(input: {
       playwrightEvidence: input.playwrightEvidence,
       targetExecution
     }),
-    malformedDataResults: buildMalformedDataResults({ scenarioCatalog, targetExecution }),
+    malformedDataResults: buildMalformedDataResults({
+      scenarioCatalog,
+      targetExecution,
+      playwrightEvidence: input.playwrightEvidence
+    }),
     accessibilityResultsMarkdown: buildAccessibilityResults({
       playwrightContract: input.playwrightContract,
       playwrightEvidence: input.playwrightEvidence
