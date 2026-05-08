@@ -22,6 +22,7 @@ Examples:
 - Ask exactly one clarification question at a time when essential context is missing.
 - Ask the user to optionally provide materials after the initial idea: designs, screenshots, wireframes, `SPEC.md`, `PRD.md`, brand notes, API docs, route maps, existing repo files, or test policy.
 - After the user answers, update the intake/context matrix with `archetype_answer_clarification`, then either ask the next single question or continue through blueprint, implementation, verification, and revision without requiring another handoff prompt.
+- Prefer MCP tool `archetype_run_lifecycle` as the backing primitive for `$archetype`; use its `nextAction` before falling back to separate intake/generate tools.
 - Report progress in human terms: context gathered, missing decisions, contract ready, implementation started, verification result.
 
 ## One-Question Clarification
@@ -36,8 +37,8 @@ If the answer is obvious from imported material, use the material as evidence in
 
 1. Treat the initial idea as `start`.
 2. If setup is uncertain, call MCP tool `archetype_release_doctor` and continue only if the package, plugin, MCP, docs, and lifecycle readiness surface is pass.
-3. Clarify missing context one question at a time and ask for optional materials.
-4. Normalize the user's natural language and `@` imported context into `archetype.intake.json`.
+3. Call MCP tool `archetype_run_lifecycle` with the brief and any imported material paths/content. It safely ingests materials, writes `lifecycle/source-graph.json`, writes `lifecycle/run-state.json`, and returns the next action.
+4. If MCP cannot call `archetype_run_lifecycle`, normalize the user's natural language and `@` imported context into `archetype.intake.json`.
 5. Prefer MCP tool `archetype_create_intake`. Pass imported materials through the `materials` array with labels, paths, content excerpts, and source types.
 6. Generate `archetype-output` with MCP tool `archetype_generate_package`.
 7. Read `agent-context/context-summary.json` and `agent-context/phase-bundles/index.json` first. Then read only the current phase bundle under `agent-context/phase-bundles/` before opening larger artifacts.
@@ -68,6 +69,7 @@ If MCP is unavailable, use the CLI internally. Do not make the user run these co
 
 ```bash
 npx --yes --package github:NikolaCehic/Archetype archetype doctor --json
+npx --yes --package github:NikolaCehic/Archetype archetype run "natural-language idea" --out archetype-output --force --json
 npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output --json
 npx --yes --package github:NikolaCehic/Archetype archetype validate --out archetype-output --json
 npx --yes --package github:NikolaCehic/Archetype archetype verify-target --out archetype-output --target . --skip-install --json

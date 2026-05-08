@@ -13,6 +13,7 @@ import { verifyTargetFrontendExecution } from "./output/verifyTargetFrontend";
 import { updateRepairArtifactsFromLatest } from "./modules/revisionProtocol";
 import { applyClarificationAnswer } from "./modules/clarificationUx";
 import { assessContextGate } from "./modules/contextGate";
+import { runLifecycle } from "./lifecycle/runLifecycle";
 import { installAgentPlugins, type InstallTarget } from "./install/pluginInstaller";
 import { runReleaseDoctor } from "./release/doctor";
 import { validateExportedPackage } from "./quality/validatePackage";
@@ -37,7 +38,7 @@ import type { ArchetypeInput } from "./core/types";
 
 type CommandStatus = "success" | "warning" | "error";
 
-const VALID_COMMANDS = new Set(["doctor", "install", "init", "generate", "approve-draft", "answer-clarification", "validate", "summarize", "simulate", "write-target", "verify-target", "repair", "data-plane"]);
+const VALID_COMMANDS = new Set(["doctor", "install", "init", "run", "generate", "approve-draft", "answer-clarification", "validate", "summarize", "simulate", "write-target", "verify-target", "repair", "data-plane"]);
 const TEMPLATE_FILES: Record<string, string> = {
   "saas-dashboard": "saas-dashboard-intake.json",
   fintech: "fintech-intake.json",
@@ -51,6 +52,9 @@ function usage(exitCode = 1): never {
   console.log("  archetype doctor");
   console.log("  archetype install [--target codex|claude|all] [--home <dir>] [--dry-run] [--json]");
   console.log("  archetype init --out <intake.json> [--template saas-dashboard|fintech|marketplace-admin] [--force]");
+  console.log("  archetype run \"<brief>\" [--out <output-dir>] [--intake <intake.json>] [--material <path>] [--force]");
+  console.log("  archetype run --intake <intake.json> --out <output-dir> --question-id <id> --answer <text> [--force]");
+  console.log("  archetype run --intake <intake.json> --out <output-dir> --approve --approved-by <name> [--force]");
   console.log("  archetype generate --input <intake.json> --out <output-dir> [--force]");
   console.log("  archetype approve-draft --draft <draft-output-dir> --input <intake.json> --out <approved-intake.json> --approved-by <name> [--force]");
   console.log("  archetype answer-clarification --input <intake.json> --out <next-intake.json> --question-id <id> --answer <text> [--answered-by <name>]");
@@ -77,8 +81,41 @@ function getArg(name: string): string | undefined {
   return process.argv[index + 1];
 }
 
+function getArgs(name: string): string[] {
+  const values: string[] = [];
+  for (let index = 0; index < process.argv.length; index += 1) {
+    if (process.argv[index] === name && process.argv[index + 1]) values.push(process.argv[index + 1]);
+  }
+  return values;
+}
+
 function hasFlag(name: string): boolean {
   return process.argv.includes(name);
+}
+
+function positionalBrief(): string | undefined {
+  const args = process.argv.slice(3);
+  const flagsWithValues = new Set([
+    "--intake",
+    "--input",
+    "--out",
+    "--material",
+    "--question-id",
+    "--answer",
+    "--approved-by",
+    "--approved-input",
+    "--approved-assumption-ids",
+    "--project-name"
+  ]);
+  for (let index = 0; index < args.length; index += 1) {
+    const value = args[index];
+    if (value.startsWith("--")) {
+      if (flagsWithValues.has(value)) index += 1;
+      continue;
+    }
+    return value;
+  }
+  return undefined;
 }
 
 function getNumberArg(name: string): number | undefined {
@@ -429,6 +466,41 @@ function answerClarificationCommand(jsonMode: boolean): void {
   ]);
 }
 
+function runLifecycleCommand(jsonMode: boolean): void {
+  const result = runLifecycle({
+    brief: positionalBrief(),
+    inputPath: getArg("--intake") ?? getArg("--input"),
+    outputDir: getArg("--out"),
+    materialPaths: getArgs("--material"),
+    questionId: getArg("--question-id"),
+    answer: getArg("--answer"),
+    approve: hasFlag("--approve"),
+    approvedBy: getArg("--approved-by"),
+    approvedInputPath: getArg("--approved-input"),
+    approvedAssumptionIds: (getArg("--approved-assumption-ids") ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0),
+    projectName: getArg("--project-name"),
+    overwrite: hasFlag("--force") || hasFlag("--overwrite"),
+    host: "cli"
+  });
+
+  resultOutput(result, jsonMode, [
+    `Archetype lifecycle run: ${result.packageType}`,
+    `Output: ${result.outputDir}`,
+    `Input: ${result.inputPath}`,
+    `Readiness tier: ${result.readinessTier}`,
+    `Ready for frontend agent: ${result.readyForFrontendAgent}`,
+    `Next action: ${result.nextAction.summary}`,
+    ...(result.nextQuestion ? [`Question: ${result.nextQuestion}`] : []),
+    ...(result.designSystemPreviewPath ? [`Design-system preview: ${result.designSystemPreviewPath}`] : []),
+    ...(result.nextAction.command ? [`Continue: ${result.nextAction.command}`] : []),
+    ...(result.blockers.length > 0 ? ["Blockers:", ...result.blockers.map((blocker) => `- ${blocker}`)] : []),
+    ...(result.warnings.length > 0 ? ["Warnings:", ...result.warnings.map((warning) => `- ${warning}`)] : [])
+  ]);
+}
+
 function dataPlaneCommand(jsonMode: boolean): void {
   const action = process.argv[3];
   const outDir = getArg("--out");
@@ -569,6 +641,11 @@ async function main(): Promise<void> {
 
   if (command === "init") {
     initCommand(jsonMode);
+    return;
+  }
+
+  if (command === "run") {
+    runLifecycleCommand(jsonMode);
     return;
   }
 

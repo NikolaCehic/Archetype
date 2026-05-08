@@ -62,6 +62,7 @@ Current GitHub package form:
 
 - `archetype_create_intake`
 - `archetype_release_doctor`
+- `archetype_run_lifecycle`
 - `archetype_answer_clarification`
 - `archetype_generate_package`
 - `archetype_data_plane_status`
@@ -76,7 +77,9 @@ Current GitHub package form:
 - `archetype_verify_target`
 - `archetype_plan_repair`
 
-The tools are deterministic wrappers around intake creation, one-question clarification updates, compiler output, package validation, artifact reading, target verification, and repair-task planning. They do not run a general-purpose agent.
+The tools are deterministic wrappers around lifecycle running, intake creation, one-question clarification updates, compiler output, package validation, artifact reading, target verification, and repair-task planning. They do not run a general-purpose agent.
+
+`archetype_run_lifecycle` is the preferred backing tool for `$archetype` and `/archetype`. It accepts a natural-language `brief`, optional `materialPaths` or inline `materials`, and continuation fields for one clarification answer or human approval. It writes `lifecycle/source-graph.json` with material hashes and `lifecycle/run-state.json` with the next lifecycle action. The returned `nextAction.type` is one of `ask_clarification`, `review_draft`, or `implement_tests_first`.
 
 `archetype_summarize_package` defaults to compact output. It returns `agent-context/context-summary.json` and `agent-context/phase-bundles/index.json` as the first-read artifacts plus phase bundle references. Pass `mode: "compat"` only when a legacy host needs the older broad entrypoint list.
 

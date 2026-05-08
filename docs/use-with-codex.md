@@ -13,6 +13,7 @@ $archetype "I want to build a premium B2B analytics app for marketing teams."
 Codex should:
 
 - treat `$archetype` or a natural-language Archetype request as the full lifecycle by default
+- prefer MCP tool `archetype_run_lifecycle` or CLI fallback `archetype run "<brief>"` as the executable lifecycle primitive
 - ask clarification questions when product context is incomplete
 - invite optional `@` files, screenshots, wireframes, `SPEC.md`, `PRD.md`, brand notes, or repo context
 - read the imported `@` files itself
@@ -23,6 +24,8 @@ Codex should:
 - verify the target frontend
 - patch or revise until verification is acceptable
 - use the Agent Data Plane for deterministic run status, timeline, artifact lineage, verification, and repair queries when available
+
+The lifecycle primitive returns `nextAction`. If `nextAction.type` is `ask_clarification`, ask only that one question. If it is `review_draft`, surface `draft/design-system-preview.html` and the approval request. If it is `implement_tests_first`, begin from the compact phase bundles and write tests before UI code.
 
 The user should not need to know `generate`, `validate`, `verify-target`, or which generated file to hand back to Codex.
 
@@ -44,7 +47,7 @@ If verification fails, Codex calls `archetype_plan_repair` or `archetype repair 
 
 ## Use The MCP Server
 
-For MCP-capable Codex workflows, use `docs/use-with-mcp.md` and `mcp.example.json`. The server exposes `archetype_release_doctor`, `archetype_create_intake`, `archetype_answer_clarification`, `archetype_generate_package`, `archetype_data_plane_status`, `archetype_data_plane_timeline`, `archetype_data_plane_artifacts`, `archetype_data_plane_read_artifact`, `archetype_data_plane_lifecycle`, `archetype_data_plane_replay_run`, `archetype_validate_package`, `archetype_summarize_package`, `archetype_read_artifact`, `archetype_verify_target`, and `archetype_plan_repair`.
+For MCP-capable Codex workflows, use `docs/use-with-mcp.md` and `mcp.example.json`. The server exposes `archetype_release_doctor`, `archetype_run_lifecycle`, `archetype_create_intake`, `archetype_answer_clarification`, `archetype_generate_package`, `archetype_data_plane_status`, `archetype_data_plane_timeline`, `archetype_data_plane_artifacts`, `archetype_data_plane_read_artifact`, `archetype_data_plane_lifecycle`, `archetype_data_plane_replay_run`, `archetype_validate_package`, `archetype_summarize_package`, `archetype_read_artifact`, `archetype_verify_target`, and `archetype_plan_repair`.
 
 When the Agent Data Plane is present, Codex can query run state instead of rereading large artifacts. The data plane lives under `archetype-output/data-plane/` and is documented in `docs/agent-data-plane.md`.
 

@@ -3440,3 +3440,78 @@ Phase 07 convergence review:
 I do not know how to make the speed and release discipline phase more complete without moving into Phase 08 natural-language lifecycle primitive work.
 I cannot identify a Phase 07 mismatch after proving build-once local checks, split CI suites, target dependency caching, timing reports, disk/token budgets, heavy tmp cleanup, docs, and a full repository check.
 ```
+
+## Six-Agent Audit Phase 08 - Natural-Language Lifecycle Primitive
+
+Source:
+
+- `obsidian-vault/13 Quality Reviews/Archetype Six-Agent Scope Audit Convergence - 2026-05-07.md`
+- `obsidian-vault/13 Quality Reviews/Archetype Multiagent Quality Review - 2026-05-07.md`
+- `docs/agent-lifecycle.md`
+- `docs/use-with-mcp.md`
+
+Extracted requirements:
+
+- Add `archetype run "<brief>"`.
+- Add MCP tool `archetype_run_lifecycle`.
+- Add safe material ingestion.
+- Store source graph and material hashes.
+- Ask one clarification question at a time.
+- Generate draft, design-system preview, approval request, and next-step instructions from one lifecycle primitive.
+- Back `$archetype` and `/archetype` with deterministic code, not only host-agent instructions.
+
+Phase critique:
+
+- The front-door skills described the right behavior, but the host agent still had to orchestrate release doctor, intake creation, generation, clarification, draft review, approval, and continuation correctly.
+- Natural-language runs did not have a single typed result with `nextAction`.
+- Material ingestion through front-door flow relied on agents preparing material records manually instead of a safe path hashing step.
+- Source material hashes were not written as a first-class front-door artifact.
+- Draft approval could be done safely through `approve-draft`, but the natural front door did not have an equivalent one-command continuation.
+
+Corrections applied:
+
+- Added `src/lifecycle/runLifecycle.ts` as the deterministic lifecycle primitive.
+- Added CLI `archetype run "<brief>"` with `--material`, `--question-id`, `--answer`, `--approve`, `--approved-by`, and `--force` continuation.
+- Added MCP tool `archetype_run_lifecycle` and exposed it through tool lists, release doctor, docs, and front-door skills.
+- Added safe material ingestion for files, folders, and inline materials with path validation, symlink rejection, content bounds, file/directory hashes, type inference, and source graph nodes.
+- Added `lifecycle/source-graph.json` and `lifecycle/run-state.json` as run primitive artifacts.
+- Recorded those artifacts into the Agent Data Plane as hot artifacts, with lifecycle/evidence events and replay-consistent projections.
+- Added deterministic brief normalization for obvious users, stack, brand, data boundary, test permission, assumption approval, and safety constraints while preserving weak-context clarification for vague briefs.
+- Added `scripts/run-natural-lifecycle-contract.mjs` and `npm run natural-lifecycle:contract`.
+- Added the natural lifecycle contract to the build-once fast/full suites.
+- Updated README, quickstart, agent lifecycle, Codex, Claude Code, MCP docs, root skill, Codex skill, Claude skill, and Claude slash command to prefer the lifecycle primitive.
+
+Repair notes:
+
+- First implementation recorded a data-plane run before exporting draft/canonical output. That created an unmarked `data-plane` directory and correctly triggered the output safety gate. The repair was to export the package first, then record data-plane events and supplemental lifecycle artifacts.
+- First natural-language inference treated vague `marketing team` as a confirmed primary user. That would have weakened the one-question clarification UX. The repair only infers users from explicit role phrases such as `marketing managers`, `growth analysts`, and `workspace admins`.
+- The CLI positional parser initially treated values after boolean flags as a brief. The repair added a flag-value allowlist so `--approve --approved-by <name>` remains continuation-only.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run natural-lifecycle:contract`: pass.
+- `npm run cli:contract`: pass.
+- `npm run mcp:contract`: pass.
+- `npm run plugin:codex:contract`: pass.
+- `npm run plugin:claude:contract`: pass.
+- `npm run release:contract`: pass.
+- `npm run release-discipline:contract`: pass.
+- `npm run check:fast`: pass.
+
+Self-healing rules:
+
+- The natural front door must call one lifecycle primitive before falling back to separate create/generate/approve choreography.
+- Never write data-plane files into a generated output directory before the output marker exists.
+- Vague audience phrases like `marketing team` are not confirmed roles; ask the one-question clarification.
+- `archetype run` continuation commands must use the same primitive for clarification answers and draft approval.
+- Material ingestion must hash and bound content before it enters the intake.
+- `lifecycle/run-state.json` is the agent-facing source for the next lifecycle action.
+- `lifecycle/source-graph.json` is the traceable source for imported material hashes.
+
+Phase 08 convergence review:
+
+```txt
+I do not know how to make the natural-language lifecycle primitive phase more complete without moving into the next six-agent audit finding.
+I cannot identify a Phase 08 mismatch after proving CLI run, MCP run, safe material ingestion, source graph hashes, one-question clarification, draft design-system preview, approval continuation, Agent Data Plane recording, docs/skills alignment, plugin contracts, release contract, and the fast suite.
+```

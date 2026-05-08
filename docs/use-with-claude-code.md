@@ -13,6 +13,7 @@ Setup and lifecycle references: `docs/quickstart.md`, `docs/agent-lifecycle.md`,
 Claude Code should:
 
 - treat `/archetype` as the full lifecycle by default
+- prefer MCP tool `archetype_run_lifecycle` or CLI fallback `archetype run "<brief>"` as the executable lifecycle primitive
 - ask clarification questions when product context is incomplete
 - invite optional `@` files, screenshots, wireframes, `SPEC.md`, `PRD.md`, brand notes, or repo context
 - read the imported `@` files itself
@@ -22,6 +23,8 @@ Claude Code should:
 - implement from the generated contract
 - verify the target frontend
 - patch or revise until verification is acceptable
+
+The lifecycle primitive returns `nextAction`. If `nextAction.type` is `ask_clarification`, ask only that one question. If it is `review_draft`, surface `draft/design-system-preview.html` and the approval request. If it is `implement_tests_first`, begin from the compact phase bundles and write tests before UI code.
 
 The user should not need to know `generate`, `validate`, `verify-target`, or which generated file to hand back to Claude Code.
 
@@ -45,7 +48,7 @@ Claude Code must not authorize implementation by editing intake JSON. A draft be
 
 ## Use The MCP Server
 
-For MCP-capable Claude Code workflows, use `docs/use-with-mcp.md` and `mcp.example.json`. The server exposes `archetype_release_doctor`, `archetype_create_intake`, `archetype_answer_clarification`, `archetype_generate_package`, `archetype_validate_package`, `archetype_summarize_package`, `archetype_read_artifact`, `archetype_verify_target`, and `archetype_plan_repair`.
+For MCP-capable Claude Code workflows, use `docs/use-with-mcp.md` and `mcp.example.json`. The server exposes `archetype_release_doctor`, `archetype_run_lifecycle`, `archetype_create_intake`, `archetype_answer_clarification`, `archetype_generate_package`, `archetype_validate_package`, `archetype_summarize_package`, `archetype_read_artifact`, `archetype_verify_target`, and `archetype_plan_repair`.
 
 ## Verify Before Completion
 

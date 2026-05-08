@@ -17,8 +17,8 @@ Use the `archetype` skill instructions as the operating contract. The user shoul
 
 1. Clarify only the missing context that blocks a deterministic frontend contract, exactly one question at a time.
 2. Invite optional materials and read any attached `@` files yourself.
-3. Create or update `archetype.intake.json`.
-4. Generate `archetype-output` with the Archetype MCP tools when available; when clarification is required, apply each answer with `archetype_answer_clarification`.
+3. Prefer MCP tool `archetype_run_lifecycle` with `$ARGUMENTS` and any imported materials. It creates or updates `archetype.intake.json`, safely ingests materials, writes `lifecycle/source-graph.json`, writes `lifecycle/run-state.json`, and returns `nextAction`.
+4. Generate `archetype-output` with the Archetype MCP tools when available; when clarification is required, apply each answer with `archetype_run_lifecycle` or `archetype_answer_clarification`.
 5. If a `draft_contract` package is generated, read the draft artifacts, point the user to `draft/design-system-preview.html` for browser review, and ask for approval or edits. Do not proceed to canonical spec, tests, or implementation from a draft package.
 6. After human approval, regenerate and read the canonical spec, test-first contract, Playwright verification contract, route map, screen inventory, tokens, component contracts, and implementation rules.
 7. Create the smoke, E2E, UI, integration, and unit tests before product UI implementation.

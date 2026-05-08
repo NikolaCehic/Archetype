@@ -130,7 +130,7 @@ try {
 
   const mcpTools = await requestMcp(mcpBin, [], "tools/list");
   const toolNames = new Set((mcpTools.tools ?? []).map((tool) => tool.name));
-  for (const toolName of ["archetype_release_doctor", "archetype_create_intake", "archetype_answer_clarification", "archetype_generate_package", "archetype_validate_package", "archetype_summarize_package", "archetype_read_artifact", "archetype_verify_target", "archetype_plan_repair"]) {
+  for (const toolName of ["archetype_release_doctor", "archetype_run_lifecycle", "archetype_create_intake", "archetype_answer_clarification", "archetype_generate_package", "archetype_validate_package", "archetype_summarize_package", "archetype_read_artifact", "archetype_verify_target", "archetype_plan_repair"]) {
     assert(toolNames.has(toolName), `Installed MCP server missing ${toolName}.`);
   }
 

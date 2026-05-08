@@ -118,6 +118,7 @@ try {
   const names = new Set((listed.tools ?? []).map((tool) => tool.name));
   for (const required of [
     "archetype_release_doctor",
+    "archetype_run_lifecycle",
     "archetype_create_intake",
     "archetype_answer_clarification",
     "archetype_generate_package",
@@ -140,6 +141,17 @@ try {
   assert(releaseDoctor.status === "pass", "release doctor should pass through MCP.");
   assert(releaseDoctor.quickstart?.published_package?.some((command) => String(command).includes("archetype install --target all --json")), "release doctor should expose one-command plugin install.");
   assert(releaseDoctor.docs?.some((doc) => doc.path === "docs/agent-lifecycle.md"), "release doctor should expose lifecycle docs.");
+
+  const lifecycleRun = await callTool("archetype_run_lifecycle", {
+    brief: "I want to build a admin dashboard for a marketing team",
+    inputPath: path.join(workspace, "lifecycle.intake.json"),
+    outputDir: path.join(workspace, "lifecycle-output"),
+    overwrite: true
+  });
+  assert(lifecycleRun.packageType === "clarification", "run lifecycle should stop weak natural language at clarification.");
+  assert(lifecycleRun.nextAction?.type === "ask_clarification", "run lifecycle should expose one-question next action.");
+  assert(existsSync(lifecycleRun.runStatePath), "run lifecycle should write lifecycle/run-state.json.");
+  assert(existsSync(lifecycleRun.sourceGraphPath), "run lifecycle should write lifecycle/source-graph.json.");
 
   writeFileSync(weakIntakePath, `${JSON.stringify({
     projectName: "Marketing Admin",

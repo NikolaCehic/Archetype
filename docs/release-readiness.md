@@ -47,7 +47,7 @@ npm run clean:tmp-heavy
 
 `npm run check` and `npm run test` use the build-once `scripts/run-contract-suite.mjs` runner. The split suites are:
 
-- `check:fast`: cheap lifecycle, registry, context, role, and governance contracts.
+- `check:fast`: cheap lifecycle, natural-language run primitive, registry, context, role, and governance contracts.
 - `check:contracts`: runtime contracts including real verification, CLI, MCP, QA, Playwright, and repair.
 - `check:release`: package, plugin, install, distribution, and golden release checks.
 

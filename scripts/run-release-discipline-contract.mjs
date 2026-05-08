@@ -51,7 +51,7 @@ for (const suite of ["fast", "contracts", "release", "full"]) {
 const fastPlan = runJson(["fast"]);
 const contractsPlan = runJson(["contracts"]);
 const releasePlan = runJson(["release"]);
-for (const expected of ["safety-approval", "phase-safe", "artifact-registry", "release-discipline", "repo-audit"]) {
+for (const expected of ["safety-approval", "phase-safe", "artifact-registry", "release-discipline", "natural-lifecycle", "repo-audit"]) {
   assert(fastPlan.tasks.some((task) => task.id === expected), `fast suite missing ${expected}.`);
 }
 for (const expected of ["real-verification", "cli", "mcp", "qa-team", "test-quality", "playwright", "repair"]) {

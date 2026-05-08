@@ -58,6 +58,7 @@ assert(
 );
 assert(help.includes("archetype doctor"), "CLI help must expose doctor command.");
 assert(help.includes("archetype install"), "CLI help must expose install command.");
+assert(help.includes("archetype run"), "CLI help must expose natural-language lifecycle run command.");
 assert(help.includes("archetype answer-clarification"), "CLI help must expose one-question clarification answer command.");
 
 const doctor = runJson(["doctor"]);
@@ -74,6 +75,20 @@ assert(install.front_doors.claude_code.startsWith("/archetype"), "install should
 const init = runJson(["init", "--template", "saas-dashboard", "--out", intakePath]);
 assert(init.status === "success", "init --json should succeed.");
 assert(init.intakePath === intakePath, "init should report the created intake path.");
+
+const lifecycleRun = runJson([
+  "run",
+  "I want to build a admin dashboard for a marketing team",
+  "--out",
+  path.join(workspace, "lifecycle-output"),
+  "--intake",
+  path.join(workspace, "lifecycle.intake.json"),
+  "--force"
+]);
+assert(lifecycleRun.packageType === "clarification", "run --json should stop weak natural language at clarification.");
+assert(lifecycleRun.nextAction?.type === "ask_clarification", "run --json should expose one-question next action.");
+assert(existsSync(lifecycleRun.runStatePath), "run --json should write lifecycle/run-state.json.");
+assert(existsSync(lifecycleRun.sourceGraphPath), "run --json should write lifecycle/source-graph.json.");
 
 const generate = runJson(["generate", "--input", intakePath, "--out", outputDir]);
 assert(["success", "warning"].includes(generate.status), "generate --json should return success or warning.");

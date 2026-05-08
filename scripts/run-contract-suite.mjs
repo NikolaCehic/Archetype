@@ -23,6 +23,7 @@ const tasks = [
   task("data-plane-authority", "scripts/run-data-plane-authority-contract.mjs", "tmp/data-plane-authority-contract", ["fast", "full"]),
   task("token-context", "scripts/run-token-bounded-context-contract.mjs", "tmp/token-bounded-context-contract", ["fast", "full"]),
   task("release-discipline", "scripts/run-release-discipline-contract.mjs", "tmp/release-discipline-contract", ["fast", "full"]),
+  task("natural-lifecycle", "scripts/run-natural-lifecycle-contract.mjs", "tmp/natural-lifecycle-contract", ["fast", "full"]),
   task("real-verification", "scripts/run-real-verification-contract.mjs", "tmp/real-verification-contract", ["contracts", "full"]),
   task("cli", "scripts/run-cli-contract.mjs", "tmp/cli-contract", ["contracts", "full"]),
   task("mcp", "scripts/run-mcp-contract.mjs", "tmp/mcp-contract", ["contracts", "full"]),

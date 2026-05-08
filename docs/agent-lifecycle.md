@@ -2,6 +2,14 @@
 
 Archetype is a self-contained agent harness. The user should only need a natural-language idea and optional `@` file imports.
 
+The executable front-door primitive is:
+
+```bash
+archetype run "<idea>" --material <path> --out archetype-output --force --json
+```
+
+Agent hosts should prefer MCP tool `archetype_run_lifecycle` for `$archetype` and `/archetype`. The primitive creates or updates intake, safely ingests materials, records material hashes in `lifecycle/source-graph.json`, writes `lifecycle/run-state.json`, stops on one-question clarification when context is weak, produces the draft design-system preview and approval request, and uses the same command/tool for approval continuation.
+
 ## Flow
 
 ```txt
@@ -26,6 +34,12 @@ idea
 Clarify means context completion. The agent reads the idea, screenshots, briefs, repo files, `SPEC.md`, `PRD.md`, wireframes, and other optional materials, then asks exactly one highest-impact question for the missing, conflicted, or blocked decision that prevents a deterministic contract.
 
 After the user answers, the agent applies that answer with `archetype_answer_clarification` or `archetype answer-clarification`, updates the intake and context matrix, then repeats until the next lifecycle gate is safe.
+
+With the lifecycle primitive, the same update can be done without separate command choreography:
+
+```bash
+archetype run --intake archetype.intake.json --out archetype-output --question-id <id> --answer "<answer>" --force --json
+```
 
 The user should not need to say:
 
@@ -58,6 +72,8 @@ The phase bundle is the first-read artifact for the current lifecycle phase. It 
 Every generated package includes:
 
 ```txt
+lifecycle/run-state.json
+lifecycle/source-graph.json
 lifecycle/context-completion.json
 lifecycle/clarification-turn.json
 lifecycle/implementation-phases.json
@@ -86,6 +102,12 @@ Approval is bound to generated evidence, not to a mutable boolean in the intake 
 archetype generate --input archetype.intake.json --out archetype-output --json
 archetype approve-draft --draft archetype-output --input archetype.intake.json --out archetype.approved.intake.json --approved-by "Human reviewer" --json
 archetype generate --input archetype.approved.intake.json --out archetype-output --force --json
+```
+
+The equivalent lifecycle primitive continuation is:
+
+```bash
+archetype run --intake archetype.intake.json --out archetype-output --approve --approved-by "Human reviewer" --force --json
 ```
 
 `approve-draft` records the draft package id, source hash, package checksum, approval digest, and hashes for required draft artifacts. A raw `contractApproval` object without the approval proof remains blocked.

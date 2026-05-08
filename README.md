@@ -27,6 +27,7 @@ CLI fallback and diagnostics:
 
 ```bash
 npx --yes --package github:NikolaCehic/Archetype archetype doctor --json
+npx --yes --package github:NikolaCehic/Archetype archetype run "I want to build a premium B2B analytics app for marketing teams." --out archetype-output --force --json
 npx --yes --package github:NikolaCehic/Archetype archetype init --template saas-dashboard --out archetype.intake.json --force --json
 npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output --json
 npx --yes --package github:NikolaCehic/Archetype archetype approve-draft --draft archetype-output --input archetype.intake.json --out archetype.approved.intake.json --approved-by "Your name" --json
@@ -95,6 +96,19 @@ Check package, plugin, MCP, and lifecycle readiness:
 
 ```bash
 npx . doctor --json
+```
+
+Run the natural-language lifecycle primitive directly:
+
+```bash
+npx . run "I want to build a premium B2B analytics app for marketing teams." --material ./SPEC.md --out archetype-output --force --json
+```
+
+`archetype run` safely ingests material paths, stores `lifecycle/source-graph.json` with material hashes, writes `lifecycle/run-state.json`, asks exactly one clarification question when context is weak, emits the draft design-system preview and approval request when ready, and continues approval through the same command:
+
+```bash
+npx . run --intake archetype.intake.json --out archetype-output --question-id primary_users --answer "Marketing operations manager" --force --json
+npx . run --intake archetype.intake.json --out archetype-output --approve --approved-by "Your name" --force --json
 ```
 
 Create a starter intake:
@@ -197,6 +211,7 @@ npm run mcp
 The server exposes deterministic tools for agent hosts:
 
 - `archetype_release_doctor`
+- `archetype_run_lifecycle`
 - `archetype_create_intake`
 - `archetype_answer_clarification`
 - `archetype_generate_package`
