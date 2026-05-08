@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { artifactPhaseForRegistryPath, artifactReadPriorityForPath, artifactRegistryEntryForPath, artifactTypeForRegistryPath } from "../artifacts/registry";
 import { hashContent, slugify, stableId } from "../core/stable";
 import type { ArchetypeInput, ArchetypePackage } from "../core/types";
 import type { ContextGateAssessment } from "../modules/contextGate";
@@ -28,7 +29,7 @@ export interface RecordPackageOptions {
 
 function asArtifactType(value: string | undefined, relativePath: string): DataPlaneArtifactType {
   if (value === "json" || value === "markdown" || value === "html" || value === "text" || value === "yaml" || value === "typescript") return value;
-  return artifactTypeForPath(relativePath);
+  return artifactTypeForRegistryPath(relativePath) ?? artifactTypeForPath(relativePath);
 }
 
 function ensureRun(dataPlane: DataPlane, run: AgentRun): AgentRun {
@@ -292,7 +293,8 @@ function artifactInput(runId: string, outDir: string, artifact: ManifestArtifact
   if (!absolutePath.startsWith(`${resolvedOutDir}${path.sep}`)) return null;
   if (!existsSync(absolutePath)) return null;
   const sha256 = sha256File(absolutePath);
-  const phase = artifactPhaseForPath(artifact.path);
+  const registryEntry = artifactRegistryEntryForPath(artifact.path);
+  const phase = registryEntry?.dataPlane.sourcePhase ?? artifactPhaseForRegistryPath(artifact.path) ?? artifactPhaseForPath(artifact.path);
   const artifactId = artifact.id ?? artifactIdForPath(artifact.path, sha256);
   return {
     runId,
@@ -305,7 +307,9 @@ function artifactInput(runId: string, outDir: string, artifact: ManifestArtifact
     sha256,
     metadata: {
       required: artifact.required !== false,
-      package_path: artifact.path
+      package_path: artifact.path,
+      registry_id: registryEntry?.id ?? null,
+      read_priority: artifactReadPriorityForPath(artifact.path)
     }
   };
 }

@@ -1,49 +1,18 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { createApprovedIntakeFixture } from "./helpers/approve-draft-fixture.mjs";
 
+const require = createRequire(import.meta.url);
 const root = process.cwd();
 const workspace = path.join(root, "tmp", "required-package-artifacts-contract");
 const approvedInputPath = path.join(workspace, "approved-intake.json");
 const outputDir = path.join(workspace, "archetype-output");
 const targetDir = path.join(workspace, "generated-frontend");
 
-const requiredArtifacts = [
-  "lifecycle/context-matrix.json",
-  "lifecycle/implementation-phases.json",
-  "lifecycle/implementation-phases.md",
-  "lifecycle/clarification-state.json",
-  "lifecycle/clarification-transcript.md",
-  "lifecycle/approval-request.md",
-  "lifecycle/approval-decision.json",
-  "01-evidence/evidence-ledger.json",
-  "01-evidence/missing-context.md",
-  "draft/assumption-ledger.md",
-  "draft/design-system-preview.html",
-  "draft/design-system-review.md",
-  "reviews/specialist-review-summary.md",
-  "spec/archetype-spec.json",
-  "spec/archetype-spec.md",
-  "frontend-agent-contract/frontend-agent-instructions.md",
-  "frontend-agent-contract/implementation-rules.json",
-  "frontend-agent-contract/acceptance-criteria.json",
-  "governance/convergence-standard.json",
-  "governance/convergence-standard.md",
-  "test-first/test-first-contract.json",
-  "test-first/test-first-plan.md",
-  "test-results/initial-red-test-run.md",
-  "qa/scenario-catalog.json",
-  "qa/playwright-results.json",
-  "qa/malformed-data-results.json",
-  "qa/accessibility-results.md",
-  "qa/visual-regression-report.md",
-  "qa/contract-drift-report.md",
-  "verification/playwright-evidence.json",
-  "verification/playwright-evidence.md",
-  "10-revision/repair-task-queue.json",
-  "lifecycle/final-readiness-report.md"
-];
+const { requiredCompletePackageArtifactPaths } = require("../dist/artifacts/registry.js");
+const requiredArtifacts = requiredCompletePackageArtifactPaths();
 
 rmSync(workspace, { recursive: true, force: true });
 mkdirSync(workspace, { recursive: true });

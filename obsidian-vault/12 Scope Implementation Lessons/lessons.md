@@ -3088,3 +3088,59 @@ Phase 02 convergence review:
 I do not know how to make the phase-safe compiler implementation more complete within the current package architecture without first changing the package type to a discriminated union in a later phase.
 I cannot identify a Phase 02 mismatch after proving pre-approval output skips canonical/test/Playwright/target/QA/repair artifacts, approved output constructs all phases, data-plane verification is approval-gated, and the full repository check passes.
 ```
+
+## Six-Agent Audit Phase 03 - Central Artifact Registry
+
+Source:
+
+- `obsidian-vault/13 Quality Reviews/Archetype Six-Agent Scope Audit Convergence - 2026-05-07.md`
+
+Extracted requirements:
+
+- Create `src/artifacts/registry.ts`.
+- Generate manifest entries, required lists, docs read order, validator expectations, data-plane metadata, and read priorities from one artifact authority.
+- Begin splitting artifact-path validation out of `validatePackage.ts`.
+- Preserve all generated artifact paths.
+
+Phase critique:
+
+- Artifact path knowledge was duplicated in the compiler, canonical exporter, draft exporter, complete-package validator, draft validator, required-artifacts contract, and data-plane recording.
+- Centralizing only the compiler index would leave validators and manifests drifting.
+- Centralizing only validators would not help agents choose bounded reads.
+- The registry must not write files itself; exporters remain responsible for values while the registry owns paths and metadata.
+
+Corrections applied:
+
+- Added `src/artifacts/registry.ts` with package membership, manifest ids, artifact type, lifecycle phase, read priority, required/forbidden validator flags, read order, and data-plane metadata.
+- Replaced compiler `artifact_index` hardcoding with `artifactIndexForPackage`.
+- Replaced draft and canonical top-level manifest artifact arrays with `manifestArtifactsForPackage`.
+- Replaced complete required artifact constants and required-artifacts contract duplication with `requiredCompletePackageArtifactPaths`.
+- Replaced draft validator required/forbidden path lists and draft manifest-id checks with registry helpers.
+- Added `src/quality/artifactRegistryValidation.ts` as the first validation split from `validatePackage.ts`.
+- Added data-plane artifact metadata for `registry_id` and `read_priority`.
+- Added `docs/artifact-registry.md` and README architecture references.
+- Added `scripts/run-artifact-registry-contract.mjs` and `npm run artifact-registry:contract`.
+
+Verification evidence:
+
+- `npm run artifact-registry:contract`: pass.
+- `npm run typecheck`: pass.
+- `npm run phase-safe:contract`: pass.
+- `npm run required-artifacts:contract`: pass.
+- `npm run cli:contract`: pass.
+- `npm run data-plane:contract`: pass.
+- `npm run check`: pass.
+
+Self-healing rules:
+
+- New generated artifacts must be added to `src/artifacts/registry.ts` before exporter, validator, or data-plane changes.
+- Exporters may write artifact contents, but they must not own independent manifest path lists.
+- Validators must consume registry required/forbidden/read-order helpers instead of local path arrays.
+- Data-plane artifact records should carry registry id and read priority when the path is registered.
+
+Phase 03 convergence review:
+
+```txt
+I do not know how to make the artifact registry phase more complete without moving into Phase 04 data-plane authority hardening or Phase 05 token-bounded context.
+I cannot identify a Phase 03 mismatch after proving registry-backed draft/canonical manifests, registry-backed internal indexes, registry-backed required artifacts, registry-backed validator checks, registry-backed data-plane metadata, and a full repository check.
+```

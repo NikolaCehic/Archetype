@@ -1,40 +1,8 @@
+import { requiredCompletePackageArtifactPaths } from "../artifacts/registry";
+
 type JsonRecord = Record<string, unknown>;
 
-export const REQUIRED_COMPLETE_PACKAGE_ARTIFACTS = [
-  "lifecycle/context-matrix.json",
-  "lifecycle/implementation-phases.json",
-  "lifecycle/implementation-phases.md",
-  "lifecycle/clarification-state.json",
-  "lifecycle/clarification-transcript.md",
-  "lifecycle/approval-request.md",
-  "lifecycle/approval-decision.json",
-  "01-evidence/evidence-ledger.json",
-  "01-evidence/missing-context.md",
-  "draft/assumption-ledger.md",
-  "draft/design-system-preview.html",
-  "draft/design-system-review.md",
-  "reviews/specialist-review-summary.md",
-  "spec/archetype-spec.json",
-  "spec/archetype-spec.md",
-  "frontend-agent-contract/frontend-agent-instructions.md",
-  "frontend-agent-contract/implementation-rules.json",
-  "frontend-agent-contract/acceptance-criteria.json",
-  "governance/convergence-standard.json",
-  "governance/convergence-standard.md",
-  "test-first/test-first-contract.json",
-  "test-first/test-first-plan.md",
-  "test-results/initial-red-test-run.md",
-  "qa/scenario-catalog.json",
-  "qa/playwright-results.json",
-  "qa/malformed-data-results.json",
-  "qa/accessibility-results.md",
-  "qa/visual-regression-report.md",
-  "qa/contract-drift-report.md",
-  "verification/playwright-evidence.json",
-  "verification/playwright-evidence.md",
-  "10-revision/repair-task-queue.json",
-  "lifecycle/final-readiness-report.md"
-];
+export const REQUIRED_COMPLETE_PACKAGE_ARTIFACTS = requiredCompletePackageArtifactPaths();
 
 function asRecord(value: unknown): JsonRecord {
   return typeof value === "object" && value !== null ? value as JsonRecord : {};

@@ -37,6 +37,8 @@ See `docs/quickstart.md`, `docs/agent-lifecycle.md`, and `docs/release-readiness
 
 Archetype includes a deterministic local Agent Data Plane. It records run state, lifecycle gates, evidence, generated artifact lineage, verification status, and repair provenance under `archetype-output/data-plane/` so humans and agents can inspect and replay what happened without relying on hidden memory. See `docs/agent-data-plane.md` and `docs/AGENT_DATA_PLANE_PLAN.md`.
 
+Archetype also includes a central artifact registry in `src/artifacts/registry.ts`. It is the source of truth for generated manifest entries, internal artifact indexes, validator required paths, data-plane artifact metadata, and agent read order. See `docs/artifact-registry.md`.
+
 ## What It Does
 
 Archetype compiles product intent into a frontend implementation package:

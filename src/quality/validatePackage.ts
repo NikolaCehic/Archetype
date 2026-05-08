@@ -1,11 +1,17 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import {
+  forbiddenDraftArtifactPaths,
+  requiredCompletePackageArtifactPaths,
+  requiredDraftPackageArtifactIds,
+  requiredDraftPackageArtifactPaths
+} from "../artifacts/registry";
+import { artifactIndexPaths, missingRequiredArtifacts, presentForbiddenArtifacts, requiredManifestPaths } from "./artifactRegistryValidation";
 import { HL16_CONVERGENCE_QUESTIONS } from "../modules/convergenceStandard";
 import { HL13_ACCEPTANCE_CRITERIA, HL13_FORBIDDEN_BEHAVIORS } from "../modules/forbiddenBehaviorAcceptance";
 import { HL15_IMPLEMENTATION_PHASE_NAMES } from "../modules/implementationPhases";
 import { QA_AGENT_ROLES, REQUIRED_QA_ARTIFACTS } from "../modules/qaTeam";
 import { FORBIDDEN_TEST_PATTERNS, REQUIRED_TEST_BEHAVIORS } from "../modules/testQualityStandard";
-import { REQUIRED_COMPLETE_PACKAGE_ARTIFACTS } from "../modules/requiredPackageArtifacts";
 
 interface PackageValidationResult {
   status: "pass" | "fail";
@@ -297,9 +303,9 @@ function validateRequiredPackageArtifacts(input: {
   finalReadinessReportMarkdown: string;
   blockers: string[];
 }): void {
-  const topManifestPaths = new Set((input.topManifest.artifacts ?? []).filter((artifact) => artifact.required !== false).map((artifact) => artifact.path));
-  const internalArtifactIndex = new Set(input.internalManifest.artifact_index ?? []);
-  for (const artifact of REQUIRED_COMPLETE_PACKAGE_ARTIFACTS) {
+  const topManifestPaths = requiredManifestPaths(input.topManifest);
+  const internalArtifactIndex = artifactIndexPaths(input.internalManifest);
+  for (const artifact of requiredCompletePackageArtifactPaths()) {
     if (!existsSync(path.join(input.outputDir, artifact))) input.blockers.push(`Required complete package artifact missing: ${artifact}`);
     if (!topManifestPaths.has(artifact)) input.blockers.push(`Top-level manifest missing required complete package artifact ${artifact}.`);
     if (!internalArtifactIndex.has(artifact)) input.blockers.push(`Internal manifest artifact index missing required complete package artifact ${artifact}.`);
@@ -681,63 +687,11 @@ function validateDesignSystemPreview(input: {
 function validateDraftPackage(outputDir: string): PackageValidationResult {
   const blockers: string[] = [];
   const warnings: string[] = [];
-  const requiredFiles = [
-    "README.md",
-    "manifest.json",
-    "00-manifest/manifest.json",
-    "00-manifest/implementation-readiness.json",
-    "readiness-report.md",
-    "lifecycle/state-machine.json",
-    "lifecycle/contract-state.json",
-    "lifecycle/start-request.json",
-    "lifecycle/context-completion.json",
-    "lifecycle/context-matrix.json",
-    "lifecycle/readiness-tiers.json",
-    "lifecycle/readiness-tiers.md",
-    "lifecycle/implementation-phases.json",
-    "lifecycle/implementation-phases.md",
-    "lifecycle/clarification-turn.json",
-    "lifecycle/clarification-state.json",
-    "lifecycle/clarification-transcript.md",
-    "lifecycle/lifecycle-report.md",
-    "01-evidence/evidence-ledger.json",
-    "01-evidence/missing-context.md",
-    "governance/non-negotiable-principles.json",
-    "governance/evidence-decision-model.json",
-    "governance/forbidden-behaviors.json",
-    "governance/forbidden-behaviors.md",
-    "governance/convergence-standard.json",
-    "governance/convergence-standard.md",
-    "governance/frontend-practice-skills.json",
-    "governance/frontend-practice-skills.md",
-    ...REQUIRED_FRONTEND_PRACTICE_SKILLS.map(frontendPracticePath),
-    "draft/product-model.draft.json",
-    "draft/experience-architecture.draft.json",
-    "draft/design-system.draft.json",
-    "draft/design-system-preview.html",
-    "draft/design-system-review.md",
-    "draft/frontend-contract.draft.json",
-    "draft/assumption-ledger.md",
-    "draft/specialist-review.json",
-    "draft/contract-approval-request.json"
-  ];
-  const forbiddenFiles = [
-    "spec/archetype-spec.json",
-    "spec/archetype-spec.md",
-    "test-first/test-first-contract.json",
-    "verification/playwright-verification-contract.json",
-    "frontend-agent-contract/implementation-rules.json",
-    "frontend-agent-contract/frontend-agent-instructions.md",
-    "frontend-agent-contract/acceptance-criteria.json",
-    "implementation-contract.md"
-  ];
+  const requiredFiles = requiredDraftPackageArtifactPaths();
+  const forbiddenFiles = forbiddenDraftArtifactPaths();
 
-  for (const relativePath of requiredFiles) {
-    if (!existsSync(path.join(outputDir, relativePath))) blockers.push(`Missing ${relativePath}.`);
-  }
-  for (const relativePath of forbiddenFiles) {
-    if (existsSync(path.join(outputDir, relativePath))) blockers.push(`Draft package must not contain ${relativePath}.`);
-  }
+  for (const relativePath of missingRequiredArtifacts(outputDir, requiredFiles)) blockers.push(`Missing ${relativePath}.`);
+  for (const relativePath of presentForbiddenArtifacts(outputDir, forbiddenFiles)) blockers.push(`Draft package must not contain ${relativePath}.`);
   if (blockers.length > 0) return { status: "fail", outputDir, checkedFiles: requiredFiles.length, blockers, warnings };
 
   const manifest = readJsonSafe<{
@@ -879,10 +833,10 @@ function validateDraftPackage(outputDir: string): PackageValidationResult {
   if (manifest.readyForFrontendAgent !== false || manifest.implementationAuthorized !== false || internalManifest.ready_for_frontend_agent !== false || internalManifest.implementation_authorized !== false || readiness.readyForFrontendAgent !== false) {
     blockers.push("Draft package must not be frontend-agent ready or implementation authorized.");
   }
-  for (const artifactId of ["product-model-draft", "experience-architecture-draft", "design-system-draft", "design-system-preview", "design-system-review", "frontend-contract-draft", "assumption-ledger", "specialist-review", "contract-approval-request", "lifecycle-contract-state", "implementation-phases", "implementation-phases-report", "forbidden-behaviors", "forbidden-behaviors-report", "convergence-standard", "convergence-standard-report", "frontend-practice-skills", "frontend-practice-skills-report"]) {
+  for (const artifactId of requiredDraftPackageArtifactIds()) {
     if (!manifest.artifacts?.some((artifact) => artifact.id === artifactId)) blockers.push(`Draft manifest missing ${artifactId}.`);
   }
-  for (const relativePath of ["lifecycle/implementation-phases.json", "lifecycle/implementation-phases.md", "draft/design-system-preview.html", "draft/design-system-review.md", "governance/convergence-standard.json", "governance/convergence-standard.md"]) {
+  for (const relativePath of requiredDraftPackageArtifactPaths()) {
     if (!internalManifest.artifact_index?.includes(relativePath)) blockers.push(`Draft internal manifest missing ${relativePath}.`);
   }
   for (const skill of REQUIRED_FRONTEND_PRACTICE_SKILLS) {

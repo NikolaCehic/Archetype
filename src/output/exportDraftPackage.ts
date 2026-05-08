@@ -1,5 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { artifactIndexForPackage, artifactReadOrderForPackage, forbiddenDraftArtifactPaths, manifestArtifactsForPackage } from "../artifacts/registry";
+import type { ManifestArtifactEntry } from "../artifacts/registry";
 import { prepareGeneratedOutputDirectory } from "../safety/pathSafety";
 import type { ArchetypePackage } from "../core/types";
 import { buildConvergenceStandardArtifact, convergenceStandardMarkdown } from "../modules/convergenceStandard";
@@ -13,12 +15,7 @@ import { missingContextMarkdown } from "../modules/lifecycleIntakeStates";
 import { buildNonNegotiablePrinciplesArtifact, nonNegotiablePrinciplesMarkdown } from "../modules/nonNegotiablePrinciples";
 import { buildPackageReadinessTiersArtifact, readinessTiersMarkdown } from "../modules/readinessTiers";
 
-interface DraftArtifact {
-  id: string;
-  path: string;
-  type: "json" | "markdown" | "html";
-  required: boolean;
-}
+type DraftArtifact = ManifestArtifactEntry;
 
 export interface DraftPackageExport {
   manifest: Record<string, unknown>;
@@ -50,6 +47,11 @@ function linesForList(values: string[]): string[] {
 }
 
 function buildReadme(pkg: ArchetypePackage): string {
+  const readOrder = artifactReadOrderForPackage("draft").map((artifact, index) => {
+    const verb = artifact.endsWith(".html") ? "Open" : "Read";
+    return `${index + 1}. ${verb} \`${artifact}\`.`;
+  });
+  const forbidden = forbiddenDraftArtifactPaths().map((artifact) => `- \`${artifact}\``);
   return [
     `# ${productName(pkg)} Draft Contract Package`,
     "",
@@ -57,29 +59,11 @@ function buildReadme(pkg: ArchetypePackage): string {
     "",
     "## Start Here",
     "",
-    "1. Read `lifecycle/contract-state.json`.",
-    "2. Review `draft/product-model.draft.json`.",
-    "3. Review `draft/experience-architecture.draft.json`.",
-    "4. Review `draft/design-system.draft.json`.",
-    "5. Open `draft/design-system-preview.html` in a browser.",
-    "6. Review `draft/design-system-review.md` before approval.",
-    "7. Review `draft/frontend-contract.draft.json`.",
-    "8. Review `draft/assumption-ledger.md`.",
-    "9. Review `draft/specialist-review.json`.",
-    "10. Review `lifecycle/implementation-phases.json`.",
-    "11. Review `governance/convergence-standard.json`.",
-    "12. Approve or edit using `draft/contract-approval-request.json`.",
+    ...readOrder,
     "",
     "## Not Generated",
     "",
-    "- `spec/archetype-spec.json`",
-    "- `spec/archetype-spec.md`",
-    "- `test-first/test-first-contract.json`",
-    "- `verification/playwright-verification-contract.json`",
-    "- `frontend-agent-contract/implementation-rules.json`",
-    "- `frontend-agent-contract/frontend-agent-instructions.md`",
-    "- `frontend-agent-contract/acceptance-criteria.json`",
-    "- `implementation-contract.md`",
+    ...forbidden,
     "",
     "## Rule",
     "",
@@ -108,10 +92,6 @@ function buildReadinessReport(pkg: ArchetypePackage): string {
     "",
     "Review and approve the draft contract before canonical spec generation."
   ].join("\n");
-}
-
-function artifactIndex(artifacts: DraftArtifact[]): string[] {
-  return artifacts.map((artifact) => artifact.path).sort();
 }
 
 export interface ExportDraftPackageOptions {
@@ -144,55 +124,7 @@ export function exportDraftPackage(pkg: ArchetypePackage, outDir: string, option
     implementationAuthorized: false,
     contractApprovalStatus: String(pkg.manifest.contract_approval.status ?? "pending_human_review")
   });
-  const artifacts: DraftArtifact[] = [
-    { id: "draft-readme", path: "README.md", type: "markdown", required: true },
-    { id: "manifest", path: "manifest.json", type: "json", required: true },
-    { id: "implementation-readiness", path: "00-manifest/implementation-readiness.json", type: "json", required: true },
-    { id: "internal-manifest", path: "00-manifest/manifest.json", type: "json", required: true },
-    { id: "readiness-report", path: "readiness-report.md", type: "markdown", required: true },
-    { id: "lifecycle-state-machine", path: "lifecycle/state-machine.json", type: "json", required: true },
-    { id: "lifecycle-contract-state", path: "lifecycle/contract-state.json", type: "json", required: true },
-    { id: "start-request", path: "lifecycle/start-request.json", type: "json", required: true },
-    { id: "context-completion", path: "lifecycle/context-completion.json", type: "json", required: true },
-    { id: "context-matrix", path: "lifecycle/context-matrix.json", type: "json", required: true },
-    { id: "readiness-tiers", path: "lifecycle/readiness-tiers.json", type: "json", required: true },
-    { id: "readiness-tiers-report", path: "lifecycle/readiness-tiers.md", type: "markdown", required: true },
-    { id: "implementation-phases", path: "lifecycle/implementation-phases.json", type: "json", required: true },
-    { id: "implementation-phases-report", path: "lifecycle/implementation-phases.md", type: "markdown", required: true },
-    { id: "clarification-turn", path: "lifecycle/clarification-turn.json", type: "json", required: true },
-    { id: "clarification-turn-report", path: "lifecycle/clarification-turn.md", type: "markdown", required: true },
-    { id: "clarification-state", path: "lifecycle/clarification-state.json", type: "json", required: true },
-    { id: "clarification-transcript", path: "lifecycle/clarification-transcript.md", type: "markdown", required: true },
-    { id: "clarification-questions", path: "lifecycle/clarification-questions.json", type: "json", required: true },
-    { id: "lifecycle-report", path: "lifecycle/lifecycle-report.md", type: "markdown", required: true },
-    { id: "evidence-ledger", path: "01-evidence/evidence-ledger.json", type: "json", required: true },
-    { id: "missing-context", path: "01-evidence/missing-context.md", type: "markdown", required: true },
-    { id: "non-negotiable-principles", path: "governance/non-negotiable-principles.json", type: "json", required: true },
-    { id: "non-negotiable-principles-report", path: "governance/non-negotiable-principles.md", type: "markdown", required: true },
-    { id: "evidence-decision-model", path: "governance/evidence-decision-model.json", type: "json", required: true },
-    { id: "evidence-decision-model-report", path: "governance/evidence-decision-model.md", type: "markdown", required: true },
-    { id: "forbidden-behaviors", path: "governance/forbidden-behaviors.json", type: "json", required: true },
-    { id: "forbidden-behaviors-report", path: "governance/forbidden-behaviors.md", type: "markdown", required: true },
-    { id: "convergence-standard", path: "governance/convergence-standard.json", type: "json", required: true },
-    { id: "convergence-standard-report", path: "governance/convergence-standard.md", type: "markdown", required: true },
-    { id: "frontend-practice-skills", path: "governance/frontend-practice-skills.json", type: "json", required: true },
-    { id: "frontend-practice-skills-report", path: "governance/frontend-practice-skills.md", type: "markdown", required: true },
-    ...FRONTEND_PRACTICE_SKILLS.map((skill): DraftArtifact => ({
-      id: `frontend-practice-${skill.id}`,
-      path: skill.output_artifact,
-      type: "json",
-      required: true
-    })),
-    { id: "product-model-draft", path: "draft/product-model.draft.json", type: "json", required: true },
-    { id: "experience-architecture-draft", path: "draft/experience-architecture.draft.json", type: "json", required: true },
-    { id: "design-system-draft", path: "draft/design-system.draft.json", type: "json", required: true },
-    { id: "design-system-preview", path: "draft/design-system-preview.html", type: "html", required: true },
-    { id: "design-system-review", path: "draft/design-system-review.md", type: "markdown", required: true },
-    { id: "frontend-contract-draft", path: "draft/frontend-contract.draft.json", type: "json", required: true },
-    { id: "assumption-ledger", path: "draft/assumption-ledger.md", type: "markdown", required: true },
-    { id: "specialist-review", path: "draft/specialist-review.json", type: "json", required: true },
-    { id: "contract-approval-request", path: "draft/contract-approval-request.json", type: "json", required: true }
-  ];
+  const artifacts = manifestArtifactsForPackage("draft");
 
   const manifest = {
     schemaVersion: "0.1.0",
@@ -217,7 +149,7 @@ export function exportDraftPackage(pkg: ArchetypePackage, outDir: string, option
     readiness_tier: "ready_for_contract_approval",
     ready_for_frontend_agent: false,
     implementation_authorized: false,
-    artifact_index: artifactIndex(artifacts)
+    artifact_index: artifactIndexForPackage("draft")
   };
   const readiness = {
     ...pkg.quality.readiness,
