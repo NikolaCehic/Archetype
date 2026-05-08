@@ -3358,3 +3358,85 @@ Phase 06 convergence review:
 I do not know how to make the real verification phase more complete without moving into Phase 07 speed and release discipline.
 I cannot identify a Phase 06 mismatch after proving evidence grades, independent pass/fail targets, per-scenario Playwright ingestion, executed malformed-data browser proof, accessibility/visual proof, QA reconciliation, repair compatibility, and a full repository check.
 ```
+
+## Six-Agent Audit Phase 07 - Speed And Release Discipline
+
+Source:
+
+- `obsidian-vault/13 Quality Reviews/Archetype Six-Agent Scope Audit Convergence - 2026-05-07.md`
+- `docs/release-readiness.md`
+- `package.json`
+
+Extracted requirements:
+
+- Add a build-once contract runner.
+- Add target dependency caching.
+- Add per-contract timing output.
+- Add disk and token budgets.
+- Add CI workflows.
+- Add `clean:tmp-heavy`.
+- Local and CI checks must stay rigorous, bounded, and explain their cost.
+
+Phase critique:
+
+- `npm run check` rebuilt TypeScript before almost every contract, which made the release gate slow and hid where time was actually spent.
+- Heavy target verification repeatedly installed target dependencies without an explicit cache surface.
+- The project had no timing report explaining which contracts were expensive.
+- There was no split between fast local checks, heavy runtime contracts, and release/package checks.
+- There was no CI workflow proving those split suites.
+- Temporary target `node_modules`, `.next`, Playwright reports, and test results accumulated multi-GB disk usage.
+- Existing contracts assumed `npm test` and `npm run check` literally inlined every contract script, which blocked a build-once runner.
+
+Corrections applied:
+
+- Added `scripts/run-contract-suite.mjs` with `fast`, `contracts`, `release`, and `full` suites.
+- Changed `npm run test` and `npm run check` to use the build-once full suite.
+- Added `npm run check:fast`, `npm run check:contracts`, and `npm run check:release`.
+- Added per-suite timing reports at `tmp/contract-suite/<suite>-timings.json` and `.md`.
+- Added suite budgets for duration, workspace disk usage, and estimated source-context tokens.
+- Added `ARCHETYPE_TARGET_NPM_CACHE_DIR` support to `verify-target` target installs and the contract-suite runner.
+- Added `scripts/clean-tmp-heavy.mjs` and `npm run clean:tmp-heavy` to remove heavy tmp folders while preserving other diagnostics.
+- Added `.github/workflows/ci.yml` with a fast/contracts/release matrix, npm cache, Playwright browser cache, Chromium install, target dependency cache env, and timing artifact upload.
+- Added `scripts/run-release-discipline-contract.mjs` to validate the runner, split scripts, cache support, cleaner, docs, and CI workflow.
+- Updated `docs/release-readiness.md` and README with the split suites, timing reports, target dependency cache, budgets, and cleanup command.
+- Updated the agent role contract so build-once runner coverage satisfies the old `npm test`/`npm run check` inclusion invariant.
+
+Repair notes:
+
+- The release-discipline contract initially expected literal `check:fast`, `check:contracts`, and `check:release` strings in CI, but the workflow correctly used `check:${{ matrix.suite }}`. The repair validated matrix entries and the dynamic command instead.
+- `check:fast` initially failed because `run-agent-role-files-contract.mjs` required inline `agent-roles:contract` text in `npm test` and `npm run check`. The repair allowed `run-contract-suite.mjs full` as the coverage source.
+- `clean:tmp-heavy` removed 4.58 GB of ignored heavy tmp data after the full check, confirming the cleanup target is useful and bounded.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run release-discipline:contract`: pass.
+- `npm run check:fast`: pass.
+- `npm run check:contracts`: pass.
+- `npm run check:release`: pass.
+- `npm run check`: pass.
+- `npm run clean:tmp-heavy`: pass.
+- `npm run repo:audit`: pass.
+
+Measured suite results:
+
+- `check:fast`: 25.8s, one build, 134 MB suite workspace, ~228.7k source-context tokens.
+- `check:contracts`: 582.0s, one build, 3.61 GB suite workspace, ~228.7k source-context tokens.
+- `check:release`: 18.3s, one build, 15.5 MB suite workspace, ~228.7k source-context tokens.
+- `check`: 617.3s, one build, 3.76 GB suite workspace, ~228.7k source-context tokens.
+
+Self-healing rules:
+
+- New contract scripts must be added to `run-contract-suite.mjs`; `npm run check` must remain build-once.
+- Contracts should not assert literal inlined `npm run check` strings when the suite runner is the coverage source.
+- Heavy runtime contracts belong in `check:contracts`; package/install/golden checks belong in `check:release`; cheap governance and generation checks belong in `check:fast`.
+- Target installs must honor `ARCHETYPE_TARGET_NPM_CACHE_DIR`.
+- Timing and budget reports are release artifacts and must be preserved under `tmp/contract-suite/`.
+- Use `clean:tmp-heavy` after local full checks to reclaim target dependency/build/browser-output disk without deleting every diagnostic artifact.
+
+Phase 07 convergence review:
+
+```txt
+I do not know how to make the speed and release discipline phase more complete without moving into Phase 08 natural-language lifecycle primitive work.
+I cannot identify a Phase 07 mismatch after proving build-once local checks, split CI suites, target dependency caching, timing reports, disk/token budgets, heavy tmp cleanup, docs, and a full repository check.
+```

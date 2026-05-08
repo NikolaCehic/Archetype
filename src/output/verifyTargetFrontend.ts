@@ -101,6 +101,14 @@ function runCommand(id: string, command: string, args: string[], cwd: string, en
   };
 }
 
+function targetDependencyCacheEnv(): Record<string, string> {
+  return {
+    npm_config_cache: process.env.ARCHETYPE_TARGET_NPM_CACHE_DIR ?? path.join(process.cwd(), ".cache", "archetype-target-npm"),
+    npm_config_audit: "false",
+    npm_config_fund: "false"
+  };
+}
+
 function allocatePlaywrightPort(): string {
   const script = [
     "const net = require('node:net');",
@@ -685,7 +693,7 @@ export function verifyTargetFrontendExecution(outputDir: string, targetDir: stri
         stderr: ""
       });
     } else {
-      commands.push(runCommand("install", "npm", ["install"], targetDir));
+      commands.push(runCommand("install", "npm", ["install"], targetDir, targetDependencyCacheEnv()));
     }
     if (commands.every((item) => item.status === "pass")) commands.push(runCommand("typecheck", "npm", ["run", "typecheck"], targetDir));
     if (commands.every((item) => item.status === "pass")) commands.push(runCommand("build", "npm", ["run", "build"], targetDir));

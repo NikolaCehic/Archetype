@@ -708,8 +708,8 @@ for (const expected of compatibilityReviewerRequirements) {
 
 const pkg = readJson("package.json");
 assert(pkg.scripts?.["agent-roles:contract"], "package must expose agent-roles:contract.");
-assert(pkg.scripts?.test?.includes("agent-roles:contract"), "npm test must include agent-roles:contract.");
-assert(pkg.scripts?.check?.includes("agent-roles:contract"), "npm run check must include agent-roles:contract.");
+assert(pkg.scripts?.test?.includes("agent-roles:contract") || pkg.scripts?.test?.includes("run-contract-suite.mjs full"), "npm test must include agent role coverage.");
+assert(pkg.scripts?.check?.includes("agent-roles:contract") || pkg.scripts?.check?.includes("run-contract-suite.mjs full"), "npm run check must include agent role coverage.");
 assert(pkg.scripts?.clean?.includes("tmp/agent-role-files-contract"), "npm run clean must remove agent role contract output.");
 
 const distribution = readText("scripts/run-distribution-contract.mjs");

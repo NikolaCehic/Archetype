@@ -161,6 +161,19 @@ Plan repair tasks from the latest verification evidence:
 npx . repair --out archetype-output --target tmp/generated-frontend --json
 ```
 
+## Release Checks
+
+Local release checks use the build-once `contract-suite` runner:
+
+```bash
+npm run check:fast
+npm run check:contracts
+npm run check:release
+npm run check
+```
+
+The runner writes timing and budget reports under `tmp/contract-suite/`, uses the `ARCHETYPE_TARGET_NPM_CACHE_DIR` target dependency cache for target installs, and tracks workspace disk plus source-context token budgets. Use `npm run clean:tmp-heavy` when target `node_modules`, `.next`, Playwright reports, or test results need to be cleared without deleting every diagnostic artifact.
+
 Inspect the Agent Data Plane without rereading large artifacts:
 
 ```bash

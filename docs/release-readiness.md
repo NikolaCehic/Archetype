@@ -31,15 +31,27 @@ The doctor checks package metadata, CLI and MCP bins, packaged file allowlist, r
 ## Contracts
 
 ```bash
+npm run check:fast
+npm run check:contracts
+npm run check:release
 npm run release:contract
 npm run plugin-install:contract
 npm run repo:audit
 npm run install:contract
 npm pack --dry-run --json
 npm run check
+npm run clean:tmp-heavy
 ```
 
 `release:contract` validates the source and packed package readiness surface. `plugin-install:contract` proves the host installer writes Codex and Claude Code plugin surfaces from source and packed `npx`. `repo:audit` blocks internal logs, generated outputs, private env files, and package tarballs from the tracked repository. `install:contract` proves a clean consumer install, `npx` setup, MCP startup, plugin files, and the 60-second setup contract.
+
+`npm run check` and `npm run test` use the build-once `scripts/run-contract-suite.mjs` runner. The split suites are:
+
+- `check:fast`: cheap lifecycle, registry, context, role, and governance contracts.
+- `check:contracts`: runtime contracts including real verification, CLI, MCP, QA, Playwright, and repair.
+- `check:release`: package, plugin, install, distribution, and golden release checks.
+
+Each suite writes `tmp/contract-suite/<suite>-timings.json` and `.md` with per-contract timing, workspace disk usage, token-budget estimates, and the target dependency cache path. Target frontend installs share the `ARCHETYPE_TARGET_NPM_CACHE_DIR` target dependency cache when set. Use `npm run clean:tmp-heavy` to remove heavy temporary `node_modules`, `.next`, Playwright report, and test-result folders without deleting every diagnostic artifact.
 
 ## Completion Gate
 
@@ -47,6 +59,9 @@ Do not claim release readiness unless all of these pass:
 
 ```txt
 archetype doctor --json
+npm run check:fast
+npm run check:contracts
+npm run check:release
 npm run release:contract
 npm run plugin-install:contract
 npm run repo:audit
