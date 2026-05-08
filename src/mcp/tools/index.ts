@@ -1,6 +1,8 @@
 import { answerClarificationTool } from "./answerClarification";
 import { createIntakeTool } from "./createIntake";
 import {
+  dataPlaneArtifactsTool,
+  dataPlaneLifecycleTool,
   dataPlaneReadArtifactTool,
   dataPlaneReplayRunTool,
   dataPlaneStatusTool,
@@ -22,7 +24,9 @@ export const archetypeMcpTools: McpToolDefinition[] = [
   generatePackageTool,
   dataPlaneStatusTool,
   dataPlaneTimelineTool,
+  dataPlaneArtifactsTool,
   dataPlaneReadArtifactTool,
+  dataPlaneLifecycleTool,
   dataPlaneReplayRunTool,
   validatePackageTool,
   summarizePackageTool,

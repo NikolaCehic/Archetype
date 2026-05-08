@@ -7,6 +7,7 @@ import type { ContextGateAssessment } from "../modules/contextGate";
 import { artifactIdForPath, artifactPhaseForPath, artifactTypeForPath, assertRelativeArtifactPath, byteSize, sha256File } from "./artifacts";
 import { isDataPlaneError } from "./errors";
 import { dataPlaneRunId } from "./state";
+import { recordQaSignal, recordRepairSignal, recordVerificationSignal } from "./writers";
 import type { DataPlane } from "./ports";
 import type { AgentRun, DataPlaneArtifactType, JsonObject, WriteArtifactInput } from "./types";
 
@@ -209,12 +210,19 @@ function verificationPayload(pkg: ArchetypePackage): JsonObject {
   };
 }
 
-function recordPackageProjections(dataPlane: DataPlane, runId: string, pkg: ArchetypePackage): void {
-  dataPlane.writeProjection({ runId, projectionName: "lifecycle", data: lifecyclePayload(pkg) });
-  dataPlane.writeProjection({ runId, projectionName: "evidence", data: evidencePayload(pkg) });
-  dataPlane.writeProjection({ runId, projectionName: "contracts", data: contractsPayload(pkg) });
-  dataPlane.writeProjection({ runId, projectionName: "verification", data: verificationPayload(pkg) });
-  dataPlane.writeProjection({ runId, projectionName: "readiness", data: readinessPayload(pkg) });
+export function writeReplayConsistentProjections(dataPlane: DataPlane, runId: string): void {
+  const replay = dataPlane.replayRun(runId);
+  const updatedAt = replay.events.at(-1)?.occurred_at ?? new Date(0).toISOString();
+  for (const [projectionName, projection] of Object.entries(replay.projections)) {
+    dataPlane.writeProjection({
+      runId,
+      projectionName: projectionName as keyof typeof replay.projections,
+      data: projection.data,
+      eventCount: replay.events.length,
+      updatedAt,
+      recordEvent: false
+    });
+  }
 }
 
 export function recordCompiledPackage(dataPlane: DataPlane, pkg: ArchetypePackage, options: RecordPackageOptions = {}): AgentRun {
@@ -267,12 +275,41 @@ export function recordCompiledPackage(dataPlane: DataPlane, pkg: ArchetypePackag
       actor: "archetype",
       payload: contractsPayload(pkg)
     });
-    appendOnce(dataPlane, {
+    recordVerificationSignal(dataPlane, {
       runId: run.run_id,
-      type: "verification.recorded",
-      phase: "verification",
-      actor: "archetype",
-      payload: verificationPayload(pkg)
+      summary: "Verification package evidence recorded.",
+      status: String(verificationPayload(pkg).status ?? "pending"),
+      evidenceGrade: "contract",
+      artifactRefs: [
+        "verification/playwright-verification-contract.json",
+        "verification/playwright-evidence.json"
+      ]
+    });
+    recordQaSignal(dataPlane, {
+      runId: run.run_id,
+      summary: "QA package evidence recorded.",
+      status: "pending",
+      scenarioCount: Array.isArray(pkg.e2e.scenarioCatalog.scenarios) ? pkg.e2e.scenarioCatalog.scenarios.length : 0,
+      artifactRefs: [
+        "qa/scenario-catalog.json",
+        "qa/playwright-results.json",
+        "qa/malformed-data-results.json",
+        "qa/accessibility-results.md",
+        "qa/visual-regression-report.md",
+        "qa/contract-drift-report.md"
+      ]
+    });
+    recordRepairSignal(dataPlane, {
+      runId: run.run_id,
+      summary: "Repair package state recorded.",
+      status: String((pkg.revision.repairTaskQueue as JsonObject).status ?? "pending"),
+      taskCount: Number((pkg.revision.repairTaskQueue as JsonObject).task_count ?? 0),
+      artifactRefs: [
+        "10-revision/verification-repair-contract.json",
+        "10-revision/repair-task-queue.json",
+        "10-revision/repair-plan.md",
+        "10-revision/drift-report.json"
+      ]
     });
   }
   appendOnce(dataPlane, {
@@ -282,7 +319,7 @@ export function recordCompiledPackage(dataPlane: DataPlane, pkg: ArchetypePackag
     actor: "archetype",
     payload: readinessPayload(pkg)
   });
-  recordPackageProjections(dataPlane, run.run_id, pkg);
+  writeReplayConsistentProjections(dataPlane, run.run_id);
   return dataPlane.getRun(run.run_id);
 }
 
@@ -319,6 +356,7 @@ export function recordExportedArtifacts(dataPlane: DataPlane, runId: string, out
     const input = artifactInput(runId, outDir, artifact);
     if (input) dataPlane.writeArtifact(input);
   }
+  writeReplayConsistentProjections(dataPlane, runId);
 }
 
 export function mergeManifestArtifacts(artifacts: ManifestArtifact[], artifactIndex: string[]): ManifestArtifact[] {
@@ -391,57 +429,6 @@ export function recordClarificationPackage(
     actor: "archetype",
     payload: {
       summary: `Readiness evaluated: ${assessment.readinessTier}`,
-      readiness_score: Math.min(assessment.confidenceScore, 49),
-      readiness_tier: assessment.readinessTier,
-      ready_for_frontend_agent: false,
-      implementation_authorized: false,
-      blockers: assessment.blockers,
-      warnings: assessment.warnings
-    }
-  });
-  dataPlane.writeProjection({
-    runId: run.run_id,
-    projectionName: "lifecycle",
-    data: {
-      state: assessment.nextState,
-      context_status: assessment.status,
-      readiness_tier: assessment.readinessTier,
-      implementation_authorized: false,
-      ready_for_frontend_agent: false,
-      blockers: assessment.blockers,
-      warnings: assessment.warnings
-    }
-  });
-  dataPlane.writeProjection({
-    runId: run.run_id,
-    projectionName: "evidence",
-    data: {
-      evidence_events: 0,
-      missing_decisions: assessment.missingDecisions,
-      known_facts: assessment.knownFacts
-    }
-  });
-  dataPlane.writeProjection({
-    runId: run.run_id,
-    projectionName: "contracts",
-    data: {
-      draft: null,
-      canonical: null,
-      implementation_authorized: false
-    }
-  });
-  dataPlane.writeProjection({
-    runId: run.run_id,
-    projectionName: "verification",
-    data: {
-      status: "blocked",
-      reason: "Clarification is required before verification."
-    }
-  });
-  dataPlane.writeProjection({
-    runId: run.run_id,
-    projectionName: "readiness",
-    data: {
       readiness_score: Math.min(assessment.confidenceScore, 49),
       readiness_tier: assessment.readinessTier,
       ready_for_frontend_agent: false,

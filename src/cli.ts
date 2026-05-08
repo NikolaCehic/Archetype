@@ -23,6 +23,7 @@ import {
   mergeManifestArtifacts,
   queryDataPlaneArtifact,
   queryDataPlaneArtifacts,
+  queryDataPlaneLifecycle,
   queryDataPlaneReplay,
   queryDataPlaneStatus,
   queryDataPlaneTimeline,
@@ -30,6 +31,7 @@ import {
   recordCompiledPackage,
   recordExportedArtifacts
 } from "./data-plane";
+import type { DataPlaneArtifactType, DataPlaneEventType, DataPlanePhase } from "./data-plane";
 import type { ArchetypeInput } from "./core/types";
 
 type CommandStatus = "success" | "warning" | "error";
@@ -59,8 +61,9 @@ function usage(exitCode = 1): never {
   console.log("  archetype repair --out <output-dir> [--target <target-dir>]");
   console.log("  archetype data-plane status --out <output-dir> [--json]");
   console.log("  archetype data-plane timeline --out <output-dir> --run <run-id> [--json]");
-  console.log("  archetype data-plane artifacts --out <output-dir> --run <run-id> [--json]");
+  console.log("  archetype data-plane artifacts --out <output-dir> --run <run-id> [--phase <phase>] [--type <type>] [--priority <hot|warm|cold>] [--limit <n>] [--json]");
   console.log("  archetype data-plane read-artifact --out <output-dir> --artifact <artifact-id> [--run <run-id>] [--json]");
+  console.log("  archetype data-plane lifecycle --out <output-dir> --run <run-id> [--json]");
   console.log("  archetype data-plane replay --out <output-dir> --run <run-id> [--json]");
   console.log("");
   console.log("Add --json to return parseable command results.");
@@ -75,6 +78,28 @@ function getArg(name: string): string | undefined {
 
 function hasFlag(name: string): boolean {
   return process.argv.includes(name);
+}
+
+function getNumberArg(name: string): number | undefined {
+  const value = getArg(name);
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function getDataPlanePhaseArg(name: string): DataPlanePhase | undefined {
+  const value = getArg(name);
+  return value ? value as DataPlanePhase : undefined;
+}
+
+function getDataPlaneEventTypeArg(name: string): DataPlaneEventType | undefined {
+  const value = getArg(name);
+  return value ? value as DataPlaneEventType : undefined;
+}
+
+function getDataPlaneArtifactTypeArg(name: string): DataPlaneArtifactType | undefined {
+  const value = getArg(name);
+  return value ? value as DataPlaneArtifactType : undefined;
 }
 
 function writeJson(value: unknown): void {
@@ -424,7 +449,11 @@ function dataPlaneCommand(jsonMode: boolean): void {
       return;
     }
     if (action === "timeline") {
-      const result = queryDataPlaneTimeline(dataPlane, outputDir, getArg("--run"));
+      const result = queryDataPlaneTimeline(dataPlane, outputDir, getArg("--run"), {
+        phase: getDataPlanePhaseArg("--phase"),
+        type: getDataPlaneEventTypeArg("--type"),
+        limit: getNumberArg("--limit")
+      });
       resultOutput(result, jsonMode, [
         `Run: ${result.runId}`,
         `Events: ${result.eventCount}`,
@@ -433,7 +462,12 @@ function dataPlaneCommand(jsonMode: boolean): void {
       return;
     }
     if (action === "artifacts") {
-      const result = queryDataPlaneArtifacts(dataPlane, outputDir, getArg("--run"));
+      const result = queryDataPlaneArtifacts(dataPlane, outputDir, getArg("--run"), {
+        phase: getDataPlanePhaseArg("--phase"),
+        type: getDataPlaneArtifactTypeArg("--type"),
+        readPriority: getArg("--priority"),
+        limit: getNumberArg("--limit")
+      });
       resultOutput(result, jsonMode, [
         `Run: ${result.runId}`,
         `Artifacts: ${result.artifactCount}`,
@@ -448,6 +482,16 @@ function dataPlaneCommand(jsonMode: boolean): void {
         `Run: ${result.runId}`,
         `Path: ${result.artifact.ref.path}`,
         `SHA-256: ${result.artifact.ref.sha256 ?? "none"}`
+      ]);
+      return;
+    }
+    if (action === "lifecycle") {
+      const result = queryDataPlaneLifecycle(dataPlane, outputDir, getArg("--run"));
+      resultOutput(result, jsonMode, [
+        `Run: ${result.runId}`,
+        `Lifecycle checksum: ${result.lifecycle.checksum}`,
+        `Readiness checksum: ${result.readiness?.checksum ?? "none"}`,
+        `Projection consistency: ${result.projectionConsistency.matches ? "pass" : "fail"}`
       ]);
       return;
     }

@@ -71,6 +71,7 @@ export function replayDataPlaneRun(run: AgentRun, events: DataPlaneEvent[], arti
     status: "pending",
     evidence_grade: "none",
     repair_status: "pending",
+    qa_status: "pending",
     records: []
   };
   let readiness: JsonObject = {
@@ -104,6 +105,13 @@ export function replayDataPlaneRun(run: AgentRun, events: DataPlaneEvent[], arti
         ...verification,
         ...event.payload,
         records: [...(Array.isArray(verification.records) ? verification.records : []), event.payload]
+      };
+    }
+    if (event.type === "qa.recorded") {
+      verification = {
+        ...verification,
+        qa_status: event.payload.status ?? "pending",
+        qa_records: [...(Array.isArray(verification.qa_records) ? verification.qa_records : []), event.payload]
       };
     }
     if (event.type === "repair.recorded") verification = { ...verification, repair_status: event.payload.status ?? "pending" };

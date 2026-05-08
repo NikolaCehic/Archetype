@@ -53,7 +53,14 @@ export function appendDeterministicJsonLine(filePath: string, value: unknown): v
 }
 
 export function readJsonUnknown(filePath: string): unknown {
-  return JSON.parse(readFileSync(filePath, "utf8")) as unknown;
+  try {
+    return JSON.parse(readFileSync(filePath, "utf8")) as unknown;
+  } catch (error) {
+    throw new DataPlaneError("CORRUPT_DATA_PLANE_RECORD", `${filePath} is not parseable JSON.`, {
+      filePath,
+      detail: error instanceof Error ? error.message : String(error)
+    });
+  }
 }
 
 export function readJsonLines(filePath: string): unknown[] {
@@ -61,7 +68,17 @@ export function readJsonLines(filePath: string): unknown[] {
   return readFileSync(filePath, "utf8")
     .split(/\r?\n/u)
     .filter((line) => line.trim().length > 0)
-    .map((line) => JSON.parse(line) as unknown);
+    .map((line, index) => {
+      try {
+        return JSON.parse(line) as unknown;
+      } catch (error) {
+        throw new DataPlaneError("CORRUPT_DATA_PLANE_RECORD", `${filePath}:${index + 1} is not parseable JSON.`, {
+          filePath,
+          line: index + 1,
+          detail: error instanceof Error ? error.message : String(error)
+        });
+      }
+    });
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -132,6 +149,27 @@ export function assertProjection(value: unknown, label: string): DataPlaneProjec
     throw new DataPlaneError("INVALID_DATA_PLANE_RECORD", `${label} is not a valid DataPlaneProjection.`);
   }
   return value as unknown as DataPlaneProjection;
+}
+
+export function assertEventContinuity(events: DataPlaneEvent[], runId: string, label: string): DataPlaneEvent[] {
+  for (const [index, event] of events.entries()) {
+    const expectedSequence = index + 1;
+    if (event.run_id !== runId) {
+      throw new DataPlaneError("EVENT_SEQUENCE_CORRUPT", `${label} contains an event for another run.`, {
+        runId,
+        eventRunId: event.run_id,
+        sequence: event.sequence
+      });
+    }
+    if (event.sequence !== expectedSequence) {
+      throw new DataPlaneError("EVENT_SEQUENCE_CORRUPT", `${label} has non-contiguous event sequence.`, {
+        runId,
+        expectedSequence,
+        actualSequence: event.sequence
+      });
+    }
+  }
+  return events;
 }
 
 export function timelineSummary(payload: JsonObject): string {

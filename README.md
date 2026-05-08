@@ -159,8 +159,9 @@ Inspect the Agent Data Plane without rereading large artifacts:
 ```bash
 npx . data-plane status --out archetype-output --json
 npx . data-plane timeline --out archetype-output --run <run-id> --json
-npx . data-plane artifacts --out archetype-output --run <run-id> --json
+npx . data-plane artifacts --out archetype-output --run <run-id> --priority hot --limit 10 --json
 npx . data-plane read-artifact --out archetype-output --artifact <artifact-id> --json
+npx . data-plane lifecycle --out archetype-output --run <run-id> --json
 npx . data-plane replay --out archetype-output --run <run-id> --json
 ```
 
@@ -181,7 +182,9 @@ The server exposes deterministic tools for agent hosts:
 - `archetype_generate_package`
 - `archetype_data_plane_status`
 - `archetype_data_plane_timeline`
+- `archetype_data_plane_artifacts`
 - `archetype_data_plane_read_artifact`
+- `archetype_data_plane_lifecycle`
 - `archetype_data_plane_replay_run`
 - `archetype_validate_package`
 - `archetype_summarize_package`

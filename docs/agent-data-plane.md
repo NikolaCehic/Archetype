@@ -110,6 +110,7 @@ Examples:
 - `contract.canonical_recorded`
 - `artifact.recorded`
 - `verification.recorded`
+- `qa.recorded`
 - `repair.recorded`
 - `projection.updated`
 
@@ -148,8 +149,10 @@ CLI query commands read these projections without calling an LLM:
 ```bash
 archetype data-plane status --out archetype-output --json
 archetype data-plane timeline --out archetype-output --run <run-id> --json
-archetype data-plane artifacts --out archetype-output --run <run-id> --json
+archetype data-plane timeline --out archetype-output --run <run-id> --phase qa --type qa.recorded --json
+archetype data-plane artifacts --out archetype-output --run <run-id> --priority hot --limit 10 --json
 archetype data-plane read-artifact --out archetype-output --artifact <artifact-id> --json
+archetype data-plane lifecycle --out archetype-output --run <run-id> --json
 archetype data-plane replay --out archetype-output --run <run-id> --json
 ```
 
@@ -157,13 +160,18 @@ MCP query tools expose the same read-only behavior for agent hosts:
 
 - `archetype_data_plane_status`
 - `archetype_data_plane_timeline`
+- `archetype_data_plane_artifacts`
 - `archetype_data_plane_read_artifact`
+- `archetype_data_plane_lifecycle`
 - `archetype_data_plane_replay_run`
 
-The dedicated contract is:
+Projection files are replay-consistent: persisted projection checksums and event counts are verified against replay output. Artifact lookup without a run id fails with a typed ambiguity error if multiple runs contain the same artifact id. Corrupt JSON/JSONL and non-contiguous event sequences are reported as typed data-plane failures.
+
+The dedicated contracts are:
 
 ```bash
 npm run data-plane:contract
+npm run data-plane-authority:contract
 ```
 
 ## Adapter Strategy

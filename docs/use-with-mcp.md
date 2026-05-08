@@ -66,7 +66,9 @@ Current GitHub package form:
 - `archetype_generate_package`
 - `archetype_data_plane_status`
 - `archetype_data_plane_timeline`
+- `archetype_data_plane_artifacts`
 - `archetype_data_plane_read_artifact`
+- `archetype_data_plane_lifecycle`
 - `archetype_data_plane_replay_run`
 - `archetype_validate_package`
 - `archetype_summarize_package`
@@ -80,10 +82,12 @@ The Agent Data Plane query tools read `archetype-output/data-plane/` and do not 
 
 - `archetype_data_plane_status`
 - `archetype_data_plane_timeline`
+- `archetype_data_plane_artifacts`
 - `archetype_data_plane_read_artifact`
+- `archetype_data_plane_lifecycle`
 - `archetype_data_plane_replay_run`
 
-Use them before broad artifact reads when an agent only needs run status, event history, artifact lineage, or replay state. See `docs/agent-data-plane.md`.
+Use them before broad artifact reads when an agent only needs run status, filtered event history, hot artifact lineage, lifecycle/readiness projections, or replay state. See `docs/agent-data-plane.md`.
 
 ## Approval Safety
 

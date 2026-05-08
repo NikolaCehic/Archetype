@@ -123,7 +123,9 @@ try {
     "archetype_generate_package",
     "archetype_data_plane_status",
     "archetype_data_plane_timeline",
+    "archetype_data_plane_artifacts",
     "archetype_data_plane_read_artifact",
+    "archetype_data_plane_lifecycle",
     "archetype_data_plane_replay_run",
     "archetype_validate_package",
     "archetype_summarize_package",
@@ -249,6 +251,18 @@ try {
     artifactId: "frontend-contract-draft"
   });
   assert(dataPlaneArtifact.artifact?.ref?.path === "draft/frontend-contract.draft.json", "data-plane read artifact should return an ArtifactRecord.");
+  const dataPlaneArtifacts = await callTool("archetype_data_plane_artifacts", {
+    outputDir,
+    runId: generate.dataPlaneRunId,
+    readPriority: "hot",
+    limit: 2
+  });
+  assert(dataPlaneArtifacts.artifactCount === 2, "data-plane artifacts should support read-priority and limit filters.");
+  const dataPlaneLifecycle = await callTool("archetype_data_plane_lifecycle", {
+    outputDir,
+    runId: generate.dataPlaneRunId
+  });
+  assert(dataPlaneLifecycle.projectionConsistency?.matches === true, "data-plane lifecycle should expose consistent lifecycle projection.");
   const dataPlaneReplay = await callTool("archetype_data_plane_replay_run", {
     outputDir,
     runId: generate.dataPlaneRunId

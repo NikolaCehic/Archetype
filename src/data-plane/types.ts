@@ -34,6 +34,7 @@ export type DataPlaneEventType =
   | "contract.canonical_recorded"
   | "artifact.recorded"
   | "verification.recorded"
+  | "qa.recorded"
   | "repair.recorded"
   | "readiness.evaluated"
   | "projection.updated";
@@ -235,4 +236,5 @@ export interface WriteProjectionInput {
   data: JsonObject;
   eventCount?: number;
   updatedAt?: string;
+  recordEvent?: boolean;
 }

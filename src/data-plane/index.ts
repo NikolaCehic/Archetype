@@ -9,21 +9,28 @@ export {
   recordClarificationPackage,
   recordCompiledPackage,
   recordExportedArtifacts,
+  writeReplayConsistentProjections,
   type ExportLike,
   type ManifestArtifact,
   type RecordPackageOptions
 } from "./packageRecorder";
+export { recordQaSignal, recordRepairSignal, recordVerificationSignal } from "./writers";
 export {
   queryDataPlaneArtifact,
   queryDataPlaneArtifacts,
+  queryDataPlaneLifecycle,
   queryDataPlaneReplay,
   queryDataPlaneStatus,
   queryDataPlaneTimeline,
+  projectionConsistency,
   type DataPlaneArtifactResult,
   type DataPlaneArtifactsResult,
+  type DataPlaneArtifactsFilters,
+  type DataPlaneLifecycleResult,
   type DataPlaneReplayResult,
   type DataPlaneRunSummary,
   type DataPlaneStatusResult,
+  type DataPlaneTimelineFilters,
   type DataPlaneTimelineResult
 } from "./queries";
 export type {

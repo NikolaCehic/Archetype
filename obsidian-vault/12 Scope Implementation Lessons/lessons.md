@@ -3144,3 +3144,68 @@ Phase 03 convergence review:
 I do not know how to make the artifact registry phase more complete without moving into Phase 04 data-plane authority hardening or Phase 05 token-bounded context.
 I cannot identify a Phase 03 mismatch after proving registry-backed draft/canonical manifests, registry-backed internal indexes, registry-backed required artifacts, registry-backed validator checks, registry-backed data-plane metadata, and a full repository check.
 ```
+
+## Six-Agent Audit Phase 04 - Data Plane Authority Hardening
+
+Source:
+
+- `obsidian-vault/13 Quality Reviews/Archetype Six-Agent Scope Audit Convergence - 2026-05-07.md`
+- `docs/agent-data-plane.md`
+- `docs/artifact-registry.md`
+
+Extracted requirements:
+
+- Persisted projections and replayed projections must agree.
+- Artifact reads must reject ambiguous artifact IDs across runs instead of returning whichever run is found first.
+- Event streams must be checked for run-id consistency and contiguous sequence order.
+- Corrupt records must return typed data-plane failures, not generic JSON parse crashes.
+- Verification, QA, and repair state must have explicit data-plane writers.
+- Agents must be able to query lifecycle, filtered timelines, and filtered artifacts without reading the whole artifact tree.
+
+Phase critique:
+
+- The data plane had useful records, but persisted projection files were too easy to treat as authority even when replay would disagree.
+- Artifact lookup by ID without a run ID was safe only while generated IDs were globally unique in practice; the contract needed to prove ambiguity is blocked.
+- Event ordering was append-only but not independently verified on read, so a corrupted JSONL stream could produce misleading replay state.
+- Verification, QA, and repair signals were being inferred during package recording instead of being available as first-class write operations.
+- CLI and MCP agents needed bounded filtered reads plus a lifecycle projection query, otherwise they would keep reading broad artifact packages.
+
+Corrections applied:
+
+- Added typed data-plane errors for ambiguous artifact lookup, corrupt records, and corrupt event sequence continuity.
+- Added event continuity checks to file and memory adapters.
+- Added typed corrupt JSON/JSONL read failures.
+- Added explicit verification, QA, and repair data-plane writers.
+- Rebuilt persisted projections from replay without adding projection-write events during replay-consistency updates.
+- Added replay-vs-persisted projection consistency checks.
+- Added filtered timeline and artifact queries by phase, type, priority, and limit.
+- Added lifecycle query support to CLI and MCP.
+- Added data-plane artifact and lifecycle MCP tools.
+- Added `scripts/run-data-plane-authority-contract.mjs` and `npm run data-plane-authority:contract`.
+- Updated data-plane, Codex, MCP, and README docs to describe the authority model and query surfaces.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run data-plane-authority:contract`: pass.
+- `npm run data-plane:contract`: pass.
+- `npm run mcp:contract`: pass.
+- `npm run cli:contract`: pass.
+- `npm run release:contract`: pass.
+- `npm run check`: pass.
+
+Self-healing rules:
+
+- Persisted projections are cacheable views; replay is the source of truth for authority checks.
+- Any projection write that is derived from replay must use `recordEvent: false` to avoid creating recursive projection events.
+- Any artifact read without a run ID must fail if more than one run contains the artifact ID.
+- Data-plane reads must validate event continuity before replay or projection comparison.
+- New lifecycle inspection needs should be served by filtered data-plane queries before broad artifact reads are added.
+- Verification, QA, and repair state must be recorded through explicit writers so later phases can attach provenance without reading canonical artifacts.
+
+Phase 04 convergence review:
+
+```txt
+I do not know how to make the data-plane authority hardening phase more complete without moving into Phase 05 token-bounded context or a later lineage-graph query phase.
+I cannot identify a Phase 04 mismatch after proving replay/persisted projection agreement, ambiguous artifact rejection, typed corrupt-record failures, event-continuity failures, first-class verification/QA/repair writers, bounded CLI/MCP queries, and a full repository check.
+```

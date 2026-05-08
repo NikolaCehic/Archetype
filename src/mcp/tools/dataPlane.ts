@@ -2,10 +2,13 @@ import path from "node:path";
 import {
   FileDataPlane,
   queryDataPlaneArtifact,
+  queryDataPlaneArtifacts,
+  queryDataPlaneLifecycle,
   queryDataPlaneReplay,
   queryDataPlaneStatus,
   queryDataPlaneTimeline
 } from "../../data-plane";
+import type { DataPlaneArtifactType, DataPlaneEventType, DataPlanePhase } from "../../data-plane";
 import {
   asRecord,
   resolveDeclaredPath,
@@ -30,6 +33,26 @@ function outputDirFromArgs(args: unknown): { record: JsonRecord; outputDir: stri
     outputDir,
     dataPlane: dataPlaneForOutput(outputDir)
   };
+}
+
+function numberValue(record: JsonRecord, key: string): number | undefined {
+  const value = record[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function phaseValue(record: JsonRecord, key: string): DataPlanePhase | undefined {
+  const value = stringValue(record, key);
+  return value ? value as DataPlanePhase : undefined;
+}
+
+function eventTypeValue(record: JsonRecord, key: string): DataPlaneEventType | undefined {
+  const value = stringValue(record, key);
+  return value ? value as DataPlaneEventType : undefined;
+}
+
+function artifactTypeValue(record: JsonRecord, key: string): DataPlaneArtifactType | undefined {
+  const value = stringValue(record, key);
+  return value ? value as DataPlaneArtifactType : undefined;
 }
 
 export const dataPlaneStatusTool: McpToolDefinition = {
@@ -64,13 +87,77 @@ export const dataPlaneTimelineTool: McpToolDefinition = {
       runId: {
         type: "string",
         description: "Agent Data Plane run ID."
+      },
+      phase: {
+        type: "string",
+        description: "Optional event phase filter."
+      },
+      type: {
+        type: "string",
+        description: "Optional event type filter."
+      },
+      limit: {
+        type: "number",
+        description: "Optional maximum number of events to return."
       }
     },
     required: ["outputDir", "runId"]
   },
   run(args: unknown): JsonRecord {
     const { record, outputDir, dataPlane } = outputDirFromArgs(args);
-    return { ...queryDataPlaneTimeline(dataPlane, outputDir, stringValue(record, "runId")) };
+    return {
+      ...queryDataPlaneTimeline(dataPlane, outputDir, stringValue(record, "runId"), {
+        phase: phaseValue(record, "phase"),
+        type: eventTypeValue(record, "type"),
+        limit: numberValue(record, "limit")
+      })
+    };
+  }
+};
+
+export const dataPlaneArtifactsTool: McpToolDefinition = {
+  name: "archetype_data_plane_artifacts",
+  description: "Return Agent Data Plane ArtifactRecords for one run with optional phase, type, priority, and limit filters.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      outputDir: {
+        type: "string",
+        description: "Generated archetype-output directory."
+      },
+      runId: {
+        type: "string",
+        description: "Agent Data Plane run ID."
+      },
+      phase: {
+        type: "string",
+        description: "Optional artifact source phase filter."
+      },
+      type: {
+        type: "string",
+        description: "Optional artifact type filter."
+      },
+      readPriority: {
+        type: "string",
+        description: "Optional read priority filter: hot, warm, or cold."
+      },
+      limit: {
+        type: "number",
+        description: "Optional maximum number of artifacts to return."
+      }
+    },
+    required: ["outputDir", "runId"]
+  },
+  run(args: unknown): JsonRecord {
+    const { record, outputDir, dataPlane } = outputDirFromArgs(args);
+    return {
+      ...queryDataPlaneArtifacts(dataPlane, outputDir, stringValue(record, "runId"), {
+        phase: phaseValue(record, "phase"),
+        type: artifactTypeValue(record, "type"),
+        readPriority: stringValue(record, "readPriority") || undefined,
+        limit: numberValue(record, "limit")
+      })
+    };
   }
 };
 
@@ -128,5 +215,28 @@ export const dataPlaneReplayRunTool: McpToolDefinition = {
   run(args: unknown): JsonRecord {
     const { record, outputDir, dataPlane } = outputDirFromArgs(args);
     return { ...queryDataPlaneReplay(dataPlane, outputDir, stringValue(record, "runId")) };
+  }
+};
+
+export const dataPlaneLifecycleTool: McpToolDefinition = {
+  name: "archetype_data_plane_lifecycle",
+  description: "Return lifecycle and readiness projections for one run without reading the artifact tree.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      outputDir: {
+        type: "string",
+        description: "Generated archetype-output directory."
+      },
+      runId: {
+        type: "string",
+        description: "Agent Data Plane run ID."
+      }
+    },
+    required: ["outputDir", "runId"]
+  },
+  run(args: unknown): JsonRecord {
+    const { record, outputDir, dataPlane } = outputDirFromArgs(args);
+    return { ...queryDataPlaneLifecycle(dataPlane, outputDir, stringValue(record, "runId")) };
   }
 };

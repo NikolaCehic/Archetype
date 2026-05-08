@@ -215,6 +215,18 @@ const mcpArtifact = await mcpTool("archetype_data_plane_read_artifact").run({
   artifactId: "canonical-spec-json"
 });
 assert(mcpArtifact.artifact?.ref?.path === "spec/archetype-spec.json", "MCP read artifact should return ArtifactRecord.");
+const mcpArtifacts = await mcpTool("archetype_data_plane_artifacts").run({
+  outputDir,
+  runId: generate.dataPlaneRunId,
+  readPriority: "hot",
+  limit: 2
+});
+assert(mcpArtifacts.artifactCount === 2, "MCP artifacts should support read-priority and limit filters.");
+const mcpLifecycle = await mcpTool("archetype_data_plane_lifecycle").run({
+  outputDir,
+  runId: generate.dataPlaneRunId
+});
+assert(mcpLifecycle.projectionConsistency?.matches === true, "MCP lifecycle should expose projection consistency.");
 const mcpReplay = await mcpTool("archetype_data_plane_replay_run").run({
   outputDir,
   runId: generate.dataPlaneRunId
@@ -241,7 +253,9 @@ const summary = {
     tools: [
       "archetype_data_plane_status",
       "archetype_data_plane_timeline",
+      "archetype_data_plane_artifacts",
       "archetype_data_plane_read_artifact",
+      "archetype_data_plane_lifecycle",
       "archetype_data_plane_replay_run"
     ],
     events: mcpTimeline.eventCount

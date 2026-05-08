@@ -44,7 +44,7 @@ If verification fails, Codex calls `archetype_plan_repair` or `archetype repair 
 
 ## Use The MCP Server
 
-For MCP-capable Codex workflows, use `docs/use-with-mcp.md` and `mcp.example.json`. The server exposes `archetype_release_doctor`, `archetype_create_intake`, `archetype_answer_clarification`, `archetype_generate_package`, `archetype_data_plane_status`, `archetype_data_plane_timeline`, `archetype_data_plane_read_artifact`, `archetype_data_plane_replay_run`, `archetype_validate_package`, `archetype_summarize_package`, `archetype_read_artifact`, `archetype_verify_target`, and `archetype_plan_repair`.
+For MCP-capable Codex workflows, use `docs/use-with-mcp.md` and `mcp.example.json`. The server exposes `archetype_release_doctor`, `archetype_create_intake`, `archetype_answer_clarification`, `archetype_generate_package`, `archetype_data_plane_status`, `archetype_data_plane_timeline`, `archetype_data_plane_artifacts`, `archetype_data_plane_read_artifact`, `archetype_data_plane_lifecycle`, `archetype_data_plane_replay_run`, `archetype_validate_package`, `archetype_summarize_package`, `archetype_read_artifact`, `archetype_verify_target`, and `archetype_plan_repair`.
 
 When the Agent Data Plane is present, Codex can query run state instead of rereading large artifacts. The data plane lives under `archetype-output/data-plane/` and is documented in `docs/agent-data-plane.md`.
 

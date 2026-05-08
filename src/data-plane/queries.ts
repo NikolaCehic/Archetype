@@ -4,6 +4,9 @@ import { PROJECTION_NAMES } from "./state";
 import type {
   AgentRun,
   ArtifactRecord,
+  DataPlaneArtifactType,
+  DataPlaneEventType,
+  DataPlanePhase,
   DataPlaneProjection,
   DataPlaneReplay,
   DataPlaneTimelineItem,
@@ -40,6 +43,7 @@ export interface DataPlaneTimelineResult {
   outputDir: string;
   runId: string;
   eventCount: number;
+  filters: DataPlaneTimelineFilters;
   timeline: DataPlaneTimelineItem[];
 }
 
@@ -48,6 +52,7 @@ export interface DataPlaneArtifactsResult {
   outputDir: string;
   runId: string;
   artifactCount: number;
+  filters: DataPlaneArtifactsFilters;
   artifacts: ArtifactRecord[];
 }
 
@@ -62,7 +67,44 @@ export interface DataPlaneReplayResult {
   status: "success";
   outputDir: string;
   runId: string;
+  projectionConsistency: ProjectionConsistencyResult;
   replay: DataPlaneReplay;
+}
+
+export interface DataPlaneLifecycleResult {
+  status: "success";
+  outputDir: string;
+  runId: string;
+  lifecycle: DataPlaneProjection;
+  readiness: DataPlaneProjection | null;
+  projectionConsistency: ProjectionConsistencyResult;
+}
+
+export interface ProjectionConsistencyItem {
+  projectionName: ProjectionName;
+  matches: boolean;
+  persistedChecksum: string | null;
+  replayChecksum: string;
+  persistedEventCount: number | null;
+  replayEventCount: number;
+}
+
+export interface ProjectionConsistencyResult {
+  matches: boolean;
+  items: ProjectionConsistencyItem[];
+}
+
+export interface DataPlaneTimelineFilters {
+  phase?: DataPlanePhase;
+  type?: DataPlaneEventType;
+  limit?: number;
+}
+
+export interface DataPlaneArtifactsFilters {
+  phase?: DataPlanePhase;
+  type?: DataPlaneArtifactType;
+  readPriority?: string;
+  limit?: number;
 }
 
 function latestRunId(runs: AgentRun[]): string | null {
@@ -107,6 +149,53 @@ function requireArtifactId(artifactId: string | undefined): string {
   throw new DataPlaneError("INVALID_DATA_PLANE_ARGUMENT", "read-artifact requires --artifact <artifact-id>.", { operation: "read-artifact" });
 }
 
+function normalizedLimit(limit: number | undefined): number | null {
+  if (typeof limit !== "number" || !Number.isFinite(limit)) return null;
+  return Math.max(0, Math.floor(limit));
+}
+
+function applyTimelineFilters(timeline: DataPlaneTimelineItem[], filters: DataPlaneTimelineFilters = {}): DataPlaneTimelineItem[] {
+  const limit = normalizedLimit(filters.limit);
+  const filtered = timeline.filter((item) =>
+    (!filters.phase || item.phase === filters.phase)
+    && (!filters.type || item.type === filters.type)
+  );
+  return limit === null ? filtered : filtered.slice(0, limit);
+}
+
+function applyArtifactFilters(artifacts: ArtifactRecord[], filters: DataPlaneArtifactsFilters = {}): ArtifactRecord[] {
+  const limit = normalizedLimit(filters.limit);
+  const filtered = artifacts.filter((artifact) =>
+    (!filters.phase || artifact.source_phase === filters.phase)
+    && (!filters.type || artifact.type === filters.type)
+    && (!filters.readPriority || artifact.metadata.read_priority === filters.readPriority)
+  );
+  return limit === null ? filtered : filtered.slice(0, limit);
+}
+
+export function projectionConsistency(dataPlane: DataPlaneReader, runId: string): ProjectionConsistencyResult {
+  const replay = dataPlane.replayRun(runId);
+  const items = PROJECTION_NAMES.map((projectionName): ProjectionConsistencyItem => {
+    const persisted = optionalProjection(dataPlane, runId, projectionName);
+    const replayed = replay.projections[projectionName];
+    const matches = Boolean(persisted)
+      && persisted?.checksum === replayed.checksum
+      && persisted.event_count === replay.events.length;
+    return {
+      projectionName,
+      matches,
+      persistedChecksum: persisted?.checksum ?? null,
+      replayChecksum: replayed.checksum,
+      persistedEventCount: persisted?.event_count ?? null,
+      replayEventCount: replay.events.length
+    };
+  });
+  return {
+    matches: items.every((item) => item.matches),
+    items
+  };
+}
+
 export function queryDataPlaneStatus(dataPlane: DataPlaneReader, outputDir: string, dataPlaneRoot: string): DataPlaneStatusResult {
   const runs = dataPlane.listRuns();
   return {
@@ -119,26 +208,28 @@ export function queryDataPlaneStatus(dataPlane: DataPlaneReader, outputDir: stri
   };
 }
 
-export function queryDataPlaneTimeline(dataPlane: DataPlaneReader, outputDir: string, runId: string | undefined): DataPlaneTimelineResult {
+export function queryDataPlaneTimeline(dataPlane: DataPlaneReader, outputDir: string, runId: string | undefined, filters: DataPlaneTimelineFilters = {}): DataPlaneTimelineResult {
   const resolvedRunId = requireRunId(runId, "timeline");
-  const timeline = dataPlane.getTimeline(resolvedRunId);
+  const timeline = applyTimelineFilters(dataPlane.getTimeline(resolvedRunId), filters);
   return {
     status: "success",
     outputDir,
     runId: resolvedRunId,
     eventCount: timeline.length,
+    filters,
     timeline
   };
 }
 
-export function queryDataPlaneArtifacts(dataPlane: DataPlaneReader, outputDir: string, runId: string | undefined): DataPlaneArtifactsResult {
+export function queryDataPlaneArtifacts(dataPlane: DataPlaneReader, outputDir: string, runId: string | undefined, filters: DataPlaneArtifactsFilters = {}): DataPlaneArtifactsResult {
   const resolvedRunId = requireRunId(runId, "artifacts");
-  const artifacts = dataPlane.listArtifacts(resolvedRunId);
+  const artifacts = applyArtifactFilters(dataPlane.listArtifacts(resolvedRunId), filters);
   return {
     status: "success",
     outputDir,
     runId: resolvedRunId,
     artifactCount: artifacts.length,
+    filters,
     artifacts
   };
 }
@@ -164,6 +255,19 @@ export function queryDataPlaneReplay(dataPlane: DataPlaneReader, outputDir: stri
     status: "success",
     outputDir,
     runId: resolvedRunId,
+    projectionConsistency: projectionConsistency(dataPlane, resolvedRunId),
     replay: dataPlane.replayRun(resolvedRunId)
+  };
+}
+
+export function queryDataPlaneLifecycle(dataPlane: DataPlaneReader, outputDir: string, runId: string | undefined): DataPlaneLifecycleResult {
+  const resolvedRunId = requireRunId(runId, "lifecycle");
+  return {
+    status: "success",
+    outputDir,
+    runId: resolvedRunId,
+    lifecycle: dataPlane.getProjection(resolvedRunId, "lifecycle"),
+    readiness: optionalProjection(dataPlane, resolvedRunId, "readiness"),
+    projectionConsistency: projectionConsistency(dataPlane, resolvedRunId)
   };
 }

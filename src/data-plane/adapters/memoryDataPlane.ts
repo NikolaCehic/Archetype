@@ -2,7 +2,7 @@ import { stableId } from "../../core/stable";
 import { artifactIdForPath } from "../artifacts";
 import { DataPlaneError } from "../errors";
 import { eventId, buildTimeline, replayDataPlaneRun } from "../events";
-import { stableSha256 } from "../state";
+import { assertEventContinuity, stableSha256 } from "../state";
 import type { DataPlane } from "../ports";
 import type {
   AgentRun,
@@ -99,7 +99,7 @@ export class MemoryDataPlane implements DataPlane {
 
   listEvents(runId: string): DataPlaneEvent[] {
     this.getRun(runId);
-    return [...(this.events.get(runId) ?? [])].sort((a, b) => a.sequence - b.sequence);
+    return assertEventContinuity([...(this.events.get(runId) ?? [])].sort((a, b) => a.sequence - b.sequence), runId, `memory:${runId}`);
   }
 
   writeArtifact(input: WriteArtifactInput): ArtifactRecord {
@@ -142,9 +142,17 @@ export class MemoryDataPlane implements DataPlane {
 
   readArtifact(artifactId: string, runId?: string): ArtifactRecord {
     const runs = runId ? [runId] : this.listRuns().map((run) => run.run_id);
+    const matches: ArtifactRecord[] = [];
     for (const candidateRunId of runs) {
       const record = this.artifacts.get(candidateRunId)?.get(artifactId);
-      if (record) return record;
+      if (record) matches.push(record);
+    }
+    if (matches.length === 1) return matches[0];
+    if (matches.length > 1) {
+      throw new DataPlaneError("ARTIFACT_LOOKUP_AMBIGUOUS", `Data-plane artifact id is present in multiple runs: ${artifactId}`, {
+        artifactId,
+        matches: matches.length
+      });
     }
     throw new DataPlaneError("ARTIFACT_NOT_FOUND", `Data-plane artifact not found: ${artifactId}`, { artifactId, runId: runId ?? null });
   }
@@ -158,18 +166,20 @@ export class MemoryDataPlane implements DataPlane {
     this.getRun(input.runId);
     const updatedAt = input.updatedAt ?? new Date().toISOString();
     const checksum = stableSha256(input.data);
-    this.appendEvent({
-      runId: input.runId,
-      type: "projection.updated",
-      phase: input.projectionName === "readiness" ? "readiness" : "unknown",
-      actor: "archetype",
-      occurredAt: updatedAt,
-      payload: {
-        summary: `Projection updated: ${input.projectionName}`,
-        projection_name: input.projectionName,
-        checksum
-      }
-    });
+    if (input.recordEvent !== false) {
+      this.appendEvent({
+        runId: input.runId,
+        type: "projection.updated",
+        phase: input.projectionName === "readiness" ? "readiness" : "unknown",
+        actor: "archetype",
+        occurredAt: updatedAt,
+        payload: {
+          summary: `Projection updated: ${input.projectionName}`,
+          projection_name: input.projectionName,
+          checksum
+        }
+      });
+    }
     const eventCount = input.eventCount ?? this.listEvents(input.runId).length;
     const projection: DataPlaneProjection = {
       projection_name: input.projectionName,
