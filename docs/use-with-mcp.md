@@ -78,6 +78,10 @@ Current GitHub package form:
 
 The tools are deterministic wrappers around intake creation, one-question clarification updates, compiler output, package validation, artifact reading, target verification, and repair-task planning. They do not run a general-purpose agent.
 
+`archetype_summarize_package` defaults to compact output. It returns `agent-context/context-summary.json` and `agent-context/phase-bundles/index.json` as the first-read artifacts plus phase bundle references. Pass `mode: "compat"` only when a legacy host needs the older broad entrypoint list.
+
+`archetype_read_artifact` is bounded by default. Use `maxBytes` and `offset` for continuation reads; the response returns `truncated` and `nextRead` when a larger artifact needs another slice.
+
 The Agent Data Plane query tools read `archetype-output/data-plane/` and do not call an LLM:
 
 - `archetype_data_plane_status`
@@ -87,7 +91,7 @@ The Agent Data Plane query tools read `archetype-output/data-plane/` and do not 
 - `archetype_data_plane_lifecycle`
 - `archetype_data_plane_replay_run`
 
-Use them before broad artifact reads when an agent only needs run status, filtered event history, hot artifact lineage, lifecycle/readiness projections, or replay state. See `docs/agent-data-plane.md`.
+Use them before broad artifact reads when an agent only needs run status, filtered event history, hot artifact lineage, lifecycle/readiness projections, or replay state. MCP timeline and artifact queries are capped by default and accept explicit `limit` filters. See `docs/agent-data-plane.md`.
 
 ## Approval Safety
 

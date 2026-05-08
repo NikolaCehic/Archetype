@@ -14,11 +14,12 @@ Prove the target frontend follows the Archetype contract package.
 ## Workflow
 
 1. Prefer MCP tool `archetype_validate_package` for `archetype-output`.
-2. Prefer MCP tool `archetype_summarize_package` for compact route, screen, state, readiness, blocker, and warning context.
-3. Prefer MCP tool `archetype_verify_target` with the target frontend directory.
-4. If verification fails or warns, call MCP tool `archetype_plan_repair` and read `10-revision/repair-task-queue.json`.
-5. Pass `skipInstall: false` only when the user explicitly allows dependency installation in the target frontend.
-6. If MCP is unavailable, use the CLI fallback:
+2. Prefer MCP tool `archetype_summarize_package` for compact route, screen, state, readiness, blocker, warning, and phase-bundle context.
+3. Read `agent-context/context-summary.json`, `agent-context/phase-bundles/verification.json`, `agent-context/phase-bundles/qa.json`, and `agent-context/phase-bundles/repair.json` before opening larger verification artifacts.
+4. Prefer MCP tool `archetype_verify_target` with the target frontend directory.
+5. If verification fails or warns, call MCP tool `archetype_plan_repair` and read `10-revision/repair-task-queue.json`.
+6. Pass `skipInstall: false` only when the user explicitly allows dependency installation in the target frontend.
+7. If MCP is unavailable, use the CLI fallback:
 
 ```bash
 npx --yes --package github:NikolaCehic/Archetype archetype validate --out archetype-output --json

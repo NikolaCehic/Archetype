@@ -3209,3 +3209,78 @@ Phase 04 convergence review:
 I do not know how to make the data-plane authority hardening phase more complete without moving into Phase 05 token-bounded context or a later lineage-graph query phase.
 I cannot identify a Phase 04 mismatch after proving replay/persisted projection agreement, ambiguous artifact rejection, typed corrupt-record failures, event-continuity failures, first-class verification/QA/repair writers, bounded CLI/MCP queries, and a full repository check.
 ```
+
+## Six-Agent Audit Phase 05 - Token-Bounded Agent Context
+
+Source:
+
+- `obsidian-vault/13 Quality Reviews/Archetype Six-Agent Scope Audit Convergence - 2026-05-07.md`
+- `docs/agent-lifecycle.md`
+- `docs/artifact-registry.md`
+- `docs/use-with-mcp.md`
+
+Extracted requirements:
+
+- Add compact context files.
+- Add one compact bundle per lifecycle phase.
+- Bound MCP artifact reads and MCP data-plane responses.
+- Keep MCP summary responses compact by default.
+- Protect skill and agent mirror surfaces from drift.
+- Downstream agents must be able to start each phase from one compact artifact and request full artifacts only when needed.
+
+Phase critique:
+
+- The harness had a registry and data-plane read priorities, but front-door skills still pushed agents toward broad artifact-tree reads.
+- `archetype_summarize_package` exposed a large legacy entrypoint list by default, which was useful for compatibility but poor for token discipline.
+- `archetype_read_artifact` returned full generated artifact content, which made large draft or implementation contracts easy to dump into context accidentally.
+- Data-plane MCP timeline/artifact queries could return broad histories unless callers remembered to pass limits.
+- Claude plugin skills and agent mirrors were copy surfaces without a dedicated mirror-drift contract.
+
+Corrections applied:
+
+- Added `src/agent-context/phaseBundles.ts` with compact context summary and phase-bundle contracts.
+- Added `src/agent-context/packageSummary.ts` so CLI and MCP summary behavior share one implementation.
+- Generated `agent-context/context-summary.json`, `agent-context/context-summary.md`, `agent-context/phase-bundles/index.json`, and one phase bundle per lifecycle phase for clarification, draft, and canonical packages.
+- Registered agent-context artifacts in the central artifact registry with hot read priority.
+- Added `archetype summarize --compact`; kept CLI default compatibility mode for existing scripts.
+- Changed MCP `archetype_summarize_package` to default to compact mode while supporting `mode: "compat"`.
+- Changed MCP `archetype_read_artifact` to return bounded content with `maxBytes`, `offset`, `truncated`, and `nextRead`.
+- Added default bounded limits to MCP data-plane timeline and artifact tools.
+- Updated front-door, implement, and verify skills to start from `agent-context` before broad artifact reads.
+- Added `scripts/run-token-bounded-context-contract.mjs` and `npm run token-context:contract`.
+- Added mirror drift checks for Claude plugin skill/agent mirrors and compact-context mention checks for Codex skill variants.
+
+Repair notes:
+
+- MCP timeline tests initially assumed the bounded timeline must equal full replay; the correct invariant is that replay is full and MCP timeline is bounded by default.
+- MCP read-artifact tests initially asserted a deep string inside a large draft artifact; the correct invariant is bounded content plus continuation metadata.
+- Plugin contracts required exact front-door wording, so compact-context updates preserved required legacy strings while changing the actual read policy.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run token-context:contract`: pass.
+- `npm run cli:contract`: pass.
+- `npm run mcp:contract`: pass.
+- `npm run data-plane:contract`: pass.
+- `npm run required-artifacts:contract`: pass.
+- `npm run release:contract`: pass.
+- `npm run plugin:claude:contract`: pass.
+- `npm run plugin:codex:contract`: pass.
+- `npm run check`: pass.
+
+Self-healing rules:
+
+- New phase-start guidance must be added to `agent-context` first, then reflected in skills/docs.
+- MCP summary should stay compact by default; compatibility mode exists for broad legacy entrypoint checks.
+- Large artifact reads must remain explicit, bounded, and resumable.
+- Data-plane MCP tools should prefer bounded results and filters over whole-run dumps.
+- Any mirrored Claude skill or agent change must be applied to the canonical root file first and verified by `token-context:contract`.
+- Codex skill variants may differ, but they must still mention compact context summary and phase bundles.
+
+Phase 05 convergence review:
+
+```txt
+I do not know how to make the token-bounded agent context phase more complete without moving into Phase 06 real verification evidence grading.
+I cannot identify a Phase 05 mismatch after proving compact generated phase bundles, compact default MCP summary, bounded artifact reads with continuation, bounded data-plane MCP queries, mirror drift protection, updated skills/docs, and a full repository check.
+```

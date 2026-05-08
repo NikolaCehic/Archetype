@@ -41,15 +41,17 @@ If the answer is obvious from imported material, use the material as evidence in
 4. Normalize the user's natural language and `@` imported context into `archetype.intake.json`.
 5. Prefer MCP tool `archetype_create_intake`. Pass imported materials through the `materials` array with labels, paths, content excerpts, and source types.
 6. Generate `archetype-output` with MCP tool `archetype_generate_package`.
-7. Read `lifecycle/context-completion.json`, `lifecycle/clarification-turn.json`, `lifecycle/implementation-phases.json`, `lifecycle/contract-state.json`, `lifecycle/execution-state.json`, and `lifecycle/lifecycle-report.md`.
-8. Summarize readiness with `archetype_summarize_package`.
+7. Read `agent-context/context-summary.json` and `agent-context/phase-bundles/index.json` first. Then read only the current phase bundle under `agent-context/phase-bundles/` before opening larger artifacts.
+8. Summarize readiness with `archetype_summarize_package`; use compact mode by default and legacy/full entrypoints only when exact source text is required.
 9. If clarification blockers exist, ask only the current question, apply the answer with `archetype_answer_clarification`, regenerate, and repeat.
-10. If the package is `draft_contract`, read `lifecycle/implementation-phases.json`, `draft/product-model.draft.json`, `draft/experience-architecture.draft.json`, `draft/design-system.draft.json`, `draft/design-system-preview.html`, `draft/design-system-review.md`, `draft/frontend-contract.draft.json`, `draft/assumption-ledger.md`, `draft/specialist-review.json`, `governance/frontend-practice-skills.json`, `governance/forbidden-behaviors.json`, `governance/convergence-standard.json`, and `draft/contract-approval-request.json`.
+10. If the package is `draft_contract`, start from `agent-context/phase-bundles/draft-review.json` and `agent-context/phase-bundles/contract-approval.json`, then read the draft artifacts those bundles name.
+    Draft review can require `draft/design-system-preview.html`, `draft/frontend-contract.draft.json`, and `draft/contract-approval-request.json`.
 11. For a draft contract, tell the user to open `draft/design-system-preview.html`, present confirmed facts, candidate assumptions, unresolved unknowns, risks, blockers, warnings, and recommendations. Ask for approval or edits. Do not read or invent canonical spec files because they are intentionally absent.
 12. Generate the canonical package only after human approval is captured in the intake.
-13. Once approved, read `spec/archetype-spec.md` and `spec/archetype-spec.json` as the canonical source of truth.
-14. Once approved, read `lifecycle/approval-decision.json`, `reviews/specialist-review-summary.md`, `test-first/test-first-contract.json`, `test-first/test-first-plan.md`, `test-first/test-quality-standard.json`, and `test-results/initial-red-test-run.md`.
-15. Read `lifecycle/implementation-phases.json`, `governance/frontend-practice-skills.json`, `governance/forbidden-behaviors.json`, `governance/convergence-standard.json`, `verification/playwright-verification-contract.json`, and `verification/playwright-verification-plan.md` before implementation so phase gates, convergence no-answers, browser proof obligations, marker-only test blockers, forbidden lifecycle behaviors, and frontend practice gates are known up front.
+13. Once approved, start each downstream phase from its compact bundle: `agent-context/phase-bundles/test-first.json`, `agent-context/phase-bundles/implementation.json`, `agent-context/phase-bundles/verification.json`, `agent-context/phase-bundles/qa.json`, and `agent-context/phase-bundles/repair.json`.
+14. Read full canonical artifacts only when the active phase bundle lists them as required.
+15. Before implementation, make sure the test-first, implementation, and verification bundles name the source files you are about to read; this prevents broad artifact-tree loading and token drift.
+    Canonical phase bundles can require `spec/archetype-spec.json`, `test-first/test-first-contract.json`, `test-first/test-quality-standard.json`, `governance/forbidden-behaviors.json`, `lifecycle/approval-decision.json`, `lifecycle/final-readiness-report.md`, `verification/playwright-verification-contract.json`, and `verification/playwright-evidence.json`.
 16. Create the smoke, E2E, UI, integration, and unit tests declared in the test-first contract before writing product UI.
 17. Preserve the initial red test result.
 18. Continue with implementation workflow from `implement`.
@@ -88,4 +90,4 @@ natural-language Archetype idea
         -> fixes or final report
 ```
 
-Do not end by telling the user what to tell Codex or Claude Code next. The active coding agent is already in the loop.
+Do not end by telling the user what to tell Codex next. Do not end by telling the user what to tell Claude Code next. The active coding agent is already in the loop.

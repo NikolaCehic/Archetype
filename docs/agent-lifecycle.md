@@ -37,6 +37,24 @@ That is the default lifecycle.
 
 ## Context Artifacts
 
+Agents should begin with the compact context surface:
+
+```txt
+agent-context/context-summary.json
+agent-context/context-summary.md
+agent-context/phase-bundles/index.json
+agent-context/phase-bundles/clarification.json
+agent-context/phase-bundles/draft-review.json
+agent-context/phase-bundles/contract-approval.json
+agent-context/phase-bundles/test-first.json
+agent-context/phase-bundles/implementation.json
+agent-context/phase-bundles/verification.json
+agent-context/phase-bundles/qa.json
+agent-context/phase-bundles/repair.json
+```
+
+The phase bundle is the first-read artifact for the current lifecycle phase. It lists required reads, optional reads, MCP query hints, the entry gate, the exit gate, and the policy for when a full artifact read is justified.
+
 Every generated package includes:
 
 ```txt
@@ -81,6 +99,8 @@ Test-driven implementation starts from `test-first/test-first-contract.json` onl
 The test quality standard lives at `test-first/test-quality-standard.json`. Tests that only prove `[data-archetype-screen]` or marker presence fail `verify-target`; valid tests must prove visible behavior, deterministic states, accessible names and landmarks, route/deep-link behavior, malformed data handling, and desktop/tablet/mobile visual evidence.
 
 Complete packages preserve approval and evidence traceability through `lifecycle/approval-request.md`, `lifecycle/approval-decision.json`, `reviews/specialist-review-summary.md`, `test-results/initial-red-test-run.md`, and `lifecycle/final-readiness-report.md`.
+
+Token-bounded context is part of the lifecycle. `archetype_summarize_package` defaults to compact MCP output, `archetype summarize --compact` returns only the compact entrypoints, and `archetype_read_artifact` returns bounded content with `nextRead` continuation instructions for large artifacts.
 
 Forbidden lifecycle behavior is encoded in `governance/forbidden-behaviors.json`. The package must reject weak-context code generation, inferred routes treated as accepted routes, warning-based readiness claims, bulk clarification, hidden assumptions, default Vite READMEs, mock-only production claims, generic success-state workflows, marker-only tests, unapproved contract mutation, and QA without Playwright evidence.
 

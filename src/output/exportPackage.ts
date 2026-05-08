@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { agentContextBundlePath, buildAgentContextForPackage } from "../agent-context/phaseBundles";
 import { artifactReadOrderForPackage, manifestArtifactsForPackage } from "../artifacts/registry";
 import { prepareGeneratedOutputDirectory } from "../safety/pathSafety";
 import type { ArchetypePackage } from "../core/types";
@@ -534,11 +535,18 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string, options: Ex
   const execution = buildLifecycleExecutionStateArtifacts(pkg);
   const qa = buildPendingQaArtifacts(pkg);
   const testQualityStandard = buildTestQualityStandardArtifact();
+  const agentContext = buildAgentContextForPackage(pkg, "canonical");
 
   writeText(outDir, "README.md", buildPackageReadme(pkg));
   writeText(outDir, "AGENTS.md", buildGeneratedAgentsMd());
   writeText(outDir, "CLAUDE.md", buildGeneratedClaudeMd());
   writeJson(outDir, "manifest.json", buildTopLevelManifest(pkg));
+  writeJson(outDir, "agent-context/context-summary.json", agentContext.summary);
+  writeText(outDir, "agent-context/context-summary.md", agentContext.summaryMarkdown);
+  writeJson(outDir, "agent-context/phase-bundles/index.json", agentContext.phaseIndex);
+  for (const bundle of agentContext.bundles) {
+    writeJson(outDir, agentContextBundlePath(bundle.phase_id), bundle);
+  }
   writeText(outDir, "readiness-report.md", buildReadinessReport(pkg));
   writeText(outDir, "spec/archetype-spec.md", pkg.spec.specMarkdown);
   writeJson(outDir, "spec/archetype-spec.json", pkg.spec.specJson);

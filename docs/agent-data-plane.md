@@ -132,7 +132,7 @@ An artifact record includes:
 - lineage event ids
 - creation timestamp
 
-Agents should use artifact records to decide what to read, then read generated artifacts only when needed.
+Agents should use artifact records to decide what to read, then read generated artifacts only when needed. Prefer hot `agent-context/` records first; they summarize the current lifecycle phase and list the exact full artifacts that are justified for the next action.
 
 ## Projection And Query Model
 
@@ -164,6 +164,8 @@ MCP query tools expose the same read-only behavior for agent hosts:
 - `archetype_data_plane_read_artifact`
 - `archetype_data_plane_lifecycle`
 - `archetype_data_plane_replay_run`
+
+MCP timeline and artifact tools apply bounded default limits so hosts do not dump entire run histories by accident. Use explicit filters for phase, event type, artifact type, read priority, and limit when more detail is needed.
 
 Projection files are replay-consistent: persisted projection checksums and event counts are verified against replay output. Artifact lookup without a run id fails with a typed ambiguity error if multiple runs contain the same artifact id. Corrupt JSON/JSONL and non-contiguous event sequences are reported as typed data-plane failures.
 

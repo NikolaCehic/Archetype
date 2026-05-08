@@ -24,6 +24,12 @@ The registry makes a new artifact a single-entry change plus an optional writer 
 
 `canonical` artifacts are generated only after bound approval. They include the canonical spec, test-first contracts, Playwright verification, target generation contracts, QA evidence, and repair artifacts.
 
+Both draft and canonical packages include `agent-context/` artifacts. These are compact first-read bundles for agents and carry hot read priority:
+
+- `agent-context/context-summary.json`
+- `agent-context/phase-bundles/index.json`
+- one phase bundle per lifecycle phase
+
 ## Public Helpers
 
 - `manifestArtifactsForPackage(packageKind)` generates top-level manifest entries.

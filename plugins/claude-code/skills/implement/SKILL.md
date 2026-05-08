@@ -13,15 +13,23 @@ Build frontend code from `archetype-output` without guessing product behavior.
 
 ## Required Reading
 
-Read these files before writing UI code:
+Start with the compact context files, then read only the full artifacts named by the active phase bundle:
+
+- `archetype-output/agent-context/context-summary.json`
+- `archetype-output/agent-context/phase-bundles/index.json`
+- `archetype-output/agent-context/phase-bundles/test-first.json`
+- `archetype-output/agent-context/phase-bundles/implementation.json`
+- `archetype-output/agent-context/phase-bundles/verification.json`
+
+The implementation bundle should point you to these source files before writing UI code:
 
 - `archetype-output/AGENTS.md`
 - `archetype-output/CLAUDE.md`
-- `archetype-output/spec/archetype-spec.md`
-- `archetype-output/spec/archetype-spec.json`
 - `archetype-output/lifecycle/approval-decision.json`
 - `archetype-output/lifecycle/implementation-phases.json`
 - `archetype-output/reviews/specialist-review-summary.md`
+- `archetype-output/spec/archetype-spec.md`
+- `archetype-output/spec/archetype-spec.json`
 - `archetype-output/test-first/test-first-contract.json`
 - `archetype-output/test-first/test-first-plan.md`
 - `archetype-output/test-first/test-quality-standard.json`

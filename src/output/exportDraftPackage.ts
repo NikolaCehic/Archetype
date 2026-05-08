@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { agentContextBundlePath, buildAgentContextForPackage } from "../agent-context/phaseBundles";
 import { artifactIndexForPackage, artifactReadOrderForPackage, forbiddenDraftArtifactPaths, manifestArtifactsForPackage } from "../artifacts/registry";
 import type { ManifestArtifactEntry } from "../artifacts/registry";
 import { prepareGeneratedOutputDirectory } from "../safety/pathSafety";
@@ -109,6 +110,7 @@ export function exportDraftPackage(pkg: ArchetypePackage, outDir: string, option
   const evidenceDecisionModel = buildEvidenceDecisionModelArtifact(pkg);
   const forbiddenBehaviorAcceptance = buildForbiddenBehaviorAcceptanceArtifact();
   const frontendPracticeSkills = buildFrontendPracticeSkillsArtifact(pkg);
+  const agentContext = buildAgentContextForPackage(pkg, "draft_contract");
   const convergenceStandard = buildConvergenceStandardArtifact({
     packageType: "draft_contract",
     contextStatus: String(pkg.lifecycle.contextCompletion.status ?? "complete"),
@@ -159,6 +161,12 @@ export function exportDraftPackage(pkg: ArchetypePackage, outDir: string, option
 
   writeText(outDir, "README.md", buildReadme(pkg));
   writeJson(outDir, "manifest.json", manifest);
+  writeJson(outDir, "agent-context/context-summary.json", agentContext.summary);
+  writeText(outDir, "agent-context/context-summary.md", agentContext.summaryMarkdown);
+  writeJson(outDir, "agent-context/phase-bundles/index.json", agentContext.phaseIndex);
+  for (const bundle of agentContext.bundles) {
+    writeJson(outDir, agentContextBundlePath(bundle.phase_id), bundle);
+  }
   writeJson(outDir, "00-manifest/manifest.json", internalManifest);
   writeJson(outDir, "00-manifest/implementation-readiness.json", readiness);
   writeText(outDir, "readiness-report.md", buildReadinessReport(pkg));

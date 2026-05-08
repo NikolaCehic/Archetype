@@ -11,10 +11,11 @@ Verify the target frontend against `archetype-output`.
 
 1. Prefer MCP tool `archetype_validate_package`.
 2. Prefer MCP tool `archetype_summarize_package`.
-3. Prefer MCP tool `archetype_verify_target`.
-4. If verification fails or warns, call MCP tool `archetype_plan_repair` and read `10-revision/repair-task-queue.json`.
-5. Pass `skipInstall: false` only with explicit user permission to install dependencies in the target frontend.
-6. If MCP is unavailable, use CLI fallback:
+3. Read `agent-context/context-summary.json`, `agent-context/phase-bundles/verification.json`, `agent-context/phase-bundles/qa.json`, and `agent-context/phase-bundles/repair.json` before opening larger verification artifacts.
+4. Prefer MCP tool `archetype_verify_target`.
+5. If verification fails or warns, call MCP tool `archetype_plan_repair` and read `10-revision/repair-task-queue.json`.
+6. Pass `skipInstall: false` only with explicit user permission to install dependencies in the target frontend.
+7. If MCP is unavailable, use CLI fallback:
 
 ```bash
 npx --yes --package github:NikolaCehic/Archetype archetype validate --out archetype-output --json

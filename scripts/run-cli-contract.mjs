@@ -112,7 +112,11 @@ for (const requiredArtifact of [
   "draft/frontend-contract.draft.json",
   "draft/assumption-ledger.md",
   "draft/specialist-review.json",
-  "draft/contract-approval-request.json"
+  "draft/contract-approval-request.json",
+  "agent-context/context-summary.json",
+  "agent-context/context-summary.md",
+  "agent-context/phase-bundles/index.json",
+  "agent-context/phase-bundles/draft-review.json"
 ]) {
   assert(existsSync(path.join(outputDir, requiredArtifact)), `Generated package is missing ${requiredArtifact}.`);
 }
@@ -151,6 +155,12 @@ assert(summarize.entrypoints.includes("governance/forbidden-behaviors.json"), "s
 assert(summarize.entrypoints.includes("governance/convergence-standard.json"), "summarize should include convergence standard entrypoint.");
 assert(!summarize.entrypoints.includes("spec/archetype-spec.json"), "draft summarize must not include canonical spec entrypoint.");
 assert(!summarize.entrypoints.includes("test-first/test-first-contract.json"), "draft summarize must not include test-first entrypoint.");
+assert(summarize.compactEntrypoints.includes("agent-context/context-summary.json"), "summarize should expose compact context entrypoint.");
+assert(summarize.phaseBundles.some((phase) => phase.phaseId === "draft_review"), "summarize should expose draft review phase bundle.");
+
+const compactSummarize = runJson(["summarize", "--out", outputDir, "--compact"]);
+assert(compactSummarize.entrypoints.length === 2, "compact summarize should only expose compact entrypoints.");
+assert(compactSummarize.entrypoints.includes("agent-context/phase-bundles/index.json"), "compact summarize should include phase bundle index.");
 
 const validate = runJson(["validate", "--out", outputDir]);
 assert(validate.status === "pass", "validate --json should pass.");
@@ -189,6 +199,7 @@ assert(approvedSummarize.entrypoints.includes("test-first/test-quality-standard.
 assert(approvedSummarize.entrypoints.includes("draft/design-system-preview.html"), "approved summarize should expose the design preview.");
 assert(approvedSummarize.entrypoints.includes("governance/forbidden-behaviors.json"), "approved summarize should expose the forbidden behavior contract.");
 assert(approvedSummarize.entrypoints.includes("governance/convergence-standard.json"), "approved summarize should expose the convergence standard.");
+assert(approvedSummarize.phaseBundles.some((phase) => phase.phaseId === "implementation"), "approved summarize should expose implementation phase bundle.");
 const simulate = runJson(["simulate", "--out", approvedOutputDir]);
 assert(["pass", "warning"].includes(simulate.status), "simulate --json should pass or warn.");
 assert(simulate.summary.routes === 6, "simulate should report route simulation coverage.");

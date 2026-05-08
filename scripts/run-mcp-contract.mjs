@@ -246,6 +246,7 @@ try {
     runId: generate.dataPlaneRunId
   });
   assert(dataPlaneTimeline.eventCount > 10, "data-plane timeline should expose recorded events.");
+  assert(dataPlaneTimeline.eventCount <= 50, "data-plane timeline should be bounded by default.");
   const dataPlaneArtifact = await callTool("archetype_data_plane_read_artifact", {
     outputDir,
     artifactId: "frontend-contract-draft"
@@ -267,7 +268,7 @@ try {
     outputDir,
     runId: generate.dataPlaneRunId
   });
-  assert(dataPlaneReplay.replay?.timeline?.length === dataPlaneTimeline.eventCount, "data-plane replay should reconstruct the timeline.");
+  assert(dataPlaneReplay.replay?.timeline?.length >= dataPlaneTimeline.eventCount, "data-plane replay should reconstruct the full timeline behind bounded timeline reads.");
   const missingDataPlaneRun = await expectToolError("archetype_data_plane_timeline", {
     outputDir,
     runId: "missing-run"
@@ -278,7 +279,12 @@ try {
   assert(validate.status === "pass", "validate should pass.");
   assert(validate.checkedFiles > 0, "validate should check files.");
 
-  const summarize = await callTool("archetype_summarize_package", { outputDir });
+  const compactSummarize = await callTool("archetype_summarize_package", { outputDir });
+  assert(compactSummarize.entrypoints.includes("agent-context/context-summary.json"), "compact summarize should include context summary.");
+  assert(compactSummarize.entrypoints.length === 2, "compact summarize should keep entrypoints token-bounded.");
+  assert(compactSummarize.phaseBundles.some((phase) => phase.phaseId === "draft_review"), "compact summarize should expose phase bundles.");
+
+  const summarize = await callTool("archetype_summarize_package", { outputDir, mode: "compat" });
   assert(summarize.product === "SignalDesk", "summarize should include product name.");
   assert(summarize.routes > 0, "summarize should include route count.");
   assert(summarize.screens > 0, "summarize should include screen count.");
@@ -296,10 +302,13 @@ try {
 
   const artifact = await callTool("archetype_read_artifact", {
     outputDir,
-    artifactId: "frontend-contract-draft"
+    artifactId: "frontend-contract-draft",
+    maxBytes: 60000
   });
   assert(artifact.status === "success", "read artifact should succeed.");
-  assert(artifact.content.includes("agent_instruction_policy"), "read artifact should return frontend contract draft content.");
+  assert(artifact.bounded === true, "read artifact should report bounded reads.");
+  assert(String(artifact.content).includes("frontend_contract") || String(artifact.content).includes("contract_version"), "read artifact should return frontend contract draft content.");
+  assert(artifact.bytesRead <= 60000, "read artifact should respect the bounded read ceiling.");
 
   const blockedWriteTarget = spawnSync("node", ["dist/cli.js", "write-target", "--out", outputDir, "--target", targetDir, "--force", "--json"], {
     cwd: root,
@@ -326,7 +335,10 @@ try {
   assert(approvedGenerate.readyForFrontendAgent === true, "human-approved MCP package should be ready for frontend implementation.");
   assert(approvedGenerate.readinessTier === "ready_for_implementation", "human-approved MCP package should be ready for implementation.");
   assert(typeof approvedGenerate.dataPlaneRunId === "string" && approvedGenerate.dataPlaneRunId.length > 0, "approved generate should return a data-plane run ID.");
-  const approvedSummarize = await callTool("archetype_summarize_package", { outputDir: approvedOutputDir });
+  const approvedCompactSummarize = await callTool("archetype_summarize_package", { outputDir: approvedOutputDir });
+  assert(approvedCompactSummarize.entrypoints.includes("agent-context/context-summary.json"), "approved compact summarize should include context summary.");
+  assert(approvedCompactSummarize.phaseBundles.some((phase) => phase.phaseId === "implementation"), "approved compact summarize should expose implementation bundle.");
+  const approvedSummarize = await callTool("archetype_summarize_package", { outputDir: approvedOutputDir, mode: "compat" });
   assert(approvedSummarize.entrypoints.includes("test-first/test-quality-standard.json"), "approved MCP summarize should expose the test quality standard.");
   assert(approvedSummarize.entrypoints.includes("draft/design-system-preview.html"), "approved MCP summarize should expose the design preview.");
   assert(approvedSummarize.entrypoints.includes("governance/forbidden-behaviors.json"), "approved MCP summarize should expose the forbidden behavior contract.");

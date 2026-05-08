@@ -40,6 +40,11 @@ function numberValue(record: JsonRecord, key: string): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
+function boundedLimit(record: JsonRecord, key: string, fallback: number): number {
+  const value = numberValue(record, key) ?? fallback;
+  return Math.max(1, Math.min(Math.floor(value), 100));
+}
+
 function phaseValue(record: JsonRecord, key: string): DataPlanePhase | undefined {
   const value = stringValue(record, key);
   return value ? value as DataPlanePhase : undefined;
@@ -109,7 +114,7 @@ export const dataPlaneTimelineTool: McpToolDefinition = {
       ...queryDataPlaneTimeline(dataPlane, outputDir, stringValue(record, "runId"), {
         phase: phaseValue(record, "phase"),
         type: eventTypeValue(record, "type"),
-        limit: numberValue(record, "limit")
+        limit: boundedLimit(record, "limit", 50)
       })
     };
   }
@@ -155,7 +160,7 @@ export const dataPlaneArtifactsTool: McpToolDefinition = {
         phase: phaseValue(record, "phase"),
         type: artifactTypeValue(record, "type"),
         readPriority: stringValue(record, "readPriority") || undefined,
-        limit: numberValue(record, "limit")
+        limit: boundedLimit(record, "limit", 50)
       })
     };
   }

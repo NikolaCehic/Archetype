@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { AGENT_CONTEXT_ARTIFACTS, agentContextBundlePath, buildAgentContextForClarification } from "../agent-context/phaseBundles";
 import { prepareGeneratedOutputDirectory } from "../safety/pathSafety";
 import type { ArchetypeInput } from "../core/types";
 import type { ContextGateAssessment } from "../modules/contextGate";
@@ -191,6 +192,12 @@ export function exportClarificationPackage(
   const artifacts: ClarificationArtifact[] = [
     { id: "clarification-readme", path: "README.md", type: "markdown", required: true },
     { id: "manifest", path: "manifest.json", type: "json", required: true },
+    ...AGENT_CONTEXT_ARTIFACTS.map((artifact): ClarificationArtifact => ({
+      id: artifact.id,
+      path: artifact.path,
+      type: artifact.type,
+      required: true
+    })),
     { id: "implementation-readiness", path: "00-manifest/implementation-readiness.json", type: "json", required: true },
     { id: "lifecycle-state-machine", path: "lifecycle/state-machine.json", type: "json", required: true },
     { id: "start-request", path: "lifecycle/start-request.json", type: "json", required: true },
@@ -332,9 +339,16 @@ export function exportClarificationPackage(
   });
   const startRequest = buildStartRequestArtifact(input, ingestion);
   const clarificationState = buildClarificationStateArtifact(assessment.contextMatrix, clarificationTurn);
+  const agentContext = buildAgentContextForClarification(input, assessment);
 
   writeText(outDir, "README.md", buildReadme(input, assessment));
   writeJson(outDir, "manifest.json", manifest);
+  writeJson(outDir, "agent-context/context-summary.json", agentContext.summary);
+  writeText(outDir, "agent-context/context-summary.md", agentContext.summaryMarkdown);
+  writeJson(outDir, "agent-context/phase-bundles/index.json", agentContext.phaseIndex);
+  for (const bundle of agentContext.bundles) {
+    writeJson(outDir, agentContextBundlePath(bundle.phase_id), bundle);
+  }
   writeJson(outDir, "00-manifest/implementation-readiness.json", readiness);
   writeJson(outDir, "lifecycle/state-machine.json", buildStateMachine(assessment));
   writeJson(outDir, "lifecycle/start-request.json", startRequest);

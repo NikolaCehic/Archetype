@@ -2,6 +2,7 @@
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { buildPackageSummary } from "./agent-context/packageSummary";
 import { runArchetypeCompiler } from "./core/pipeline";
 import { createDraftApproval } from "./approval/draftApproval";
 import { exportPackage } from "./output/exportPackage";
@@ -54,7 +55,7 @@ function usage(exitCode = 1): never {
   console.log("  archetype approve-draft --draft <draft-output-dir> --input <intake.json> --out <approved-intake.json> --approved-by <name> [--force]");
   console.log("  archetype answer-clarification --input <intake.json> --out <next-intake.json> --question-id <id> --answer <text> [--answered-by <name>]");
   console.log("  archetype validate --out <output-dir>");
-  console.log("  archetype summarize --out <output-dir>");
+  console.log("  archetype summarize --out <output-dir> [--compact]");
   console.log("  archetype simulate --out <output-dir>");
   console.log("  archetype write-target --out <output-dir> --target <target-dir> [--force]");
   console.log("  archetype verify-target --out <output-dir> --target <target-dir> [--skip-install]");
@@ -511,121 +512,6 @@ function dataPlaneCommand(jsonMode: boolean): void {
   }
 }
 
-function summarizePackage(outputDir: string): Record<string, unknown> {
-  const topManifest = readJson<{
-    packageType?: string;
-    productName?: string;
-    readinessScore?: number;
-    readinessTier?: string;
-    readyForFrontendAgent?: boolean;
-    blockers?: string[];
-    warnings?: string[];
-  }>(path.join(outputDir, "manifest.json"));
-  const isDraft = topManifest.packageType === "draft_contract";
-  const productModel = isDraft
-    ? readJson<{ product_model?: { product_name?: string; product_type?: string; product_category?: string } }>(path.join(outputDir, "draft", "product-model.draft.json")).product_model ?? {}
-    : readJson<{ product_name?: string; product_type?: string; product_category?: string }>(path.join(outputDir, "product", "product-model.json"));
-  const draftExperience = isDraft
-    ? readJson<{ routes?: Array<{ route?: string; screen_id?: string }>; screens?: Array<{ screen_id?: string; route?: string; states?: Record<string, { required?: boolean }> }> }>(path.join(outputDir, "draft", "experience-architecture.draft.json"))
-    : null;
-  const routeMap = isDraft
-    ? { routes: draftExperience?.routes ?? [] }
-    : readJson<{ routes?: Array<{ route?: string; screen_id?: string }> }>(path.join(outputDir, "experience", "route-map.json"));
-  const screenInventory = isDraft
-    ? {
-      screens: (draftExperience?.screens ?? []).map((screen) => ({
-        ...screen,
-        required_states: Object.entries(screen.states ?? {})
-          .filter(([, state]) => state.required === true)
-          .map(([state]) => state)
-      }))
-    }
-    : readJson<{ screens?: Array<{ screen_id?: string; route?: string; required_states?: string[] }> }>(path.join(outputDir, "screens", "screen-inventory.json"));
-
-  const routes = routeMap.routes ?? [];
-  const screens = screenInventory.screens ?? [];
-  const requiredStates = [
-    ...new Set(screens.flatMap((screen) => screen.required_states ?? []))
-  ].sort();
-
-  return {
-    status: commandStatus(topManifest.blockers ?? [], topManifest.warnings ?? []),
-    outputDir,
-    product: productModel.product_name ?? topManifest.productName ?? "Unknown product",
-    productType: productModel.product_type ?? "Unknown product type",
-    productCategory: productModel.product_category ?? "Unknown category",
-    routes: routes.length,
-    screens: screens.length,
-    routeMap: routes.map((route) => ({ route: route.route, screenId: route.screen_id })),
-    requiredStates,
-    readinessScore: topManifest.readinessScore ?? 0,
-    readinessTier: topManifest.readinessTier ?? "unknown",
-    readyForFrontendAgent: topManifest.readyForFrontendAgent ?? false,
-    blockers: topManifest.blockers ?? [],
-    warnings: topManifest.warnings ?? [],
-    entrypoints: [
-      "lifecycle/start-request.json",
-      "lifecycle/context-completion.json",
-      "lifecycle/context-matrix.json",
-      "lifecycle/readiness-tiers.json",
-      "lifecycle/implementation-phases.json",
-      "lifecycle/clarification-turn.json",
-      "lifecycle/clarification-state.json",
-      "lifecycle/clarification-transcript.md",
-      "lifecycle/approval-request.md",
-      "lifecycle/approval-decision.json",
-      "01-evidence/evidence-ledger.json",
-      "01-evidence/missing-context.md",
-      ...(isDraft ? [
-        "lifecycle/contract-state.json",
-        "draft/product-model.draft.json",
-        "draft/experience-architecture.draft.json",
-        "draft/design-system.draft.json",
-        "draft/design-system-preview.html",
-        "draft/design-system-review.md",
-        "draft/frontend-contract.draft.json",
-        "draft/assumption-ledger.md",
-        "draft/contract-approval-request.json"
-      ] : []),
-      "governance/non-negotiable-principles.json",
-      "governance/evidence-decision-model.json",
-      "governance/forbidden-behaviors.json",
-      "governance/convergence-standard.json",
-      "governance/frontend-practice-skills.json",
-      "lifecycle/lifecycle-report.md",
-      ...(!isDraft ? [
-        "lifecycle/contract-state.json",
-        "lifecycle/execution-state.json",
-        "lifecycle/final-readiness-report.md",
-        "draft/design-system-preview.html",
-        "draft/design-system-review.md",
-        "spec/archetype-spec.md",
-        "spec/archetype-spec.json",
-        "test-first/test-first-contract.json",
-        "test-first/test-first-plan.md",
-        "test-first/test-quality-standard.json",
-        "test-results/initial-red-test-run.md",
-        "verification/playwright-verification-contract.json",
-        "verification/playwright-evidence.json",
-        "qa/scenario-catalog.json",
-        "qa/playwright-results.json",
-        "qa/malformed-data-results.json",
-        "qa/accessibility-results.md",
-        "qa/visual-regression-report.md",
-        "qa/contract-drift-report.md",
-        "reviews/specialist-review-summary.md",
-        "10-revision/repair-task-queue.json",
-        "10-revision/repair-plan.md",
-        "AGENTS.md",
-        "CLAUDE.md",
-        "implementation-contract.md",
-        "verification-plan.md"
-      ] : []),
-      "manifest.json"
-    ]
-  };
-}
-
 async function main(): Promise<void> {
   if (hasFlag("--help") || hasFlag("-h")) usage(0);
   if (hasFlag("--version") || hasFlag("-v")) {
@@ -713,7 +599,7 @@ async function main(): Promise<void> {
   if (command === "summarize") {
     const outDir = getArg("--out");
     if (!outDir) usage();
-    const result = summarizePackage(path.resolve(outDir));
+    const result = buildPackageSummary(path.resolve(outDir), hasFlag("--compact") ? "compact" : "compat");
     writeJson(result);
     if (result.status === "error") process.exit(1);
     return;

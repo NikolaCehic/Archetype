@@ -209,7 +209,8 @@ const mcpTimeline = await mcpTool("archetype_data_plane_timeline").run({
   outputDir,
   runId: generate.dataPlaneRunId
 });
-assert(mcpTimeline.eventCount === timeline.eventCount, "MCP timeline should match CLI timeline.");
+assert(mcpTimeline.eventCount <= 50, "MCP timeline should be bounded by default.");
+assert(timeline.eventCount >= mcpTimeline.eventCount, "CLI timeline should expose at least the bounded MCP timeline.");
 const mcpArtifact = await mcpTool("archetype_data_plane_read_artifact").run({
   outputDir,
   artifactId: "canonical-spec-json"

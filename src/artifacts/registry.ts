@@ -1,4 +1,5 @@
 import type { DataPlaneArtifactType, DataPlanePhase } from "../data-plane/types";
+import { AGENT_CONTEXT_ARTIFACTS } from "../agent-context/phaseBundles";
 import { FRONTEND_PRACTICE_SKILLS } from "../modules/frontendPracticeSkills";
 import { REQUIRED_QA_ARTIFACTS } from "../modules/qaTeam";
 
@@ -52,6 +53,12 @@ const QA_ARTIFACTS = REQUIRED_QA_ARTIFACTS.filter((artifact) => artifact.startsW
 const DRAFT_MANIFEST_ARTIFACTS: ArtifactSeed[] = [
   { id: "draft-readme", path: "README.md", type: "markdown", readPriority: "hot" },
   { id: "manifest", path: "manifest.json", type: "json", readPriority: "hot" },
+  ...AGENT_CONTEXT_ARTIFACTS.map((artifact): ArtifactSeed => ({
+    id: artifact.id,
+    path: artifact.path,
+    type: artifact.type,
+    readPriority: "hot"
+  })),
   { id: "implementation-readiness", path: "00-manifest/implementation-readiness.json", type: "json", readPriority: "hot" },
   { id: "internal-manifest", path: "00-manifest/manifest.json", type: "json", readPriority: "hot" },
   { id: "readiness-report", path: "readiness-report.md", type: "markdown", readPriority: "warm" },
@@ -99,6 +106,12 @@ const CANONICAL_TOP_MANIFEST_ARTIFACTS: ArtifactSeed[] = [
   { id: "agent-instructions", path: "AGENTS.md", type: "markdown", readPriority: "hot" },
   { id: "claude-instructions", path: "CLAUDE.md", type: "markdown", readPriority: "hot" },
   { id: "manifest", path: "manifest.json", type: "json", readPriority: "hot" },
+  ...AGENT_CONTEXT_ARTIFACTS.map((artifact): ArtifactSeed => ({
+    id: artifact.id,
+    path: artifact.path,
+    type: artifact.type,
+    readPriority: "hot"
+  })),
   { id: "evidence-ledger", path: "01-evidence/evidence-ledger.json", type: "json", readPriority: "hot" },
   { id: "missing-context", path: "01-evidence/missing-context.md", type: "markdown", readPriority: "hot" },
   { id: "canonical-spec", path: "spec/archetype-spec.md", type: "markdown", readPriority: "hot" },
@@ -401,6 +414,11 @@ const DRAFT_FORBIDDEN_ARTIFACT_PATHS = [
 ];
 
 const DRAFT_READ_ORDER = [
+  "agent-context/context-summary.json",
+  "agent-context/phase-bundles/index.json",
+  "agent-context/phase-bundles/clarification.json",
+  "agent-context/phase-bundles/draft-review.json",
+  "agent-context/phase-bundles/contract-approval.json",
   "lifecycle/contract-state.json",
   "draft/product-model.draft.json",
   "draft/experience-architecture.draft.json",
@@ -416,6 +434,13 @@ const DRAFT_READ_ORDER = [
 ];
 
 const CANONICAL_READ_ORDER = [
+  "agent-context/context-summary.json",
+  "agent-context/phase-bundles/index.json",
+  "agent-context/phase-bundles/test-first.json",
+  "agent-context/phase-bundles/implementation.json",
+  "agent-context/phase-bundles/verification.json",
+  "agent-context/phase-bundles/qa.json",
+  "agent-context/phase-bundles/repair.json",
   "spec/archetype-spec.md",
   "spec/archetype-spec.json",
   "test-first/test-first-contract.json",
@@ -451,6 +476,7 @@ function typeForPath(path: string): DataPlaneArtifactType {
 }
 
 function phaseForPath(path: string): DataPlanePhase {
+  if (path.startsWith("agent-context/")) return "readiness";
   if (path.startsWith("lifecycle/")) return "clarification";
   if (path.startsWith("01-evidence/")) return "evidence";
   if (path.startsWith("draft/")) return "draft_contract";
