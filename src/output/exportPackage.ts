@@ -212,6 +212,7 @@ function buildTopLevelManifest(pkg: ArchetypePackage): Record<string, unknown> {
     implementationAuthorized: pkg.manifest.implementation_authorized,
     contractApproval: pkg.manifest.contract_approval,
     readinessEvidence: pkg.manifest.readiness_evidence,
+    compilerPhases: pkg.manifest.compiler_phases ?? [],
     blockers: pkg.quality.readiness.blockers,
     warnings: pkg.quality.readiness.warnings,
     artifacts

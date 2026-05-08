@@ -114,6 +114,8 @@ npx . generate --input archetype.approved.intake.json --out archetype-output --f
 
 `approve-draft` writes a sidecar approval proof and binds the approved intake to the draft package id, source hash, package checksum, and required draft artifact hashes. Editing `contractApproval` into intake JSON by hand is not an implementation authorization path.
 
+Draft generation is phase-safe: before bound approval, Archetype writes only clarification, evidence, governance, review, and draft artifacts. Canonical spec, test-first, Playwright verification, target, QA, and repair artifacts are constructed only after the approved intake is regenerated.
+
 Validate the package:
 
 ```bash

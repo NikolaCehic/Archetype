@@ -87,7 +87,7 @@ Use them before broad artifact reads when an agent only needs run status, event 
 
 ## Approval Safety
 
-MCP generation follows the same approval gate as the CLI. `archetype_generate_package` emits a draft package until the input includes a proof created by `archetype approve-draft`; a hand-edited `contractApproval` object is reported as unbound and remains implementation-blocked.
+MCP generation follows the same approval gate as the CLI. `archetype_generate_package` emits a draft package until the input includes a proof created by `archetype approve-draft`; a hand-edited `contractApproval` object is reported as unbound and remains implementation-blocked. Draft package manifests expose `compiler_phases`; canonical, test-first, verification, target, QA, and repair phases stay skipped until bound approval.
 
 When `archetype_generate_package` returns a `draft_contract`, hosts should surface `draft/design-system-preview.html` for browser review and `draft/design-system-review.md` for the review loop. The preview is static HTML generated from `draft/design-system.draft.json`; it is not app code and must not be used as implementation authority.
 

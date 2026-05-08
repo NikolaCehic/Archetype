@@ -154,10 +154,11 @@ export function buildPackageReadinessTiersArtifact(pkg: {
 }): ReadinessTiersArtifact {
   const currentTier = pkg.manifest.readiness_tier;
   const approval = approvalStatus(pkg);
-  const playwrightStatus = String(pkg.playwright.evidenceJson.status ?? "pending");
+  const implementationAuthorized = pkg.manifest.implementation_authorized === true;
+  const playwrightStatus = implementationAuthorized ? String(pkg.playwright.evidenceJson.status ?? "pending") : "skipped";
   const contextBlockers = pkg.lifecycle.contextMatrix.blockers;
   const approvalBlockers = approval === "approved" ? [] : [`Contract approval status is ${approval}.`];
-  const implementationBlockers = pkg.manifest.implementation_authorized ? [] : ["Implementation is not authorized by a human-approved contract."];
+  const implementationBlockers = implementationAuthorized ? [] : ["Implementation is not authorized by a human-approved contract."];
   const qaBlockers = ["Target implementation and target execution evidence are not present in the contract package."];
   const completionBlockers = playwrightStatus === "pass" ? [] : [`Playwright evidence status is ${playwrightStatus}.`];
 
@@ -165,7 +166,7 @@ export function buildPackageReadinessTiersArtifact(pkg: {
   const contractDraftSatisfied = contextStatus === "complete";
   const contractApprovalSatisfied = approval === "approved";
   const testAuthoringSatisfied = contractApprovalSatisfied;
-  const implementationSatisfied = pkg.manifest.implementation_authorized;
+  const implementationSatisfied = implementationAuthorized;
   const qaSatisfied = false;
   const completionSatisfied = playwrightStatus === "pass";
 

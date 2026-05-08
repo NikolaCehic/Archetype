@@ -219,17 +219,22 @@ export function buildEvidenceDecisionModelArtifact(pkg: ArchetypePackage): Recor
   const humanApproved = humanApprovedPackage(pkg);
   const confirmedIds = confirmedDecisionIds(pkg);
   const options = { humanApproved, confirmedDecisionIds: confirmedIds };
-  const canonicalSurfaces = [
+  const draftSurfaces = [
     { path: "product/product-model.json", value: pkg.product.productModel },
     { path: "product/user-roles.json", value: pkg.product.roleModel },
     { path: "experience/route-map.json", value: pkg.experience.routeMap },
     { path: "screens/screen-specs.json", value: { screens: pkg.experience.screenSpecs } },
     { path: "design-system/tokens.json", value: pkg.designSystem.tokenContracts },
     { path: "design-system/component-contracts.json", value: pkg.designSystem.componentContracts },
-    { path: "frontend-agent-contract/implementation-rules.json", value: pkg.frontendContract },
-    { path: "test-first/test-first-contract.json", value: pkg.testFirst.contractJson },
-    { path: "verification/playwright-verification-contract.json", value: pkg.playwright.contractJson }
+    { path: "frontend-agent-contract/implementation-rules.json", value: pkg.frontendContract }
   ];
+  const canonicalSurfaces = pkg.manifest.implementation_authorized
+    ? [
+      ...draftSurfaces,
+      { path: "test-first/test-first-contract.json", value: pkg.testFirst.contractJson },
+      { path: "verification/playwright-verification-contract.json", value: pkg.playwright.contractJson }
+    ]
+    : draftSurfaces;
   const surfaceRefs: Array<{ path: string; refs: string[] }> = [];
   for (const surface of canonicalSurfaces) {
     collectEvidenceRefs(surface.value, surface.path, surfaceRefs);

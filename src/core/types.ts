@@ -851,6 +851,11 @@ export interface Manifest {
   blockers: string[];
   warnings: string[];
   artifact_index: string[];
+  compiler_phases?: Array<{
+    phase: string;
+    status: "constructed" | "skipped";
+    reason: string;
+  }>;
 }
 
 export interface ArchetypePackage {

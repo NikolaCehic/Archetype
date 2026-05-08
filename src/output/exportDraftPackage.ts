@@ -206,6 +206,7 @@ export function exportDraftPackage(pkg: ArchetypePackage, outDir: string, option
     implementationAuthorized: false,
     contractApproval: pkg.manifest.contract_approval,
     readinessEvidence: pkg.manifest.readiness_evidence,
+    compilerPhases: pkg.manifest.compiler_phases ?? [],
     blockers: pkg.quality.readiness.blockers,
     warnings: pkg.quality.readiness.warnings,
     artifacts

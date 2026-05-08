@@ -72,6 +72,8 @@ archetype generate --input archetype.approved.intake.json --out archetype-output
 
 `approve-draft` records the draft package id, source hash, package checksum, approval digest, and hashes for required draft artifacts. A raw `contractApproval` object without the approval proof remains blocked.
 
+The compiler is phase-safe. Draft packages include a `compiler_phases` manifest trace showing context, draft, and approval as constructed while canonical, test-first, verification, target, QA, and repair phases remain skipped. Those later phases are not constructed in memory or written to disk until the bound approval proof is regenerated into a canonical package.
+
 Draft design-system review is encoded in `draft/design-system-preview.html` and `draft/design-system-review.md`. The preview is static browser-viewable HTML generated from `draft/design-system.draft.json`; it is not app code and not the source of truth. Users can ask questions or request changes, ambiguous requests return to one clarification question, and Archetype revises the draft JSON before regenerating the preview.
 
 Test-driven implementation starts from `test-first/test-first-contract.json` only after the canonical spec package exists.

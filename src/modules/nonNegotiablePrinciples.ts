@@ -173,6 +173,7 @@ export function buildReadinessEvidence(input: {
 
 function traceabilityMissing(pkg: ArchetypePackage): string[] {
   const missing: string[] = [];
+  const implementationAuthorized = pkg.manifest.implementation_authorized === true;
   for (const route of pkg.experience.routeMap.routes) {
     if (!route.evidence_refs.length) missing.push(`route:${route.route}`);
   }
@@ -200,14 +201,16 @@ function traceabilityMissing(pkg: ArchetypePackage): string[] {
     if (!hasRefs(mutation)) missing.push(`data_mutation:${String(asRecord(mutation).mutation_id ?? "unknown")}`);
   }
 
-  const testSuites = asArray(pkg.testFirst.contractJson.suites);
-  for (const suite of testSuites) {
-    for (const test of asArray(asRecord(suite).tests)) {
-      const record = asRecord(test);
-      const sourceRefs = asArray(record.source_spec_paths);
-      const evidenceRefs = asArray(record.evidence_refs);
-      if (sourceRefs.length === 0 && evidenceRefs.length === 0) {
-        missing.push(`test:${String(record.test_id ?? "unknown")}`);
+  if (implementationAuthorized) {
+    const testSuites = asArray(pkg.testFirst.contractJson.suites);
+    for (const suite of testSuites) {
+      for (const test of asArray(asRecord(suite).tests)) {
+        const record = asRecord(test);
+        const sourceRefs = asArray(record.source_spec_paths);
+        const evidenceRefs = asArray(record.evidence_refs);
+        if (sourceRefs.length === 0 && evidenceRefs.length === 0) {
+          missing.push(`test:${String(record.test_id ?? "unknown")}`);
+        }
       }
     }
   }
@@ -223,9 +226,10 @@ export function buildNonNegotiablePrinciplesArtifact(pkg: ArchetypePackage): Rec
   const missingTraceability = traceabilityMissing(pkg);
   const contextComplete = pkg.lifecycle.contextCompletion.status === "complete";
   const oneQuestion = pkg.lifecycle.contextCompletion.questions.length <= 1;
-  const testFirstPresent = asArray(pkg.testFirst.contractJson.suites).length > 0
+  const implementationAuthorized = pkg.manifest.implementation_authorized === true;
+  const testFirstPresent = implementationAuthorized && asArray(pkg.testFirst.contractJson.suites).length > 0
     && pkg.testFirst.contractJson.source_spec_path === "spec/archetype-spec.json";
-  const playwrightStatus = String(pkg.playwright.evidenceJson.status ?? "pending");
+  const playwrightStatus = implementationAuthorized ? String(pkg.playwright.evidenceJson.status ?? "pending") : "skipped";
 
   const gates: PrincipleGate[] = [
     {
@@ -256,17 +260,19 @@ export function buildNonNegotiablePrinciplesArtifact(pkg: ArchetypePackage): Rec
       id: "HL01-P04",
       principle: NON_NEGOTIABLE_PRINCIPLES[3],
       enforcement: "validator",
-      status: testFirstPresent ? "pass" : "fail",
+      status: implementationAuthorized ? testFirstPresent ? "pass" : "fail" : "blocked",
       artifacts: ["test-first/test-first-contract.json", "spec/archetype-spec.json"],
-      details: testFirstPresent ? "Test-first contract is derived from the canonical spec." : "Test-first contract is missing or not traced to the canonical spec."
+      details: implementationAuthorized
+        ? testFirstPresent ? "Test-first contract is derived from the canonical spec." : "Test-first contract is missing or not traced to the canonical spec."
+        : "Test-first construction is skipped until the draft is approved."
     },
     {
       id: "HL01-P05",
       principle: NON_NEGOTIABLE_PRINCIPLES[4],
       enforcement: "hard_gate",
-      status: playwrightStatus === "pass" ? "pass" : "blocked",
+      status: implementationAuthorized && playwrightStatus === "pass" ? "pass" : "blocked",
       artifacts: ["verification/playwright-evidence.json", "14-target-execution/target-execution-report.json", "10-revision/repair-task-queue.json"],
-      details: playwrightStatus === "pass" ? "Playwright evidence is passing." : `Completion is blocked while Playwright evidence is ${playwrightStatus}.`
+      details: implementationAuthorized && playwrightStatus === "pass" ? "Playwright evidence is passing." : `Completion is blocked while Playwright evidence is ${playwrightStatus}.`
     },
     {
       id: "HL01-P06",

@@ -188,6 +188,16 @@ function approvalDecisionPayload(pkg: ArchetypePackage): JsonObject {
 }
 
 function verificationPayload(pkg: ArchetypePackage): JsonObject {
+  if (!pkg.manifest.implementation_authorized) {
+    return {
+      summary: "Verification skipped before bound approval.",
+      status: "skipped",
+      reason: "Draft packages do not construct Playwright verification artifacts.",
+      playwright_contract: null,
+      playwright_evidence: null,
+      repair_queue: null
+    };
+  }
   const status = typeof pkg.playwright.evidenceJson.status === "string" ? pkg.playwright.evidenceJson.status : "pending";
   return {
     summary: `Verification recorded: ${status}`,

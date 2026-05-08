@@ -3034,3 +3034,57 @@ Phase 06 convergence review:
 I do not know how to make the data-plane hardening phase more complete within the current Agent Data Plane plan.
 I cannot identify a Phase 06 mismatch after adding the dedicated contract, proving adapters, CLI, MCP, generation integration, malformed failures, and passing the full repository check.
 ```
+
+## Six-Agent Audit Phase 02 - Phase-Safe Compiler
+
+Source:
+
+- `obsidian-vault/13 Quality Reviews/Archetype Six-Agent Scope Audit Convergence - 2026-05-07.md`
+
+Extracted requirements:
+
+- Split compiler execution into context, draft, approval, canonical, test-first, verification, target, QA, and repair phases.
+- Draft generation must stop before canonical spec, test-first, Playwright verification, target, QA, and repair construction.
+- Clarification, draft, and canonical package types must remain compatible with validation, summary, simulation, data-plane recording, and contracts.
+- Pre-approval execution must not write canonical/test/Playwright/target artifacts to disk.
+
+Phase critique:
+
+- The previous compiler shape built most canonical and verification artifacts before it knew whether implementation was approved. That made draft output look blocked while still spending tokens and CPU on unauthorized downstream surfaces.
+- A shallow file-export fix would not be enough; data-plane recording, readiness, evidence decisions, and non-negotiable principles also needed to understand skipped phases.
+- The package type still requires full package fields, so the safest incremental architecture is phase records plus blocked sentinel objects for fields that legacy readers expect, while ensuring downstream builders are not called before approval.
+
+Corrections applied:
+
+- Added `manifest.compiler_phases` to expose constructed versus skipped compiler phases.
+- Reworked `runArchetypeCompiler` so draft packages construct context, evidence, draft contracts, draft design-system preview, governance, approval request, and lightweight draft quality only.
+- Moved canonical spec, test-first, Playwright, target, QA, build simulation, and repair builders behind the bound approval gate.
+- Updated data-plane recording so draft runs do not emit verification records.
+- Updated non-negotiable principles, evidence-decision audits, and readiness tiers so skipped pre-approval phases are blocked/skipped instead of false failures.
+- Updated package export manifests and docs so agents can inspect the phase trace.
+- Added `scripts/run-phase-safe-compiler-contract.mjs` and `npm run phase-safe:contract`.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run phase-safe:contract`: pass.
+- `npm run non-negotiable:contract`: pass.
+- `npm run evidence-decision:contract`: pass.
+- `npm run context-readiness:contract`: pass.
+- `npm run design-preview:contract`: pass.
+- `npm run required-artifacts:contract`: pass.
+- `npm run check`: pass.
+
+Self-healing rules:
+
+- Draft packages may expose blocked compatibility placeholders, but draft execution must not call canonical/test/verification/target/QA/repair builders.
+- Any new lifecycle artifact must declare whether it belongs to draft or post-approval construction.
+- Data-plane verification events belong only to approved implementation-capable runs.
+- Agent-facing docs must name skipped compiler phases so agents do not treat absent canonical artifacts as missing files.
+
+Phase 02 convergence review:
+
+```txt
+I do not know how to make the phase-safe compiler implementation more complete within the current package architecture without first changing the package type to a discriminated union in a later phase.
+I cannot identify a Phase 02 mismatch after proving pre-approval output skips canonical/test/Playwright/target/QA/repair artifacts, approved output constructs all phases, data-plane verification is approval-gated, and the full repository check passes.
+```
