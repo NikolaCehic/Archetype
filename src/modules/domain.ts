@@ -4,10 +4,42 @@ function includesAny(text: string, terms: string[]): boolean {
   return terms.some((term) => text.includes(term));
 }
 
-export function inferDomainProfile(input: ArchetypeInput): DomainProfile {
-  const text = [input.context, ...(input.goals ?? []), ...(input.businessGoals ?? [])]
+function sourceText(input: ArchetypeInput): string {
+  return [
+    input.context,
+    ...(input.goals ?? []),
+    ...(input.businessGoals ?? []),
+    ...(input.users ?? []),
+    ...(input.referenceImages ?? []).map((image) => [image.label, image.notes, image.type].filter(Boolean).join(" ")),
+    ...(input.materials ?? []).map((material) => [material.label, material.type, material.content, material.notes, material.path].filter(Boolean).join(" "))
+  ]
     .join(" ")
     .toLowerCase();
+}
+
+export function inferDomainProfile(input: ArchetypeInput): DomainProfile {
+  const text = sourceText(input);
+
+  if (includesAny(text, ["agent task board", "multi-subagent", "subagent", "agent swimlane", "agent swimlanes", "orchestration platform", "handoff", "orchestration run"])) {
+    return {
+      domain: "agent_orchestration",
+      productType: "Agent orchestration task board",
+      category: "multi-agent workflow orchestration",
+      entities: ["Agent", "Task", "Dependency", "Handoff", "LogEntry", "Artifact", "Blocker", "Permission", "ReviewDecision", "OrchestrationRun"],
+      workflows: ["review_board_overview", "inspect_agent_lane", "open_task_detail_drawer", "create_task", "resolve_handoff", "review_logs_and_artifacts", "handle_blocked_dependency"],
+      routes: [
+        { route: "/board", screen_id: "board.overview", layout: "ControlRoomShell", nav_label: "Board", nav_group: "core", priority: "primary", auth_requirement: "authenticated_or_local_demo", role_requirement: ["orchestrator", "developer", "reviewer"], deep_linking: true, evidence_refs: ["decision_agent_board_overview_required"] },
+        { route: "/agents", screen_id: "agents.swimlanes", layout: "BoardShell", nav_label: "Agents", nav_group: "core", priority: "primary", auth_requirement: "authenticated_or_local_demo", role_requirement: ["orchestrator", "developer", "reviewer"], deep_linking: true, evidence_refs: ["decision_agent_swimlanes_required"] },
+        { route: "/tasks", screen_id: "tasks.queue", layout: "KanbanShell", nav_label: "Tasks", nav_group: "core", priority: "primary", auth_requirement: "authenticated_or_local_demo", role_requirement: ["orchestrator", "developer"], deep_linking: true, evidence_refs: ["decision_task_queue_required"] },
+        { route: "/handoffs", screen_id: "handoffs.queue", layout: "ControlRoomShell", nav_label: "Handoffs", nav_group: "coordination", priority: "primary", auth_requirement: "authenticated_or_local_demo", role_requirement: ["orchestrator", "reviewer"], deep_linking: true, evidence_refs: ["decision_handoff_queue_required"] },
+        { route: "/logs", screen_id: "logs.timeline", layout: "InspectorShell", nav_label: "Logs", nav_group: "inspection", priority: "secondary", auth_requirement: "authenticated_or_local_demo", role_requirement: ["developer", "orchestrator"], deep_linking: true, evidence_refs: ["decision_agent_logs_required"] },
+        { route: "/artifacts", screen_id: "artifacts.browser", layout: "InspectorShell", nav_label: "Artifacts", nav_group: "inspection", priority: "secondary", auth_requirement: "authenticated_or_local_demo", role_requirement: ["developer", "reviewer", "orchestrator"], deep_linking: true, evidence_refs: ["decision_artifact_review_required"] }
+      ],
+      patterns: ["AgentSwimlane", "TaskCard", "TaskStatusBadge", "DependencyGraph", "HandoffPanel", "LogTimeline", "ArtifactList", "BlockerAlert", "CreateTaskDialog", "ReviewDecisionPanel"],
+      riskFlags: [],
+      visualDirection: "Dense, scan-friendly Kanban control room with explicit blocked states, handoff visibility, task detail drawers, local mock data, and responsive agent lane navigation."
+    };
+  }
 
   if (includesAny(text, ["fintech", "cash flow", "invoice", "expense", "financial", "payment"])) {
     return {

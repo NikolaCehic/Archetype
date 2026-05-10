@@ -3966,3 +3966,45 @@ Self-healing rules:
 - Treat lifecycle gate inference as hostile by default: explicit source material, explicit user answer, or explicit boundary phrase.
 - Never use a single domain keyword as permission to generate downstream architecture.
 - Any inferred intake object must avoid `undefined` fields so approval hashes remain stable after JSON round trips.
+
+## Hardening Phase 18 - Pre-Fix Agent Task Board Session Regression
+
+Source:
+
+- Codex session `019e120a-a10b-7093-aa99-306f9de63d4a` showed a blocked `draft_contract` package with generic SaaS routes, followed by a host-agent fallback implementation.
+
+Extracted requirements:
+
+- Human review feedback and imported materials must influence domain, entity, route, and design decisions before regeneration.
+- A draft that says implementation is blocked must never be replaced by a direct "scaffold isolated frontend app" fallback.
+- Design quality must fail when route proposals contradict the brief or review feedback.
+- Source-material UX must not count user context, test permission, assumption approval, or safety notes as attached source materials.
+- Long role answers must preserve role-level entries and not split descriptions into pseudo-users like `assigns tasks`, `permissions`, or `tools`.
+
+Corrections applied:
+
+- Extended domain inference to read context, users, reference images, and material/review-feedback content.
+- Added an `agent_orchestration` domain profile for Agent Task Board and multi-subagent orchestration briefs.
+- Added `DQ-10` to the design quality gate for route/source and review-feedback alignment.
+- Updated validation so every exported design-quality gate must include passing `DQ-10`.
+- Updated source-material UX to separate attached/imported materials from other source evidence and preserve explicit no-materials status.
+- Hardened primary-user answer parsing for long role descriptions.
+- Updated Archetype skills and docs to forbid fallback app building when a draft is misaligned or still unapproved.
+- Added `scripts/run-agent-task-board-regression-contract.mjs` and wired it into `check:fast`.
+
+Verification evidence:
+
+- `npm run build`: pass.
+- `npm run agent-task-board:contract`: pass.
+- `npm run clarification-ux:contract`: pass.
+- `npm run design-preview:contract`: pass.
+- `npm run agent-control-plane:contract`: pass.
+- `npm run marketing-replay:contract`: pass.
+- `npm run check:fast`: pass.
+
+Self-healing rules:
+
+- A regenerated draft must read review feedback as source evidence, not as a cosmetic note.
+- A design gate that does not compare routes against source/review feedback is not a real design gate.
+- If a host sees `draft_contract`, `ready_for_frontend_agent: false`, or `implementation_authorized: false`, the only legal action is review, approval, request changes, or clarification.
+- User-facing source-material surfaces must distinguish "attached material" from "other source evidence."

@@ -429,6 +429,62 @@ function check(id: string, label: string, status: "pass" | "fail", detail: strin
   return { id, label, status, detail, evidence_refs: evidenceRefs };
 }
 
+function designSourceText(directions: DesignDirectionOption[]): string {
+  return directions
+    .map((direction) => [
+      direction.name,
+      direction.thesis,
+      direction.source_signature,
+      direction.physical_scene,
+      ...direction.material_alignment,
+      ...direction.route_screen_alignment,
+      ...direction.best_for,
+      ...direction.rejection_tests
+    ].join(" "))
+    .join(" ")
+    .toLowerCase();
+}
+
+function routeProposalText(experience: ExperienceArtifacts): string {
+  return [
+    ...experience.routeMap.routes.map((route) => [route.route, route.screen_id, route.nav_label, route.nav_group].filter(Boolean).join(" ")),
+    ...experience.screenSpecs.map((screen) => [screen.name, screen.screen_id, screen.primary_user_goal, screen.purpose].join(" "))
+  ].join(" ").toLowerCase();
+}
+
+function routeSourceMismatchBlockers(input: {
+  directions: DesignDirectionOption[];
+  experience: ExperienceArtifacts;
+}): string[] {
+  const source = designSourceText(input.directions);
+  const routes = routeProposalText(input.experience);
+  const blockers: string[] = [];
+  const forbiddenSaasTerms = ["campaign", "billing", "workspace", "report builder", "onboarding"];
+  const reviewSaysRemoveGenericSaas = source.includes("remove generic saas")
+    || forbiddenSaasTerms.some((term) => source.includes(`remove ${term}`))
+    || source.includes("campaign/report/billing/workspace/onboarding");
+  const presentForbidden = forbiddenSaasTerms.filter((term) => routes.includes(term));
+  if (reviewSaysRemoveGenericSaas && presentForbidden.length > 0) {
+    blockers.push(`Review feedback rejected generic SaaS routes, but route proposals still include: ${presentForbidden.join(", ")}.`);
+  }
+
+  const agentBoardSource = source.includes("agent task board")
+    || source.includes("multi-subagent")
+    || source.includes("agent swimlane")
+    || source.includes("orchestration platform");
+  if (agentBoardSource) {
+    const requiredConcepts = ["agent", "task", "handoff", "log", "artifact"];
+    const missingConcepts = requiredConcepts.filter((concept) => !routes.includes(concept));
+    if (missingConcepts.length > 0) {
+      blockers.push(`Agent Task Board route proposals are missing required concepts: ${missingConcepts.join(", ")}.`);
+    }
+    if (presentForbidden.length > 0) {
+      blockers.push(`Agent Task Board route proposals contain unrelated generic SaaS concepts: ${presentForbidden.join(", ")}.`);
+    }
+  }
+  return blockers;
+}
+
 export function buildDesignQualityGate(input: {
   directions: DesignDirectionOption[];
   selected: DesignDirectionOption;
@@ -464,6 +520,7 @@ export function buildDesignQualityGate(input: {
     direction.material_alignment.some((item) => !item.includes("No visual material supplied"))
     && direction.evidence_refs.some((ref) => !["source_user_context", "source_user_goals", "source_brand"].includes(ref))
   );
+  const routeMismatchBlockers = routeSourceMismatchBlockers(input);
   const checks = [
     check("DQ-01", "Three differentiated design directions exist", input.directions.length >= 3 ? "pass" : "fail", "The draft must show alternatives before a direction becomes canonical.", ["draft/design-directions.json"]),
     check("DQ-02", "Selected direction is explicit", input.selected.id ? "pass" : "fail", `Selected ${input.selected.id}.`, ["draft/design-system.draft.json"]),
@@ -473,7 +530,8 @@ export function buildDesignQualityGate(input: {
     check("DQ-06", "Browser preview and human review are required before implementation", "pass", "draft/design-system-preview.html and review-console/index.html are mandatory review surfaces.", ["draft/design-system-preview.html", "review-console/index.html"]),
     check("DQ-07", "shadcn plus Tailwind implementation is contract-bound", "pass", "shadcn is the primitive layer; Tailwind consumes generated CSS variables and semantic tokens.", ["04-design-system/design-quality-gate.json"]),
     check("DQ-08", "Design directions are bound to source evidence", sourceBoundDirections && materialBoundDirections ? "pass" : "fail", sourceBoundDirections && materialBoundDirections ? "Directions expose source signatures, evidence refs, material alignment, and route/screen alignment." : "One or more directions are not bound to user/material evidence.", ["draft/design-directions.json", "01-evidence/visual-evidence-extraction.json"]),
-    check("DQ-09", "Reusable preset directions are forbidden", hasPresetDirection ? "fail" : "pass", hasPresetDirection ? "A reusable preset direction name or id was generated." : "Direction ids and names are source-derived for this product.", ["draft/design-directions.json"])
+    check("DQ-09", "Reusable preset directions are forbidden", hasPresetDirection ? "fail" : "pass", hasPresetDirection ? "A reusable preset direction name or id was generated." : "Direction ids and names are source-derived for this product.", ["draft/design-directions.json"]),
+    check("DQ-10", "Route proposals respect source and review feedback", routeMismatchBlockers.length === 0 ? "pass" : "fail", routeMismatchBlockers.length === 0 ? "Routes and screens do not contradict source or human review feedback." : routeMismatchBlockers.join(" "), ["draft/design-directions.json", "draft/experience-architecture.draft.json"])
   ];
   const blockers = checks.filter((item) => item.status === "fail").map((item) => `${item.id}: ${item.detail}`);
   return {

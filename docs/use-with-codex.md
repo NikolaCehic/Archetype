@@ -29,6 +29,8 @@ Codex should:
 
 The lifecycle primitive returns `nextAction` and `consumerPlane`. If `consumerPlane.next_action.type` is `ask_one_question`, ask only that one question. If it is `present_draft_review`, surface `review-console/index.html`, `review-console/session.json`, `draft/design-system-preview.html`, `draft/design-directions.json`, `draft/design-quality-gate.json`, `draft/design-craft-rubric.md`, and the approval request. If it is `start_tests_first`, begin from the compact phase bundles and write tests before UI code. `archetype_consumer_next_action` returns the same host-facing contract without rereading broad artifacts.
 
+If the draft routes, design directions, or design-quality gate contradict the brief, attached files, or human review feedback, Codex must request changes and regenerate the Archetype draft. It must not scaffold an isolated fallback frontend from the brief while the package is still a `draft_contract`.
+
 For a weak prompt, Codex should normally ask the primary-user question first, then the source-material gate. If the user says materials exist, Codex must wait for `@` attachments/imports or pass material paths/content through `archetype_run_lifecycle`; it must not scaffold an isolated frontend while materials are still pending.
 
 The user-facing review surface is the Review Console, not the artifact tree. It shows the current phase, what Archetype knows, what is missing, the one active question, attached materials, route proposals, design-system preview links, approval checklist, blocked reasons, run timeline, and the next legal action.

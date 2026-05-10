@@ -54,6 +54,7 @@ Archetype rejects:
 - generic card-grid dashboards as the dominant layout
 - raw Tailwind color and spacing literals in product implementation
 - missing hover, focus-visible, active, disabled, loading, empty, error, and success behavior where applicable
+- route or screen proposals that contradict the brief, imported source material, or human review feedback
 - visual completion claims without Playwright or screenshot evidence
 
 ## Agent Rule
@@ -71,3 +72,7 @@ The directions are not Archetype demo themes. Each generated direction must cite
 - material alignment explaining how uploaded evidence influences layout, components, states, and density
 
 If no visual or design material is supplied, the direction is explicitly candidate context-derived work. Archetype should invite the user to add screenshots, brand files, design docs, or product documentation before approval when visual fidelity matters.
+
+## Route/Source Alignment
+
+`draft/design-quality-gate.json` includes `DQ-10` for route/source alignment. If review feedback says a draft is the wrong product, or if the generated route map keeps rejected generic SaaS routes, the gate fails. The correct recovery is `request_changes` plus draft regeneration; a host agent must not build a direct fallback frontend from the prompt while the package remains unapproved.

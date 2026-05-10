@@ -25,7 +25,8 @@ Examples:
 - Treat source-material intake as blocking. After the initial audience/user question, do not draft, scaffold, write tests, or implement until attached/imported materials have been read or the user explicitly says to proceed without source materials.
 - Read `agent-context/consumer-plane.json` first whenever it exists. It is the consumer contract for what to say, what to read, what to avoid, and which lifecycle action is legal next.
 - Use `review-console/index.html` and `review-console/session.json` as the human review cockpit. The user reviews decisions, not an artifact tree.
-- Treat `draft/design-directions.json`, `draft/design-quality-gate.json`, `draft/design-craft-rubric.md`, and `draft/design-system-preview.html` as a hard design review gate. Do not allow reusable preset directions, generic blue-gray SaaS UI, untouched shadcn defaults, or missing component states to pass. Design directions must cite source context, supplied materials when present, and route/screen alignment.
+- Treat `draft/design-directions.json`, `draft/design-quality-gate.json`, `draft/design-craft-rubric.md`, and `draft/design-system-preview.html` as a hard design review gate. Do not allow reusable preset directions, generic blue-gray SaaS UI, untouched shadcn defaults, missing component states, or route/source mismatches to pass. Design directions must cite source context, supplied materials when present, and route/screen alignment.
+- If a draft is misaligned with the brief, source material, or human review feedback, use the review/request-changes path and regenerate. Do not hand-build a fallback app to compensate for a bad draft.
 - Read `governance/agent-control-plane.json` whenever it exists. Its gates decide whether the host agent may clarify, draft, approve, canonicalize, author tests, implement, verify, QA, repair, or complete.
 - After the user answers, update the intake/context matrix with `archetype_answer_clarification`, then either ask the next single question or continue through blueprint, implementation, verification, and revision without requiring another handoff prompt.
 - Prefer MCP tool `archetype_run_lifecycle` as the backing primitive for `$archetype` or `/archetype`; then use the returned `consumerPlane`, MCP prompt/resource surfaces, or MCP tool `archetype_consumer_next_action` before falling back to separate intake/generate tools.
@@ -74,7 +75,7 @@ Use the matching file in `agents/` when the lifecycle needs a product architect,
 
 If MCP is unavailable, use the CLI internally. Do not make the user run these commands manually.
 
-Fallback still obeys the same gates: a `clarification` package means ask the one returned question and stop; a `draft_contract` package means review/approval and stop; only an approved canonical package may enter tests-first implementation. Never create an ad hoc "scaffold isolated frontend app" plan from fallback output.
+Fallback still obeys the same gates: a `clarification` package means ask the one returned question and stop; a `draft_contract` package means review/approval and stop; only an approved canonical package may enter tests-first implementation. Never create an ad hoc "scaffold isolated frontend app" plan from fallback output, even when the brief is clear enough to build directly.
 
 ```bash
 npx --yes --package github:NikolaCehic/Archetype archetype doctor --json

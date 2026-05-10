@@ -155,6 +155,7 @@ export interface BuildSessionArtifactsInput {
   controlPlane?: AgentControlPlaneReport;
   evidence?: EvidenceLedger;
   sourceMaterials?: SourceRecord[];
+  materialIntakeStatus?: NonNullable<ArchetypeInput["materialIntake"]>["status"];
   input?: ArchetypeInput;
   routeSource?: unknown;
   manifestArtifactCount: number;
@@ -581,19 +582,48 @@ function buildOrchestration(input: BuildSessionArtifactsInput): Pick<SessionArti
   };
 }
 
+function isAttachedSourceMaterial(source: SourceRecord): boolean {
+  return source.evidence_level === "imported_material_fact"
+    || source.source_id.startsWith("source_material_")
+    || source.source_id.startsWith("source_reference_image_");
+}
+
+function inferredMaterialStatus(input: BuildSessionArtifactsInput, materials: SourceRecord[]): NonNullable<ArchetypeInput["materialIntake"]>["status"] {
+  if (input.input?.materialIntake?.status) return input.input.materialIntake.status;
+  if (input.materialIntakeStatus) return input.materialIntakeStatus;
+  if (materials.length > 0) return "provided";
+  const evidenceText = (input.evidence?.sources ?? [])
+    .flatMap((source) => [source.source_label, ...source.observations])
+    .join(" ")
+    .toLowerCase();
+  if (/proceed without (?:additional |external )?source materials|without source materials|no source materials|none attached/u.test(evidenceText)) {
+    return "none";
+  }
+  return "pending";
+}
+
 function buildSourceMaterialUx(input: BuildSessionArtifactsInput): { artifact: Record<string, unknown>; markdown: string } {
-  const materials = input.sourceMaterials ?? input.evidence?.sources ?? [];
+  const materials = input.sourceMaterials ?? (input.evidence?.sources ?? []).filter(isAttachedSourceMaterial);
+  const sourceEvidence = (input.evidence?.sources ?? []).filter((source) => !materials.some((material) => material.source_id === source.source_id));
   const requested = input.input?.materialIntake?.requestedTypes ?? ["SPEC.md", "PRD.md", "screenshots", "wireframes", "design docs", "API docs", "route maps", "existing repo files", "test policy"];
-  const status = input.input?.materialIntake?.status ?? (materials.length > 0 ? "provided" : "pending");
+  const status = inferredMaterialStatus(input, materials);
   const artifact = {
     artifact_version: "1.0",
     source_scope: "source-material-ux",
     status,
+    material_intake_status: status,
     user_prompt: status === "pending"
       ? "Do you want to attach SPEC, PRD, screenshots, wireframes, design docs, API docs, route maps, repo files, or should Archetype proceed without source materials?"
       : "Source-material decision has been recorded.",
     requested_types: requested,
     materials: materials.map((item) => ({
+      source_id: item.source_id,
+      label: item.source_label,
+      type: item.source_type,
+      evidence_level: item.evidence_level,
+      confidence: item.confidence
+    })),
+    source_evidence: sourceEvidence.map((item) => ({
       source_id: item.source_id,
       label: item.source_label,
       type: item.source_type,
@@ -612,7 +642,11 @@ function buildSourceMaterialUx(input: BuildSessionArtifactsInput): { artifact: R
     "",
     "## Attached Materials",
     "",
-    ...(materials.length > 0 ? materials.map((item) => `- ${item.source_label} (${item.source_type}, ${item.evidence_level})`) : ["- None attached yet."])
+    ...(materials.length > 0 ? materials.map((item) => `- ${item.source_label} (${item.source_type}, ${item.evidence_level})`) : ["- None attached yet."]),
+    "",
+    "## Other Source Evidence",
+    "",
+    ...(sourceEvidence.length > 0 ? sourceEvidence.map((item) => `- ${item.source_label} (${item.source_type}, ${item.evidence_level})`) : ["- None."])
   ].join("\n");
   return { artifact, markdown };
 }

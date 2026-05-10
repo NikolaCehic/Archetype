@@ -742,7 +742,7 @@ function validateDesignQualityGate(input: {
     input.blockers.push("Design quality gate must block implementation until human design review.");
   }
   const checks = input.gate.checks ?? [];
-  for (const requiredCheck of ["DQ-01", "DQ-02", "DQ-03", "DQ-04", "DQ-05", "DQ-06", "DQ-07", "DQ-08", "DQ-09"]) {
+  for (const requiredCheck of ["DQ-01", "DQ-02", "DQ-03", "DQ-04", "DQ-05", "DQ-06", "DQ-07", "DQ-08", "DQ-09", "DQ-10"]) {
     const check = checks.find((item) => item.id === requiredCheck);
     if (!check || check.status !== "pass" || !check.label) input.blockers.push(`Design quality gate missing passing check ${requiredCheck}.`);
   }

@@ -144,6 +144,24 @@ function splitAnswerList(answer: string): string[] {
     .filter(Boolean);
 }
 
+function splitPrimaryUserAnswer(answer: string): string[] {
+  const lineOrSemicolonParts = answer
+    .replace(/^primary users\/roles:\s*/iu, "")
+    .split(/[;\n]/u)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (lineOrSemicolonParts.length > 1) return lineOrSemicolonParts;
+  if (answer.length < 140) return splitAnswerList(answer);
+
+  const withoutLabel = answer.replace(/^primary users\/roles:\s*/iu, "").trim();
+  const roleStartPattern = /\b(?:Orchestrator|Developer|Product|Agent Supervisor|Admin|Designer|Manager|Customer|User|Buyer|Seller|Provider|Patient|Marketing|Growth|Analyst|Executive)\b\s*(?:\/|\s+(?:monitors|uses|sees|reviews|manages|configures|debugs|needs|wants|creates|approves|owns|assigns|watches|resolves|diagnoses|intervenes))/giu;
+  const starts = [...withoutLabel.matchAll(roleStartPattern)].map((match) => match.index ?? 0);
+  const roleParts = starts
+    .map((start, index) => withoutLabel.slice(start, starts[index + 1] ?? undefined).trim().replace(/[.]\s*$/u, ""))
+    .filter(Boolean);
+  return roleParts.length > 1 ? roleParts : [withoutLabel || answer];
+}
+
 function inferStack(answer: string, existing: FrontendStackInput | undefined): FrontendStackInput {
   const normalized = answer.toLowerCase();
   const stack: FrontendStackInput = { ...(existing ?? {}) };
@@ -249,7 +267,7 @@ export function applyClarificationAnswer(input: {
   if (input.questionId === "product_outcome") {
     next.goals = unique([...(next.goals ?? []), answer]);
   } else if (input.questionId === "primary_users") {
-    next.users = unique([...(next.users ?? []), ...splitAnswerList(answer)]);
+    next.users = unique([...(next.users ?? []), ...splitPrimaryUserAnswer(answer)]);
   } else if (input.questionId === "target_stack") {
     next.stack = inferStack(answer, next.stack);
   } else if (input.questionId === "source_materials_review") {
