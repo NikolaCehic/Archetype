@@ -3931,3 +3931,38 @@ Self-healing rules:
 - Never treat "I have a spec/design" as `provided` unless the file/content was actually ingested.
 - Any weak-context lifecycle must stop on source-material intake before drafting or implementation.
 - Plugin fallback instructions must name forbidden host substitutions explicitly, especially scaffold plans.
+
+## Hardening Phase 17 - Keyword Inference Gate Audit
+
+Source:
+
+- Follow-up audit after the source-material gate fix: find other gates where broad keywords could satisfy a lifecycle decision without explicit user intent.
+
+Extracted requirements:
+
+- Product-domain nouns must not satisfy implementation gates.
+- "Monitor", "manage", "track", and "review" are not enough to define routes, screens, or flows.
+- "API" as a product noun is not enough to choose mock data, existing API, target repo, auth, or permissions.
+- "Test" as a product noun is not permission to require Playwright, E2E, UI, integration, unit, or accessibility tests.
+- Gate hashes must be stable across in-memory intake and saved JSON intake.
+
+Corrections applied:
+
+- Replaced broad flow detection with explicit flow/screen/route/surface detection.
+- Replaced broad data-boundary detection with explicit mock/API/repo/auth/permission boundary phrases.
+- Replaced broad test-permission detection with explicit test execution phrases such as "allow Playwright", "run tests", "test-first", and named suite phrases.
+- Hardened natural-language inference so "API key management" and "QA test case dashboard" do not become implementation permissions by accident.
+- Removed undefined in-memory data-boundary fields that caused draft source hash drift after JSON serialization.
+- Added context-readiness regression cases for broad verbs, API noun prompts, and test noun prompts.
+
+Verification evidence:
+
+- `npm run build`: pass.
+- `npm run context-readiness:contract`: pass.
+- `npm run natural-lifecycle:contract`: pass after the undefined-field hash repair.
+
+Self-healing rules:
+
+- Treat lifecycle gate inference as hostile by default: explicit source material, explicit user answer, or explicit boundary phrase.
+- Never use a single domain keyword as permission to generate downstream architecture.
+- Any inferred intake object must avoid `undefined` fields so approval hashes remain stable after JSON round trips.

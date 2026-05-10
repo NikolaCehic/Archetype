@@ -10,6 +10,12 @@ const approvedInputPath = path.join(workspace, "approved-intake.json");
 const approvedOutputDir = path.join(workspace, "approved-output");
 const missingBoundaryInputPath = path.join(workspace, "missing-boundary-intake.json");
 const missingBoundaryOutputDir = path.join(workspace, "missing-boundary-output");
+const broadVerbFlowInputPath = path.join(workspace, "broad-verb-flow-intake.json");
+const broadVerbFlowOutputDir = path.join(workspace, "broad-verb-flow-output");
+const apiNounBoundaryInputPath = path.join(workspace, "api-noun-boundary-intake.json");
+const apiNounBoundaryOutputDir = path.join(workspace, "api-noun-boundary-output");
+const testNounPermissionInputPath = path.join(workspace, "test-noun-permission-intake.json");
+const testNounPermissionOutputDir = path.join(workspace, "test-noun-permission-output");
 const weakInputPath = path.join(workspace, "weak-intake.json");
 const weakOutputDir = path.join(workspace, "weak-output");
 
@@ -118,6 +124,41 @@ assert(!existsSync(path.join(missingBoundaryOutputDir, "spec", "archetype-spec.j
 const missingBoundaryMatrix = readJson(path.join(missingBoundaryOutputDir, "lifecycle", "context-matrix.json"));
 assert(missingBoundaryMatrix.decisions.some((decision) => decision.id === "data_auth_boundary" && decision.status === "missing"), "missing boundary must be recorded in context matrix.");
 
+const broadVerbFlowInput = {
+  ...baseInput,
+  context: "Build a support operations console for support managers. It should monitor tickets, manage queues, track escalations, and review team load. Use a premium dense operational style."
+};
+writeFileSync(broadVerbFlowInputPath, `${JSON.stringify(broadVerbFlowInput, null, 2)}\n`);
+const broadVerbFlowGenerate = runJson(["generate", "--input", broadVerbFlowInputPath, "--out", broadVerbFlowOutputDir]);
+assert(broadVerbFlowGenerate.packageType === "clarification", "broad verbs must not satisfy the flow/screen gate.");
+assert(broadVerbFlowGenerate.nextQuestion === "What are the must-have flows, screens, or routes?", "broad verbs should ask for concrete flows/screens/routes.");
+const broadVerbFlowMatrix = readJson(path.join(broadVerbFlowOutputDir, "lifecycle", "context-matrix.json"));
+assert(broadVerbFlowMatrix.decisions.some((decision) => decision.id === "must_have_flows" && decision.status === "missing"), "broad verbs must leave must_have_flows missing.");
+
+const apiNounBoundaryInput = {
+  ...baseInput,
+  dataBoundary: undefined,
+  context: "Build an API key management console for workspace admins. It needs onboarding, settings, report builder, table, and form screens. The style should be dense, premium, dark, and enterprise-grade."
+};
+writeFileSync(apiNounBoundaryInputPath, `${JSON.stringify(apiNounBoundaryInput, null, 2)}\n`);
+const apiNounBoundaryGenerate = runJson(["generate", "--input", apiNounBoundaryInputPath, "--out", apiNounBoundaryOutputDir]);
+assert(apiNounBoundaryGenerate.packageType === "clarification", "API as a product noun must not satisfy the data/auth boundary.");
+assert(apiNounBoundaryGenerate.nextQuestion === "Should Archetype use mock data, an existing API, or a target repo for data, auth, and permissions?", "API noun prompt should ask the data/auth boundary.");
+const apiNounBoundaryMatrix = readJson(path.join(apiNounBoundaryOutputDir, "lifecycle", "context-matrix.json"));
+assert(apiNounBoundaryMatrix.decisions.some((decision) => decision.id === "data_auth_boundary" && decision.status === "missing"), "API noun prompt must leave data_auth_boundary missing.");
+
+const testNounPermissionInput = {
+  ...baseInput,
+  testExecution: undefined,
+  context: "Build a QA test case dashboard for engineering managers. It needs onboarding, settings, report builder, table, and form screens. Use mock deterministic data with mock authenticated roles and permissions represented in frontend state. The style should be dense, premium, dark, and enterprise-grade."
+};
+writeFileSync(testNounPermissionInputPath, `${JSON.stringify(testNounPermissionInput, null, 2)}\n`);
+const testNounPermissionGenerate = runJson(["generate", "--input", testNounPermissionInputPath, "--out", testNounPermissionOutputDir]);
+assert(testNounPermissionGenerate.packageType === "clarification", "test as a product noun must not satisfy test execution permission.");
+assert(testNounPermissionGenerate.nextQuestion === "May Archetype require Playwright, E2E, UI, smoke, integration, and unit tests for this frontend?", "test noun prompt should ask test execution permission.");
+const testNounPermissionMatrix = readJson(path.join(testNounPermissionOutputDir, "lifecycle", "context-matrix.json"));
+assert(testNounPermissionMatrix.decisions.some((decision) => decision.id === "test_execution_permission" && decision.status === "missing"), "test noun prompt must leave test_execution_permission missing.");
+
 writeFileSync(weakInputPath, `${JSON.stringify({
   projectName: "WeakMarketingAdmin",
   context: "I want to build a admin dashboard for a marketing team",
@@ -136,6 +177,9 @@ const summary = {
   draftOutputDir,
   approvedOutputDir,
   missingBoundaryOutputDir,
+  broadVerbFlowOutputDir,
+  apiNounBoundaryOutputDir,
+  testNounPermissionOutputDir,
   weakOutputDir,
   draftTier: draftReadinessTiers.current_tier,
   approvedTier: approvedReadinessTiers.current_tier,

@@ -134,32 +134,93 @@ function hasMaterialIntakeDecision(input: ArchetypeInput, context: string): bool
   ]);
 }
 
+function hasExplicitFlowShape(context: string): boolean {
+  return mentionsAny(context, [
+    "flow",
+    "workflow",
+    "screen",
+    "screens",
+    "route",
+    "routes",
+    "user journey",
+    "onboarding",
+    "settings",
+    "checkout",
+    "report builder",
+    "table",
+    "form",
+    "wizard",
+    "editor",
+    "kanban",
+    "calendar"
+  ]);
+}
+
+function hasExplicitDataBoundaryText(context: string): boolean {
+  return mentionsAny(context, [
+    "mock data",
+    "mocked data",
+    "mock fixtures",
+    "fixture data",
+    "fixtures for",
+    "deterministic fixtures",
+    "deterministic data",
+    "use mock",
+    "local mock",
+    "no backend",
+    "no production backend",
+    "existing api",
+    "backend api",
+    "api integration",
+    "use api",
+    "real api",
+    "target repo",
+    "existing repo",
+    "repository data",
+    "database-backed",
+    "connect to database",
+    "mock auth",
+    "mock authenticated",
+    "auth boundary",
+    "role-based access",
+    "rbac",
+    "permissions represented",
+    "permission model"
+  ]);
+}
+
 function hasDataBoundary(input: ArchetypeInput, context: string): boolean {
   const boundary = input.dataBoundary;
   return Boolean(
     boundary && [boundary.mode, boundary.dataSource, boundary.auth, boundary.permissions, boundary.notes].some(hasText)
-  ) || mentionsAny(context, [
-    "mock data",
-    "mocked data",
-    "fixture",
-    "fixtures",
-    "api",
-    "backend",
-    "database",
-    "no backend",
-    "auth",
-    "permission",
-    "permissions",
-    "role-based",
-    "rbac"
-  ]);
+  ) || hasExplicitDataBoundaryText(context);
 }
 
 function hasTestExecutionPermission(input: ArchetypeInput, context: string): boolean {
   return input.testExecution?.playwrightAllowed === true
     || input.testExecution?.commandsAllowed === true
     || (input.testExecution?.testTypes ?? []).length > 0
-    || mentionsAny(context, ["playwright", "e2e", "smoke test", "unit test", "integration test", "ui test", "test suite", "verify with playwright", "run tests"]);
+    || mentionsAny(context, [
+      "allow playwright",
+      "use playwright",
+      "run playwright",
+      "playwright-backed",
+      "verify with playwright",
+      "run tests",
+      "run the tests",
+      "write tests",
+      "generate tests",
+      "require tests",
+      "test-first",
+      "tests first",
+      "smoke test",
+      "e2e test",
+      "end-to-end test",
+      "unit test",
+      "integration test",
+      "ui test",
+      "accessibility test"
+    ]);
 }
 
 function hasAssumptionApproval(input: ArchetypeInput, context: string): boolean {
@@ -299,33 +360,7 @@ export function assessContextGate(input: ArchetypeInput): ContextGateAssessment 
   const context = input.context.trim();
   const users = input.users ?? [];
   const hasUsers = users.length > 0;
-  const contextMentionsFlows = mentionsAny(context, [
-    "flow",
-    "workflow",
-    "screen",
-    "route",
-    "onboarding",
-    "settings",
-    "checkout",
-    "report",
-    "report builder",
-    "table",
-    "form",
-    "needs to",
-    "review",
-    "manage",
-    "track",
-    "monitor",
-    "resolve",
-    "connect",
-    "inspect",
-    "compare",
-    "estimate",
-    "update",
-    "configure",
-    "select",
-    "export"
-  ]);
+  const contextMentionsFlows = hasExplicitFlowShape(context);
   const contextMentionsVisualDirection = mentionsAny(context, ["premium", "dark", "light", "dense", "polished", "brand", "monochrome", "enterprise", "playful", "minimal"]);
   const materialCount = (input.materials ?? []).length + (input.referenceImages ?? []).length;
   const materialStatus = input.materialIntake?.status;

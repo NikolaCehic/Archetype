@@ -252,20 +252,76 @@ function inferBrandFromBrief(brief: string): ArchetypeInput["brand"] | undefined
 
 function inferDataBoundaryFromBrief(brief: string): ArchetypeInput["dataBoundary"] | undefined {
   const normalized = brief.toLowerCase();
-  const hasBoundary = mentionsAny(normalized, ["mock", "api", "backend", "auth", "permission", "role", "rbac", "fixture", "deterministic data"]);
+  const hasBoundary = mentionsAny(normalized, [
+    "mock data",
+    "mocked data",
+    "mock fixtures",
+    "fixture data",
+    "deterministic fixtures",
+    "deterministic data",
+    "use mock",
+    "local mock",
+    "no backend",
+    "no production backend",
+    "existing api",
+    "backend api",
+    "api integration",
+    "use api",
+    "real api",
+    "target repo",
+    "existing repo",
+    "repository data",
+    "database-backed",
+    "connect to database",
+    "mock auth",
+    "mock authenticated",
+    "auth boundary",
+    "role-based access",
+    "rbac",
+    "permissions represented",
+    "permission model"
+  ]);
   if (!hasBoundary) return undefined;
-  return {
-    mode: normalized.includes("api") && !normalized.includes("mock") ? "api" : normalized.includes("hybrid") ? "hybrid" : "mock",
-    dataSource: mentionsAny(normalized, ["mock", "fixture", "deterministic data"]) ? "Deterministic mock fixtures from the brief." : undefined,
-    auth: normalized.includes("auth") ? "Authentication behavior described in the brief." : "Mock authenticated user unless clarified.",
-    permissions: mentionsAny(normalized, ["permission", "role", "rbac"]) ? "Role and permission behavior described in the brief." : undefined,
+  const apiMode = mentionsAny(normalized, ["existing api", "backend api", "api integration", "use api", "real api", "database-backed", "connect to database"]);
+  const boundary: NonNullable<ArchetypeInput["dataBoundary"]> = {
+    mode: normalized.includes("hybrid") ? "hybrid" : apiMode && !normalized.includes("mock") ? "api" : "mock",
     notes: "Inferred from natural-language lifecycle brief; remains evidence-backed and reviewable."
   };
+  if (mentionsAny(normalized, ["mock", "fixture", "deterministic data"])) {
+    boundary.dataSource = "Deterministic mock fixtures from the brief.";
+  }
+  if (mentionsAny(normalized, ["mock auth", "mock authenticated", "auth boundary"])) {
+    boundary.auth = "Authentication behavior described in the brief.";
+  }
+  if (mentionsAny(normalized, ["permission model", "permissions represented", "role-based access", "rbac"])) {
+    boundary.permissions = "Role and permission behavior described in the brief.";
+  }
+  return boundary;
 }
 
 function inferTestExecutionFromBrief(brief: string): ArchetypeInput["testExecution"] | undefined {
   const normalized = brief.toLowerCase();
-  if (!mentionsAny(normalized, ["playwright", "test", "tests", "e2e", "smoke", "unit", "integration", "accessibility"])) return undefined;
+  if (!mentionsAny(normalized, [
+    "allow playwright",
+    "use playwright",
+    "run playwright",
+    "playwright-backed",
+    "verify with playwright",
+    "run tests",
+    "run the tests",
+    "write tests",
+    "generate tests",
+    "require tests",
+    "test-first",
+    "tests first",
+    "smoke test",
+    "e2e test",
+    "end-to-end test",
+    "unit test",
+    "integration test",
+    "ui test",
+    "accessibility test"
+  ])) return undefined;
   const testTypes = [
     mentionsAny(normalized, ["smoke"]) ? "smoke" : "",
     mentionsAny(normalized, ["e2e", "end-to-end"]) ? "e2e" : "",
@@ -276,7 +332,7 @@ function inferTestExecutionFromBrief(brief: string): ArchetypeInput["testExecuti
   ].filter(Boolean);
   return {
     playwrightAllowed: mentionsAny(normalized, ["playwright", "e2e", "browser"]),
-    commandsAllowed: true,
+    commandsAllowed: mentionsAny(normalized, ["run", "write tests", "generate tests", "require tests", "test-first", "tests first", "allow"]),
     testTypes: testTypes.length > 0 ? testTypes : ["smoke", "e2e", "ui", "integration", "unit", "accessibility"],
     notes: "Inferred from natural-language lifecycle brief."
   };
