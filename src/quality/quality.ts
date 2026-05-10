@@ -231,12 +231,26 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
     warnings?: string[];
   };
   const sourceFileManifest = input.targetFrontend.sourceFileManifest as {
+    target_stack?: Record<string, unknown>;
     file_count?: number;
     files?: Array<{ kind?: string; path?: string }>;
     coverage?: { routes?: number; components?: number; patterns?: number; tests?: number };
     blockers?: string[];
     warnings?: string[];
   };
+  const sourceFilePaths = (sourceFileManifest.files ?? []).map((file) => String(file.path ?? ""));
+  const resolvedSourceTarget = String(sourceFileManifest.target_stack?.resolved_source_target ?? "");
+  const targetStackText = [
+    sourceFileManifest.target_stack?.framework,
+    sourceFileManifest.target_stack?.routing,
+    sourceFileManifest.target_stack?.language,
+    sourceFileManifest.target_stack?.styling,
+    sourceFileManifest.target_stack?.route_layer
+  ].map((value) => String(value ?? "")).join(" ").toLowerCase();
+  const sourceManifestIsVite = resolvedSourceTarget === "vite_react_router" || (resolvedSourceTarget.length === 0 && (targetStackText.includes("vite") || (targetStackText.includes("react router") && !targetStackText.includes("next"))));
+  const sourceManifestIsNext = resolvedSourceTarget === "next_app_router" || (resolvedSourceTarget.length === 0 && targetStackText.includes("next"));
+  const nextOnlySourcePaths = sourceFilePaths.filter((filePath) => filePath === "next.config.mjs" || filePath === "next-env.d.ts" || filePath.startsWith("src/app/"));
+  const viteOnlySourcePaths = sourceFilePaths.filter((filePath) => filePath === "vite.config.ts" || filePath === "index.html" || filePath === "src/main.tsx" || filePath === "src/App.tsx" || filePath.startsWith("src/routes/"));
   const routeComponentMap = input.targetFrontend.routeComponentMap as {
     routes?: unknown[];
     blockers?: string[];
@@ -342,6 +356,8 @@ export function buildQualityArtifacts(input: QualityInput): QualityArtifacts {
   checks.push(check("target_frontend.source_manifest.routes", sourceFileManifest.coverage?.routes === screenCount, "Target frontend source manifest includes a route file for every screen."));
   checks.push(check("target_frontend.source_manifest.components", (sourceFileManifest.coverage?.components ?? 0) === (componentContracts.contracts?.length ?? -1), "Target frontend source manifest includes a source file for every component contract."));
   checks.push(check("target_frontend.source_manifest.patterns", (sourceFileManifest.coverage?.patterns ?? 0) === (patternContracts.contracts?.length ?? -1), "Target frontend source manifest includes a source file for every pattern contract."));
+  checks.push(check("target_frontend.source_manifest.stack_vite_no_next", !sourceManifestIsVite || (nextOnlySourcePaths.length === 0 && viteOnlySourcePaths.length > 0), "Vite/React Router source manifests must emit Vite route/app files and no Next-only files."));
+  checks.push(check("target_frontend.source_manifest.stack_next_no_vite", !sourceManifestIsNext || (viteOnlySourcePaths.length === 0 && nextOnlySourcePaths.length > 0), "Next.js source manifests must emit App Router files and no Vite-only files."));
   checks.push(check("target_frontend.route_component_map.routes", (routeComponentMap.routes?.length ?? 0) === screenCount, "Target frontend route component map covers every screen."));
   checks.push(check("target_frontend.codegen_tasks.present", (codegenTasks.tasks?.length ?? 0) >= 7, "Target frontend codegen tasks define the downstream build order."));
   checks.push(check("target_frontend.adapter_interfaces.present", input.targetFrontend.adapterInterfaceSource.includes("ArchetypeDataAdapter") && input.targetFrontend.adapterInterfaceSource.includes("ArchetypeAuthAdapter"), "Target frontend adapter interface source declares data and auth adapters."));

@@ -51,7 +51,7 @@ Prefer MCP tool `archetype_read_artifact` for targeted artifact reads. If MCP is
 ## Rules
 
 - Create only routes present in the route map.
-- Follow `12-target-frontend/source-file-manifest.json` exactly: `src/app` owns route wiring only, `src/features/<screen-id>/screens` owns product screen composition, `src/features/<workflow>/patterns` owns workflow patterns, `src/shared/ui` and `src/shared/layout` own contract-bound reusable UI, `src/shared/api` and `src/shared/auth` own external boundaries, and `src/design-system` owns tokens.
+- Follow `12-target-frontend/source-file-manifest.json` exactly: Next.js App Router targets use `src/app` for route wiring, Vite + React Router targets use `src/routes` plus `src/App.tsx`, `src/features/<screen-id>/screens` owns product screen composition, `src/features/<workflow>/patterns` owns workflow patterns, `src/shared/ui` and `src/shared/layout` own contract-bound reusable UI, `src/shared/api` and `src/shared/auth` own external boundaries, and `src/design-system` owns tokens.
 - Do not put product UI composition directly in route files. Route files normalize route/search params, bind declared state, and delegate to the declared feature screen.
 - Treat `spec/archetype-spec.json` as the canonical source of truth.
 - Do not skip any gate in `lifecycle/implementation-phases.json`.

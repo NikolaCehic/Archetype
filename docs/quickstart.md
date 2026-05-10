@@ -69,7 +69,7 @@ The consumer plane tells the host what to say, which full artifacts are legal no
 
 The design-quality gate blocks default blue-gray SaaS output, untouched shadcn defaults, generic card-grid dashboards, missing component states, and raw Tailwind visual literals before implementation.
 
-After approval, `12-target-frontend/source-file-manifest.json` defines the target app architecture. Archetype now emits a feature/shared/design-system structure: `src/app` wires routes only, `src/features/<screen-id>/screens` owns product screen composition, `src/features/<workflow>/patterns` owns workflow patterns, `src/shared/ui` and `src/shared/layout` own reusable contract-bound UI, `src/shared/api` and `src/shared/auth` own external boundaries, and `src/design-system` owns generated tokens.
+After approval, `12-target-frontend/source-file-manifest.json` defines the target app architecture. Archetype now emits a stack-aware feature/shared/design-system structure: Next.js App Router targets use `src/app` for route wiring, Vite + React Router targets use `src/routes` plus `src/App.tsx`, `src/features/<screen-id>/screens` owns product screen composition, `src/features/<workflow>/patterns` owns workflow patterns, `src/shared/ui` and `src/shared/layout` own reusable contract-bound UI, `src/shared/api` and `src/shared/auth` own external boundaries, and `src/design-system` owns generated tokens.
 
 The review decision path is proof-bound:
 

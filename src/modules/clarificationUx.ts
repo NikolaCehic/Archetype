@@ -168,6 +168,9 @@ function inferStack(answer: string, existing: FrontendStackInput | undefined): F
   if (normalized.includes("next")) {
     stack.framework = stack.framework ?? "React";
     stack.routing = "Next.js App Router";
+  } else if (normalized.includes("vite")) {
+    stack.framework = normalized.includes("react") ? "Vite + React" : "Vite";
+    stack.routing = normalized.includes("router") ? "React Router" : stack.routing ?? "React Router";
   } else if (normalized.includes("react")) {
     stack.framework = "React";
     stack.routing = stack.routing ?? "React Router or target app router";

@@ -195,16 +195,28 @@ function actionForClassification(classification: string): string {
   return actions[classification] ?? "Patch implementation drift first; revise the contract only with approved source evidence.";
 }
 
-function targetFilesForScenario(scenario: JsonRecord): string[] {
+function targetFilesForScenario(scenario: JsonRecord, sourceFileManifest: JsonRecord): string[] {
   const route = String(scenario.route ?? asArray(scenario.route_refs)[0] ?? "");
   const routes = unique([
     route,
     ...asArray(scenario.route_refs).map(String),
     ...asArray(scenario.resolved_routes).map(String)
   ]);
-  const routeFiles = routes.filter(Boolean).map(routeToAppPath);
+  const routeEntries = asArray(sourceFileManifest.files).map(asRecord).filter((file) => file.kind === "route");
+  const routeFileByRoute = new Map(routeEntries.map((file) => [String(file.route ?? ""), String(file.path ?? "")]));
+  const routeFiles = routes
+    .filter(Boolean)
+    .map((routePath) => routeFileByRoute.get(routePath) ?? routeToAppPath(routePath))
+    .filter((filePath) => filePath.trim().length > 0);
   const screenId = String(scenario.screen_id ?? "");
-  const screenFiles = screenId ? [`05-screen-specs/${screenId.replace(/[.]/g, "-")}.yaml`] : [];
+  const screenEntries = asArray(sourceFileManifest.files).map(asRecord).filter((file) => file.kind === "screen");
+  const screenFileById = new Map(screenEntries.map((file) => [String(file.screen_id ?? ""), String(file.path ?? "")]));
+  const screenFiles = screenId
+    ? [
+        screenFileById.get(screenId) ?? "",
+        `05-screen-specs/${screenId.replace(/[.]/g, "-")}.yaml`
+      ]
+    : [];
   return unique([...routeFiles, ...screenFiles]);
 }
 
@@ -274,7 +286,7 @@ function commandRepairTasks(report: JsonRecord): JsonRecord[] {
     });
 }
 
-function playwrightRepairTasks(targetDir: string | null, contract: JsonRecord): JsonRecord[] {
+function playwrightRepairTasks(targetDir: string | null, contract: JsonRecord, sourceFileManifest: JsonRecord): JsonRecord[] {
   if (!targetDir) return [];
   const resultPath = path.join(targetDir, "test-results", "archetype-playwright-results.json");
   if (!existsSync(resultPath)) return [];
@@ -304,7 +316,7 @@ function playwrightRepairTasks(targetDir: string | null, contract: JsonRecord): 
         "verification/playwright-evidence.json",
         "target:test-results/archetype-playwright-results.json"
       ],
-      target_files: targetFilesForScenario(scenario),
+      target_files: targetFilesForScenario(scenario, sourceFileManifest),
       recommended_action: actionForClassification(classification),
       rerun_commands: ["npm run archetype:playwright", "archetype verify-target --out <archetype-output> --target <target-frontend>"]
     };
@@ -342,11 +354,12 @@ function buildRepairTaskQueue(input: {
   targetExecution: JsonRecord;
   playwrightEvidence: JsonRecord;
   playwrightContract: JsonRecord;
+  sourceFileManifest: JsonRecord;
 }): JsonRecord {
   const tasks = input.status === "fail"
     ? [
         ...commandRepairTasks(input.targetExecution),
-        ...playwrightRepairTasks(input.targetDir, input.playwrightContract)
+        ...playwrightRepairTasks(input.targetDir, input.playwrightContract, input.sourceFileManifest)
       ]
     : [];
   if (input.status === "fail") tasks.push(...blockerRepairTasks(input.targetExecution, tasks.length));
@@ -656,7 +669,8 @@ export function buildRevisionArtifacts(input: {
     targetDir: null,
     targetExecution: {},
     playwrightEvidence: {},
-    playwrightContract: {}
+    playwrightContract: {},
+    sourceFileManifest: {}
   });
   const driftReport = buildDriftReport(repairTaskQueue);
 
@@ -718,9 +732,11 @@ export function updateRepairArtifactsFromLatest(outputDir: string, targetDir?: s
   const targetExecutionPath = path.join(outputDir, "14-target-execution", "target-execution-report.json");
   const playwrightEvidencePath = path.join(outputDir, "verification", "playwright-evidence.json");
   const playwrightContractPath = path.join(outputDir, "verification", "playwright-verification-contract.json");
+  const sourceFileManifestPath = path.join(outputDir, "12-target-frontend", "source-file-manifest.json");
   const targetExecution = readJsonSafe(targetExecutionPath);
   const playwrightEvidence = readJsonSafe(playwrightEvidencePath);
   const playwrightContract = readJsonSafe(playwrightContractPath);
+  const sourceFileManifest = readJsonSafe(sourceFileManifestPath);
   const reportStatus = String(targetExecution.status ?? playwrightEvidence.status ?? "pending");
   const status: "pending" | "pass" | "fail" | "warning" =
     reportStatus === "pass" ? "pass" : reportStatus === "fail" ? "fail" : reportStatus === "warning" ? "warning" : "pending";
@@ -732,7 +748,8 @@ export function updateRepairArtifactsFromLatest(outputDir: string, targetDir?: s
     targetDir: targetDir ?? (typeof targetExecution.target_dir === "string" ? targetExecution.target_dir : null),
     targetExecution,
     playwrightEvidence,
-    playwrightContract
+    playwrightContract,
+    sourceFileManifest
   });
   const drift = buildDriftReport(queue);
   const artifacts = [

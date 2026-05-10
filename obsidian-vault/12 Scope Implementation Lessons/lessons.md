@@ -4008,3 +4008,19 @@ Self-healing rules:
 - A design gate that does not compare routes against source/review feedback is not a real design gate.
 - If a host sees `draft_contract`, `ready_for_frontend_agent: false`, or `implementation_authorized: false`, the only legal action is review, approval, request changes, or clarification.
 - User-facing source-material surfaces must distinguish "attached material" from "other source evidence."
+## 2026-05-10 - Generated App Session Audit 019e1228
+
+- A passing generated app can still violate Archetype if verification only checks rendered smoke paths. Future loops must verify source-manifest conformance, action-contract conformance, and stack-specific file layout.
+- Target source manifests must be stack-aware. If the user selects Vite/React Router, emitting Next.js `src/app`, `next.config.mjs`, or `next-env.d.ts` is architectural drift.
+- Every visible control needs a declared action contract and a runtime assertion. Inert controls such as visual-only filters, export buttons, or run buttons are blockers, not polish issues.
+- Diagnostic E2E failures must not be mixed with implementation blockers. Mock-only apps can keep backend/auth as explicit warnings while still blocking on mismatch between chosen boundary and generated contracts.
+- Visual evidence must become measurable layout/token/component assertions. Hashing screenshot paths is evidence ingestion, not visual adherence.
+
+## 2026-05-10 - Issue 1 Fix: Target Stack Drift
+
+- Source-manifest generation must resolve an explicit target kind before file paths are created. A stack-aware contract is not enough if `route_file`, support files, route-component-map, codegen tasks, docs, and writer output can still imply a different framework.
+- React Router without `next` in the approved stack resolves to Vite + React Router. Next.js App Router resolves only from an explicit `next` signal.
+- Vite + React Router manifests must include `vite.config.ts`, `index.html`, `src/main.tsx`, `src/App.tsx`, `src/index.css`, and `src/routes/<screen>.tsx`, and must exclude `next.config.mjs`, `next-env.d.ts`, and `src/app/**`.
+- Next.js manifests must keep `src/app`, `next.config.mjs`, and `next-env.d.ts`, and must exclude Vite-only entry files.
+- Contract tests must assert both sides of the split: explicit Vite, inferred React Router, and explicit Next. A single happy-path stack test would let this drift return.
+- Repair evidence must resolve target files from `12-target-frontend/source-file-manifest.json`; hardcoding `src/app` in repair tasks reintroduces stack drift after verification fails.

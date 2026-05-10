@@ -29,6 +29,13 @@ interface SourceManifestFile {
   required_states?: string[];
 }
 
+type SourceTargetKind = "next_app_router" | "vite_react_router";
+
+interface SourceManifest {
+  target_stack?: Record<string, unknown>;
+  files?: SourceManifestFile[];
+}
+
 function readJson<T>(filePath: string): T {
   return JSON.parse(readFileSync(filePath, "utf8")) as T;
 }
@@ -63,7 +70,41 @@ function relativeImport(fromFile: string, toFile: string): string {
   return relative.startsWith(".") ? relative : `./${relative}`;
 }
 
-function packageJson(): string {
+function targetKindFromManifest(manifest: SourceManifest): SourceTargetKind {
+  const stack = manifest.target_stack ?? {};
+  if (stack.resolved_source_target === "vite_react_router") return "vite_react_router";
+  if (stack.resolved_source_target === "next_app_router") return "next_app_router";
+  const hasViteFiles = (manifest.files ?? []).some((file) => file.path === "vite.config.ts" || file.path.startsWith("src/routes/"));
+  return hasViteFiles ? "vite_react_router" : "next_app_router";
+}
+
+function packageJson(targetKind: SourceTargetKind): string {
+  const vitePackage = {
+    private: true,
+    scripts: {
+      dev: "vite --host 127.0.0.1",
+      build: "tsc --noEmit && vite build",
+      preview: "vite preview --host 127.0.0.1",
+      typecheck: "tsc --noEmit",
+      "archetype:playwright": "playwright test --config=playwright.config.ts"
+    },
+    dependencies: {
+      "@vitejs/plugin-react": "^5.0.0",
+      "vite": "^7.0.0",
+      "react": "19.2.5",
+      "react-dom": "19.2.5",
+      "react-router-dom": "^7.0.0"
+    },
+    devDependencies: {
+      "@types/node": "25.6.0",
+      "@types/react": "19.2.14",
+      "@types/react-dom": "19.2.3",
+      "@playwright/test": "1.59.1",
+      "tailwindcss": "4.2.4",
+      "typescript": "5.9.3"
+    }
+  };
+  if (targetKind === "vite_react_router") return JSON.stringify(vitePackage, null, 2);
   return JSON.stringify({
     private: true,
     scripts: {
@@ -92,22 +133,32 @@ function packageJson(): string {
   }, null, 2);
 }
 
-function tsconfigJson(): string {
+function tsconfigJson(targetKind: SourceTargetKind): string {
+  const baseCompilerOptions = {
+    target: "ES2022",
+    lib: ["dom", "dom.iterable", "esnext"],
+    allowJs: false,
+    skipLibCheck: true,
+    strict: true,
+    noEmit: true,
+    esModuleInterop: true,
+    module: "esnext",
+    moduleResolution: "bundler",
+    resolveJsonModule: true,
+    isolatedModules: true,
+    jsx: "react-jsx",
+    incremental: true
+  };
+  if (targetKind === "vite_react_router") {
+    return JSON.stringify({
+      compilerOptions: baseCompilerOptions,
+      include: ["src"],
+      exclude: ["node_modules", "dist"]
+    }, null, 2);
+  }
   return JSON.stringify({
     compilerOptions: {
-      target: "ES2022",
-      lib: ["dom", "dom.iterable", "esnext"],
-      allowJs: false,
-      skipLibCheck: true,
-      strict: true,
-      noEmit: true,
-      esModuleInterop: true,
-      module: "esnext",
-      moduleResolution: "bundler",
-      resolveJsonModule: true,
-      isolatedModules: true,
-      jsx: "react-jsx",
-      incremental: true,
+      ...baseCompilerOptions,
       plugins: [{ name: "next" }]
     },
     include: ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts"],
@@ -124,6 +175,54 @@ function nextConfigSource(): string {
     "};",
     "",
     "export default nextConfig;"
+  ].join("\n");
+}
+
+function viteConfigSource(): string {
+  return [
+    "import react from \"@vitejs/plugin-react\";",
+    "import { defineConfig } from \"vite\";",
+    "",
+    "export default defineConfig({",
+    "  plugins: [react()],",
+    "  server: { host: \"127.0.0.1\" },",
+    "  preview: { host: \"127.0.0.1\" }",
+    "});"
+  ].join("\n");
+}
+
+function indexHtmlSource(): string {
+  return [
+    "<!doctype html>",
+    "<html lang=\"en\">",
+    "  <head>",
+    "    <meta charset=\"UTF-8\" />",
+    "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />",
+    "    <title>Archetype Target</title>",
+    "  </head>",
+    "  <body>",
+    "    <div id=\"root\"></div>",
+    "    <script type=\"module\" src=\"/src/main.tsx\"></script>",
+    "  </body>",
+    "</html>"
+  ].join("\n");
+}
+
+function mainSource(): string {
+  return [
+    "import { StrictMode } from \"react\";",
+    "import { createRoot } from \"react-dom/client\";",
+    "import App from \"./App\";",
+    "import \"./index.css\";",
+    "",
+    "const root = document.getElementById(\"root\");",
+    "if (!root) throw new Error(\"Missing root element.\");",
+    "",
+    "createRoot(root).render(",
+    "  <StrictMode>",
+    "    <App />",
+    "  </StrictMode>",
+    ");"
   ].join("\n");
 }
 
@@ -164,7 +263,11 @@ function screenComponentName(screenId: string): string {
   return `${safeIdentifier(screenId, "Archetype")}Screen`;
 }
 
-function routeSource(file: SourceManifestFile): string {
+function routeComponentName(screenId: string): string {
+  return `${safeIdentifier(screenId, "Archetype")}Route`;
+}
+
+function nextRouteSource(file: SourceManifestFile): string {
   const screenFile = String(file.screen_file ?? "");
   const componentName = screenComponentName(String(file.screen_id ?? "Screen"));
   const importPath = screenFile ? relativeImport(file.path, screenFile) : "";
@@ -184,6 +287,88 @@ function routeSource(file: SourceManifestFile): string {
     `    <main data-archetype-screen="${file.screen_id}" data-state={state} data-route="${file.route}" className="archetype-screen">`,
     `      <${componentName} state={state} />`,
     "    </main>",
+    "  );",
+    "}"
+  ].join("\n");
+}
+
+function viteRouteSource(file: SourceManifestFile): string {
+  const screenFile = String(file.screen_file ?? "");
+  const componentName = screenComponentName(String(file.screen_id ?? "Screen"));
+  const routeName = routeComponentName(String(file.screen_id ?? "Route"));
+  const importPath = screenFile ? relativeImport(file.path, screenFile) : "";
+  const states = JSON.stringify(file.required_states && file.required_states.length > 0 ? file.required_states : ["default"]);
+  return [
+    screenFile ? `import { ${componentName} } from "${importPath}";` : "",
+    "",
+    "interface ArchetypeRouteProps {",
+    "  state?: string;",
+    "}",
+    "",
+    `const allowedStates = ${states} as const;`,
+    "",
+    "export const routeConfig = {",
+    `  path: ${JSON.stringify(file.route ?? "/")},`,
+    `  screenId: ${JSON.stringify(file.screen_id ?? "screen")},`,
+    "  allowedStates",
+    "};",
+    "",
+    `export function ${routeName}({ state = "default" }: ArchetypeRouteProps) {`,
+    "  const resolvedState = (allowedStates as readonly string[]).includes(state) ? state : \"default\";",
+    "  return (",
+    `    <main data-archetype-screen="${file.screen_id}" data-state={resolvedState} data-route="${file.route}" className="archetype-screen">`,
+    `      <${componentName} state={resolvedState} />`,
+    "    </main>",
+    "  );",
+    "}",
+    "",
+    `export default ${routeName};`
+  ].join("\n");
+}
+
+function appSource(routeMap: { routes?: Array<Record<string, unknown>> }): string {
+  const routes = (routeMap.routes ?? [])
+    .filter((route) => String(route.route_file ?? "").startsWith("src/routes/"))
+    .map((route) => ({
+      path: String(route.route ?? "/"),
+      screenId: String(route.screen_id ?? "route"),
+      routeFile: String(route.route_file ?? "")
+    }));
+  const imports = routes.map((route) => {
+    const componentName = routeComponentName(route.screenId);
+    const configName = `${componentName}Config`;
+    return `import { ${componentName}, routeConfig as ${configName} } from "${relativeImport("src/App.tsx", route.routeFile)}";`;
+  });
+  const routeElements = routes.map((route) => {
+    const componentName = routeComponentName(route.screenId);
+    const configName = `${componentName}Config`;
+    return `        <Route path="${route.path}" element={<RouteBoundary config={${configName}} Component={${componentName}} />} />`;
+  });
+  return [
+    "import type { ComponentType } from \"react\";",
+    "import { BrowserRouter, Navigate, Route, Routes, useSearchParams } from \"react-router-dom\";",
+    ...imports,
+    "",
+    "interface RouteBoundaryProps {",
+    "  config: { path: string; allowedStates: readonly string[] };",
+    "  Component: ComponentType<{ state?: string }>;",
+    "}",
+    "",
+    "function RouteBoundary({ config, Component }: RouteBoundaryProps) {",
+    "  const [searchParams] = useSearchParams();",
+    "  const requestedState = searchParams.get(\"archetype_state\") ?? \"default\";",
+    "  const state = config.allowedStates.includes(requestedState) ? requestedState : \"default\";",
+    "  return <Component state={state} />;",
+    "}",
+    "",
+    "export default function App() {",
+    "  return (",
+    "    <BrowserRouter>",
+    "      <Routes>",
+    ...routeElements,
+    "        <Route path=\"*\" element={<Navigate to=\"/\" replace />} />",
+    "      </Routes>",
+    "    </BrowserRouter>",
     "  );",
     "}"
   ].join("\n");
@@ -300,11 +485,16 @@ function styleSource(outputDir: string): string {
   ].join("\n");
 }
 
-function sourceForFile(outputDir: string, file: SourceManifestFile, routeMap: { routes?: Array<Record<string, unknown>> }, adapterInterfaces: string): string {
-  if (file.path === "package.json") return packageJson();
-  if (file.path === "tsconfig.json") return tsconfigJson();
+function sourceForFile(outputDir: string, file: SourceManifestFile, routeMap: { routes?: Array<Record<string, unknown>> }, adapterInterfaces: string, targetKind: SourceTargetKind): string {
+  if (file.path === "package.json") return packageJson(targetKind);
+  if (file.path === "tsconfig.json") return tsconfigJson(targetKind);
   if (file.path === "next.config.mjs") return nextConfigSource();
+  if (file.path === "vite.config.ts") return viteConfigSource();
+  if (file.path === "index.html") return indexHtmlSource();
   if (file.path === "next-env.d.ts") return "/// <reference types=\"next\" />\n/// <reference types=\"next/image-types/global\" />";
+  if (file.path === "src/vite-env.d.ts") return "/// <reference types=\"vite/client\" />";
+  if (file.path === "src/main.tsx") return mainSource();
+  if (file.path === "src/App.tsx") return appSource(routeMap);
   if (file.path === "playwright.config.ts") return readFileSync(path.join(outputDir, "verification", "playwright.config.ts"), "utf8");
   if (file.path === "src/app/layout.tsx") {
     return [
@@ -320,7 +510,7 @@ function sourceForFile(outputDir: string, file: SourceManifestFile, routeMap: { 
       "}"
     ].join("\n");
   }
-  if (file.path === "src/app/globals.css" || file.path === "src/design-system/tokens.css") return styleSource(outputDir);
+  if (file.path === "src/app/globals.css" || file.path === "src/index.css" || file.path === "src/design-system/tokens.css") return styleSource(outputDir);
   if (file.path === "src/shared/api/adapter-interfaces.ts") return adapterInterfaces;
   if (file.path === "src/shared/api/data-adapter.ts") return dataAdapterSource(outputDir);
   if (file.path === "src/shared/auth/auth-adapter.ts") return authAdapterSource(outputDir);
@@ -329,7 +519,7 @@ function sourceForFile(outputDir: string, file: SourceManifestFile, routeMap: { 
   if (file.kind === "component") return componentSource(String(file.component ?? "Component"), file.path.split("/").pop()?.replace(".tsx", "") ?? "component");
   if (file.kind === "pattern") return patternSource(String(file.pattern ?? "Pattern"), file.path.split("/").pop()?.replace(".tsx", "") ?? "pattern");
   if (file.kind === "screen") return screenSource(file, routeMap);
-  if (file.kind === "route") return routeSource(file);
+  if (file.kind === "route") return targetKind === "vite_react_router" ? viteRouteSource(file) : nextRouteSource(file);
   if (file.kind === "playwright_verification") return readFileSync(path.join(outputDir, "verification", "playwright-verification.spec.ts"), "utf8");
   if (file.kind === "playwright_traceability") {
     return [
@@ -387,13 +577,14 @@ export function writeTargetFrontendSource(outputDir: string, targetDir: string, 
 
   if (!options.force) prepareGeneratedTargetDirectory(targetDir, { force: false });
 
-  const manifest = readJson<{ files?: SourceManifestFile[] }>(manifestPath);
+  const manifest = readJson<SourceManifest>(manifestPath);
   const routeMap = readJson<{ routes?: Array<Record<string, unknown>> }>(routeMapPath);
   const adapterInterfaces = readFileSync(adapterPath, "utf8");
+  const targetKind = targetKindFromManifest(manifest);
   const files = manifest.files ?? [];
   const written: string[] = [];
   for (const file of files) {
-    writeText(targetDir, file.path, sourceForFile(outputDir, file, routeMap, adapterInterfaces));
+    writeText(targetDir, file.path, sourceForFile(outputDir, file, routeMap, adapterInterfaces, targetKind));
     written.push(file.path);
   }
 

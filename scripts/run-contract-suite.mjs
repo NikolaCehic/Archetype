@@ -54,6 +54,7 @@ const tasks = [
   task("forbidden-behaviors", "scripts/run-forbidden-behaviors-contract.mjs", "tmp/forbidden-behaviors-contract", ["contracts", "full"]),
   task("marketing-replay", "scripts/run-marketing-dashboard-replay-contract.mjs", "tmp/marketing-dashboard-replay-contract", ["fast", "full"]),
   task("agent-task-board", "scripts/run-agent-task-board-regression-contract.mjs", "tmp/agent-task-board-regression-contract", ["fast", "full"]),
+  task("target-stack", "scripts/run-target-stack-manifest-contract.mjs", "tmp/target-stack-manifest-contract", ["fast", "full"]),
   task("implementation-phases", "scripts/run-implementation-phases-contract.mjs", "tmp/implementation-phases-contract", ["fast", "full"]),
   task("convergence", "scripts/run-convergence-standard-contract.mjs", "tmp/convergence-standard-contract", ["fast", "full"]),
   task("spec", "scripts/run-spec-contract.mjs", "tmp/spec-contract", ["fast", "full"]),

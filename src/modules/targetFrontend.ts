@@ -6,7 +6,54 @@ import type {
 } from "../core/types";
 import { slugify } from "../core/stable";
 
-function routeToAppPath(route: string): string {
+type TargetStackKind = "next_app_router" | "vite_react_router";
+
+interface TargetStackPlan {
+  kind: TargetStackKind;
+  displayName: string;
+  routeLayer: string;
+  routeOwnership: string;
+  appShellPath: string;
+  styleEntryPath: string;
+  routeRule: string;
+  routeFileFor(route: string, screenId: string): string;
+  forbiddenFiles: string[];
+}
+
+function stackText(stack: Record<string, string>): string {
+  return Object.values(stack).join(" ").toLowerCase();
+}
+
+function targetStackPlan(stack: Record<string, string>): TargetStackPlan {
+  const normalized = stackText(stack);
+  const isNext = normalized.includes("next");
+  if (isNext) {
+    return {
+      kind: "next_app_router",
+      displayName: "Next.js App Router",
+      routeLayer: "src/app",
+      routeOwnership: "src/app owns routing and state param normalization only.",
+      appShellPath: "src/app/layout.tsx",
+      styleEntryPath: "src/app/globals.css",
+      routeRule: "Next.js App Router route files normalize route/search params and delegate to feature screens.",
+      routeFileFor: routeToNextAppPath,
+      forbiddenFiles: ["vite.config.ts", "src/main.tsx", "src/App.tsx", "src/routes/**"]
+    };
+  }
+  return {
+    kind: "vite_react_router",
+    displayName: "Vite + React Router",
+    routeLayer: "src/routes + src/App.tsx",
+    routeOwnership: "src/routes owns route modules and src/App.tsx owns React Router wiring only.",
+    appShellPath: "src/App.tsx",
+    styleEntryPath: "src/index.css",
+    routeRule: "Vite/React Router route modules normalize route/search params through src/App.tsx and delegate to feature screens.",
+    routeFileFor: (_route, screenId) => `src/routes/${featureSlugForScreen(screenId)}.tsx`,
+    forbiddenFiles: ["next.config.mjs", "next-env.d.ts", "src/app/**"]
+  };
+}
+
+function routeToNextAppPath(route: string): string {
   if (route === "/") return "src/app/page.tsx";
   const parts = route
     .split("/")
@@ -94,9 +141,10 @@ export function buildTargetFrontendArtifacts(input: {
     authentication_authorization?: { route_guards?: unknown[]; action_guards?: unknown[] };
     content_brand?: { copy_surfaces?: unknown[] };
   };
+  const targetPlan = targetStackPlan(buildManifest.frontend_stack ?? {});
 
   const routeFiles = input.experience.screenSpecs.map((screen) => ({
-    path: routeToAppPath(screen.route),
+    path: targetPlan.routeFileFor(screen.route, screen.screen_id),
     kind: "route",
     route: screen.route,
     screen_id: screen.screen_id,
@@ -110,7 +158,12 @@ export function buildTargetFrontendArtifacts(input: {
     ],
     required_states: Object.keys(screen.states),
     test_selector: `[data-archetype-screen="${screen.screen_id}"]`,
-    forbidden_behavior: ["Do not add undeclared routes.", "Do not render a route without its feature screen.", "Do not omit declared screen states."]
+    forbidden_behavior: [
+      "Do not add undeclared routes.",
+      "Do not render a route without its feature screen.",
+      "Do not omit declared screen states.",
+      `Do not emit files forbidden for ${targetPlan.displayName}: ${targetPlan.forbiddenFiles.join(", ")}.`
+    ]
   }));
 
   const screenFiles = input.experience.screenSpecs.map((screen) => ({
@@ -158,49 +211,112 @@ export function buildTargetFrontendArtifacts(input: {
     forbidden_behavior: ["Do not compose undeclared components.", "Do not use a pattern on screens where it is not declared."]
   })));
 
+  const frameworkSupportFiles = targetPlan.kind === "next_app_router"
+    ? [
+      {
+        path: "package.json",
+        kind: "project_config",
+        exports: ["scripts", "dependencies"],
+        reads: ["06-frontend-agent-contract/build-manifest.json"],
+        forbidden_behavior: ["Do not add unapproved UI libraries as design substitutes."]
+      },
+      {
+        path: "next.config.mjs",
+        kind: "project_config",
+        exports: ["default"],
+        reads: ["06-frontend-agent-contract/build-manifest.json"],
+        forbidden_behavior: ["Do not change framework execution settings to hide generated-source errors."]
+      },
+      {
+        path: "tsconfig.json",
+        kind: "project_config",
+        exports: ["compilerOptions"],
+        reads: ["06-frontend-agent-contract/build-manifest.json"],
+        forbidden_behavior: ["Do not disable strict TypeScript checks to hide contract gaps."]
+      },
+      {
+        path: "next-env.d.ts",
+        kind: "project_config",
+        exports: ["next_types"],
+        reads: ["06-frontend-agent-contract/build-manifest.json"],
+        forbidden_behavior: ["Do not edit generated framework type references by hand."]
+      },
+      {
+        path: "src/app/layout.tsx",
+        kind: "app_shell",
+        exports: ["default"],
+        reads: ["06-frontend-agent-contract/layout-rules.json", "03-experience-architecture/navigation-model.json"],
+        forbidden_behavior: ["Do not create navigation items outside route-map.json."]
+      },
+      {
+        path: "src/app/globals.css",
+        kind: "style",
+        exports: ["global_css_imports"],
+        reads: ["04-design-system/tokens/css-variables.css", "04-design-system/tokens/typography.css"],
+        forbidden_behavior: ["Do not add global visual styles outside generated tokens."]
+      }
+    ]
+    : [
+      {
+        path: "package.json",
+        kind: "project_config",
+        exports: ["scripts", "dependencies"],
+        reads: ["06-frontend-agent-contract/build-manifest.json"],
+        forbidden_behavior: ["Do not add unapproved UI libraries as design substitutes."]
+      },
+      {
+        path: "vite.config.ts",
+        kind: "project_config",
+        exports: ["default"],
+        reads: ["06-frontend-agent-contract/build-manifest.json"],
+        forbidden_behavior: ["Do not change framework execution settings to hide generated-source errors."]
+      },
+      {
+        path: "tsconfig.json",
+        kind: "project_config",
+        exports: ["compilerOptions"],
+        reads: ["06-frontend-agent-contract/build-manifest.json"],
+        forbidden_behavior: ["Do not disable strict TypeScript checks to hide contract gaps."]
+      },
+      {
+        path: "index.html",
+        kind: "html_entry",
+        exports: ["root"],
+        reads: ["06-frontend-agent-contract/build-manifest.json"],
+        forbidden_behavior: ["Do not add product UI to index.html."]
+      },
+      {
+        path: "src/vite-env.d.ts",
+        kind: "project_config",
+        exports: ["vite_client_types"],
+        reads: ["06-frontend-agent-contract/build-manifest.json"],
+        forbidden_behavior: ["Do not edit generated framework type references by hand."]
+      },
+      {
+        path: "src/main.tsx",
+        kind: "app_entry",
+        exports: ["root_render"],
+        reads: ["06-frontend-agent-contract/build-manifest.json", "03-experience-architecture/route-map.json"],
+        forbidden_behavior: ["Do not put product UI composition in src/main.tsx."]
+      },
+      {
+        path: "src/App.tsx",
+        kind: "app_shell",
+        exports: ["default"],
+        reads: ["06-frontend-agent-contract/layout-rules.json", "03-experience-architecture/navigation-model.json", "12-target-frontend/route-component-map.json"],
+        forbidden_behavior: ["Do not create navigation items outside route-map.json.", "Do not put feature screen composition in src/App.tsx."]
+      },
+      {
+        path: "src/index.css",
+        kind: "style",
+        exports: ["global_css_imports"],
+        reads: ["04-design-system/tokens/css-variables.css", "04-design-system/tokens/typography.css"],
+        forbidden_behavior: ["Do not add global visual styles outside generated tokens."]
+      }
+    ];
+
   const supportFiles = [
-    {
-      path: "package.json",
-      kind: "project_config",
-      exports: ["scripts", "dependencies"],
-      reads: ["06-frontend-agent-contract/build-manifest.json"],
-      forbidden_behavior: ["Do not add unapproved UI libraries as design substitutes."]
-    },
-    {
-      path: "next.config.mjs",
-      kind: "project_config",
-      exports: ["default"],
-      reads: ["06-frontend-agent-contract/build-manifest.json"],
-      forbidden_behavior: ["Do not change framework execution settings to hide generated-source errors."]
-    },
-    {
-      path: "tsconfig.json",
-      kind: "project_config",
-      exports: ["compilerOptions"],
-      reads: ["06-frontend-agent-contract/build-manifest.json"],
-      forbidden_behavior: ["Do not disable strict TypeScript checks to hide contract gaps."]
-    },
-    {
-      path: "next-env.d.ts",
-      kind: "project_config",
-      exports: ["next_types"],
-      reads: ["06-frontend-agent-contract/build-manifest.json"],
-      forbidden_behavior: ["Do not edit generated framework type references by hand."]
-    },
-    {
-      path: "src/app/layout.tsx",
-      kind: "app_shell",
-      exports: ["default"],
-      reads: ["06-frontend-agent-contract/layout-rules.json", "03-experience-architecture/navigation-model.json"],
-      forbidden_behavior: ["Do not create navigation items outside route-map.json."]
-    },
-    {
-      path: "src/app/globals.css",
-      kind: "style",
-      exports: ["global_css_imports"],
-      reads: ["04-design-system/tokens/css-variables.css", "04-design-system/tokens/typography.css"],
-      forbidden_behavior: ["Do not add global visual styles outside generated tokens."]
-    },
+    ...frameworkSupportFiles,
     {
       path: "src/shared/api/adapter-interfaces.ts",
       kind: "adapter",
@@ -302,7 +418,7 @@ export function buildTargetFrontendArtifacts(input: {
     routes: input.experience.screenSpecs.map((screen) => ({
       route: screen.route,
       screen_id: screen.screen_id,
-      route_file: routeToAppPath(screen.route),
+      route_file: targetPlan.routeFileFor(screen.route, screen.screen_id),
       screen_file: screenPath(screen.screen_id),
       feature_module: featureSlugForScreen(screen.screen_id),
       components: screen.required_components.map((component) => ({
@@ -321,7 +437,7 @@ export function buildTargetFrontendArtifacts(input: {
       states: Object.keys(screen.states),
       test_selector: `[data-archetype-screen="${screen.screen_id}"]`,
       architecture_layers: {
-        route: "src/app owns routing and state param normalization only.",
+        route: targetPlan.routeOwnership,
         screen: "src/features/<screen>/screens owns screen composition and product-specific layout.",
         shared_ui: "src/shared/ui owns shadcn-compatible primitive wrappers.",
         shared_layout: "src/shared/layout owns reusable app shell primitives.",
@@ -339,7 +455,7 @@ export function buildTargetFrontendArtifacts(input: {
       {
         task_id: "install_target_stack",
         order: 1,
-        writes: supportFiles.filter((file) => file.kind === "project_config").map((file) => file.path),
+        writes: supportFiles.filter((file) => ["project_config", "html_entry", "app_entry"].includes(file.kind)).map((file) => file.path),
         reads: ["00-manifest/manifest.json", "06-frontend-agent-contract/build-manifest.json"],
         acceptance: "Target repo uses the declared framework, language, styling, and routing contract."
       },
@@ -399,11 +515,20 @@ export function buildTargetFrontendArtifacts(input: {
 
   const sourceFileManifest = {
     manifest_version: "1.0",
-    target_stack: buildManifest.frontend_stack ?? {},
+    target_stack: {
+      ...(buildManifest.frontend_stack ?? {}),
+      resolved_source_target: targetPlan.kind,
+      route_layer: targetPlan.routeLayer,
+      app_shell: targetPlan.appShellPath,
+      style_entry: targetPlan.styleEntryPath,
+      forbidden_stack_files: targetPlan.forbiddenFiles
+    },
     architecture: {
       style: "feature_shared_design_system",
       layers: {
-        routing: "src/app",
+        routing: targetPlan.routeLayer,
+        app_shell: targetPlan.appShellPath,
+        style_entry: targetPlan.styleEntryPath,
         feature_screens: "src/features/<screen-id>/screens",
         feature_patterns: "src/features/<workflow>/patterns",
         shared_ui: "src/shared/ui",
@@ -414,11 +539,12 @@ export function buildTargetFrontendArtifacts(input: {
         design_system: "src/design-system"
       },
       rules: [
-        "Route files normalize route/search params and delegate to feature screens.",
+        targetPlan.routeRule,
         "Feature screens own product-specific composition.",
         "Shared UI owns contract-bound shadcn-compatible primitive wrappers.",
         "Shared adapters own data, auth, and copy boundaries.",
-        "Design tokens live outside route and feature folders."
+        "Design tokens live outside route and feature folders.",
+        `Forbidden for this target stack: ${targetPlan.forbiddenFiles.join(", ")}.`
       ]
     },
     build_order: buildManifest.build_order ?? [],
@@ -495,7 +621,9 @@ export function buildTargetFrontendArtifacts(input: {
     "",
     "## Target Architecture",
     "",
-    "- `src/app` owns routing only.",
+    `- \`${targetPlan.routeLayer}\` owns routing only for ${targetPlan.displayName}.`,
+    `- \`${targetPlan.appShellPath}\` owns the application shell.`,
+    `- \`${targetPlan.styleEntryPath}\` imports generated global tokens.`,
     "- `src/features/<screen-id>/screens` owns product screen composition.",
     "- `src/features/<workflow>/patterns` owns workflow-specific patterns.",
     "- `src/shared/ui` owns shadcn-compatible primitive wrappers.",

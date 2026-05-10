@@ -36,12 +36,12 @@ The frontend architect must answer:
 
 - Architecture can only be produced from a human-approved canonical contract. Draft packages and unapproved assumptions are blockers.
 - `12-target-frontend/source-file-manifest.json` and `12-target-frontend/route-component-map.json` are the target source architecture of record.
-- The target app must use a feature/shared/design-system structure: `src/app` for route wiring only, `src/features/<screen-id>/screens` for product screen composition, `src/features/<workflow>/patterns` for workflow patterns, `src/shared/ui` for contract-bound shadcn-compatible primitives, `src/shared/layout` for shell/navigation primitives, `src/shared/api` and `src/shared/auth` for external boundaries, and `src/design-system` for generated tokens.
+- The target app must use a stack-aware feature/shared/design-system structure: Next.js App Router uses `src/app` for route wiring only; Vite + React Router uses `src/routes` plus `src/App.tsx`; `src/features/<screen-id>/screens` owns product screen composition, `src/features/<workflow>/patterns` owns workflow patterns, `src/shared/ui` owns contract-bound shadcn-compatible primitives, `src/shared/layout` owns shell/navigation primitives, `src/shared/api` and `src/shared/auth` own external boundaries, and `src/design-system` owns generated tokens.
 - Route files must not become product UI dumping grounds. They normalize route/search params, bind declared states, and delegate to their declared feature screen.
 - `12-target-frontend/codegen-tasks.json` defines the implementation order; `create_verification_tests` must precede product UI files.
 - `12-target-frontend/adapter-interfaces.ts` defines the data and auth boundary. Do not invent backend behavior, auth rules, or fields outside the contract.
 - Route files, component files, pattern files, support files, adapter files, token files, and tests must trace to their declared `reads` artifacts.
-- Next.js App Router conventions must be respected when the target stack declares Next.js: app routes live under `src/app`, layouts own persistent shells, and pages own route-specific screens.
+- Stack conventions must be respected: Next.js App Router routes live under `src/app`; Vite + React Router route modules live under `src/routes` and are wired by `src/App.tsx`; source manifests must not mix Next-only and Vite-only files.
 - React component boundaries must follow the contract first: break screens into declared components and patterns, describe every required visual state, then connect data flow.
 - State ownership must avoid contradictions, redundant state, and duplicated sources of truth. Lift shared state to the closest owner required by the route, pattern, or adapter contract.
 - Strict TypeScript stays enabled. Do not weaken `strict`, loosen adapter types, or hide contract gaps with broad `any`.
