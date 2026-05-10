@@ -66,7 +66,7 @@ assert(weakRun.nextQuestionId === "primary_users", "weak marketing dashboard sho
 assert(existsSync(weakRun.sourceGraphPath), "weak run should write lifecycle/source-graph.json.");
 assert(existsSync(weakRun.runStatePath), "weak run should write lifecycle/run-state.json.");
 assert(readJson(weakRun.runStatePath).next_action.type === "ask_clarification", "run-state should preserve the next action.");
-assert(weakRun.nextAction.command.includes("archetype run"), "clarification continuation should use archetype run.");
+assert(weakRun.nextAction.command === null, "clarification continuation should not expose internal CLI commands to the user.");
 
 const answeredRun = runJson([
   "run",
@@ -108,7 +108,9 @@ assert(draftRun.packageType === "draft_contract", "rich run should create a draf
 assert(draftRun.nextAction?.type === "review_draft", "draft run should require review_draft.");
 assert(existsSync(draftRun.designSystemPreviewPath), "draft run should write the design-system preview HTML.");
 assert(existsSync(draftRun.approvalRequestPath), "draft run should write the approval request.");
-assert(draftRun.nextAction.command.includes("--approve"), "draft continuation should approve through archetype run.");
+assert(draftRun.nextAction.command === null, "draft continuation should use the review primitive instead of exposing approval commands.");
+assert(existsSync(path.join(richOutput, "phase-package.json")), "rich natural-language run should write a small draft review phase package.");
+assert(!existsSync(path.join(richOutput, "manifest.json")), "rich natural-language run should not write the broad draft manifest before approval.");
 const sourceGraph = readJson(draftRun.sourceGraphPath);
 assert(sourceGraph.material_count === 1, "source graph should record one ingested material.");
 assert(sourceGraph.materials[0].sha256.length === 64, "source graph should store material SHA-256.");

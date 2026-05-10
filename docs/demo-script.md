@@ -33,7 +33,7 @@ The demo writes:
 2. Show `archetype doctor --json` as the setup proof.
 3. Generate `archetype-output`.
 4. Show `implementation-contract.md`, `experience/route-map.json`, `screens/screen-inventory.json`, and `design-system/tokens.json`.
-5. Materialize the target frontend scaffold.
+5. Materialize the feature/shared/design-system target frontend.
 6. Run verification against the generated contract.
 7. Show `10-revision/repair-task-queue.json` and explain that failures become concrete patch or revise tasks.
 8. Explain warnings as production integration gaps, not compiler failure.

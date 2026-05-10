@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readdirSync, readSync, statSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readdirSync, readSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { createDraftApproval } from "../approval/draftApproval";
+import { readConsumerPlane, type ConsumerPlaneReport } from "../consumer-plane";
 import { hashContent, slugify, stableId } from "../core/stable";
 import type { ArchetypeInput, SourceMaterialInput, SourceMaterialType } from "../core/types";
 import {
@@ -21,6 +22,7 @@ import { assessContextGate } from "../modules/contextGate";
 import { exportClarificationPackage } from "../output/exportClarificationPackage";
 import { exportDraftPackage } from "../output/exportDraftPackage";
 import { exportPackage } from "../output/exportPackage";
+import { createPhasePackage } from "../progressive";
 import { assertSafeGeneratedOutputDirectory } from "../safety/pathSafety";
 
 const MAX_TEXT_MATERIAL_BYTES = 64 * 1024;
@@ -126,6 +128,8 @@ export interface RunLifecycleResult {
   dataPlaneRunId: string;
   sourceGraphPath: string;
   runStatePath: string;
+  consumerPlanePath: string;
+  consumerPlane: ConsumerPlaneReport;
   materialCount: number;
   nextQuestion: string | null;
   nextQuestionId: string | null;
@@ -287,6 +291,25 @@ function inferAssumptionApprovalFromBrief(brief: string): ArchetypeInput["assump
   };
 }
 
+function inferMaterialIntakeFromBrief(brief: string, materials: SourceMaterialInput[]): ArchetypeInput["materialIntake"] | undefined {
+  if (materials.length > 0) {
+    return {
+      status: "provided",
+      requestedTypes: ["SPEC", "SOP", "PRD", "screenshots", "wireframes", "design_docs", "api_docs", "route_maps", "repo_files"],
+      notes: "Source materials were supplied during lifecycle intake."
+    };
+  }
+  const normalized = brief.toLowerCase();
+  if (mentionsAny(normalized, ["no spec", "no sop", "no prd", "no screenshots", "no wireframes", "no design docs", "no api docs", "no route map", "no materials"])) {
+    return {
+      status: "none",
+      requestedTypes: ["SPEC", "SOP", "PRD", "screenshots", "wireframes", "design_docs", "api_docs", "route_maps", "repo_files"],
+      notes: "The brief explicitly says there are no source materials to attach."
+    };
+  }
+  return undefined;
+}
+
 function inferSafetyConstraintsFromBrief(brief: string): string[] {
   const constraints: string[] = [];
   if (mentionsAny(brief, ["no financial", "no compliance", "no production", "mock data only", "no claims"])) {
@@ -311,6 +334,7 @@ function initialInput(options: RunLifecycleOptions, materials: SourceMaterialInp
     dataBoundary: inferDataBoundaryFromBrief(brief),
     testExecution: inferTestExecutionFromBrief(brief),
     assumptionApproval: inferAssumptionApprovalFromBrief(brief),
+    materialIntake: inferMaterialIntakeFromBrief(brief, materials),
     safetyConstraints: inferSafetyConstraintsFromBrief(brief),
     operatingMode: "full_architecture",
     materials
@@ -564,6 +588,22 @@ function packageArtifacts(
   }));
 }
 
+function artifactTypeForPath(filePath: string): "json" | "markdown" | "html" | "text" {
+  if (filePath.endsWith(".json")) return "json";
+  if (filePath.endsWith(".md")) return "markdown";
+  if (filePath.endsWith(".html")) return "html";
+  return "text";
+}
+
+function phasePackageArtifacts(paths: string[]): Array<{ id?: string; path: string; type?: string; required?: boolean }> {
+  return paths.map((artifactPath) => ({
+    id: slugify(artifactPath.replace(/\.[^.]+$/u, ""), "artifact"),
+    path: artifactPath,
+    type: artifactTypeForPath(artifactPath),
+    required: true
+  }));
+}
+
 function generateLifecyclePackage(input: ArchetypeInput, inputFilePath: string, outDir: string, overwrite: boolean): GenerationResult {
   assertSafeGeneratedOutputDirectory(outDir, { force: overwrite });
   const contextGate = assessContextGate(input);
@@ -592,13 +632,29 @@ function generateLifecyclePackage(input: ArchetypeInput, inputFilePath: string, 
     outputDir: outDir
   });
   if (compiled.manifest.implementation_authorized !== true) {
-    const draftPackage = exportDraftPackage(compiled, outDir, { force: overwrite });
+    const stagingDir = `${outDir}.__draft-staging`;
+    exportDraftPackage(compiled, stagingDir, { force: true });
+    const phasePackage = createPhasePackage({
+      sourceOutputDir: stagingDir,
+      targetDir: outDir,
+      phaseId: "draft_review",
+      force: overwrite
+    });
+    rmSync(stagingDir, { recursive: true, force: true });
+    const artifacts = phasePackageArtifacts(phasePackage.includedArtifacts);
     const dataPlane = dataPlaneForOutput(outDir);
     const dataPlaneRun = recordCompiledPackage(dataPlane, compiled, {
       outputDir: outDir,
       sourcePath: inputFilePath
     });
-    recordExportedArtifacts(dataPlane, dataPlaneRun.run_id, outDir, draftPackage);
+    recordExportedArtifacts(dataPlane, dataPlaneRun.run_id, outDir, {
+      artifacts,
+      manifest: {
+        packageType: "draft_contract",
+        progressivePackage: true,
+        phasePackage
+      }
+    });
     return {
       packageType: "draft_contract",
       readinessScore: compiled.quality.readiness.score,
@@ -607,7 +663,7 @@ function generateLifecyclePackage(input: ArchetypeInput, inputFilePath: string, 
       blockers: compiled.quality.readiness.blockers,
       warnings: compiled.quality.readiness.warnings,
       dataPlaneRunId: dataPlaneRun.run_id,
-      artifacts: draftPackage.artifacts,
+      artifacts,
       nextQuestion: null,
       nextQuestionId: null
     };
@@ -640,10 +696,6 @@ function generateLifecyclePackage(input: ArchetypeInput, inputFilePath: string, 
   };
 }
 
-function quote(value: string): string {
-  return JSON.stringify(value);
-}
-
 function nextAction(input: {
   generation: GenerationResult;
   intakeFilePath: string;
@@ -655,9 +707,7 @@ function nextAction(input: {
       summary: "Ask exactly one clarification question, then continue with archetype run.",
       question_id: input.generation.nextQuestionId,
       question: input.generation.nextQuestion,
-      command: input.generation.nextQuestionId
-        ? `archetype run --intake ${quote(input.intakeFilePath)} --out ${quote(input.outDir)} --question-id ${quote(input.generation.nextQuestionId)} --answer ${quote("<answer>")} --force --json`
-        : null
+      command: null
     };
   }
   if (input.generation.packageType === "draft_contract") {
@@ -667,14 +717,14 @@ function nextAction(input: {
       design_system_preview: path.join(input.outDir, "draft/design-system-preview.html"),
       approval_request: path.join(input.outDir, "draft/contract-approval-request.json"),
       phase_bundle: path.join(input.outDir, "agent-context/phase-bundles/draft-review.json"),
-      command: `archetype run --intake ${quote(input.intakeFilePath)} --out ${quote(input.outDir)} --approve --approved-by ${quote("<human reviewer>")} --force --json`
+      command: null
     };
   }
   return {
     type: "implement_tests_first",
     summary: "Canonical contract is ready. Read compact phase bundles, write tests first, then implement and verify.",
     phase_bundle: path.join(input.outDir, "agent-context/phase-bundles/test-first.json"),
-    command: `archetype summarize --out ${quote(input.outDir)} --compact --json`
+    command: null
   };
 }
 
@@ -772,7 +822,15 @@ export function runLifecycle(options: RunLifecycleOptions): RunLifecycleResult {
   let input = inputExists ? readJson<ArchetypeInput>(sourceInputPath) : initialInput(options, materialIngestion.materials);
   input = {
     ...input,
-    materials: mergeMaterials(input.materials, materialIngestion.materials)
+    materials: mergeMaterials(input.materials, materialIngestion.materials),
+    materialIntake: materialIngestion.materials.length > 0
+      ? {
+        ...(input.materialIntake ?? {}),
+        status: "provided",
+        requestedTypes: ["SPEC", "SOP", "PRD", "screenshots", "wireframes", "design_docs", "api_docs", "route_maps", "repo_files"],
+        notes: input.materialIntake?.notes ?? "Source materials were supplied during lifecycle intake."
+      }
+      : input.materialIntake
   };
 
   if (options.answer !== undefined || options.questionId !== undefined) {
@@ -834,6 +892,8 @@ export function runLifecycle(options: RunLifecycleOptions): RunLifecycleResult {
     sourceGraph,
     runState
   });
+  const consumerPlanePath = path.join(outDir, "agent-context/consumer-plane.json");
+  const consumerPlane = readConsumerPlane(outDir);
 
   return {
     status: commandStatus(generation.blockers, [...generation.warnings, ...materialIngestion.warnings]),
@@ -849,6 +909,8 @@ export function runLifecycle(options: RunLifecycleOptions): RunLifecycleResult {
     dataPlaneRunId: generation.dataPlaneRunId,
     sourceGraphPath: path.join(outDir, "lifecycle/source-graph.json"),
     runStatePath: path.join(outDir, "lifecycle/run-state.json"),
+    consumerPlanePath,
+    consumerPlane,
     materialCount: materialIngestion.nodes.length,
     nextQuestion: generation.nextQuestion,
     nextQuestionId: generation.nextQuestionId,

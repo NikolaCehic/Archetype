@@ -3,6 +3,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { buildPackageSummary } from "./agent-context/packageSummary";
+import { readConsumerPlane } from "./consumer-plane";
 import { runArchetypeCompiler } from "./core/pipeline";
 import { createDraftApproval } from "./approval/draftApproval";
 import { exportPackage } from "./output/exportPackage";
@@ -18,6 +19,8 @@ import { installAgentPlugins, type InstallTarget } from "./install/pluginInstall
 import { runReleaseDoctor } from "./release/doctor";
 import { validateExportedPackage } from "./quality/validatePackage";
 import { simulateExportedPackage } from "./quality/simulatePackage";
+import { createPhasePackage } from "./progressive";
+import { submitReviewDecision, type ReviewDecisionKind } from "./review";
 import {
   DataPlaneError,
   FileDataPlane,
@@ -35,10 +38,11 @@ import {
 } from "./data-plane";
 import type { DataPlaneArtifactType, DataPlaneEventType, DataPlanePhase } from "./data-plane";
 import type { ArchetypeInput } from "./core/types";
+import type { AgentContextPhaseId } from "./agent-context/phaseBundles";
 
 type CommandStatus = "success" | "warning" | "error";
 
-const VALID_COMMANDS = new Set(["doctor", "install", "init", "run", "generate", "approve-draft", "answer-clarification", "validate", "summarize", "simulate", "write-target", "verify-target", "repair", "data-plane"]);
+const VALID_COMMANDS = new Set(["doctor", "install", "init", "run", "generate", "review", "approve-draft", "answer-clarification", "validate", "summarize", "next-action", "phase-package", "simulate", "write-target", "verify-target", "repair", "data-plane"]);
 const TEMPLATE_FILES: Record<string, string> = {
   "saas-dashboard": "saas-dashboard-intake.json",
   fintech: "fintech-intake.json",
@@ -56,10 +60,13 @@ function usage(exitCode = 1): never {
   console.log("  archetype run --intake <intake.json> --out <output-dir> --question-id <id> --answer <text> [--force]");
   console.log("  archetype run --intake <intake.json> --out <output-dir> --approve --approved-by <name> [--force]");
   console.log("  archetype generate --input <intake.json> --out <output-dir> [--force]");
+  console.log("  archetype review --draft <draft-output-dir> --input <intake.json> --decision approve|request_changes|reject --reviewer <name> [--feedback <text>] [--out <output-dir>] [--approved-input <approved-intake.json>] [--force]");
   console.log("  archetype approve-draft --draft <draft-output-dir> --input <intake.json> --out <approved-intake.json> --approved-by <name> [--force]");
   console.log("  archetype answer-clarification --input <intake.json> --out <next-intake.json> --question-id <id> --answer <text> [--answered-by <name>]");
   console.log("  archetype validate --out <output-dir>");
   console.log("  archetype summarize --out <output-dir> [--compact]");
+  console.log("  archetype next-action --out <output-dir>");
+  console.log("  archetype phase-package --out <output-dir> --phase <phase> --target <phase-output-dir> [--force]");
   console.log("  archetype simulate --out <output-dir>");
   console.log("  archetype write-target --out <output-dir> --target <target-dir> [--force]");
   console.log("  archetype verify-target --out <output-dir> --target <target-dir> [--skip-install]");
@@ -105,6 +112,10 @@ function positionalBrief(): string | undefined {
     "--approved-by",
     "--approved-input",
     "--approved-assumption-ids",
+    "--draft",
+    "--decision",
+    "--reviewer",
+    "--feedback",
     "--project-name"
   ]);
   for (let index = 0; index < args.length; index += 1) {
@@ -427,6 +438,41 @@ function approveDraftCommand(jsonMode: boolean): void {
   ]);
 }
 
+function reviewDecisionArg(value: string | undefined): ReviewDecisionKind {
+  if (value === "approve" || value === "request_changes" || value === "reject") return value;
+  throw new Error('Review --decision must be one of "approve", "request_changes", or "reject".');
+}
+
+function reviewCommand(jsonMode: boolean): void {
+  const draftDir = getArg("--draft");
+  const inputPath = getArg("--input");
+  const reviewer = getArg("--reviewer") ?? getArg("--approved-by");
+  const decision = reviewDecisionArg(getArg("--decision"));
+  if (!draftDir || !inputPath || !reviewer) usage();
+  const approvedAssumptionIds = (getArg("--approved-assumption-ids") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  const result = submitReviewDecision({
+    draftDir,
+    inputPath,
+    outputDir: getArg("--out"),
+    approvedInputPath: getArg("--approved-input"),
+    decision,
+    reviewer,
+    feedback: getArg("--feedback"),
+    approvedAssumptionIds,
+    force: hasFlag("--force") || hasFlag("--overwrite")
+  });
+  resultOutput(result, jsonMode, [
+    `Archetype review decision: ${result.decision}`,
+    `Package type: ${result.packageType}`,
+    `Output: ${result.outputDir}`,
+    `Implementation authorized: ${result.implementationAuthorized}`,
+    `Next action: ${result.nextAction}`
+  ]);
+}
+
 function answerClarificationCommand(jsonMode: boolean): void {
   const inputPath = getArg("--input");
   const outPath = getArg("--out");
@@ -495,7 +541,6 @@ function runLifecycleCommand(jsonMode: boolean): void {
     `Next action: ${result.nextAction.summary}`,
     ...(result.nextQuestion ? [`Question: ${result.nextQuestion}`] : []),
     ...(result.designSystemPreviewPath ? [`Design-system preview: ${result.designSystemPreviewPath}`] : []),
-    ...(result.nextAction.command ? [`Continue: ${result.nextAction.command}`] : []),
     ...(result.blockers.length > 0 ? ["Blockers:", ...result.blockers.map((blocker) => `- ${blocker}`)] : []),
     ...(result.warnings.length > 0 ? ["Warnings:", ...result.warnings.map((warning) => `- ${warning}`)] : [])
   ]);
@@ -659,6 +704,11 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (command === "review") {
+    reviewCommand(jsonMode);
+    return;
+  }
+
   if (command === "validate") {
     const outDir = getArg("--out");
     if (!outDir) usage();
@@ -679,6 +729,27 @@ async function main(): Promise<void> {
     const result = buildPackageSummary(path.resolve(outDir), hasFlag("--compact") ? "compact" : "compat");
     writeJson(result);
     if (result.status === "error") process.exit(1);
+    return;
+  }
+
+  if (command === "next-action") {
+    const outDir = getArg("--out");
+    if (!outDir) usage();
+    writeJson(readConsumerPlane(path.resolve(outDir)));
+    return;
+  }
+
+  if (command === "phase-package") {
+    const outDir = getArg("--out");
+    const targetDir = getArg("--target");
+    const phase = getArg("--phase") as AgentContextPhaseId | undefined;
+    if (!outDir || !targetDir || !phase) usage();
+    writeJson(createPhasePackage({
+      sourceOutputDir: path.resolve(outDir),
+      targetDir: path.resolve(targetDir),
+      phaseId: phase,
+      force: hasFlag("--force")
+    }));
     return;
   }
 

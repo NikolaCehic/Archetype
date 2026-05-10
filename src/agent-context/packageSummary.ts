@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import type { ConsumerPlaneReport } from "../consumer-plane";
 
 export type PackageSummaryMode = "compact" | "compat";
 export type PackageSummaryStatus = "success" | "warning" | "error";
@@ -12,6 +13,12 @@ interface TopManifest {
   readyForFrontendAgent?: boolean;
   blockers?: string[];
   warnings?: string[];
+}
+
+interface PhasePackageManifest {
+  packageType?: "phase_package";
+  sourcePackageKind?: string;
+  phaseId?: string;
 }
 
 interface ProductModel {
@@ -56,6 +63,14 @@ export interface PackageSummary extends Record<string, unknown> {
   blockers: string[];
   warnings: string[];
   compactEntrypoints: string[];
+  consumerPlane: {
+    path: string;
+    currentPhase?: string;
+    nextAction?: string;
+    userMessage?: string;
+    maxDefaultArtifactBytes?: number;
+    firstReads: string[];
+  };
   phaseBundles: Array<{
     phaseId?: string;
     status?: string;
@@ -84,6 +99,25 @@ function readAgentContextPhaseIndex(outputDir: string): AgentContextPhaseIndex {
   return readJsonFile<AgentContextPhaseIndex>(phaseIndexPath);
 }
 
+function readConsumerPlaneSummary(outputDir: string): PackageSummary["consumerPlane"] {
+  const consumerPlanePath = path.join(outputDir, "agent-context", "consumer-plane.json");
+  if (!existsSync(consumerPlanePath)) {
+    return {
+      path: "agent-context/consumer-plane.json",
+      firstReads: []
+    };
+  }
+  const consumerPlane = readJsonFile<ConsumerPlaneReport>(consumerPlanePath);
+  return {
+    path: "agent-context/consumer-plane.json",
+    currentPhase: consumerPlane.current_phase.phase_id,
+    nextAction: consumerPlane.next_action.type,
+    userMessage: consumerPlane.user_experience.say_this_now,
+    maxDefaultArtifactBytes: consumerPlane.token_budget.default_max_artifact_bytes,
+    firstReads: consumerPlane.read_plan.first_reads
+  };
+}
+
 function legacyEntrypoints(isDraft: boolean): string[] {
   return [
     "lifecycle/start-request.json",
@@ -103,6 +137,9 @@ function legacyEntrypoints(isDraft: boolean): string[] {
       "draft/product-model.draft.json",
       "draft/experience-architecture.draft.json",
       "draft/design-system.draft.json",
+      "draft/design-directions.json",
+      "draft/design-quality-gate.json",
+      "draft/design-craft-rubric.md",
       "draft/design-system-preview.html",
       "draft/design-system-review.md",
       "draft/frontend-contract.draft.json",
@@ -119,6 +156,9 @@ function legacyEntrypoints(isDraft: boolean): string[] {
       "lifecycle/contract-state.json",
       "lifecycle/execution-state.json",
       "lifecycle/final-readiness-report.md",
+      "draft/design-directions.json",
+      "draft/design-quality-gate.json",
+      "draft/design-craft-rubric.md",
       "draft/design-system-preview.html",
       "draft/design-system-review.md",
       "spec/archetype-spec.md",
@@ -148,7 +188,20 @@ function legacyEntrypoints(isDraft: boolean): string[] {
 }
 
 export function buildPackageSummary(outputDir: string, mode: PackageSummaryMode = "compact"): PackageSummary {
-  const topManifest = readJsonFile<TopManifest>(path.join(outputDir, "manifest.json"));
+  const manifestPath = path.join(outputDir, "manifest.json");
+  const phasePackagePath = path.join(outputDir, "phase-package.json");
+  const phaseManifest = !existsSync(manifestPath) && existsSync(phasePackagePath) ? readJsonFile<PhasePackageManifest>(phasePackagePath) : null;
+  const topManifest = existsSync(manifestPath)
+    ? readJsonFile<TopManifest>(manifestPath)
+    : {
+      packageType: phaseManifest?.sourcePackageKind === "draft_contract" ? "draft_contract" : "draft_contract",
+      productName: undefined,
+      readinessScore: undefined,
+      readinessTier: "ready_for_contract_approval",
+      readyForFrontendAgent: false,
+      blockers: [],
+      warnings: []
+    };
   const isClarification = topManifest.packageType === "clarification";
   const isDraft = topManifest.packageType === "draft_contract";
   const productModel = isDraft
@@ -182,7 +235,9 @@ export function buildPackageSummary(outputDir: string, mode: PackageSummaryMode 
   const routes = routeMap.routes ?? [];
   const screens = screenInventory.screens ?? [];
   const requiredStates = [...new Set(screens.flatMap((screen) => screen.required_states ?? []))].sort();
+  const consumerPlane = readConsumerPlaneSummary(outputDir);
   const compactEntrypoints = [
+    "agent-context/consumer-plane.json",
     "agent-context/context-summary.json",
     "agent-context/phase-bundles/index.json"
   ];
@@ -209,12 +264,13 @@ export function buildPackageSummary(outputDir: string, mode: PackageSummaryMode 
     blockers,
     warnings,
     compactEntrypoints,
+    consumerPlane,
     phaseBundles,
     boundedReadPolicy: {
-      startHere: compactEntrypoints[0],
-      maxDefaultArtifactBytes: 12000,
+      startHere: consumerPlane.path,
+      maxDefaultArtifactBytes: consumerPlane.maxDefaultArtifactBytes ?? 6000,
       readFullArtifactsOnlyWhen: [
-        "The compact phase bundle lists the artifact as a required read.",
+        "The consumer plane and compact phase bundle list the artifact as a required read.",
         "A verifier needs exact source text.",
         "A blocker, warning, or repair item needs source evidence."
       ]

@@ -56,6 +56,9 @@ for (const relativePath of [
   "draft/product-model.draft.json",
   "draft/experience-architecture.draft.json",
   "draft/design-system.draft.json",
+  "draft/design-directions.json",
+  "draft/design-quality-gate.json",
+  "draft/design-craft-rubric.md",
   "draft/design-system-preview.html",
   "draft/design-system-review.md",
   "draft/frontend-contract.draft.json",
@@ -94,6 +97,9 @@ assert(contractDraftState.forbidden.includes("Produce implementation-ready instr
 const productDraft = readJson(path.join(draftOutputDir, "draft", "product-model.draft.json"));
 const experienceDraft = readJson(path.join(draftOutputDir, "draft", "experience-architecture.draft.json"));
 const designDraft = readJson(path.join(draftOutputDir, "draft", "design-system.draft.json"));
+const designDirections = readJson(path.join(draftOutputDir, "draft", "design-directions.json"));
+const designQualityGate = readJson(path.join(draftOutputDir, "draft", "design-quality-gate.json"));
+const designCraftRubric = readFileSync(path.join(draftOutputDir, "draft", "design-craft-rubric.md"), "utf8");
 const designPreview = readFileSync(path.join(draftOutputDir, "draft", "design-system-preview.html"), "utf8");
 const designReview = readFileSync(path.join(draftOutputDir, "draft", "design-system-review.md"), "utf8");
 const frontendDraft = readJson(path.join(draftOutputDir, "draft", "frontend-contract.draft.json"));
@@ -105,6 +111,14 @@ assert(productDraft.unconfirmed_items_default_status === "candidate", "product d
 assert(experienceDraft.routes.every((route) => ["confirmed", "candidate", "missing", "conflicted", "blocked"].includes(route.draft_status)), "routes must expose draft statuses.");
 assert(experienceDraft.routes.some((route) => route.acceptance_state === "candidate_until_contract_approval"), "draft routes must include candidate acceptance state.");
 assert(designDraft.tokens.draft_status === "candidate_until_contract_approval", "draft tokens must remain candidate until approval.");
+assert(Array.isArray(designDirections) && designDirections.length >= 3, "draft design directions must provide at least three non-generic options.");
+assert(designDirections.every((direction) => direction.source_signature && direction.source_strength && Array.isArray(direction.derived_from)), "draft design directions must expose source-bound design synthesis metadata.");
+assert(!designDirections.some((direction) => ["Graphite Command Surface", "Editorial Workbench", "Instrument Panel"].includes(String(direction.name))), "draft design directions must not reuse fixed demo directions.");
+assert(designQualityGate.status === "pass", "draft design quality gate must pass before review.");
+assert(designQualityGate.checks.some((check) => check.id === "DQ-08" && check.status === "pass"), "design quality gate must prove directions are source-bound.");
+assert(designQualityGate.checks.some((check) => check.id === "DQ-09" && check.status === "pass"), "design quality gate must reject reusable presets.");
+assert(designQualityGate.implementation_blocked_until_human_review === true, "design quality gate must block implementation until human review.");
+assert(designCraftRubric.includes("Default blue-gray SaaS"), "design craft rubric must reject default blue-gray SaaS.");
 assert(designPreview.includes("data-source-artifact=\"draft/design-system.draft.json\""), "design preview must trace to design-system draft JSON.");
 assert(designPreview.includes("not app code"), "design preview must state it is not app code.");
 assert(designPreview.includes("Colors") && designPreview.includes("Typography") && designPreview.includes("Components") && designPreview.includes("Component States"), "design preview must expose reviewable design system sections.");

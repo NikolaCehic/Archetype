@@ -684,6 +684,103 @@ function validateDesignSystemPreview(input: {
   }
 }
 
+function validateDesignQualityGate(input: {
+  directions: Array<{
+    id?: string;
+    name?: string;
+    thesis?: string;
+    source_signature?: string;
+    source_strength?: string;
+    derived_from?: unknown[];
+    material_alignment?: unknown[];
+    route_screen_alignment?: unknown[];
+    evidence_refs?: unknown[];
+    rejection_tests?: unknown[];
+  }>;
+  gate: {
+    source_scope?: string;
+    status?: string;
+    selected_direction_id?: string;
+    required_before_implementation?: boolean;
+    implementation_blocked_until_human_review?: boolean;
+    checks?: Array<{ id?: string; status?: string; label?: string }>;
+    anti_slop_rules?: string[];
+    required_review_surfaces?: string[];
+    shadcn_tailwind_policy?: { shadcn_required?: boolean; tailwind_required?: boolean; css_variable_tokens_required?: boolean };
+    playwright_preview_requirement?: { required?: boolean; viewports?: string[]; evidence_artifacts?: string[] };
+    blockers?: unknown[];
+  };
+  draftHtml?: string;
+  rubricMarkdown?: string;
+  specialistReview?: { design_quality_gate?: { status?: string; checks?: unknown[]; anti_slop_rules?: unknown[] } };
+  blockers: string[];
+}): void {
+  const directionIds = input.directions.map((direction) => direction.id).filter(Boolean);
+  const forbiddenPresetIds = ["direction-01-graphite-command", "direction-02-editorial-workbench", "direction-03-instrument-panel"];
+  const forbiddenPresetNames = ["Graphite Command Surface", "Editorial Workbench", "Instrument Panel"];
+  if (input.directions.length < 3) input.blockers.push("Design directions must expose at least three differentiated options.");
+  for (const direction of input.directions) {
+    if (!direction.id || !direction.name || !direction.thesis || !direction.source_signature || !direction.source_strength || !Array.isArray(direction.derived_from) || direction.derived_from.length === 0 || !Array.isArray(direction.material_alignment) || direction.material_alignment.length === 0 || !Array.isArray(direction.route_screen_alignment) || direction.route_screen_alignment.length === 0 || !Array.isArray(direction.rejection_tests) || direction.rejection_tests.length === 0) {
+      input.blockers.push("Every design direction must include id, name, thesis, source signature, source strength, evidence refs, material alignment, route/screen alignment, and rejection tests.");
+      break;
+    }
+    if (forbiddenPresetIds.includes(direction.id) || forbiddenPresetNames.includes(direction.name)) {
+      input.blockers.push("Design directions must not reuse Archetype demo preset ids or names.");
+      break;
+    }
+    if (!direction.derived_from.includes("source_user_context")) {
+      input.blockers.push("Every design direction must derive from source_user_context.");
+      break;
+    }
+  }
+  if (input.gate.source_scope !== "design-quality-gate") input.blockers.push("Design quality gate must identify source_scope design-quality-gate.");
+  if (input.gate.status !== "pass") input.blockers.push("Design quality gate must pass before export.");
+  if (!input.gate.selected_direction_id || !directionIds.includes(input.gate.selected_direction_id)) {
+    input.blockers.push("Design quality gate selected direction must resolve to a generated direction option.");
+  }
+  if (input.gate.required_before_implementation !== true || input.gate.implementation_blocked_until_human_review !== true) {
+    input.blockers.push("Design quality gate must block implementation until human design review.");
+  }
+  const checks = input.gate.checks ?? [];
+  for (const requiredCheck of ["DQ-01", "DQ-02", "DQ-03", "DQ-04", "DQ-05", "DQ-06", "DQ-07", "DQ-08", "DQ-09"]) {
+    const check = checks.find((item) => item.id === requiredCheck);
+    if (!check || check.status !== "pass" || !check.label) input.blockers.push(`Design quality gate missing passing check ${requiredCheck}.`);
+  }
+  for (const rule of ["No default blue-gray SaaS palette", "No generic card-grid dashboard", "No untouched shadcn examples"]) {
+    if (!input.gate.anti_slop_rules?.some((item) => item.includes(rule))) {
+      input.blockers.push(`Design quality gate missing anti-slop rule: ${rule}`);
+    }
+  }
+  for (const surface of ["draft/design-system-preview.html", "draft/design-directions.json", "draft/design-quality-gate.json"]) {
+    if (!input.gate.required_review_surfaces?.includes(surface)) input.blockers.push(`Design quality gate missing required review surface ${surface}.`);
+  }
+  if (input.gate.shadcn_tailwind_policy?.shadcn_required !== true || input.gate.shadcn_tailwind_policy.tailwind_required !== true || input.gate.shadcn_tailwind_policy.css_variable_tokens_required !== true) {
+    input.blockers.push("Design quality gate must require shadcn, Tailwind, and CSS variable tokens.");
+  }
+  if (input.gate.playwright_preview_requirement?.required !== true || (input.gate.playwright_preview_requirement.viewports ?? []).length < 3) {
+    input.blockers.push("Design quality gate must require Playwright preview evidence across mobile, tablet, and desktop.");
+  }
+  if (input.gate.blockers && input.gate.blockers.length > 0) input.blockers.push("Design quality gate contains blockers.");
+  if (input.draftHtml) {
+    for (const expected of ["Design Directions", "Design Quality Gate", "Anti-Slop Rules"]) {
+      if (!input.draftHtml.includes(expected)) input.blockers.push(`Draft design preview missing ${expected}.`);
+    }
+  }
+  if (input.rubricMarkdown) {
+    for (const expected of ["Visual Craft Rubric", "Default blue-gray SaaS", "shadcn defaults", "Source signature", "Source Bindings"]) {
+      if (!input.rubricMarkdown.includes(expected)) input.blockers.push(`Design craft rubric missing ${expected}.`);
+    }
+  }
+  if (input.specialistReview) {
+    if (input.specialistReview.design_quality_gate?.status !== "pass") {
+      input.blockers.push("Specialist review must include a passing design quality gate.");
+    }
+    if (!Array.isArray(input.specialistReview.design_quality_gate?.checks) || !Array.isArray(input.specialistReview.design_quality_gate?.anti_slop_rules)) {
+      input.blockers.push("Specialist review design quality gate must expose checks and anti-slop rules.");
+    }
+  }
+}
+
 function validateDraftPackage(outputDir: string): PackageValidationResult {
   const blockers: string[] = [];
   const warnings: string[] = [];
@@ -739,7 +836,60 @@ function validateDraftPackage(outputDir: string): PackageValidationResult {
     source_scope?: string;
     tokens?: { draft_status?: string };
     components?: Array<{ draft_status?: string; acceptance_state?: string }>;
+    selected_direction_id?: string;
+    design_directions?: {
+      options?: Array<{
+        id?: string;
+        name?: string;
+        thesis?: string;
+        source_signature?: string;
+        source_strength?: string;
+        derived_from?: unknown[];
+        material_alignment?: unknown[];
+        route_screen_alignment?: unknown[];
+        evidence_refs?: unknown[];
+        rejection_tests?: unknown[];
+      }>;
+    };
+    design_quality_gate?: {
+      source_scope?: string;
+      status?: string;
+      selected_direction_id?: string;
+      required_before_implementation?: boolean;
+      implementation_blocked_until_human_review?: boolean;
+      checks?: Array<{ id?: string; status?: string; label?: string }>;
+      anti_slop_rules?: string[];
+      required_review_surfaces?: string[];
+      shadcn_tailwind_policy?: { shadcn_required?: boolean; tailwind_required?: boolean; css_variable_tokens_required?: boolean };
+      playwright_preview_requirement?: { required?: boolean; viewports?: string[]; evidence_artifacts?: string[] };
+      blockers?: unknown[];
+    };
   }>(path.join(outputDir, "draft", "design-system.draft.json"), blockers, "Design system draft");
+  const designDirections = readJsonSafe<Array<{
+    id?: string;
+    name?: string;
+    thesis?: string;
+    source_signature?: string;
+    source_strength?: string;
+    derived_from?: unknown[];
+    material_alignment?: unknown[];
+    route_screen_alignment?: unknown[];
+    evidence_refs?: unknown[];
+    rejection_tests?: unknown[];
+  }>>(path.join(outputDir, "draft", "design-directions.json"), blockers, "Design directions");
+  const designQualityGate = readJsonSafe<{
+    source_scope?: string;
+    status?: string;
+    selected_direction_id?: string;
+    required_before_implementation?: boolean;
+    implementation_blocked_until_human_review?: boolean;
+    checks?: Array<{ id?: string; status?: string; label?: string }>;
+    anti_slop_rules?: string[];
+    required_review_surfaces?: string[];
+    shadcn_tailwind_policy?: { shadcn_required?: boolean; tailwind_required?: boolean; css_variable_tokens_required?: boolean };
+    playwright_preview_requirement?: { required?: boolean; viewports?: string[]; evidence_artifacts?: string[] };
+    blockers?: unknown[];
+  }>(path.join(outputDir, "draft", "design-quality-gate.json"), blockers, "Design quality gate");
   const frontendDraft = readJsonSafe<{
     source_scope?: string;
     implementation_ready?: boolean;
@@ -761,6 +911,7 @@ function validateDraftPackage(outputDir: string): PackageValidationResult {
       checks?: Array<{ skill?: string; owner?: string; blocker_list?: unknown[]; output_artifact?: string; status?: string }>;
       blockers?: unknown[];
     };
+    design_quality_gate?: { status?: string; checks?: unknown[]; anti_slop_rules?: unknown[] };
   }>(path.join(outputDir, "draft", "specialist-review.json"), blockers, "Specialist review");
   const frontendPracticeSkills = readJsonSafe<{
     source_scope?: string;
@@ -770,6 +921,15 @@ function validateDraftPackage(outputDir: string): PackageValidationResult {
     practices?: Array<{ skill?: string; owner?: string; blocker_list?: unknown[]; output_artifact?: string; status?: string }>;
     blockers?: unknown[];
   }>(path.join(outputDir, "governance", "frontend-practice-skills.json"), blockers, "Frontend practice skills");
+  const agentControlPlane = readJsonSafe<{
+    source_scope?: string;
+    status?: string;
+    package_type?: string;
+    lifecycle_authority?: { host_agent_may_override?: boolean };
+    gates?: Array<{ id?: string; status?: string; blockers?: unknown[] }>;
+    route_proposals?: unknown[];
+    specialist_gates?: unknown[];
+  }>(path.join(outputDir, "governance", "agent-control-plane.json"), blockers, "Agent control plane");
   const forbiddenBehaviors = readJsonSafe<{
     source_scope?: string;
     rule?: string;
@@ -820,7 +980,7 @@ function validateDraftPackage(outputDir: string): PackageValidationResult {
     forbidden?: string[];
   }>(path.join(outputDir, "draft", "contract-approval-request.json"), blockers, "Contract approval request");
 
-  if (!manifest || !internalManifest || !readiness || !contextCompletion || !contractState || !productDraft || !experienceDraft || !designDraft || !frontendDraft || !specialistReview || !frontendPracticeSkills || !forbiddenBehaviors || !convergenceStandard || !implementationPhases || !approvalRequest) {
+  if (!manifest || !internalManifest || !readiness || !contextCompletion || !contractState || !productDraft || !experienceDraft || !designDraft || !designDirections || !designQualityGate || !frontendDraft || !specialistReview || !frontendPracticeSkills || !agentControlPlane || !forbiddenBehaviors || !convergenceStandard || !implementationPhases || !approvalRequest) {
     return { status: "fail", outputDir, checkedFiles: requiredFiles.length, blockers, warnings };
   }
 
@@ -874,6 +1034,17 @@ function validateDraftPackage(outputDir: string): PackageValidationResult {
     reviewMarkdown: readFileSync(path.join(outputDir, "draft", "design-system-review.md"), "utf8"),
     blockers
   });
+  validateDesignQualityGate({
+    directions: designDirections,
+    gate: designQualityGate,
+    draftHtml: readFileSync(path.join(outputDir, "draft", "design-system-preview.html"), "utf8"),
+    rubricMarkdown: readFileSync(path.join(outputDir, "draft", "design-craft-rubric.md"), "utf8"),
+    specialistReview,
+    blockers
+  });
+  if (designDraft.selected_direction_id !== designQualityGate.selected_direction_id) {
+    blockers.push("Design draft selected direction must match the design quality gate.");
+  }
   if (frontendDraft.source_scope !== "HL-06" || frontendDraft.implementation_ready !== false || !String(frontendDraft.agent_instruction_policy ?? "").includes("Do not tell an implementation agent")) {
     blockers.push("Frontend contract draft must not be implementation-ready or tell the agent to write code.");
   }
@@ -887,6 +1058,18 @@ function validateDraftPackage(outputDir: string): PackageValidationResult {
     blockers.push("Specialist review must expose blockers, warnings, and recommendations.");
   }
   validateFrontendPracticeSkills({ frontendPracticeSkills, specialistReview, blockers });
+  if (agentControlPlane.source_scope !== "agent-control-plane" || agentControlPlane.package_type !== "draft_contract") {
+    blockers.push("Draft package must include a draft_contract agent control plane.");
+  }
+  if (agentControlPlane.lifecycle_authority?.host_agent_may_override !== false) {
+    blockers.push("Agent control plane must forbid host-agent override.");
+  }
+  for (const gateId of ["ACP-01", "ACP-02", "ACP-03", "ACP-04", "ACP-07", "ACP-08"]) {
+    if (!agentControlPlane.gates?.some((gate) => gate.id === gateId)) blockers.push(`Agent control plane missing ${gateId}.`);
+  }
+  if (!Array.isArray(agentControlPlane.route_proposals) || !Array.isArray(agentControlPlane.specialist_gates)) {
+    blockers.push("Agent control plane must expose route proposals and specialist gates.");
+  }
   validateForbiddenBehaviorAcceptance({
     forbiddenBehaviors,
     forbiddenBehaviorsMarkdown: readFileSync(path.join(outputDir, "governance", "forbidden-behaviors.md"), "utf8"),
@@ -1004,6 +1187,11 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   const convergenceStandardMarkdownPath = path.join(outputDir, "governance", "convergence-standard.md");
   const frontendPracticeSkillsPath = path.join(outputDir, "governance", "frontend-practice-skills.json");
   const frontendPracticeSkillsMarkdownPath = path.join(outputDir, "governance", "frontend-practice-skills.md");
+  const agentControlPlanePath = path.join(outputDir, "governance", "agent-control-plane.json");
+  const agentControlPlaneMarkdownPath = path.join(outputDir, "governance", "agent-control-plane.md");
+  const designDirectionsPath = path.join(outputDir, "draft", "design-directions.json");
+  const designQualityGatePath = path.join(outputDir, "draft", "design-quality-gate.json");
+  const designCraftRubricPath = path.join(outputDir, "draft", "design-craft-rubric.md");
   const designSystemPreviewPath = path.join(outputDir, "draft", "design-system-preview.html");
   const designSystemReviewPath = path.join(outputDir, "draft", "design-system-review.md");
   const specialistReviewPath = path.join(outputDir, "draft", "specialist-review.json");
@@ -1018,6 +1206,8 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   const userFlowsPath = path.join(outputDir, "experience", "user-flows.json");
   const tokensPath = path.join(outputDir, "design-system", "tokens.json");
   const componentContractsPath = path.join(outputDir, "design-system", "component-contracts.json");
+  const canonicalDesignQualityGatePath = path.join(outputDir, "04-design-system", "design-quality-gate.json");
+  const canonicalShadcnIntegrationPath = path.join(outputDir, "04-design-system", "shadcn-integration.json");
   const screenInventoryPath = path.join(outputDir, "screens", "screen-inventory.json");
   const screenSpecsPath = path.join(outputDir, "screens", "screen-specs.json");
   const frontendAgentInstructionsPath = path.join(outputDir, "frontend-agent-contract", "frontend-agent-instructions.md");
@@ -1088,6 +1278,11 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   if (!existsSync(convergenceStandardMarkdownPath)) blockers.push("Missing governance/convergence-standard.md.");
   if (!existsSync(frontendPracticeSkillsPath)) blockers.push("Missing governance/frontend-practice-skills.json.");
   if (!existsSync(frontendPracticeSkillsMarkdownPath)) blockers.push("Missing governance/frontend-practice-skills.md.");
+  if (!existsSync(agentControlPlanePath)) blockers.push("Missing governance/agent-control-plane.json.");
+  if (!existsSync(agentControlPlaneMarkdownPath)) blockers.push("Missing governance/agent-control-plane.md.");
+  if (!existsSync(designDirectionsPath)) blockers.push("Missing draft/design-directions.json.");
+  if (!existsSync(designQualityGatePath)) blockers.push("Missing draft/design-quality-gate.json.");
+  if (!existsSync(designCraftRubricPath)) blockers.push("Missing draft/design-craft-rubric.md.");
   if (!existsSync(designSystemPreviewPath)) blockers.push("Missing draft/design-system-preview.html.");
   if (!existsSync(designSystemReviewPath)) blockers.push("Missing draft/design-system-review.md.");
   for (const skill of REQUIRED_FRONTEND_PRACTICE_SKILLS) {
@@ -1105,6 +1300,8 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   if (!existsSync(userFlowsPath)) blockers.push("Missing experience/user-flows.json.");
   if (!existsSync(tokensPath)) blockers.push("Missing design-system/tokens.json.");
   if (!existsSync(componentContractsPath)) blockers.push("Missing design-system/component-contracts.json.");
+  if (!existsSync(canonicalDesignQualityGatePath)) blockers.push("Missing 04-design-system/design-quality-gate.json.");
+  if (!existsSync(canonicalShadcnIntegrationPath)) blockers.push("Missing 04-design-system/shadcn-integration.json.");
   if (!existsSync(screenInventoryPath)) blockers.push("Missing screens/screen-inventory.json.");
   if (!existsSync(screenSpecsPath)) blockers.push("Missing screens/screen-specs.json.");
   if (!existsSync(frontendAgentInstructionsPath)) blockers.push("Missing frontend-agent-contract/frontend-agent-instructions.md.");
@@ -1155,6 +1352,31 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   const screenInventory = readJsonSafe<{ screens?: unknown[] }>(screenInventoryPath, blockers, "Screen inventory");
   const screenSpecs = readJsonSafe<{ screens?: unknown[] }>(screenSpecsPath, blockers, "Screen specs");
   const componentContracts = readJsonSafe<{ contracts?: unknown[] }>(componentContractsPath, blockers, "Component contracts");
+  const designDirections = readJsonSafe<Array<{
+    id?: string;
+    name?: string;
+    thesis?: string;
+    source_signature?: string;
+    source_strength?: string;
+    derived_from?: unknown[];
+    material_alignment?: unknown[];
+    route_screen_alignment?: unknown[];
+    evidence_refs?: unknown[];
+    rejection_tests?: unknown[];
+  }>>(designDirectionsPath, blockers, "Design directions");
+  const designQualityGate = readJsonSafe<{
+    source_scope?: string;
+    status?: string;
+    selected_direction_id?: string;
+    required_before_implementation?: boolean;
+    implementation_blocked_until_human_review?: boolean;
+    checks?: Array<{ id?: string; status?: string; label?: string }>;
+    anti_slop_rules?: string[];
+    required_review_surfaces?: string[];
+    shadcn_tailwind_policy?: { shadcn_required?: boolean; tailwind_required?: boolean; css_variable_tokens_required?: boolean };
+    playwright_preview_requirement?: { required?: boolean; viewports?: string[]; evidence_artifacts?: string[] };
+    blockers?: unknown[];
+  }>(designQualityGatePath, blockers, "Design quality gate");
   const implementationRules = readJsonSafe<Record<string, unknown>>(implementationRulesPath, blockers, "Implementation rules");
   const canonicalSpec = readJsonSafe<{
     source_of_truth?: boolean;
@@ -1468,6 +1690,15 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
     practices?: Array<{ skill?: string; owner?: string; blocker_list?: unknown[]; output_artifact?: string; status?: string }>;
     blockers?: unknown[];
   }>(frontendPracticeSkillsPath, blockers, "Frontend practice skills");
+  const agentControlPlane = readJsonSafe<{
+    source_scope?: string;
+    status?: string;
+    package_type?: string;
+    lifecycle_authority?: { host_agent_may_override?: boolean };
+    gates?: Array<{ id?: string; status?: string; blockers?: unknown[] }>;
+    route_proposals?: unknown[];
+    specialist_gates?: unknown[];
+  }>(agentControlPlanePath, blockers, "Agent control plane");
   const specialistReview = readJsonSafe<{
     frontend_practice_gate?: {
       source_scope?: string;
@@ -1477,9 +1708,10 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
       checks?: Array<{ skill?: string; owner?: string; blocker_list?: unknown[]; output_artifact?: string; status?: string }>;
       blockers?: unknown[];
     };
+    design_quality_gate?: { status?: string; checks?: unknown[]; anti_slop_rules?: unknown[] };
   }>(specialistReviewPath, blockers, "Specialist review");
 
-  if (!topManifest || !manifest || !readiness || !schemaReport || !dsag || !routeMap || !screenInventory || !screenSpecs || !componentContracts || !implementationRules || !canonicalSpec || !testFirstContract || !testQualityStandard || !approvalDecision || !playwrightContract || !playwrightEvidence || !qaScenarioCatalog || !qaPlaywrightResults || !qaMalformedDataResults || !repairContract || !repairTaskQueue || !driftReport || !targetExecutionReport || !lifecycleStateMachine || !lifecycleExecutionState || !startRequest || !contextCompletion || !contextMatrix || !clarificationTurn || !clarificationState || !readinessTiers || !implementationPhases || !nonNegotiablePrinciples || !evidenceDecisionModel || !forbiddenBehaviors || !convergenceStandard || !frontendPracticeSkills || !specialistReview) {
+  if (!topManifest || !manifest || !readiness || !schemaReport || !dsag || !routeMap || !screenInventory || !screenSpecs || !componentContracts || !designDirections || !designQualityGate || !implementationRules || !canonicalSpec || !testFirstContract || !testQualityStandard || !approvalDecision || !playwrightContract || !playwrightEvidence || !qaScenarioCatalog || !qaPlaywrightResults || !qaMalformedDataResults || !repairContract || !repairTaskQueue || !driftReport || !targetExecutionReport || !lifecycleStateMachine || !lifecycleExecutionState || !startRequest || !contextCompletion || !contextMatrix || !clarificationTurn || !clarificationState || !readinessTiers || !implementationPhases || !nonNegotiablePrinciples || !evidenceDecisionModel || !forbiddenBehaviors || !convergenceStandard || !frontendPracticeSkills || !agentControlPlane || !specialistReview) {
     return { status: "fail", outputDir, checkedFiles: 0, blockers, warnings };
   }
 
@@ -1498,8 +1730,19 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   if (!Array.isArray(componentContracts.contracts) || componentContracts.contracts.length === 0) {
     blockers.push("Component contracts have no parseable contracts.");
   }
+  validateDesignQualityGate({
+    directions: designDirections,
+    gate: designQualityGate,
+    draftHtml: readFileSync(designSystemPreviewPath, "utf8"),
+    rubricMarkdown: readFileSync(designCraftRubricPath, "utf8"),
+    specialistReview,
+    blockers
+  });
   if (!implementationRules.routing || !implementationRules.dataContracts || !implementationRules.actionContracts || !implementationRules.formContracts) {
     blockers.push("Implementation rules must expose routing, data, action, and form contracts.");
+  }
+  if (!implementationRules.designQualityGate || !implementationRules.shadcnTailwindContract) {
+    blockers.push("Implementation rules must expose design quality and shadcn/Tailwind contracts.");
   }
   if (canonicalSpec.source_of_truth !== true) {
     blockers.push("Canonical spec must declare source_of_truth: true.");
@@ -1842,7 +2085,7 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
     blockers.push("Context matrix must expose decisions.");
   }
   const allowedReadinessTiers = ["ready_for_clarification", "ready_for_contract_draft", "ready_for_contract_approval", "ready_for_test_authoring", "ready_for_implementation", "ready_for_qa", "ready_for_completion"];
-  const requiredContextDimensions = ["product_outcome", "primary_users", "must_have_flows", "target_stack", "data_auth_boundary", "design_direction", "test_execution_permission", "assumption_approval", "safety_constraints"];
+  const requiredContextDimensions = ["product_outcome", "primary_users", "source_materials_review", "must_have_flows", "target_stack", "data_auth_boundary", "design_direction", "test_execution_permission", "assumption_approval", "safety_constraints"];
   if (contextMatrix.source_scope !== undefined && contextMatrix.source_scope !== "HL-03") {
     blockers.push("Context matrix must identify source_scope HL-03.");
   }
@@ -2024,6 +2267,19 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
     blockers.push("Implementation-authorized package contains non-canonical evidence refs in canonical surfaces.");
   }
   validateFrontendPracticeSkills({ frontendPracticeSkills, specialistReview, blockers });
+  if (agentControlPlane.source_scope !== "agent-control-plane" || agentControlPlane.package_type !== "canonical_contract") {
+    blockers.push("Canonical package must include a canonical_contract agent control plane.");
+  }
+  if (agentControlPlane.lifecycle_authority?.host_agent_may_override !== false) {
+    blockers.push("Agent control plane must forbid host-agent override.");
+  }
+  for (const gateId of ["ACP-01", "ACP-02", "ACP-04", "ACP-05", "ACP-06", "ACP-07", "ACP-08"]) {
+    if (!agentControlPlane.gates?.some((gate) => gate.id === gateId)) blockers.push(`Agent control plane missing ${gateId}.`);
+  }
+  const canonicalParityGate = agentControlPlane.gates?.find((gate) => gate.id === "ACP-05");
+  if (manifest.implementation_authorized === true && canonicalParityGate?.status !== "pass") {
+    blockers.push("Implementation-authorized package must pass the approved-draft to canonical parity gate.");
+  }
   if (topManifest.readyForFrontendAgent === true && topManifest.implementationAuthorized !== true) {
     blockers.push("Top-level manifest cannot mark frontend-agent readiness without implementation authorization.");
   }

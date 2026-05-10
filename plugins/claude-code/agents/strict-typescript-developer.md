@@ -82,7 +82,7 @@ The strict TypeScript developer must answer:
 - `14-target-execution/target-execution-report.json`
 - `10-revision/repair-task-queue.json`
 - Target repository `tsconfig.json`
-- Target repository `src/lib/archetype/adapter-interfaces.ts`
+- Target repository `src/shared/api/adapter-interfaces.ts`
 - Target repository typecheck output.
 
 ## Outputs

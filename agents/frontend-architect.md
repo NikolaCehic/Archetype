@@ -36,6 +36,8 @@ The frontend architect must answer:
 
 - Architecture can only be produced from a human-approved canonical contract. Draft packages and unapproved assumptions are blockers.
 - `12-target-frontend/source-file-manifest.json` and `12-target-frontend/route-component-map.json` are the target source architecture of record.
+- The target app must use a feature/shared/design-system structure: `src/app` for route wiring only, `src/features/<screen-id>/screens` for product screen composition, `src/features/<workflow>/patterns` for workflow patterns, `src/shared/ui` for contract-bound shadcn-compatible primitives, `src/shared/layout` for shell/navigation primitives, `src/shared/api` and `src/shared/auth` for external boundaries, and `src/design-system` for generated tokens.
+- Route files must not become product UI dumping grounds. They normalize route/search params, bind declared states, and delegate to their declared feature screen.
 - `12-target-frontend/codegen-tasks.json` defines the implementation order; `create_verification_tests` must precede product UI files.
 - `12-target-frontend/adapter-interfaces.ts` defines the data and auth boundary. Do not invent backend behavior, auth rules, or fields outside the contract.
 - Route files, component files, pattern files, support files, adapter files, token files, and tests must trace to their declared `reads` artifacts.
@@ -147,8 +149,11 @@ The frontend architect must answer:
    - Confirm tokens and shell are installed before routes/screens.
    - Confirm adapters exist before data, auth, form, and action behavior depends on them.
 
-7. Define component and pattern boundaries.
+7. Define component, pattern, and feature boundaries.
    - Use React's component-first decomposition: screen, pattern, component, primitive.
+   - Put product-specific screen composition in `src/features/<screen-id>/screens`.
+   - Put workflow patterns in `src/features/<workflow>/patterns`.
+   - Put shared primitive wrappers in `src/shared/ui` and reusable shell primitives in `src/shared/layout`.
    - Keep components controlled by props, declared states, token references, and accessibility contracts.
    - Do not invent reusable primitives unless the design-system contract declares or authorizes them.
 
@@ -329,6 +334,7 @@ Required source manifest file kinds:
 - `adapter`
 - `content`
 - `route`
+- `screen`
 - `component`
 - `pattern`
 - `test`
@@ -340,11 +346,12 @@ Required implementation order:
 
 1. `install_target_stack`
 2. `create_verification_tests`
-3. `install_tokens_and_shell`
-4. `create_adapters`
-5. `create_components`
-6. `create_patterns`
-7. `create_routes_and_screens`
+3. `install_design_system_tokens`
+4. `create_shared_runtime_boundaries`
+5. `create_shared_ui_and_layout`
+6. `create_feature_patterns`
+7. `create_feature_screens`
+8. `wire_app_routes`
 
 Required downstream guardrails:
 

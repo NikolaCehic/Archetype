@@ -134,6 +134,23 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
       ]
     };
   });
+  const interactionStateScenarios = routes.map((route, index) => {
+    const routePath = String(route.route ?? "/");
+    const screenId = String(route.screen_id ?? `screen_${index + 1}`);
+    return {
+      scenario_id: `PW-INTERACTION-${String(index + 1).padStart(3, "0")}`,
+      type: "interaction_state",
+      route: routePath,
+      resolved_route: routeUrl(routePath),
+      screen_id: screenId,
+      assertions: [
+        "Primary interactive controls are keyboard-focusable when present.",
+        "Focused controls expose a visible focus indicator.",
+        "Pressed or active control state is browser-observable when a CTA is present.",
+        "Disabled and loading CTA states are represented by deterministic fixtures or component state contracts."
+      ]
+    };
+  });
   const visualScenarios = routes.flatMap((route, index) =>
     viewports.map((viewport) => {
       const routePath = String(route.route ?? "/");
@@ -177,6 +194,7 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
     ...flowScenarios,
     ...responsiveScenarios,
     ...accessibilityScenarios,
+    ...interactionStateScenarios,
     ...visualScenarios,
     ...malformedDataScenarios
   ];
@@ -209,6 +227,7 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
       flow_scenarios: flowScenarios.length,
       responsive_scenarios: responsiveScenarios.length,
       accessibility_scenarios: accessibilityScenarios.length,
+      interaction_state_scenarios: interactionStateScenarios.length,
       visual_smoke_scenarios: visualScenarios.length,
       malformed_data_scenarios: malformedDataScenarios.length,
       total_scenarios: scenarios.length,
@@ -216,7 +235,7 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
     },
     pass_criteria: [
       "Install, typecheck, and production build pass.",
-      "Playwright route, state, flow, responsive, accessibility, malformed-data, and visual-smoke scenarios pass.",
+      "Playwright route, state, flow, responsive, accessibility, interaction-state, malformed-data, and visual-smoke scenarios pass.",
       "Evidence JSON and markdown are written back into archetype-output.",
       "Every warning that remains is named as external production confirmation or target limitation."
     ],
@@ -249,6 +268,7 @@ function buildPlanMarkdown(contract: JsonRecord): string {
     `- Flow scenarios: ${String(coverage.flow_scenarios ?? 0)}`,
     `- Responsive scenarios: ${String(coverage.responsive_scenarios ?? 0)}`,
     `- Accessibility scenarios: ${String(coverage.accessibility_scenarios ?? 0)}`,
+    `- Interaction-state scenarios: ${String(coverage.interaction_state_scenarios ?? 0)}`,
     `- Visual-smoke scenarios: ${String(coverage.visual_smoke_scenarios ?? 0)}`,
     `- Malformed-data scenarios: ${String(coverage.malformed_data_scenarios ?? 0)}`,
     `- Total scenarios: ${String(coverage.total_scenarios ?? 0)}`,
@@ -314,6 +334,7 @@ function buildSpecSource(contract: JsonRecord): string {
   const flowScenarios = specData(contract, "flow");
   const responsiveScenarios = specData(contract, "responsive");
   const accessibilityScenarios = specData(contract, "accessibility");
+  const interactionStateScenarios = specData(contract, "interaction_state");
   const visualScenarios = specData(contract, "visual_smoke");
   const malformedDataScenarios = specData(contract, "malformed_data");
   return [
@@ -327,6 +348,7 @@ function buildSpecSource(contract: JsonRecord): string {
     "const flowScenarios = " + JSON.stringify(flowScenarios, null, 2) + " as ArchetypeScenario[];",
     "const responsiveScenarios = " + JSON.stringify(responsiveScenarios, null, 2) + " as ArchetypeScenario[];",
     "const accessibilityScenarios = " + JSON.stringify(accessibilityScenarios, null, 2) + " as ArchetypeScenario[];",
+    "const interactionStateScenarios = " + JSON.stringify(interactionStateScenarios, null, 2) + " as ArchetypeScenario[];",
     "const visualScenarios = " + JSON.stringify(visualScenarios, null, 2) + " as ArchetypeScenario[];",
     "const malformedDataScenarios = " + JSON.stringify(malformedDataScenarios, null, 2) + " as ArchetypeScenario[];",
     "",
@@ -396,6 +418,27 @@ function buildSpecSource(contract: JsonRecord): string {
     "      expect(focusedTag.length).toBeGreaterThan(0);",
     "      const unnamedButtons = await page.locator(\"button\").evaluateAll((buttons) => buttons.filter((button) => !button.textContent?.trim() && !button.getAttribute(\"aria-label\")).length);",
     "      expect(unnamedButtons).toBe(0);",
+    "    });",
+    "  }",
+    "});",
+    "",
+    "test.describe(\"Archetype interaction-state verification\", () => {",
+    "  for (const scenario of interactionStateScenarios) {",
+    "    test(scenario.scenario_id, async ({ page }) => {",
+    "      await page.goto(scenario.resolved_route);",
+    "      await expect(page.locator(`[data-archetype-screen=\"${scenario.screen_id}\"]`)).toBeVisible();",
+    "      const controls = page.locator('button, [role=\"button\"], a[href], input, select, textarea');",
+    "      const count = await controls.count();",
+    "      if (count > 0) {",
+    "        const first = controls.first();",
+    "        await first.focus();",
+    "        await expect(first).toBeFocused();",
+    "        const focusVisible = await first.evaluate((element) => {",
+    "          const style = window.getComputedStyle(element);",
+    "          return style.outlineStyle !== 'none' || style.boxShadow !== 'none' || style.borderColor !== 'rgba(0, 0, 0, 0)';",
+    "        });",
+    "        expect(focusVisible).toBe(true);",
+    "      }",
     "    });",
     "  }",
     "});",

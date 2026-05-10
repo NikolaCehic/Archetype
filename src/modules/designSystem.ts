@@ -1,5 +1,12 @@
-import type { ArchetypeInput, DesignSystemArtifacts, DomainProfile, ExperienceArtifacts } from "../core/types";
+import type { ArchetypeInput, DesignSystemArtifacts, DomainProfile, ExperienceArtifacts, IngestionArtifacts } from "../core/types";
 import { slugify } from "../core/stable";
+import {
+  buildDesignDirectionOptions,
+  buildDesignQualityGate,
+  buildShadcnIntegrationContract,
+  buildVisualCraftRubric,
+  selectDesignDirection
+} from "./designQuality";
 
 function jsonToken(value: string): Record<string, string> {
   return { value };
@@ -333,6 +340,13 @@ function componentStates(component: string): ComponentContract["state_contract"]
   if (["Button", "IconButton", "Input", "Textarea", "Select", "Checkbox", "Radio", "Switch"].includes(component)) {
     base.splice(1, 0, { state: "hover", trigger: "pointer hovers over enabled control", visual_behavior: "Use subtle tokenized hover state.", token_refs: [`${slugify(component)}.hover.background`], accessibility_behavior: "Hover never reveals essential information that keyboard users cannot access." });
   }
+  if (["Button", "IconButton", "Checkbox", "Radio", "Switch", "Tabs"].includes(component)) {
+    base.push({ state: "active", trigger: "enabled control is pressed or activated", visual_behavior: "Use a pressed token state with no layout shift.", token_refs: [`${slugify(component)}.active.background`, `${slugify(component)}.active.border`], accessibility_behavior: "Pressed or active state must be programmatically exposed when it persists." });
+  }
+  if (["Sidebar", "TopNav", "Tabs", "Badge"].includes(component)) {
+    base.push({ state: "selected", trigger: "item represents the selected option or current route group", visual_behavior: "Use selected tokens plus a text/icon affordance that does not rely on color alone.", token_refs: [`${slugify(component)}.selected.background`, `${slugify(component)}.selected.text`], accessibility_behavior: "Expose aria-selected or equivalent semantics when selection is interactive." });
+    base.push({ state: "current", trigger: "navigation item represents the current route", visual_behavior: "Use current-route tokens and a stable indicator inside the component bounds.", token_refs: [`${slugify(component)}.current.background`, `${slugify(component)}.current.text`], accessibility_behavior: "Expose aria-current for current navigation links." });
+  }
   if (["Button", "IconButton", "DataTable", "Skeleton"].includes(component)) {
     base.push({ state: "loading", trigger: "async work is pending", visual_behavior: "Show progress without moving surrounding layout.", token_refs: [`${slugify(component)}.loading.background`], accessibility_behavior: "Expose loading state politely." });
   }
@@ -430,7 +444,7 @@ function buildComponentContract(component: string, profile: DomainProfile, exper
     data_contract: componentDataContract(component),
     test_contract: {
       selector: `data-archetype-component="${tokenKey}"`,
-      required_tests: ["renders_default", "renders_focus_visible_when_interactive", "rejects_undeclared_variant", "uses_declared_tokens"]
+      required_tests: ["renders_default", "renders_hover_when_pointer_interactive", "renders_focus_visible_when_interactive", "renders_active_or_current_state_when_declared", "renders_disabled_and_loading_without_layout_shift", "rejects_undeclared_variant", "uses_declared_tokens"]
     },
     forbidden_usage: [
       "Do not hardcode color, spacing, radius, or typography values.",
@@ -715,9 +729,12 @@ function patternContractsMarkdown(patternContracts: Record<string, unknown>): st
 export function buildDesignSystemArtifacts(
   input: ArchetypeInput,
   profile: DomainProfile,
-  experience: ExperienceArtifacts
+  experience: ExperienceArtifacts,
+  ingestion?: IngestionArtifacts
 ): DesignSystemArtifacts {
-  const primary = input.brand?.primaryColor ?? "#2563EB";
+  const designDirectionOptions = buildDesignDirectionOptions(input, profile, experience, ingestion);
+  const selectedDirection = selectDesignDirection(input, designDirectionOptions);
+  const primary = input.brand?.primaryColor ?? selectedDirection.palette.accent;
   const components = [
     ...new Set([
     "Button",
@@ -816,15 +833,16 @@ export function buildDesignSystemArtifacts(
 
   const primitiveTokens = {
     color: {
-      "blue.600": jsonToken(primary),
-      "gray.950": jsonToken("#030712"),
-      "gray.700": jsonToken("#374151"),
-      "gray.200": jsonToken("#E5E7EB"),
-      "gray.50": jsonToken("#F9FAFB"),
-      "green.600": jsonToken("#16A34A"),
-      "amber.500": jsonToken("#F59E0B"),
-      "red.600": jsonToken("#DC2626"),
-      "white": jsonToken("#FFFFFF")
+      "neutral.950": jsonToken(selectedDirection.palette.background),
+      "neutral.900": jsonToken(selectedDirection.palette.surface),
+      "neutral.800": jsonToken(selectedDirection.palette.surface_subtle),
+      "neutral.600": jsonToken(selectedDirection.palette.muted_text),
+      "neutral.300": jsonToken(selectedDirection.palette.border),
+      "neutral.100": jsonToken(selectedDirection.palette.text),
+      "accent.600": jsonToken(primary),
+      "success.600": jsonToken(selectedDirection.palette.success),
+      "warning.500": jsonToken(selectedDirection.palette.warning),
+      "danger.600": jsonToken(selectedDirection.palette.danger)
     },
     spacing: {
       "1": jsonToken("0.25rem"),
@@ -869,15 +887,16 @@ export function buildDesignSystemArtifacts(
 
   const semanticTokens = {
     color: {
-      "action.primary.background": "{color.blue.600}",
-      "text.primary": "{color.gray.950}",
-      "text.secondary": "{color.gray.700}",
-      "surface.default": "{color.white}",
-      "surface.subtle": "{color.gray.50}",
-      "border.default": "{color.gray.200}",
-      "status.success": "{color.green.600}",
-      "status.warning": "{color.amber.500}",
-      "status.danger": "{color.red.600}"
+      "action.primary.background": "{color.accent.600}",
+      "text.primary": "{color.neutral.100}",
+      "text.secondary": "{color.neutral.600}",
+      "surface.default": "{color.neutral.900}",
+      "surface.subtle": "{color.neutral.800}",
+      "surface.canvas": "{color.neutral.950}",
+      "border.default": "{color.neutral.300}",
+      "status.success": "{color.success.600}",
+      "status.warning": "{color.warning.500}",
+      "status.danger": "{color.danger.600}"
     },
     spacing: {
       "layout.gap": "{spacing.4}",
@@ -920,6 +939,18 @@ export function buildDesignSystemArtifacts(
     for (const state of contract.state_contract) {
       if (state.state === "focus") tokenSet["focus.ring"] = "{color.action.primary.background}";
       if (state.state === "hover") tokenSet["hover.background"] = "{color.surface.subtle}";
+      if (state.state === "active") {
+        tokenSet["active.background"] = "{color.action.primary.background}";
+        tokenSet["active.border"] = "{color.action.primary.background}";
+      }
+      if (state.state === "selected") {
+        tokenSet["selected.background"] = "{color.surface.subtle}";
+        tokenSet["selected.text"] = "{color.text.primary}";
+      }
+      if (state.state === "current") {
+        tokenSet["current.background"] = "{color.surface.subtle}";
+        tokenSet["current.text"] = "{color.action.primary.background}";
+      }
       if (state.state === "disabled") {
         tokenSet["disabled.background"] = "{color.surface.subtle}";
         tokenSet["disabled.text"] = "{color.text.secondary}";
@@ -953,6 +984,16 @@ export function buildDesignSystemArtifacts(
   const typographySystem = buildTypographySystem();
   const typographyCss = buildTypographyCss(typographySystem);
   const tokenContracts = buildTokenContracts(primitiveTokens, semanticTokens, componentTokens, typographySystem);
+  const designQualityGate = buildDesignQualityGate({
+    directions: designDirectionOptions,
+    selected: selectedDirection,
+    experience,
+    componentContracts,
+    primitiveTokens,
+    semanticTokens
+  });
+  const visualCraftRubric = buildVisualCraftRubric(selectedDirection);
+  const shadcnIntegration = buildShadcnIntegrationContract(selectedDirection);
 
   return {
     designPrinciples: [
@@ -964,7 +1005,26 @@ export function buildDesignSystemArtifacts(
       "4. Risk and status must never rely on color alone.",
       "5. Components must be reusable across dashboard, list, detail, form, and reporting workflows."
     ].join("\n"),
-    visualDirection: `# Visual Direction\n\n${profile.visualDirection}\n\nBrand tone: ${input.brand?.tone ?? "Clear, precise, and low-hype."}`,
+    visualDirection: [
+      "# Visual Direction",
+      "",
+      `Selected direction: ${selectedDirection.name}`,
+      "",
+      selectedDirection.thesis,
+      "",
+      `Physical scene: ${selectedDirection.physical_scene}`,
+      "",
+      `Domain baseline: ${profile.visualDirection}`,
+      "",
+      `Brand tone: ${input.brand?.tone ?? "Clear, precise, and low-hype."}`,
+      "",
+      "Implementation posture: use shadcn primitives through contract-bound wrappers, Tailwind through generated CSS variables, and product-specific patterns before route composition."
+    ].join("\n"),
+    designDirectionOptions,
+    selectedDirectionId: selectedDirection.id,
+    designQualityGate,
+    visualCraftRubric,
+    shadcnIntegration,
     contentRules: [
       "# Content Rules",
       "",
@@ -979,9 +1039,9 @@ export function buildDesignSystemArtifacts(
     tokenContracts,
     typographySystem,
     themeLight: {
-      name: "light",
+      name: "selected-product-theme",
       tokens: {
-        background: "{color.surface.subtle}",
+        background: "{color.surface.canvas}",
         surface: "{color.surface.default}",
         text: "{color.text.primary}",
         accent: "{color.action.primary.background}",
@@ -999,11 +1059,15 @@ export function buildDesignSystemArtifacts(
     cssVariables: [
       ":root {",
       `  --color-action-primary-background: ${primary};`,
-      "  --color-text-primary: #030712;",
-      "  --color-text-secondary: #374151;",
-      "  --color-surface-default: #ffffff;",
-      "  --color-surface-subtle: #f9fafb;",
-      "  --color-border-default: #e5e7eb;",
+      `  --color-text-primary: ${selectedDirection.palette.text};`,
+      `  --color-text-secondary: ${selectedDirection.palette.muted_text};`,
+      `  --color-surface-canvas: ${selectedDirection.palette.background};`,
+      `  --color-surface-default: ${selectedDirection.palette.surface};`,
+      `  --color-surface-subtle: ${selectedDirection.palette.surface_subtle};`,
+      `  --color-border-default: ${selectedDirection.palette.border};`,
+      `  --color-status-success: ${selectedDirection.palette.success};`,
+      `  --color-status-warning: ${selectedDirection.palette.warning};`,
+      `  --color-status-danger: ${selectedDirection.palette.danger};`,
       "  --radius-surface: 0.5rem;",
       "  --radius-control: 0.375rem;",
       "  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;",
@@ -1020,7 +1084,11 @@ export function buildDesignSystemArtifacts(
       "      colors: {",
       "        action: 'var(--color-action-primary-background)',",
       "        surface: 'var(--color-surface-default)',",
-      "        subtle: 'var(--color-surface-subtle)'",
+      "        subtle: 'var(--color-surface-subtle)',",
+      "        canvas: 'var(--color-surface-canvas)',",
+      "        success: 'var(--color-status-success)',",
+      "        warning: 'var(--color-status-warning)',",
+      "        danger: 'var(--color-status-danger)'",
       "      },",
       "      fontFamily: {",
       "        sans: 'var(--font-sans)',",
@@ -1109,7 +1177,9 @@ export function buildDesignSystemArtifacts(
       "# Foundations",
       "",
       `Product type: ${profile.productType}`,
-      `Visual direction: ${profile.visualDirection}`,
+      `Visual direction: ${selectedDirection.name}`,
+      `Selected direction id: ${selectedDirection.id}`,
+      `Physical scene: ${selectedDirection.physical_scene}`,
       "Accessibility target: WCAG AA"
     ].join("\n"),
     usageGuidelines: [
@@ -1123,6 +1193,11 @@ export function buildDesignSystemArtifacts(
     antiPatterns: [
       "# Anti-Patterns",
       "",
+      "- Default blue-gray SaaS dashboards.",
+      "- Generic AI-generated admin panels.",
+      "- Untouched shadcn examples shipped as product UI.",
+      "- Identical card grids as the dominant page structure.",
+      "- Missing hover, focus-visible, active, disabled, loading, empty, error, and success states.",
       "- UI-kit-first generation.",
       "- Unsupported certainty.",
       "- Token bloat.",

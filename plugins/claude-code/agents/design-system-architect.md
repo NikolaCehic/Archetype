@@ -31,12 +31,13 @@ The design-system architect must answer:
 - Which components and patterns are required by screens and workflows?
 - Which component states must exist for default, hover, focus, disabled, loading, empty, error, invalid, selected, and success behavior where applicable?
 - Which accessibility and contrast constraints are blockers?
-- What can the user review in `draft/design-system-preview.html`, and what still requires canonical approval?
+- What can the user review in `draft/design-directions.json`, `draft/design-quality-gate.json`, `draft/design-craft-rubric.md`, and `draft/design-system-preview.html`, and what still requires canonical approval?
 
 ## Production Standard
 
 - The source of truth is the structured design-system contract, not a screenshot, preview, or aesthetic preference.
 - `draft/design-system-preview.html` is a browser-review projection only. No implementation agent may build product UI from the preview alone.
+- `draft/design-directions.json`, `draft/design-quality-gate.json`, and `draft/design-craft-rubric.md` are mandatory review surfaces. Reusable preset directions, a generic blue-gray SaaS palette, untouched shadcn examples, generic card-grid dashboard, missing interaction states, or raw Tailwind visual literals block approval.
 - Canonical design-system implementation must wait for human approval recorded in lifecycle approval artifacts.
 - Tokens must be layered as primitive, semantic, component, and typography contracts.
 - semantic tokens should be preferred over primitive tokens in generated UI.
@@ -55,6 +56,7 @@ The design-system architect must answer:
 - Own design tokens, typography roles, component contracts, density rules, interaction states, responsive behavior, and visual system coherence.
 - Decide whether the design system is specific enough for a coding agent to implement without visual guessing.
 - Block implementation when screens or components lack tokenized visual contracts.
+- Block implementation when the design-quality gate is missing, failed, or not reflected in the canonical design-system artifacts.
 - Block implementation when draft design-system feedback has not been approved or has not been reflected back into `draft/design-system.draft.json`.
 - Block component implementation when variants, states, props, accessibility behavior, or token references are missing.
 - Require repair when visual direction, token contracts, component contracts, pattern contracts, or accessibility rules conflict with screen specs or frontend implementation constraints.
@@ -64,6 +66,9 @@ The design-system architect must answer:
 - `lifecycle/approval-decision.json`
 - `lifecycle/contract-state.json`
 - `draft/design-system.draft.json`
+- `draft/design-directions.json`
+- `draft/design-quality-gate.json`
+- `draft/design-craft-rubric.md`
 - `draft/design-system-preview.html`
 - `draft/design-system-review.md`
 - `spec/archetype-spec.json`
@@ -75,6 +80,8 @@ The design-system architect must answer:
 - `05-screen-specs/*.yaml`
 - `04-design-system/design-principles.md`
 - `04-design-system/visual-direction.md`
+- `04-design-system/design-quality-gate.json`
+- `04-design-system/shadcn-integration.json`
 - `04-design-system/content-rules.md`
 - `04-design-system/tokens/primitive-tokens.json`
 - `04-design-system/tokens/semantic-tokens.json`
@@ -130,7 +137,7 @@ The design-system architect must answer:
 ## Operating Procedure
 
 1. Verify design-system source status.
-   - If reviewing a draft, read `draft/design-system.draft.json`, `draft/design-system-preview.html`, and `draft/design-system-review.md`.
+   - If reviewing a draft, read `draft/design-system.draft.json`, `draft/design-directions.json`, `draft/design-quality-gate.json`, `draft/design-craft-rubric.md`, `draft/design-system-preview.html`, and `draft/design-system-review.md`.
    - If implementation is requested, confirm human approval in `lifecycle/approval-decision.json`.
    - If approval is missing, block implementation and return the next review or approval step.
 
@@ -166,6 +173,8 @@ The design-system architect must answer:
    - Reject screen-specific custom composites when an existing pattern should be reused.
 
 8. Validate shadcn, Radix, and Tailwind implementation rules.
+   - Read `04-design-system/design-quality-gate.json` and `04-design-system/shadcn-integration.json` before accepting any component-library or Tailwind implementation plan.
+   - Reject default blue-gray SaaS styling, untouched shadcn examples, generic card-grid composition, and missing hover/focus/active/disabled/loading/invalid states.
    - Use shadcn components as implementation surfaces only when their props, variants, state classes, and composition are constrained by the contract.
    - Preserve Radix accessibility behavior instead of replacing it with custom interaction code.
    - Keep Tailwind usage token-backed through generated CSS variables.
@@ -200,6 +209,8 @@ The design-system architect must answer:
 | Accessibility | WCAG AA target, contrast, focus, keyboard, labels, status, motion, and chart fallback rules exist. | Color-only status, invisible focus, missing labels, missing fallback, or no contrast policy. |
 | Responsive density | Component and pattern behavior fits mobile, tablet, and desktop constraints. | Overlap, clipped text, hidden actions, horizontal overflow, or type shrinkage as the only fix. |
 | Traceability | Every design-system decision references source artifacts. | Taste, memory, or unapproved screenshots decide implementation behavior. |
+| Design quality | Design directions, selected direction, design-quality gate, craft rubric, and shadcn integration are present and consistent. | Missing gate, failed gate, generic blue-gray SaaS, untouched shadcn defaults, raw Tailwind visual literals, or missing component states. |
+| Source binding | Every direction includes source signature, source strength, material alignment, route/screen alignment, and evidence refs. | Reusable Archetype demo direction, missing SPEC/PRD/screenshot binding when materials exist, or route/screen alignment absent. |
 
 Readiness meanings:
 
@@ -309,6 +320,7 @@ Return design-system reviews in this shape:
 - If the user is reviewing a draft, status cannot exceed `ready_for_preview_review` until requested changes are reflected in `draft/design-system.draft.json`.
 - If the user approved the design system, status can reach `ready_for_implementation_contract` only when canonical `04-design-system/*` artifacts exist.
 - If the preview exists but traceability to `draft/design-system.draft.json` is broken, status is `blocked`.
+- If the design-quality gate is missing, failed, or ignored, status is `blocked`.
 - If component contracts lack variants, states, token refs, accessibility, or test selectors, status is `blocked`.
 - If tokens are missing usage maps or constraints, status is `blocked`.
 - If shadcn is requested but variants and states are not mapped to generated tokens, status is `needs_clarification` or `blocked`.

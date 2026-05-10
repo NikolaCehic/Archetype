@@ -112,10 +112,15 @@ assert(implementationRules.testFirstContract?.path === "test-first/test-first-co
 
 const codegenTasks = readJson(path.join(outputDir, "12-target-frontend", "codegen-tasks.json"));
 const taskOrder = Object.fromEntries((codegenTasks.tasks ?? []).map((task) => [task.task_id, task.order]));
-assert(taskOrder.create_verification_tests < taskOrder.create_components, "target codegen must create tests before components.");
-assert(taskOrder.create_verification_tests < taskOrder.create_routes_and_screens, "target codegen must create tests before routes and screens.");
+assert(taskOrder.create_verification_tests < taskOrder.create_shared_ui_and_layout, "target codegen must create tests before shared UI and layout.");
+assert(taskOrder.create_verification_tests < taskOrder.create_feature_screens, "target codegen must create tests before feature screens.");
+assert(taskOrder.create_feature_screens < taskOrder.wire_app_routes, "target codegen must create feature screens before app route wiring.");
 
 const sourceManifest = readJson(path.join(outputDir, "12-target-frontend", "source-file-manifest.json"));
+assert(sourceManifest.architecture?.style === "feature_shared_design_system", "source manifest must declare feature/shared/design-system architecture.");
+assert(sourceManifest.coverage?.screens === sourceManifest.coverage?.routes, "source manifest must create one feature screen per route.");
+assert((sourceManifest.files ?? []).some((file) => String(file.path).startsWith("src/features/") && file.kind === "screen"), "source manifest must include feature screen files.");
+assert((sourceManifest.files ?? []).some((file) => String(file.path).startsWith("src/shared/ui/") && file.kind === "component"), "source manifest must include shared UI component files.");
 const targetTestFiles = (sourceManifest.files ?? []).filter((file) => file.kind === "test");
 assert(targetTestFiles.length > 0, "source manifest must include target test files.");
 assert(targetTestFiles.every((file) => (file.reads ?? []).includes("test-first/test-first-contract.json")), "target test files must read the test-first contract.");

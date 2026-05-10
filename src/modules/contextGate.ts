@@ -9,6 +9,7 @@ export type ContextReadinessTier = ReadinessTier;
 export const REQUIRED_CONTEXT_DIMENSIONS = [
   "product_outcome",
   "primary_users",
+  "source_materials_review",
   "must_have_flows",
   "target_stack",
   "data_auth_boundary",
@@ -94,6 +95,30 @@ function hasBrand(input: ArchetypeInput): boolean {
 
 function hasMaterials(input: ArchetypeInput): boolean {
   return (input.materials ?? []).length > 0 || (input.referenceImages ?? []).length > 0;
+}
+
+function hasMaterialIntakeDecision(input: ArchetypeInput, context: string): boolean {
+  if (hasMaterials(input)) return true;
+  const status = input.materialIntake?.status;
+  if (status === "provided" || status === "none") return true;
+  return mentionsAny(context, [
+    "no spec",
+    "no sop",
+    "no prd",
+    "no design doc",
+    "no design docs",
+    "no screenshots",
+    "no wireframes",
+    "no api docs",
+    "no route map",
+    "no existing docs",
+    "no existing documentation",
+    "no source materials",
+    "no materials",
+    "i do not have docs",
+    "i don't have docs",
+    "nothing to attach"
+  ]);
 }
 
 function hasDataBoundary(input: ArchetypeInput, context: string): boolean {
@@ -286,6 +311,7 @@ export function assessContextGate(input: ArchetypeInput): ContextGateAssessment 
   ]);
   const contextMentionsVisualDirection = mentionsAny(context, ["premium", "dark", "light", "dense", "polished", "brand", "monochrome", "enterprise", "playful", "minimal"]);
   const materialCount = (input.materials ?? []).length + (input.referenceImages ?? []).length;
+  const materialDecisionKnown = hasMaterialIntakeDecision(input, context);
   const boundaryKnown = hasDataBoundary(input, context);
   const testPermissionKnown = hasTestExecutionPermission(input, context);
   const assumptionApprovalKnown = hasAssumptionApproval(input, context);
@@ -318,6 +344,15 @@ export function assessContextGate(input: ArchetypeInput): ContextGateAssessment 
     ["repo context", "package.json", "stack notes"],
     "critical",
     ["stack", "materials", "context"]
+  );
+  const sourceMaterialsQuestion = question(
+    "source_materials_review",
+    "Do you have any SPEC, SOP, PRD, screenshots, wireframes, design docs, API docs, route maps, or repo files to attach, or should Archetype proceed without source materials?",
+    "Archetype needs a deliberate source-material decision before it can treat missing documentation as permission to draft assumptions.",
+    true,
+    ["SPEC.md", "SOP", "PRD", "screenshots", "wireframes", "design docs", "API docs", "route maps", "repo files", "explicit none"],
+    "high",
+    ["materialIntake", "materials", "referenceImages", "context"]
   );
   const flowsQuestion = question(
     "must_have_flows",
@@ -413,6 +448,31 @@ export function assessContextGate(input: ArchetypeInput): ContextGateAssessment 
       hasStack(input) ? "The implementation host has enough stack direction to draft contracts." : "Without a stack or repo, implementation contracts depend on invention.",
       hasStack(input) ? ["source_stack"] : [],
       hasStack(input) ? undefined : stackQuestion
+    ),
+    decision(
+      "source_materials_review",
+      "Source materials, documentation, or explicit no-materials decision",
+      "SPEC/SOP/PRD/design/API/route/repo material intake",
+      materialDecisionKnown ? "confirmed" : "missing",
+      true,
+      "high",
+      materialDecisionKnown
+        ? hasMaterials(input)
+          ? "imported_material_fact"
+          : "explicit_user_answer"
+        : "unknown",
+      materialDecisionKnown
+        ? hasMaterials(input)
+          ? [`${materialCount} source material or reference image item(s) supplied.`]
+          : ["User explicitly chose to proceed without attaching source materials."]
+        : [],
+      materialDecisionKnown
+        ? "The lifecycle has an explicit source-material boundary."
+        : "Without asking for source materials or an explicit none, the draft may miss authoritative SPEC, SOP, PRD, design, API, route, or repo context.",
+      materialDecisionKnown
+        ? hasMaterials(input) ? ["source_materials"] : ["source_user_context"]
+        : [],
+      materialDecisionKnown ? undefined : sourceMaterialsQuestion
     ),
     decision(
       "must_have_flows",
@@ -568,7 +628,7 @@ export function assessContextGate(input: ArchetypeInput): ContextGateAssessment 
     knownFacts,
     missingDecisions,
     assumptions,
-    optionalMaterialPrompt: "Optional: attach or @import designs, screenshots, wireframes, SPEC.md, PRD.md, brand notes, API docs, route maps, existing repo files, or test policies. If none exist, Archetype must ask for permission before turning assumptions into canonical decisions.",
+    optionalMaterialPrompt: "Attach or @import any SPEC.md, SOP, PRD.md, screenshots, wireframes, design docs, brand notes, API docs, route maps, existing repo files, or test policies. If none exist, answer that Archetype should proceed without source materials; that choice is recorded as explicit context.",
     questions: nextQuestion ? [nextQuestion] : [],
     contextMatrix,
     blockers,

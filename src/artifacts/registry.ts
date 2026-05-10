@@ -2,6 +2,7 @@ import type { DataPlaneArtifactType, DataPlanePhase } from "../data-plane/types"
 import { AGENT_CONTEXT_ARTIFACTS } from "../agent-context/phaseBundles";
 import { FRONTEND_PRACTICE_SKILLS } from "../modules/frontendPracticeSkills";
 import { REQUIRED_QA_ARTIFACTS } from "../modules/qaTeam";
+import { SESSION_ARTIFACTS } from "../session";
 
 export type ArtifactPackageKind = "draft" | "canonical";
 export type ArtifactReadPriority = "hot" | "warm" | "cold";
@@ -59,6 +60,12 @@ const DRAFT_MANIFEST_ARTIFACTS: ArtifactSeed[] = [
     type: artifact.type,
     readPriority: "hot"
   })),
+  ...SESSION_ARTIFACTS.map((artifact): ArtifactSeed => ({
+    id: artifact.id,
+    path: artifact.path,
+    type: artifact.type,
+    readPriority: artifact.path.startsWith("review-console/") || artifact.path.startsWith("progressive/") ? "hot" : "warm"
+  })),
   { id: "implementation-readiness", path: "00-manifest/implementation-readiness.json", type: "json", readPriority: "hot" },
   { id: "internal-manifest", path: "00-manifest/manifest.json", type: "json", readPriority: "hot" },
   { id: "readiness-report", path: "readiness-report.md", type: "markdown", readPriority: "warm" },
@@ -89,10 +96,15 @@ const DRAFT_MANIFEST_ARTIFACTS: ArtifactSeed[] = [
   { id: "convergence-standard-report", path: "governance/convergence-standard.md", type: "markdown", readPriority: "warm" },
   { id: "frontend-practice-skills", path: "governance/frontend-practice-skills.json", type: "json", readPriority: "warm" },
   { id: "frontend-practice-skills-report", path: "governance/frontend-practice-skills.md", type: "markdown", readPriority: "warm" },
+  { id: "agent-control-plane", path: "governance/agent-control-plane.json", type: "json", readPriority: "hot" },
+  { id: "agent-control-plane-report", path: "governance/agent-control-plane.md", type: "markdown", readPriority: "hot" },
   ...FRONTEND_PRACTICE_ARTIFACTS,
   { id: "product-model-draft", path: "draft/product-model.draft.json", type: "json", readPriority: "hot" },
   { id: "experience-architecture-draft", path: "draft/experience-architecture.draft.json", type: "json", readPriority: "hot" },
   { id: "design-system-draft", path: "draft/design-system.draft.json", type: "json", readPriority: "hot" },
+  { id: "design-directions", path: "draft/design-directions.json", type: "json", readPriority: "hot" },
+  { id: "design-quality-gate", path: "draft/design-quality-gate.json", type: "json", readPriority: "hot" },
+  { id: "design-craft-rubric", path: "draft/design-craft-rubric.md", type: "markdown", readPriority: "hot" },
   { id: "design-system-preview", path: "draft/design-system-preview.html", type: "html", readPriority: "hot" },
   { id: "design-system-review", path: "draft/design-system-review.md", type: "markdown", readPriority: "hot" },
   { id: "frontend-contract-draft", path: "draft/frontend-contract.draft.json", type: "json", readPriority: "hot" },
@@ -111,6 +123,12 @@ const CANONICAL_TOP_MANIFEST_ARTIFACTS: ArtifactSeed[] = [
     path: artifact.path,
     type: artifact.type,
     readPriority: "hot"
+  })),
+  ...SESSION_ARTIFACTS.map((artifact): ArtifactSeed => ({
+    id: artifact.id,
+    path: artifact.path,
+    type: artifact.type,
+    readPriority: artifact.path.startsWith("review-console/") || artifact.path.startsWith("progressive/") ? "hot" : "warm"
   })),
   { id: "evidence-ledger", path: "01-evidence/evidence-ledger.json", type: "json", readPriority: "hot" },
   { id: "missing-context", path: "01-evidence/missing-context.md", type: "markdown", readPriority: "hot" },
@@ -166,6 +184,9 @@ const CANONICAL_TOP_MANIFEST_ARTIFACTS: ArtifactSeed[] = [
   { id: "product-model-draft", path: "draft/product-model.draft.json", type: "json", readPriority: "warm" },
   { id: "experience-architecture-draft", path: "draft/experience-architecture.draft.json", type: "json", readPriority: "warm" },
   { id: "design-system-draft", path: "draft/design-system.draft.json", type: "json", readPriority: "warm" },
+  { id: "design-directions", path: "draft/design-directions.json", type: "json", readPriority: "warm" },
+  { id: "design-quality-gate", path: "draft/design-quality-gate.json", type: "json", readPriority: "warm" },
+  { id: "design-craft-rubric", path: "draft/design-craft-rubric.md", type: "markdown", readPriority: "warm" },
   { id: "design-system-preview", path: "draft/design-system-preview.html", type: "html", readPriority: "warm" },
   { id: "design-system-review", path: "draft/design-system-review.md", type: "markdown", readPriority: "warm" },
   { id: "frontend-contract-draft", path: "draft/frontend-contract.draft.json", type: "json", readPriority: "warm" },
@@ -183,6 +204,8 @@ const CANONICAL_TOP_MANIFEST_ARTIFACTS: ArtifactSeed[] = [
   { id: "convergence-standard-report", path: "governance/convergence-standard.md", type: "markdown", readPriority: "warm" },
   { id: "frontend-practice-skills", path: "governance/frontend-practice-skills.json", type: "json", readPriority: "warm" },
   { id: "frontend-practice-skills-report", path: "governance/frontend-practice-skills.md", type: "markdown", readPriority: "warm" },
+  { id: "agent-control-plane", path: "governance/agent-control-plane.json", type: "json", readPriority: "hot" },
+  { id: "agent-control-plane-report", path: "governance/agent-control-plane.md", type: "markdown", readPriority: "hot" },
   ...FRONTEND_PRACTICE_ARTIFACTS,
   { id: "product-model", path: "product/product-model.json", type: "json", readPriority: "warm" },
   { id: "user-roles", path: "product/user-roles.json", type: "json", readPriority: "warm" },
@@ -235,6 +258,10 @@ const CANONICAL_ARTIFACT_PATHS: ArtifactSeed[] = [
   { path: "03-experience-architecture/dsag.json" },
   { path: "04-design-system/design-principles.md" },
   { path: "04-design-system/visual-direction.md" },
+  { path: "04-design-system/design-directions.json" },
+  { path: "04-design-system/design-quality-gate.json" },
+  { path: "04-design-system/design-craft-rubric.md" },
+  { path: "04-design-system/shadcn-integration.json" },
   { path: "04-design-system/content-rules.md" },
   { path: "04-design-system/tokens/primitive-tokens.json" },
   { path: "04-design-system/tokens/semantic-tokens.json" },
@@ -367,6 +394,9 @@ const CANONICAL_ARTIFACT_PATHS: ArtifactSeed[] = [
 ];
 
 const REQUIRED_COMPLETE_PACKAGE_ARTIFACT_PATHS = [
+  "agent-context/consumer-plane.json",
+  "agent-context/consumer-plane.md",
+  ...SESSION_ARTIFACTS.map((artifact) => artifact.path),
   "lifecycle/context-matrix.json",
   "lifecycle/implementation-phases.json",
   "lifecycle/implementation-phases.md",
@@ -387,6 +417,8 @@ const REQUIRED_COMPLETE_PACKAGE_ARTIFACT_PATHS = [
   "frontend-agent-contract/acceptance-criteria.json",
   "governance/convergence-standard.json",
   "governance/convergence-standard.md",
+  "governance/agent-control-plane.json",
+  "governance/agent-control-plane.md",
   "test-first/test-first-contract.json",
   "test-first/test-first-plan.md",
   "test-results/initial-red-test-run.md",
@@ -414,26 +446,27 @@ const DRAFT_FORBIDDEN_ARTIFACT_PATHS = [
 ];
 
 const DRAFT_READ_ORDER = [
+  "agent-context/consumer-plane.json",
+  "review-console/session.json",
+  "review-console/index.html",
+  "progressive/generation-plan.json",
   "agent-context/context-summary.json",
   "agent-context/phase-bundles/index.json",
-  "agent-context/phase-bundles/clarification.json",
   "agent-context/phase-bundles/draft-review.json",
   "agent-context/phase-bundles/contract-approval.json",
-  "lifecycle/contract-state.json",
-  "draft/product-model.draft.json",
-  "draft/experience-architecture.draft.json",
-  "draft/design-system.draft.json",
+  "governance/agent-control-plane.json",
   "draft/design-system-preview.html",
   "draft/design-system-review.md",
-  "draft/frontend-contract.draft.json",
+  "draft/contract-approval-request.json",
   "draft/assumption-ledger.md",
-  "draft/specialist-review.json",
-  "lifecycle/implementation-phases.json",
-  "governance/convergence-standard.json",
-  "draft/contract-approval-request.json"
+  "lifecycle/contract-state.json"
 ];
 
 const CANONICAL_READ_ORDER = [
+  "agent-context/consumer-plane.json",
+  "review-console/session.json",
+  "review-console/index.html",
+  "progressive/generation-plan.json",
   "agent-context/context-summary.json",
   "agent-context/phase-bundles/index.json",
   "agent-context/phase-bundles/test-first.json",
@@ -441,28 +474,20 @@ const CANONICAL_READ_ORDER = [
   "agent-context/phase-bundles/verification.json",
   "agent-context/phase-bundles/qa.json",
   "agent-context/phase-bundles/repair.json",
-  "spec/archetype-spec.md",
-  "spec/archetype-spec.json",
+  "governance/agent-control-plane.json",
   "test-first/test-first-contract.json",
   "test-first/test-quality-standard.json",
   "test-results/initial-red-test-run.md",
+  "frontend-agent-contract/implementation-rules.json",
+  "frontend-agent-contract/acceptance-criteria.json",
+  "experience/route-map.json",
+  "screens/screen-inventory.json",
   "verification/playwright-verification-contract.json",
-  "10-revision/repair-task-queue.json",
-  "implementation-contract.md",
-  "lifecycle/approval-decision.json",
-  "reviews/specialist-review-summary.md",
-  "AGENTS.md",
-  "CLAUDE.md",
-  "lifecycle/lifecycle-report.md",
-  "lifecycle/readiness-tiers.json",
   "lifecycle/execution-state.json",
-  "lifecycle/implementation-phases.json",
-  "qa/scenario-catalog.json",
-  "governance/non-negotiable-principles.json",
-  "governance/evidence-decision-model.json",
+  "10-revision/repair-task-queue.json",
   "governance/forbidden-behaviors.json",
-  "governance/convergence-standard.json",
-  "verification-plan.md"
+  "implementation-contract.md",
+  "spec/archetype-spec.json"
 ];
 
 function typeForPath(path: string): DataPlaneArtifactType {
@@ -477,6 +502,11 @@ function typeForPath(path: string): DataPlaneArtifactType {
 
 function phaseForPath(path: string): DataPlanePhase {
   if (path.startsWith("agent-context/")) return "readiness";
+  if (path.startsWith("review-console/")) return "readiness";
+  if (path.startsWith("progressive/")) return "readiness";
+  if (path.startsWith("mcp/")) return "readiness";
+  if (path.startsWith("orchestration/")) return "readiness";
+  if (path.startsWith("attachments/")) return "evidence";
   if (path.startsWith("lifecycle/")) return "clarification";
   if (path.startsWith("01-evidence/")) return "evidence";
   if (path.startsWith("draft/")) return "draft_contract";

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import {
   asRecord,
@@ -11,8 +11,19 @@ import {
   type McpToolDefinition
 } from "./shared";
 
-const DEFAULT_MAX_BYTES = 12000;
+const DEFAULT_MAX_BYTES = 6000;
 const MAX_BYTES_CEILING = 60000;
+
+interface ConsumerReadPlan {
+  first_reads?: string[];
+  current_phase_bundle?: string;
+  allowed_full_artifacts_now?: string[];
+  defer_until_needed?: string[];
+}
+
+interface ConsumerPlane {
+  read_plan?: ConsumerReadPlan;
+}
 
 function numberValue(record: JsonRecord, key: string, fallback: number): number {
   const value = record[key];
@@ -34,6 +45,19 @@ function boundedByteSlice(content: string, offset: number, maxBytes: number): { 
   };
 }
 
+function allowedReadPaths(outputDir: string): string[] | null {
+  const consumerPlanePath = path.join(outputDir, "agent-context", "consumer-plane.json");
+  if (!existsSync(consumerPlanePath)) return null;
+  const consumerPlane = readJsonFile<ConsumerPlane>(consumerPlanePath);
+  const readPlan = consumerPlane.read_plan;
+  if (!readPlan) return null;
+  return [
+    ...(readPlan.first_reads ?? []),
+    readPlan.current_phase_bundle ?? "",
+    ...(readPlan.allowed_full_artifacts_now ?? [])
+  ].filter((item) => item.trim().length > 0);
+}
+
 export const readArtifactTool: McpToolDefinition = {
   name: "archetype_read_artifact",
   description: "Read one known generated artifact by artifact ID from manifest.json with bounded content by default.",
@@ -50,7 +74,7 @@ export const readArtifactTool: McpToolDefinition = {
       },
       maxBytes: {
         type: "number",
-        description: "Optional maximum UTF-8 bytes to return. Defaults to 12000 and is capped at 60000."
+        description: "Optional maximum UTF-8 bytes to return. Defaults to 6000 and is capped at 60000."
       },
       offset: {
         type: "number",
@@ -59,6 +83,10 @@ export const readArtifactTool: McpToolDefinition = {
       includeContent: {
         type: "boolean",
         description: "Set false to return metadata only."
+      },
+      allowDeferred: {
+        type: "boolean",
+        description: "Set true only when the current phase bundle explicitly justifies reading a deferred artifact."
       }
     },
     required: ["outputDir", "artifactId"]
@@ -81,6 +109,11 @@ export const readArtifactTool: McpToolDefinition = {
     const artifactPath = resolveInside(outputDir, artifact.path, "artifact path");
     const content = readFileSync(artifactPath, "utf8");
     const includeContent = booleanValue(record, "includeContent", true);
+    const allowDeferred = booleanValue(record, "allowDeferred", false);
+    const allowedPaths = allowedReadPaths(outputDir);
+    if (includeContent && !allowDeferred && allowedPaths && !allowedPaths.includes(artifact.path)) {
+      throw new Error(`Artifact "${artifactId}" is deferred by the consumer-plane read plan for the current phase. Start at agent-context/consumer-plane.json and pass allowDeferred only with phase-bundle justification.`);
+    }
     const maxBytes = numberValue(record, "maxBytes", DEFAULT_MAX_BYTES);
     const offset = numberValue(record, "offset", 0);
     const slice = includeContent ? boundedByteSlice(content, offset, maxBytes) : null;
@@ -91,6 +124,8 @@ export const readArtifactTool: McpToolDefinition = {
       type: artifact.type ?? "text",
       bytes: Buffer.byteLength(content, "utf8"),
       bounded: true,
+      readPlanEnforced: true,
+      allowDeferred,
       includeContent,
       maxBytes: Math.min(maxBytes, MAX_BYTES_CEILING),
       offset,

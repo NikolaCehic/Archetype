@@ -21,6 +21,8 @@ interface SourceManifestFile {
   kind: string;
   route?: string;
   screen_id?: string;
+  screen_file?: string;
+  feature_module?: string;
   component?: string;
   pattern?: string;
   suite_id?: string;
@@ -158,20 +160,18 @@ function patternSource(name: string, selector: string): string {
   ].join("\n");
 }
 
-function routeSource(file: SourceManifestFile, routeMap: { routes?: Array<Record<string, unknown>> }): string {
-  const route = routeMap.routes?.find((item) => item.screen_id === file.screen_id);
-  const components = ((route?.components as Array<{ name?: string; file?: string }> | undefined) ?? []).slice(0, 8);
-  const patterns = ((route?.patterns as Array<{ name?: string; file?: string }> | undefined) ?? []).slice(0, 8);
-  const imports = [
-    ...components.map((component) => `import { ${safeIdentifier(String(component.name ?? "Component"), "ArchetypeComponent")} } from "${relativeImport(file.path, String(component.file ?? ""))}";`),
-    ...patterns.map((pattern) => `import { ${safeIdentifier(String(pattern.name ?? "Pattern"), "ArchetypePattern")} } from "${relativeImport(file.path, String(pattern.file ?? ""))}";`)
-  ];
-  const componentCalls = components.map((component) => `      <${safeIdentifier(String(component.name ?? "Component"), "ArchetypeComponent")} />`);
-  const patternCalls = patterns.map((pattern) => `      <${safeIdentifier(String(pattern.name ?? "Pattern"), "ArchetypePattern")} />`);
+function screenComponentName(screenId: string): string {
+  return `${safeIdentifier(screenId, "Archetype")}Screen`;
+}
+
+function routeSource(file: SourceManifestFile): string {
+  const screenFile = String(file.screen_file ?? "");
+  const componentName = screenComponentName(String(file.screen_id ?? "Screen"));
+  const importPath = screenFile ? relativeImport(file.path, screenFile) : "";
   const states = JSON.stringify(file.required_states && file.required_states.length > 0 ? file.required_states : ["default"]);
   return [
-    ...imports,
-    imports.length ? "" : "",
+    screenFile ? `import { ${componentName} } from "${importPath}";` : "",
+    "",
     "type RouteProps = { searchParams?: Promise<Record<string, string | string[] | undefined>> };",
     "",
     `const allowedStates = ${states} as const;`,
@@ -182,6 +182,34 @@ function routeSource(file: SourceManifestFile, routeMap: { routes?: Array<Record
     "  const state = (allowedStates as readonly string[]).includes(requestedState) ? requestedState : \"default\";",
     "  return (",
     `    <main data-archetype-screen="${file.screen_id}" data-state={state} data-route="${file.route}" className="archetype-screen">`,
+    `      <${componentName} state={state} />`,
+    "    </main>",
+    "  );",
+    "}"
+  ].join("\n");
+}
+
+function screenSource(file: SourceManifestFile, routeMap: { routes?: Array<Record<string, unknown>> }): string {
+  const route = routeMap.routes?.find((item) => item.screen_id === file.screen_id);
+  const components = ((route?.components as Array<{ name?: string; file?: string }> | undefined) ?? []).slice(0, 8);
+  const patterns = ((route?.patterns as Array<{ name?: string; file?: string }> | undefined) ?? []).slice(0, 8);
+  const imports = [
+    ...components.map((component) => `import { ${safeIdentifier(String(component.name ?? "Component"), "ArchetypeComponent")} } from "${relativeImport(file.path, String(component.file ?? ""))}";`),
+    ...patterns.map((pattern) => `import { ${safeIdentifier(String(pattern.name ?? "Pattern"), "ArchetypePattern")} } from "${relativeImport(file.path, String(pattern.file ?? ""))}";`)
+  ];
+  const componentCalls = components.map((component) => `        <${safeIdentifier(String(component.name ?? "Component"), "ArchetypeComponent")} state={state} />`);
+  const patternCalls = patterns.map((pattern) => `        <${safeIdentifier(String(pattern.name ?? "Pattern"), "ArchetypePattern")} />`);
+  const componentName = screenComponentName(String(file.screen_id ?? "Screen"));
+  return [
+    ...imports,
+    imports.length ? "" : "",
+    "interface FeatureScreenProps {",
+    "  state?: string;",
+    "}",
+    "",
+    `export function ${componentName}({ state = "default" }: FeatureScreenProps) {`,
+    "  return (",
+    `    <section data-archetype-feature-screen="${file.screen_id}" data-feature-module="${file.feature_module ?? ""}" className="archetype-feature-screen">`,
     "      <header className=\"archetype-page-header\">",
     `        <span className="archetype-eyebrow">${file.route}</span>`,
     `        <h1>${String(file.screen_id ?? "Screen").replace(/[._-]/g, " ")}</h1>`,
@@ -190,9 +218,11 @@ function routeSource(file: SourceManifestFile, routeMap: { routes?: Array<Record
     "        <span className=\"archetype-eyebrow\">state</span>",
     "        <strong>{state.replace(/[_-]/g, \" \")}</strong>",
     "      </section>",
+    "      <div className=\"archetype-composition\">",
     ...patternCalls,
     ...componentCalls,
-    "    </main>",
+    "      </div>",
+    "    </section>",
     "  );",
     "}"
   ].join("\n");
@@ -235,7 +265,7 @@ function authAdapterSource(outputDir: string): string {
     .filter(([, value]) => value === true)
     .map(([key]) => key);
   return [
-    "import type { ArchetypeAuthAdapter } from \"./adapter-interfaces\";",
+    "import type { ArchetypeAuthAdapter } from \"../api/adapter-interfaces\";",
     "",
     "export function createFixtureAuthAdapter(): ArchetypeAuthAdapter {",
     "  return {",
@@ -290,15 +320,16 @@ function sourceForFile(outputDir: string, file: SourceManifestFile, routeMap: { 
       "}"
     ].join("\n");
   }
-  if (file.path === "src/app/globals.css" || file.path === "src/styles/archetype/tokens.css") return styleSource(outputDir);
-  if (file.path === "src/lib/archetype/adapter-interfaces.ts") return adapterInterfaces;
-  if (file.path === "src/lib/archetype/data-adapter.ts") return dataAdapterSource(outputDir);
-  if (file.path === "src/lib/archetype/auth-adapter.ts") return authAdapterSource(outputDir);
-  if (file.path === "src/lib/archetype/copy-contract.ts") return copyContractSource(outputDir);
+  if (file.path === "src/app/globals.css" || file.path === "src/design-system/tokens.css") return styleSource(outputDir);
+  if (file.path === "src/shared/api/adapter-interfaces.ts") return adapterInterfaces;
+  if (file.path === "src/shared/api/data-adapter.ts") return dataAdapterSource(outputDir);
+  if (file.path === "src/shared/auth/auth-adapter.ts") return authAdapterSource(outputDir);
+  if (file.path === "src/shared/content/copy-contract.ts") return copyContractSource(outputDir);
   if (file.path === "tailwind.config.ts") return readFileSync(path.join(outputDir, "04-design-system", "tokens", "tailwind.config.ts"), "utf8");
   if (file.kind === "component") return componentSource(String(file.component ?? "Component"), file.path.split("/").pop()?.replace(".tsx", "") ?? "component");
   if (file.kind === "pattern") return patternSource(String(file.pattern ?? "Pattern"), file.path.split("/").pop()?.replace(".tsx", "") ?? "pattern");
-  if (file.kind === "route") return routeSource(file, routeMap);
+  if (file.kind === "screen") return screenSource(file, routeMap);
+  if (file.kind === "route") return routeSource(file);
   if (file.kind === "playwright_verification") return readFileSync(path.join(outputDir, "verification", "playwright-verification.spec.ts"), "utf8");
   if (file.kind === "playwright_traceability") {
     return [

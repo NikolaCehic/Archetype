@@ -39,6 +39,7 @@ function readJson(filePath) {
 const requiredDimensions = [
   "product_outcome",
   "primary_users",
+  "source_materials_review",
   "must_have_flows",
   "target_stack",
   "data_auth_boundary",

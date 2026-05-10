@@ -7,11 +7,12 @@ import type {
 import { slugify } from "../core/stable";
 
 function routeToAppPath(route: string): string {
+  if (route === "/") return "src/app/page.tsx";
   const parts = route
     .split("/")
     .filter(Boolean)
     .map((part) => part.startsWith(":") ? `[${part.slice(1)}]` : part);
-  return `src/app/${parts.join("/") || "(home)"}/page.tsx`;
+  return `src/app/${parts.join("/")}/page.tsx`;
 }
 
 function pascalCase(value: string): string {
@@ -22,12 +23,41 @@ function pascalCase(value: string): string {
     .join("");
 }
 
+function screenComponentName(screenId: string): string {
+  return `${pascalCase(screenId)}Screen`;
+}
+
+function featureSlugForScreen(screenId: string): string {
+  return slugify(screenId);
+}
+
+function screenPath(screenId: string): string {
+  return `src/features/${featureSlugForScreen(screenId)}/screens/${screenComponentName(screenId)}.tsx`;
+}
+
+function isLayoutComponent(component: string): boolean {
+  const lower = component.toLowerCase();
+  return lower.includes("shell") || ["pageheader", "sidebar", "topnav", "detailheader"].includes(lower);
+}
+
 function componentPath(component: string): string {
-  return `src/components/archetype/${slugify(component)}.tsx`;
+  const layer = isLayoutComponent(component) ? "layout" : "ui";
+  return `src/shared/${layer}/${slugify(component)}.tsx`;
+}
+
+function patternFeatureSlug(pattern: string): string {
+  const lower = pattern.toLowerCase();
+  if (lower.includes("campaign")) return "campaigns";
+  if (lower.includes("report")) return "reports";
+  if (lower.includes("billing")) return "billing";
+  if (lower.includes("setting")) return "settings";
+  if (lower.includes("workspace")) return "workspaces";
+  if (lower.includes("onboarding")) return "onboarding";
+  return "workflows";
 }
 
 function patternPath(pattern: string): string {
-  return `src/patterns/archetype/${slugify(pattern)}.tsx`;
+  return `src/features/${patternFeatureSlug(pattern)}/patterns/${slugify(pattern)}.tsx`;
 }
 
 function testPath(suiteId: string): string {
@@ -70,34 +100,58 @@ export function buildTargetFrontendArtifacts(input: {
     kind: "route",
     route: screen.route,
     screen_id: screen.screen_id,
+    screen_file: screenPath(screen.screen_id),
+    feature_module: featureSlugForScreen(screen.screen_id),
     exports: ["default"],
+    reads: [
+      "12-target-frontend/route-component-map.json",
+      `05-screen-specs/${screen.screen_id.replace(/[.]/g, "-")}.yaml`,
+      "03-experience-architecture/route-map.json"
+    ],
+    required_states: Object.keys(screen.states),
+    test_selector: `[data-archetype-screen="${screen.screen_id}"]`,
+    forbidden_behavior: ["Do not add undeclared routes.", "Do not render a route without its feature screen.", "Do not omit declared screen states."]
+  }));
+
+  const screenFiles = input.experience.screenSpecs.map((screen) => ({
+    path: screenPath(screen.screen_id),
+    kind: "screen",
+    route: screen.route,
+    screen_id: screen.screen_id,
+    feature_module: featureSlugForScreen(screen.screen_id),
+    exports: [screenComponentName(screen.screen_id)],
     reads: [
       `05-screen-specs/${screen.screen_id.replace(/[.]/g, "-")}.yaml`,
       "03-experience-architecture/ux-flow-state-completeness.json",
+      "06-frontend-agent-contract/component-usage-map.json",
       "06-frontend-agent-contract/data-operation-contracts.json",
-      "06-frontend-agent-contract/action-contracts.json"
+      "06-frontend-agent-contract/action-contracts.json",
+      "06-frontend-agent-contract/form-contracts.json"
     ],
     uses_components: screen.required_components.map(componentPath),
     uses_patterns: screen.required_patterns.map(patternPath),
     required_states: Object.keys(screen.states),
     test_selector: `[data-archetype-screen="${screen.screen_id}"]`,
-    forbidden_behavior: ["Do not add undeclared routes.", "Do not omit declared screen states."]
+    forbidden_behavior: ["Do not implement screen UI in the route file.", "Do not omit declared screen states.", "Do not bypass data, action, form, or permission contracts."]
   }));
 
   const componentFiles = ((componentContracts.contracts ?? []).map((component) => ({
     path: componentPath(String(component.name ?? "component")),
     kind: "component",
     component: component.name,
+    layer: isLayoutComponent(String(component.name ?? "")) ? "shared_layout" : "shared_ui",
+    shadcn_strategy: "contract_bound_wrapper",
     exports: [pascalCase(String(component.name ?? "Component"))],
     reads: ["04-design-system/components/component-contracts.json", "04-design-system/tokens/token-contracts.json"],
     test_selector: `[data-archetype-component="${slugify(String(component.name ?? "component"))}"]`,
-    forbidden_behavior: ["Do not introduce tokenless styling.", "Do not change the component API without revising the contract."]
+    forbidden_behavior: ["Do not introduce tokenless styling.", "Do not paste untouched shadcn examples.", "Do not change the component API without revising the contract."]
   })));
 
   const patternFiles = ((patternContracts.contracts ?? []).map((pattern) => ({
     path: patternPath(String(pattern.name ?? "pattern")),
     kind: "pattern",
     pattern: pattern.name,
+    feature_module: patternFeatureSlug(String(pattern.name ?? "pattern")),
     exports: [pascalCase(String(pattern.name ?? "Pattern"))],
     reads: ["04-design-system/patterns/pattern-contracts.json", "04-design-system/components/component-contracts.json"],
     test_selector: `[data-archetype-pattern="${slugify(String(pattern.name ?? "pattern"))}"]`,
@@ -148,35 +202,35 @@ export function buildTargetFrontendArtifacts(input: {
       forbidden_behavior: ["Do not add global visual styles outside generated tokens."]
     },
     {
-      path: "src/lib/archetype/adapter-interfaces.ts",
+      path: "src/shared/api/adapter-interfaces.ts",
       kind: "adapter",
       exports: ["ArchetypeDataAdapter", "ArchetypeAuthAdapter"],
       reads: ["12-target-frontend/adapter-interfaces.ts"],
       forbidden_behavior: ["Do not change adapter signatures without revising data, auth, and production integration contracts."]
     },
     {
-      path: "src/lib/archetype/data-adapter.ts",
+      path: "src/shared/api/data-adapter.ts",
       kind: "adapter",
       exports: ["ArchetypeDataAdapter", "createFixtureDataAdapter"],
       reads: ["06-frontend-agent-contract/data-operation-contracts.json", "06-frontend-agent-contract/production-integration-contracts.json"],
       forbidden_behavior: ["Do not invent backend fields.", "Do not claim production integration before endpoint mappings are confirmed."]
     },
     {
-      path: "src/lib/archetype/auth-adapter.ts",
+      path: "src/shared/auth/auth-adapter.ts",
       kind: "adapter",
       exports: ["ArchetypeAuthAdapter", "createFixtureAuthAdapter"],
       reads: ["02-product-model/permission-matrix.json", "06-frontend-agent-contract/production-integration-contracts.json"],
       forbidden_behavior: ["Do not bypass permission_denied states.", "Do not hardcode roles outside the permission matrix."]
     },
     {
-      path: "src/lib/archetype/copy-contract.ts",
+      path: "src/shared/content/copy-contract.ts",
       kind: "content",
       exports: ["copySurfaces"],
       reads: ["06-frontend-agent-contract/production-integration-contracts.json"],
       forbidden_behavior: ["Do not replace generated copy with production copy unless copy review is complete."]
     },
     {
-      path: "src/styles/archetype/tokens.css",
+      path: "src/design-system/tokens.css",
       kind: "style",
       exports: ["css_variables"],
       reads: ["04-design-system/tokens/css-variables.css", "04-design-system/tokens/typography.css"],
@@ -241,7 +295,7 @@ export function buildTargetFrontendArtifacts(input: {
     }
   ];
 
-  const files = [...supportFiles, ...playwrightVerificationFiles, ...testFiles, ...routeFiles, ...componentFiles, ...patternFiles];
+  const files = [...supportFiles, ...playwrightVerificationFiles, ...testFiles, ...routeFiles, ...screenFiles, ...componentFiles, ...patternFiles];
 
   const routeComponentMap = {
     contract_version: "1.0",
@@ -249,19 +303,31 @@ export function buildTargetFrontendArtifacts(input: {
       route: screen.route,
       screen_id: screen.screen_id,
       route_file: routeToAppPath(screen.route),
+      screen_file: screenPath(screen.screen_id),
+      feature_module: featureSlugForScreen(screen.screen_id),
       components: screen.required_components.map((component) => ({
         name: component,
-        file: componentPath(component)
+        file: componentPath(component),
+        layer: isLayoutComponent(component) ? "shared_layout" : "shared_ui"
       })),
       patterns: screen.required_patterns.map((pattern) => ({
         name: pattern,
-        file: patternPath(pattern)
+        file: patternPath(pattern),
+        feature_module: patternFeatureSlug(pattern)
       })),
       data_query: (dataOperationContracts.queries ?? []).find((query) => query.screen_id === screen.screen_id)?.query_id ?? null,
       actions: (actionContracts.actions ?? []).filter((action) => action.screen_id === screen.screen_id).map((action) => action.action_id),
       forms: (formContracts.forms ?? []).filter((form) => form.screen_id === screen.screen_id).map((form) => form.form_id),
       states: Object.keys(screen.states),
-      test_selector: `[data-archetype-screen="${screen.screen_id}"]`
+      test_selector: `[data-archetype-screen="${screen.screen_id}"]`,
+      architecture_layers: {
+        route: "src/app owns routing and state param normalization only.",
+        screen: "src/features/<screen>/screens owns screen composition and product-specific layout.",
+        shared_ui: "src/shared/ui owns shadcn-compatible primitive wrappers.",
+        shared_layout: "src/shared/layout owns reusable app shell primitives.",
+        data: "src/shared/api owns data adapter interfaces and fixture-safe query/mutation adapters.",
+        auth: "src/shared/auth owns session and permission adapter boundaries."
+      }
     })),
     blockers: [],
     warnings: []
@@ -285,39 +351,46 @@ export function buildTargetFrontendArtifacts(input: {
         acceptance: "Every required test file exists before product UI implementation and no proof obligation is dropped."
       },
       {
-        task_id: "install_tokens_and_shell",
+        task_id: "install_design_system_tokens",
         order: 3,
         writes: supportFiles.filter((file) => ["app_shell", "style", "config"].includes(file.kind)).map((file) => file.path),
         reads: ["04-design-system/tokens/css-variables.css", "04-design-system/tokens/typography.css", "06-frontend-agent-contract/layout-rules.json"],
         acceptance: "App shell and token files exist without hardcoded visual values."
       },
       {
-        task_id: "create_adapters",
+        task_id: "create_shared_runtime_boundaries",
         order: 4,
         writes: supportFiles.filter((file) => ["adapter", "content"].includes(file.kind)).map((file) => file.path),
         reads: ["06-frontend-agent-contract/production-integration-contracts.json", "06-frontend-agent-contract/fixture-data.json"],
         acceptance: "Data, auth, and copy adapters expose fixture-safe defaults and production confirmation boundaries."
       },
       {
-        task_id: "create_components",
+        task_id: "create_shared_ui_and_layout",
         order: 5,
         writes: componentFiles.map((file) => file.path),
         reads: ["04-design-system/components/component-contracts.json", "04-design-system/tokens/token-contracts.json"],
-        acceptance: "Every component contract has a file with declared props, states, tokens, and selectors."
+        acceptance: "Every shared UI and layout wrapper has declared props, states, tokens, selectors, and no untouched shadcn defaults."
       },
       {
-        task_id: "create_patterns",
+        task_id: "create_feature_patterns",
         order: 6,
         writes: patternFiles.map((file) => file.path),
         reads: ["04-design-system/patterns/pattern-contracts.json", "04-design-system/components/component-contracts.json"],
         acceptance: "Every pattern contract has a file composed only from declared components."
       },
       {
-        task_id: "create_routes_and_screens",
+        task_id: "create_feature_screens",
         order: 7,
+        writes: screenFiles.map((file) => file.path),
+        reads: ["03-experience-architecture/route-map.json", "05-screen-specs/*.yaml", "06-frontend-agent-contract/component-usage-map.json", "12-target-frontend/route-component-map.json"],
+        acceptance: "Every feature screen composes declared shared UI, layout, patterns, data states, actions, forms, and accessibility behavior."
+      },
+      {
+        task_id: "wire_app_routes",
+        order: 8,
         writes: routeFiles.map((file) => file.path),
-        reads: ["03-experience-architecture/route-map.json", "05-screen-specs/*.yaml", "06-frontend-agent-contract/component-usage-map.json"],
-        acceptance: "Every route renders its declared screen, states, actions, patterns, and accessibility behavior."
+        reads: ["12-target-frontend/route-component-map.json", "03-experience-architecture/route-map.json"],
+        acceptance: "Every route file delegates to its declared feature screen and does not contain product UI composition."
       }
     ],
     blockers: files.length > 0 ? [] : ["No source files were generated for the target manifest."],
@@ -327,11 +400,33 @@ export function buildTargetFrontendArtifacts(input: {
   const sourceFileManifest = {
     manifest_version: "1.0",
     target_stack: buildManifest.frontend_stack ?? {},
+    architecture: {
+      style: "feature_shared_design_system",
+      layers: {
+        routing: "src/app",
+        feature_screens: "src/features/<screen-id>/screens",
+        feature_patterns: "src/features/<workflow>/patterns",
+        shared_ui: "src/shared/ui",
+        shared_layout: "src/shared/layout",
+        shared_api: "src/shared/api",
+        shared_auth: "src/shared/auth",
+        shared_content: "src/shared/content",
+        design_system: "src/design-system"
+      },
+      rules: [
+        "Route files normalize route/search params and delegate to feature screens.",
+        "Feature screens own product-specific composition.",
+        "Shared UI owns contract-bound shadcn-compatible primitive wrappers.",
+        "Shared adapters own data, auth, and copy boundaries.",
+        "Design tokens live outside route and feature folders."
+      ]
+    },
     build_order: buildManifest.build_order ?? [],
     file_count: files.length,
     files,
     coverage: {
       routes: routeFiles.length,
+      screens: screenFiles.length,
       components: componentFiles.length,
       patterns: patternFiles.length,
       tests: testFiles.length + playwrightVerificationFiles.length,
@@ -393,9 +488,20 @@ export function buildTargetFrontendArtifacts(input: {
     "",
     `- Files to create: ${files.length}`,
     `- Route files: ${routeFiles.length}`,
+    `- Feature screen files: ${screenFiles.length}`,
     `- Component files: ${componentFiles.length}`,
     `- Pattern files: ${patternFiles.length}`,
     `- Verification test files: ${testFiles.length + playwrightVerificationFiles.length}`,
+    "",
+    "## Target Architecture",
+    "",
+    "- `src/app` owns routing only.",
+    "- `src/features/<screen-id>/screens` owns product screen composition.",
+    "- `src/features/<workflow>/patterns` owns workflow-specific patterns.",
+    "- `src/shared/ui` owns shadcn-compatible primitive wrappers.",
+    "- `src/shared/layout` owns reusable shell and navigation primitives.",
+    "- `src/shared/api`, `src/shared/auth`, and `src/shared/content` own external boundaries.",
+    "- `src/design-system` owns generated tokens and typography.",
     "",
     "## Non-Negotiables",
     "",

@@ -49,6 +49,14 @@ export interface AssumptionApprovalInput {
   notes?: string;
 }
 
+export interface MaterialIntakeInput {
+  status?: "pending" | "provided" | "none";
+  requestedTypes?: string[];
+  respondedBy?: string;
+  respondedAt?: string;
+  notes?: string;
+}
+
 export interface ContractApprovalInput {
   approved?: boolean;
   approvedBy?: string;
@@ -86,6 +94,7 @@ export interface ArchetypeInput {
   dataBoundary?: DataBoundaryInput;
   testExecution?: TestExecutionInput;
   assumptionApproval?: AssumptionApprovalInput;
+  materialIntake?: MaterialIntakeInput;
   safetyConstraints?: string[];
   operatingMode?: OperatingMode;
   materials?: SourceMaterialInput[];
@@ -362,6 +371,11 @@ export interface ExperienceArtifacts {
 export interface DesignSystemArtifacts {
   designPrinciples: string;
   visualDirection: string;
+  designDirectionOptions: DesignDirectionOption[];
+  selectedDirectionId: string;
+  designQualityGate: DesignQualityGateArtifact;
+  visualCraftRubric: string;
+  shadcnIntegration: Record<string, unknown>;
   contentRules: string;
   primitiveTokens: Record<string, unknown>;
   semanticTokens: Record<string, unknown>;
@@ -388,6 +402,72 @@ export interface DesignSystemArtifacts {
   usageGuidelines: string;
   antiPatterns: string;
   migrationNotes: string;
+}
+
+export interface DesignDirectionOption {
+  id: string;
+  name: string;
+  thesis: string;
+  source_signature: string;
+  source_strength: "context_only" | "product_evidence" | "visual_evidence" | "brand_and_visual_evidence";
+  derived_from: string[];
+  material_alignment: string[];
+  route_screen_alignment: string[];
+  physical_scene: string;
+  palette_strategy: "restrained" | "committed" | "full_palette" | "drenched";
+  palette: {
+    background: string;
+    surface: string;
+    surface_subtle: string;
+    text: string;
+    muted_text: string;
+    border: string;
+    accent: string;
+    success: string;
+    warning: string;
+    danger: string;
+  };
+  typography: string;
+  density: "compact" | "balanced" | "spacious";
+  layout_language: string;
+  component_language: string;
+  motion_language: string;
+  best_for: string[];
+  risks: string[];
+  rejection_tests: string[];
+  evidence_refs: string[];
+}
+
+export interface DesignQualityGateArtifact {
+  artifact_version: "1.0";
+  source_scope: "design-quality-gate";
+  status: "pass" | "fail";
+  selected_direction_id: string;
+  required_before_implementation: true;
+  implementation_blocked_until_human_review: boolean;
+  checks: Array<{
+    id: string;
+    status: "pass" | "fail";
+    label: string;
+    evidence_refs: string[];
+    detail: string;
+  }>;
+  anti_slop_rules: string[];
+  required_review_surfaces: string[];
+  required_agent_behaviors: string[];
+  playwright_preview_requirement: {
+    required: true;
+    viewports: string[];
+    evidence_artifacts: string[];
+  };
+  shadcn_tailwind_policy: {
+    shadcn_required: true;
+    tailwind_required: true;
+    css_variable_tokens_required: true;
+    forbidden: string[];
+  };
+  blockers: string[];
+  warnings: string[];
 }
 
 export interface FrontendContractArtifacts {

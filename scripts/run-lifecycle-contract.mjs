@@ -65,7 +65,7 @@ assert(String(richContext.optional_material_prompt).includes("SPEC.md"), "contex
 assert(richContextMatrix.status === richContext.status, "context matrix and context completion must agree.");
 assert(richContextMatrix.source_scope === "HL-03", "context matrix must identify Scope 03.");
 assert(richContextMatrix.weak_context_definition === "The next artifact would depend on unapproved invention.", "context matrix must define weak context.");
-for (const dimension of ["product_outcome", "primary_users", "must_have_flows", "target_stack", "data_auth_boundary", "design_direction", "test_execution_permission", "assumption_approval", "safety_constraints"]) {
+for (const dimension of ["product_outcome", "primary_users", "source_materials_review", "must_have_flows", "target_stack", "data_auth_boundary", "design_direction", "test_execution_permission", "assumption_approval", "safety_constraints"]) {
   assert((richContextMatrix.required_dimensions ?? []).includes(dimension), `context matrix missing required dimension ${dimension}.`);
   assert((richContextMatrix.decisions ?? []).some((item) => item.id === dimension), `context matrix missing decision for ${dimension}.`);
 }

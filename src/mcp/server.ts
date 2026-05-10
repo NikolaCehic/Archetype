@@ -4,6 +4,8 @@ import { createInterface } from "node:readline";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { isDataPlaneError } from "../data-plane";
+import { getMcpPrompt, listMcpPrompts } from "./prompts";
+import { listMcpResourceTemplates, listMcpResources, readMcpResource } from "./resources";
 import { archetypeMcpTools } from "./tools";
 import { asRecord, type JsonRecord } from "./tools/shared";
 
@@ -121,13 +123,20 @@ async function handleRequest(request: JsonRpcRequest): Promise<void> {
       capabilities: {
         tools: {
           listChanged: false
+        },
+        resources: {
+          subscribe: false,
+          listChanged: false
+        },
+        prompts: {
+          listChanged: false
         }
       },
       serverInfo: {
         name: "archetype-mcp",
         version: packageVersion()
       },
-      instructions: "Archetype exposes deterministic tools for checking release readiness, running the natural-language lifecycle primitive, creating intakes, applying one clarification answer at a time, generating frontend implementation contracts, querying the Agent Data Plane, validating packages, reading artifacts, summarizing packages, verifying target frontends, and planning repair tasks from verification evidence."
+      instructions: "Archetype exposes deterministic tools, resources, and prompts for the natural-language lifecycle, consumer-plane next actions, review console decisions, progressive/lazy artifact reads, Agent Data Plane queries, validation, verification, and repair."
     });
     return;
   }
@@ -150,6 +159,44 @@ async function handleRequest(request: JsonRpcRequest): Promise<void> {
 
   if (method === "tools/call") {
     sendResult(id, await handleToolCall(request.params));
+    return;
+  }
+
+  if (method === "resources/list") {
+    sendResult(id, listMcpResources());
+    return;
+  }
+
+  if (method === "resources/templates/list") {
+    sendResult(id, listMcpResourceTemplates());
+    return;
+  }
+
+  if (method === "resources/read") {
+    const uri = asRecord(request.params).uri;
+    if (typeof uri !== "string") {
+      sendError(id, -32602, "resources/read requires a string uri.");
+      return;
+    }
+    try {
+      sendResult(id, readMcpResource(uri));
+    } catch (error) {
+      sendError(id, -32603, error instanceof Error ? error.message : String(error));
+    }
+    return;
+  }
+
+  if (method === "prompts/list") {
+    sendResult(id, listMcpPrompts());
+    return;
+  }
+
+  if (method === "prompts/get") {
+    try {
+      sendResult(id, getMcpPrompt(request.params));
+    } catch (error) {
+      sendError(id, -32603, error instanceof Error ? error.message : String(error));
+    }
     return;
   }
 

@@ -136,6 +136,9 @@ for (const expected of [
   "governance/forbidden-behaviors.json",
   "governance/convergence-standard.json",
   "lifecycle/implementation-phases.json",
+  "draft/design-directions.json",
+  "draft/design-quality-gate.json",
+  "draft/design-craft-rubric.md",
   "draft/design-system-preview.html",
   "spec/archetype-spec.json",
   "test-first/",
@@ -163,7 +166,7 @@ for (const expected of ["60 seconds", "archetype install --target all --json", "
   assert(quickstart.includes(expected), `quickstart docs missing ${expected}.`);
 }
 const lifecycle = readText("docs/agent-lifecycle.md");
-for (const expected of ["clarify missing context", "optional materials", "draft/design-system-preview.html", "canonical spec", "tests first", "Playwright", "repair", "governance/forbidden-behaviors.json", "governance/convergence-standard.json", "lifecycle/implementation-phases.json"]) {
+for (const expected of ["clarify missing context", "optional materials", "draft/design-system-preview.html", "draft/design-quality-gate.json", "canonical spec", "tests first", "Playwright", "repair", "governance/forbidden-behaviors.json", "governance/convergence-standard.json", "lifecycle/implementation-phases.json"]) {
   assert(lifecycle.includes(expected), `agent lifecycle docs missing ${expected}.`);
 }
 const releaseReadiness = readText("docs/release-readiness.md");

@@ -23,6 +23,7 @@ The role exists because a frontend can pass route tests while still feeling gene
 - Visual-smoke evidence must cover mobile, tablet, and desktop viewports for every route required by the verification contract.
 - Reflow and text-spacing resilience are visual-quality requirements, not optional accessibility extras.
 - Tailwind and CSS must use generated token variables, component variants, and responsive rules instead of ad hoc values.
+- The approved `04-design-system/design-quality-gate.json` is a visual blocker contract, not advisory copy. Generic blue-gray SaaS output, untouched shadcn defaults, raw Tailwind visual literals, missing interaction states, or generic card-grid composition require repair.
 - A polished screen must still be usable in loading, empty, error, permission_denied, offline, partial_data, stale_data, filtered_empty, validation_error, and success_confirmation states when those states are required.
 - If there is no visual reference, the approved `04-design-system/visual-direction.md` and screen contracts become the reference. Do not invent a new aesthetic.
 - If there is a supplied screenshot or design file, treat it as abstract evidence unless the contract explicitly marks it as canonical.
@@ -38,6 +39,8 @@ The role exists because a frontend can pass route tests while still feeling gene
 ## Inputs
 
 - `04-design-system/visual-direction.md`
+- `04-design-system/design-quality-gate.json`
+- `04-design-system/shadcn-integration.json`
 - `04-design-system/tokens/primitive-tokens.json`
 - `04-design-system/tokens/semantic-tokens.json`
 - `04-design-system/tokens/component-tokens.json`
@@ -83,6 +86,7 @@ The role exists because a frontend can pass route tests while still feeling gene
 
 - Overlapping text, clipped labels, unstable layout dimensions, poor spacing rhythm, hidden critical actions, horizontal overflow, or low visual hierarchy.
 - Untokenized styling, one-note palettes, inconsistent component states, unapproved Tailwind values, or amateur default UI.
+- Any violation of `04-design-system/design-quality-gate.json`, including default blue-gray SaaS styling, untouched shadcn examples, generic card-grid screens, raw Tailwind visual literals, or missing component states.
 - Missing screenshot evidence across required viewports.
 - Visual-smoke tests that only check selectors or markers.
 - Screenshot evidence that is not tied to route, screen, state, viewport, and artifact references.
@@ -119,6 +123,7 @@ The role exists because a frontend can pass route tests while still feeling gene
 6. Inspect token and component-state fidelity.
    - Compare colors, spacing, radius, elevation, borders, focus rings, density, and component variants against token and component contracts.
    - Flag raw visual values, invented variants, inconsistent hover/focus/active/disabled/loading states, and component APIs that drift from the registry.
+   - Read the design-quality gate and shadcn integration contract before deciding whether visual drift is acceptable.
 
 7. Inspect state-specific polish.
    - Validate each required screen state has a real visual treatment, not a generic placeholder.
@@ -150,6 +155,7 @@ Return `ready_for_visual_verification` only when all conditions are true:
 - Typography roles match the approved contract and text fits without viewport-width font scaling or negative letter spacing.
 - Component states match the component registry and use approved tokens.
 - No raw styling outside token variables remains.
+- The design-quality gate and shadcn integration contract pass without exceptions.
 - Required screen states have visual treatments that preserve hierarchy and recovery paths.
 - The role can answer: `I cannot identify a remaining visual mismatch against the approved contracts and screenshot evidence.`
 

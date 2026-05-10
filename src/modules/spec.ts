@@ -87,6 +87,10 @@ function buildSpecJson(pkg: SpecInput): Record<string, unknown> {
     design_system: {
       principles: pkg.designSystem.designPrinciples,
       visual_direction: pkg.designSystem.visualDirection,
+      selected_direction_id: pkg.designSystem.selectedDirectionId,
+      direction_options: pkg.designSystem.designDirectionOptions,
+      design_quality_gate: pkg.designSystem.designQualityGate,
+      shadcn_integration: pkg.designSystem.shadcnIntegration,
       content_rules: pkg.designSystem.contentRules,
       tokens: {
         primitive: pkg.designSystem.primitiveTokens,

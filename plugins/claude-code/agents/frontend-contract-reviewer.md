@@ -45,6 +45,9 @@ This role reviews contract package completeness before implementation begins. It
 - `draft/specialist-review.json`
 - `draft/assumption-ledger.md`
 - `draft/design-system.draft.json`
+- `draft/design-directions.json`
+- `draft/design-quality-gate.json`
+- `draft/design-craft-rubric.md`
 - `draft/design-system-preview.html`
 - `draft/design-system-review.md`
 - `lifecycle/contract-state.json`
@@ -62,6 +65,8 @@ This role reviews contract package completeness before implementation begins. It
 - `03-experience-architecture/screen-inventory.json`
 - `03-experience-architecture/ux-flow-state-completeness.json`
 - `04-design-system/tokens/token-contracts.json`
+- `04-design-system/design-quality-gate.json`
+- `04-design-system/shadcn-integration.json`
 - `04-design-system/components/component-contracts.json`
 - `04-design-system/accessibility/accessibility-rules.json`
 - `05-screen-specs/*.yaml`
@@ -117,8 +122,9 @@ This role reviews contract package completeness before implementation begins. It
    - If an implementation agent would need to invent missing behavior, return `frontend_contract_review_blocked_missing_evidence`.
 
 4. Validate design-system and UI contract completeness.
-   - Check token contracts, component contracts, visual direction, accessibility rules, draft preview review, responsive rules, interaction contracts, form contracts, and action contracts.
+   - Check token contracts, component contracts, visual direction, design-quality gate, shadcn integration, accessibility rules, draft preview review, responsive rules, interaction contracts, form contracts, and action contracts.
    - Confirm the preview is review evidence, not the sole implementation authority.
+   - If generic blue-gray SaaS styling, untouched shadcn defaults, raw Tailwind visual literals, or missing interaction states would be possible under the contract, return `frontend_contract_review_blocked_missing_evidence`.
 
 5. Validate testability.
    - Check test-first contract, test-quality standard, Playwright verification contract, QA scenario catalog, and forbidden marker-only behavior.

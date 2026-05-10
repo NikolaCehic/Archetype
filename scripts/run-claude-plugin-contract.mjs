@@ -76,7 +76,7 @@ assert(mcp.mcpServers.archetype.args.includes("github:NikolaCehic/Archetype"), "
 assert(mcp.mcpServers.archetype.args.includes("archetype-mcp"), "Claude plugin MCP config must launch archetype-mcp.");
 
 const frontDoor = readText("skills/archetype/SKILL.md");
-for (const expected of ["project idea", "Self-Contained Pipeline", "archetype_release_doctor", "archetype_create_intake", "archetype_answer_clarification", "materials", "Ask exactly one", "lifecycle/clarification-turn.json", "draft_contract", "draft/design-system-preview.html", "draft/frontend-contract.draft.json", "human approval", "Do not require the user", "tests first", "Do not end by telling the user what to tell Claude Code next"]) {
+for (const expected of ["project idea", "Self-Contained Pipeline", "archetype_release_doctor", "archetype_create_intake", "archetype_answer_clarification", "materials", "Ask exactly one", "lifecycle/clarification-turn.json", "draft_contract", "draft/design-system-preview.html", "draft/design-directions.json", "draft/design-quality-gate.json", "draft/design-craft-rubric.md", "draft/frontend-contract.draft.json", "human approval", "Do not require the user", "tests first", "Do not end by telling the user what to tell Claude Code next"]) {
   assert(frontDoor.includes(expected), `Claude front-door skill missing ${expected}.`);
 }
 assert(!frontDoor.includes("Ask at most six"), "Claude front-door skill must not ask grouped clarification questions.");
@@ -101,13 +101,13 @@ for (const expected of ["archetype_create_intake", "archetype_generate_package",
 }
 
 const implement = readText("skills/implement/SKILL.md");
-for (const expected of ["lifecycle/approval-decision.json", "reviews/specialist-review-summary.md", "spec/archetype-spec.json", "test-first/test-first-contract.json", "test-first/test-quality-standard.json", "governance/forbidden-behaviors.json", "test-results/initial-red-test-run.md", "implementation-contract.md", "experience/route-map.json", "screens/screen-inventory.json", "design-system/tokens.json", "frontend-agent-contract/implementation-rules.json"]) {
+for (const expected of ["lifecycle/approval-decision.json", "reviews/specialist-review-summary.md", "spec/archetype-spec.json", "test-first/test-first-contract.json", "test-first/test-quality-standard.json", "governance/forbidden-behaviors.json", "test-results/initial-red-test-run.md", "implementation-contract.md", "experience/route-map.json", "screens/screen-inventory.json", "design-system/tokens.json", "04-design-system/design-quality-gate.json", "04-design-system/shadcn-integration.json", "frontend-agent-contract/implementation-rules.json"]) {
   assert(implement.includes(expected), `Implement skill missing ${expected}.`);
 }
 assert(implement.includes("Preserve the initial red test result"), "Claude implement skill must enforce red-first TDD.");
 
 const verify = readText("skills/verify/SKILL.md");
-for (const expected of ["archetype_validate_package", "archetype_verify_target", "archetype_plan_repair", "skipInstall: false", "verify-target", "test-first/test-quality-standard.json", "governance/forbidden-behaviors.json", "verification/playwright-verification-contract.json", "verification/playwright-evidence.json", "10-revision/repair-task-queue.json", "visual-smoke", "marker-only tests fail"]) {
+for (const expected of ["archetype_validate_package", "archetype_verify_target", "archetype_plan_repair", "skipInstall: false", "verify-target", "test-first/test-quality-standard.json", "governance/forbidden-behaviors.json", "04-design-system/design-quality-gate.json", "04-design-system/shadcn-integration.json", "verification/playwright-verification-contract.json", "verification/playwright-evidence.json", "10-revision/repair-task-queue.json", "visual-smoke", "marker-only tests fail"]) {
   assert(verify.includes(expected), `Verify skill missing ${expected}.`);
 }
 
@@ -214,6 +214,9 @@ for (const expected of [
   "## shadcn, Radix, And Tailwind Rules",
   "## Draft Preview Review Loop",
   "draft/design-system.draft.json",
+  "draft/design-directions.json",
+  "draft/design-quality-gate.json",
+  "draft/design-craft-rubric.md",
   "draft/design-system-preview.html",
   "draft/design-system-review.md",
   "04-design-system/tokens/token-contracts.json",

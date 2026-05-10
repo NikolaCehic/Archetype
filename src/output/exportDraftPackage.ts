@@ -3,6 +3,8 @@ import path from "node:path";
 import { agentContextBundlePath, buildAgentContextForPackage } from "../agent-context/phaseBundles";
 import { artifactIndexForPackage, artifactReadOrderForPackage, forbiddenDraftArtifactPaths, manifestArtifactsForPackage } from "../artifacts/registry";
 import type { ManifestArtifactEntry } from "../artifacts/registry";
+import { buildConsumerPlane, consumerPlaneMarkdown } from "../consumer-plane";
+import { agentControlPlaneMarkdown, buildAgentControlPlaneReport } from "../control-plane";
 import { prepareGeneratedOutputDirectory } from "../safety/pathSafety";
 import type { ArchetypePackage } from "../core/types";
 import { buildConvergenceStandardArtifact, convergenceStandardMarkdown } from "../modules/convergenceStandard";
@@ -15,6 +17,7 @@ import { buildContractDraftArtifacts } from "../modules/lifecycleContractStates"
 import { missingContextMarkdown } from "../modules/lifecycleIntakeStates";
 import { buildNonNegotiablePrinciplesArtifact, nonNegotiablePrinciplesMarkdown } from "../modules/nonNegotiablePrinciples";
 import { buildPackageReadinessTiersArtifact, readinessTiersMarkdown } from "../modules/readinessTiers";
+import { buildSessionArtifacts } from "../session";
 
 type DraftArtifact = ManifestArtifactEntry;
 
@@ -110,7 +113,12 @@ export function exportDraftPackage(pkg: ArchetypePackage, outDir: string, option
   const evidenceDecisionModel = buildEvidenceDecisionModelArtifact(pkg);
   const forbiddenBehaviorAcceptance = buildForbiddenBehaviorAcceptanceArtifact();
   const frontendPracticeSkills = buildFrontendPracticeSkillsArtifact(pkg);
+  const agentControlPlane = buildAgentControlPlaneReport(pkg, "draft_contract");
   const agentContext = buildAgentContextForPackage(pkg, "draft_contract");
+  const consumerPlane = buildConsumerPlane({
+    agentContext,
+    controlPlane: agentControlPlane
+  });
   const convergenceStandard = buildConvergenceStandardArtifact({
     packageType: "draft_contract",
     contextStatus: String(pkg.lifecycle.contextCompletion.status ?? "complete"),
@@ -127,6 +135,22 @@ export function exportDraftPackage(pkg: ArchetypePackage, outDir: string, option
     contractApprovalStatus: String(pkg.manifest.contract_approval.status ?? "pending_human_review")
   });
   const artifacts = manifestArtifactsForPackage("draft");
+  const sessionArtifacts = buildSessionArtifacts({
+    packageType: "draft_contract",
+    productName: productName(pkg),
+    readinessScore: pkg.quality.readiness.score,
+    readinessTier: "ready_for_contract_approval",
+    readyForFrontendAgent: false,
+    implementationAuthorized: false,
+    blockers: pkg.quality.readiness.blockers,
+    warnings: pkg.quality.readiness.warnings,
+    agentContext,
+    consumerPlane,
+    controlPlane: agentControlPlane,
+    evidence: pkg.evidence,
+    routeSource: draft.experienceArchitectureDraft,
+    manifestArtifactCount: artifacts.length
+  });
 
   const manifest = {
     schemaVersion: "0.1.0",
@@ -161,12 +185,32 @@ export function exportDraftPackage(pkg: ArchetypePackage, outDir: string, option
 
   writeText(outDir, "README.md", buildReadme(pkg));
   writeJson(outDir, "manifest.json", manifest);
+  writeJson(outDir, "agent-context/consumer-plane.json", consumerPlane);
+  writeText(outDir, "agent-context/consumer-plane.md", consumerPlaneMarkdown(consumerPlane));
   writeJson(outDir, "agent-context/context-summary.json", agentContext.summary);
   writeText(outDir, "agent-context/context-summary.md", agentContext.summaryMarkdown);
   writeJson(outDir, "agent-context/phase-bundles/index.json", agentContext.phaseIndex);
   for (const bundle of agentContext.bundles) {
     writeJson(outDir, agentContextBundlePath(bundle.phase_id), bundle);
   }
+  writeJson(outDir, "review-console/session.json", sessionArtifacts.reviewSession);
+  writeText(outDir, "review-console/index.html", sessionArtifacts.reviewConsoleHtml);
+  writeJson(outDir, "review-console/approval-decisions.json", sessionArtifacts.approvalDecisions);
+  writeJson(outDir, "review-console/design-diff.json", sessionArtifacts.designDiff);
+  writeJson(outDir, "review-console/run-timeline.json", sessionArtifacts.timeline);
+  writeJson(outDir, "progressive/generation-plan.json", sessionArtifacts.progressivePlan);
+  writeJson(outDir, "progressive/lazy-contract-index.json", sessionArtifacts.lazyContractIndex);
+  writeJson(outDir, "progressive/token-budget.json", sessionArtifacts.tokenBudget);
+  writeJson(outDir, "progressive/phase-package-plan.json", sessionArtifacts.phasePackagePlan);
+  writeJson(outDir, "mcp/current-phase-resources.json", sessionArtifacts.mcpResources);
+  writeJson(outDir, "mcp/current-phase-prompts.json", sessionArtifacts.mcpPrompts);
+  writeJson(outDir, "orchestration/team-handoffs.json", sessionArtifacts.teamHandoffs);
+  writeJson(outDir, "orchestration/subagent-ownership.json", sessionArtifacts.subagentOwnership);
+  writeJson(outDir, "orchestration/host-permissions.json", sessionArtifacts.hostPermissions);
+  writeJson(outDir, "attachments/source-materials.json", sessionArtifacts.sourceMaterialUx);
+  writeText(outDir, "attachments/source-materials.md", sessionArtifacts.sourceMaterialMarkdown);
+  writeJson(outDir, "lifecycle/blockers-explained.json", sessionArtifacts.blockedExplanation);
+  writeText(outDir, "lifecycle/blockers-explained.md", sessionArtifacts.blockedExplanationMarkdown);
   writeJson(outDir, "00-manifest/manifest.json", internalManifest);
   writeJson(outDir, "00-manifest/implementation-readiness.json", readiness);
   writeText(outDir, "readiness-report.md", buildReadinessReport(pkg));
@@ -199,6 +243,8 @@ export function exportDraftPackage(pkg: ArchetypePackage, outDir: string, option
   writeText(outDir, "governance/convergence-standard.md", convergenceStandardMarkdown(convergenceStandard));
   writeJson(outDir, "governance/frontend-practice-skills.json", frontendPracticeSkills);
   writeText(outDir, "governance/frontend-practice-skills.md", frontendPracticeSkillsMarkdown(frontendPracticeSkills));
+  writeJson(outDir, "governance/agent-control-plane.json", agentControlPlane);
+  writeText(outDir, "governance/agent-control-plane.md", agentControlPlaneMarkdown(agentControlPlane));
   for (const skill of FRONTEND_PRACTICE_SKILLS) {
     writeJson(outDir, skill.output_artifact, frontendPracticeSkillOutput(skill));
   }
@@ -206,6 +252,9 @@ export function exportDraftPackage(pkg: ArchetypePackage, outDir: string, option
   writeJson(outDir, "draft/product-model.draft.json", draft.productModelDraft);
   writeJson(outDir, "draft/experience-architecture.draft.json", draft.experienceArchitectureDraft);
   writeJson(outDir, "draft/design-system.draft.json", draft.designSystemDraft);
+  writeJson(outDir, "draft/design-directions.json", pkg.designSystem.designDirectionOptions);
+  writeJson(outDir, "draft/design-quality-gate.json", pkg.designSystem.designQualityGate);
+  writeText(outDir, "draft/design-craft-rubric.md", pkg.designSystem.visualCraftRubric);
   writeText(outDir, "draft/design-system-preview.html", designPreviewHtml);
   writeText(outDir, "draft/design-system-review.md", designReviewMarkdown);
   writeJson(outDir, "draft/frontend-contract.draft.json", draft.frontendContractDraft);

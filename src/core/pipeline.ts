@@ -39,6 +39,7 @@ import { buildPlaywrightVerificationArtifacts } from "../modules/playwrightVerif
 import { buildContractApprovalState, buildReadinessEvidence } from "../modules/nonNegotiablePrinciples";
 import { recordCompiledPackage } from "../data-plane/packageRecorder";
 import { artifactIndexForPackage } from "../artifacts/registry";
+import { buildAgentControlPlaneReport } from "../control-plane";
 
 type CompilerPhaseName =
   | "context"
@@ -257,7 +258,7 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
   });
   const product = buildProductArtifacts(input, profile, evidence);
   const experience = buildExperienceArtifacts(input, profile, product, evidence);
-  const designSystem = buildDesignSystemArtifacts(input, profile, experience);
+  const designSystem = buildDesignSystemArtifacts(input, profile, experience, ingestion);
   const frontendContract = buildFrontendContractArtifacts(input, profile, product, experience, designSystem);
   const schemas = buildSchemaArtifacts();
   const llm = buildLLMDecisionArtifacts();
@@ -585,11 +586,37 @@ export function runArchetypeCompiler(input: ArchetypeInput, _options: CompilerOp
     ...packageWithoutPlaywright,
     playwright
   };
+  const controlPlane = buildAgentControlPlaneReport(compiledPackage, "canonical_contract");
+  const controlPlaneBlockers = controlPlane.gates
+    .filter((gate) => gate.severity === "P0" && gate.status === "fail")
+    .flatMap((gate) => gate.blockers.map((blocker) => `${gate.id}: ${blocker}`));
+  const finalPackage = controlPlaneBlockers.length === 0
+    ? compiledPackage
+    : {
+      ...compiledPackage,
+      manifest: {
+        ...compiledPackage.manifest,
+        implementation_authorized: false,
+        ready_for_frontend_agent: false,
+        readiness_tier: "ready_for_contract_approval" as ReadinessTier,
+        blockers: [...new Set([...compiledPackage.manifest.blockers, ...controlPlaneBlockers])],
+        warnings: compiledPackage.manifest.warnings
+      },
+      quality: {
+        ...compiledPackage.quality,
+        readiness: {
+          ...compiledPackage.quality.readiness,
+          readinessTier: "ready_for_contract_approval" as ReadinessTier,
+          readyForFrontendAgent: false,
+          blockers: [...new Set([...compiledPackage.quality.readiness.blockers, ...controlPlaneBlockers])]
+        }
+      }
+    };
   if (_options.dataPlane) {
-    recordCompiledPackage(_options.dataPlane, compiledPackage, {
+    recordCompiledPackage(_options.dataPlane, finalPackage, {
       outputDir: _options.outputDir,
       sourcePath: _options.sourcePath
     });
   }
-  return compiledPackage;
+  return finalPackage;
 }

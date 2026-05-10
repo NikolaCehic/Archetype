@@ -87,6 +87,8 @@ const lifecycleRun = runJson([
 ]);
 assert(lifecycleRun.packageType === "clarification", "run --json should stop weak natural language at clarification.");
 assert(lifecycleRun.nextAction?.type === "ask_clarification", "run --json should expose one-question next action.");
+assert(lifecycleRun.consumerPlane?.next_action?.type === "ask_one_question", "run --json should expose consumer-plane next action.");
+assert(existsSync(lifecycleRun.consumerPlanePath), "run --json should write agent-context/consumer-plane.json.");
 assert(existsSync(lifecycleRun.runStatePath), "run --json should write lifecycle/run-state.json.");
 assert(existsSync(lifecycleRun.sourceGraphPath), "run --json should write lifecycle/source-graph.json.");
 
@@ -122,12 +124,17 @@ for (const requiredArtifact of [
   "draft/product-model.draft.json",
   "draft/experience-architecture.draft.json",
   "draft/design-system.draft.json",
+  "draft/design-directions.json",
+  "draft/design-quality-gate.json",
+  "draft/design-craft-rubric.md",
   "draft/design-system-preview.html",
   "draft/design-system-review.md",
   "draft/frontend-contract.draft.json",
   "draft/assumption-ledger.md",
   "draft/specialist-review.json",
   "draft/contract-approval-request.json",
+  "agent-context/consumer-plane.json",
+  "agent-context/consumer-plane.md",
   "agent-context/context-summary.json",
   "agent-context/context-summary.md",
   "agent-context/phase-bundles/index.json",
@@ -163,6 +170,7 @@ assert(summarize.entrypoints.includes("01-evidence/evidence-ledger.json"), "summ
 assert(summarize.entrypoints.includes("lifecycle/contract-state.json"), "summarize should include contract state entrypoint.");
 assert(summarize.entrypoints.includes("draft/design-system-preview.html"), "summarize should include design preview entrypoint.");
 assert(summarize.entrypoints.includes("draft/design-system-review.md"), "summarize should include design review entrypoint.");
+assert(summarize.entrypoints.includes("draft/design-quality-gate.json"), "summarize should include design quality gate entrypoint.");
 assert(summarize.entrypoints.includes("draft/frontend-contract.draft.json"), "summarize should include frontend draft entrypoint.");
 assert(summarize.entrypoints.includes("governance/non-negotiable-principles.json"), "summarize should include non-negotiable principles entrypoint.");
 assert(summarize.entrypoints.includes("governance/evidence-decision-model.json"), "summarize should include evidence decision model entrypoint.");
@@ -170,12 +178,19 @@ assert(summarize.entrypoints.includes("governance/forbidden-behaviors.json"), "s
 assert(summarize.entrypoints.includes("governance/convergence-standard.json"), "summarize should include convergence standard entrypoint.");
 assert(!summarize.entrypoints.includes("spec/archetype-spec.json"), "draft summarize must not include canonical spec entrypoint.");
 assert(!summarize.entrypoints.includes("test-first/test-first-contract.json"), "draft summarize must not include test-first entrypoint.");
+assert(summarize.compactEntrypoints.includes("agent-context/consumer-plane.json"), "summarize should expose consumer plane compact entrypoint.");
 assert(summarize.compactEntrypoints.includes("agent-context/context-summary.json"), "summarize should expose compact context entrypoint.");
+assert(summarize.consumerPlane?.nextAction === "present_draft_review", "summarize should expose consumer-plane next action.");
 assert(summarize.phaseBundles.some((phase) => phase.phaseId === "draft_review"), "summarize should expose draft review phase bundle.");
 
 const compactSummarize = runJson(["summarize", "--out", outputDir, "--compact"]);
-assert(compactSummarize.entrypoints.length === 2, "compact summarize should only expose compact entrypoints.");
+assert(compactSummarize.entrypoints.length === 3, "compact summarize should only expose compact entrypoints.");
+assert(compactSummarize.entrypoints.includes("agent-context/consumer-plane.json"), "compact summarize should include consumer plane.");
 assert(compactSummarize.entrypoints.includes("agent-context/phase-bundles/index.json"), "compact summarize should include phase bundle index.");
+
+const nextAction = runJson(["next-action", "--out", outputDir]);
+assert(nextAction.source_scope === "consumer-plane", "next-action should return the consumer plane.");
+assert(nextAction.next_action?.type === "present_draft_review", "next-action should expose draft review as the next consumer step.");
 
 const validate = runJson(["validate", "--out", outputDir]);
 assert(validate.status === "pass", "validate --json should pass.");
@@ -212,6 +227,7 @@ assert(approvedValidate.status === "pass", "approved validate --json should pass
 const approvedSummarize = runJson(["summarize", "--out", approvedOutputDir]);
 assert(approvedSummarize.entrypoints.includes("test-first/test-quality-standard.json"), "approved summarize should expose the test quality standard.");
 assert(approvedSummarize.entrypoints.includes("draft/design-system-preview.html"), "approved summarize should expose the design preview.");
+assert(approvedSummarize.entrypoints.includes("draft/design-quality-gate.json"), "approved summarize should expose the design quality gate.");
 assert(approvedSummarize.entrypoints.includes("governance/forbidden-behaviors.json"), "approved summarize should expose the forbidden behavior contract.");
 assert(approvedSummarize.entrypoints.includes("governance/convergence-standard.json"), "approved summarize should expose the convergence standard.");
 assert(approvedSummarize.phaseBundles.some((phase) => phase.phaseId === "implementation"), "approved summarize should expose implementation phase bundle.");

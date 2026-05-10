@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { AGENT_CONTEXT_ARTIFACTS, agentContextBundlePath, buildAgentContextForClarification } from "../agent-context/phaseBundles";
+import { buildConsumerPlane, consumerPlaneMarkdown } from "../consumer-plane";
 import { prepareGeneratedOutputDirectory } from "../safety/pathSafety";
 import type { ArchetypeInput } from "../core/types";
 import type { ContextGateAssessment } from "../modules/contextGate";
@@ -18,11 +19,12 @@ import {
 } from "../modules/lifecycleIntakeStates";
 import { buildReadinessEvidence, NON_NEGOTIABLE_PRINCIPLES, nonNegotiablePrinciplesMarkdown } from "../modules/nonNegotiablePrinciples";
 import { buildClarificationReadinessTiersArtifact, readinessTiersMarkdown } from "../modules/readinessTiers";
+import { SESSION_ARTIFACTS, buildSessionArtifacts } from "../session";
 
 interface ClarificationArtifact {
   id: string;
   path: string;
-  type: "json" | "markdown";
+  type: "json" | "markdown" | "html";
   required: boolean;
 }
 
@@ -198,6 +200,12 @@ export function exportClarificationPackage(
       type: artifact.type,
       required: true
     })),
+    ...SESSION_ARTIFACTS.map((artifact): ClarificationArtifact => ({
+      id: artifact.id,
+      path: artifact.path,
+      type: artifact.type,
+      required: true
+    })),
     { id: "implementation-readiness", path: "00-manifest/implementation-readiness.json", type: "json", required: true },
     { id: "lifecycle-state-machine", path: "lifecycle/state-machine.json", type: "json", required: true },
     { id: "start-request", path: "lifecycle/start-request.json", type: "json", required: true },
@@ -340,15 +348,56 @@ export function exportClarificationPackage(
   const startRequest = buildStartRequestArtifact(input, ingestion);
   const clarificationState = buildClarificationStateArtifact(assessment.contextMatrix, clarificationTurn);
   const agentContext = buildAgentContextForClarification(input, assessment);
+  const consumerPlane = buildConsumerPlane({
+    agentContext,
+    questionId: clarificationTurn.current_question?.id ?? null,
+    question: clarificationTurn.current_question?.question ?? null
+  });
+  const sessionArtifacts = buildSessionArtifacts({
+    packageType: "clarification",
+    productName: productName(input),
+    readinessScore: readiness.score,
+    readinessTier: readiness.readinessTier,
+    readyForFrontendAgent: false,
+    implementationAuthorized: false,
+    blockers: assessment.blockers,
+    warnings: assessment.warnings,
+    agentContext,
+    consumerPlane,
+    evidence,
+    sourceMaterials: evidence.sources,
+    input,
+    manifestArtifactCount: artifacts.length
+  });
 
   writeText(outDir, "README.md", buildReadme(input, assessment));
   writeJson(outDir, "manifest.json", manifest);
+  writeJson(outDir, "agent-context/consumer-plane.json", consumerPlane);
+  writeText(outDir, "agent-context/consumer-plane.md", consumerPlaneMarkdown(consumerPlane));
   writeJson(outDir, "agent-context/context-summary.json", agentContext.summary);
   writeText(outDir, "agent-context/context-summary.md", agentContext.summaryMarkdown);
   writeJson(outDir, "agent-context/phase-bundles/index.json", agentContext.phaseIndex);
   for (const bundle of agentContext.bundles) {
     writeJson(outDir, agentContextBundlePath(bundle.phase_id), bundle);
   }
+  writeJson(outDir, "review-console/session.json", sessionArtifacts.reviewSession);
+  writeText(outDir, "review-console/index.html", sessionArtifacts.reviewConsoleHtml);
+  writeJson(outDir, "review-console/approval-decisions.json", sessionArtifacts.approvalDecisions);
+  writeJson(outDir, "review-console/design-diff.json", sessionArtifacts.designDiff);
+  writeJson(outDir, "review-console/run-timeline.json", sessionArtifacts.timeline);
+  writeJson(outDir, "progressive/generation-plan.json", sessionArtifacts.progressivePlan);
+  writeJson(outDir, "progressive/lazy-contract-index.json", sessionArtifacts.lazyContractIndex);
+  writeJson(outDir, "progressive/token-budget.json", sessionArtifacts.tokenBudget);
+  writeJson(outDir, "progressive/phase-package-plan.json", sessionArtifacts.phasePackagePlan);
+  writeJson(outDir, "mcp/current-phase-resources.json", sessionArtifacts.mcpResources);
+  writeJson(outDir, "mcp/current-phase-prompts.json", sessionArtifacts.mcpPrompts);
+  writeJson(outDir, "orchestration/team-handoffs.json", sessionArtifacts.teamHandoffs);
+  writeJson(outDir, "orchestration/subagent-ownership.json", sessionArtifacts.subagentOwnership);
+  writeJson(outDir, "orchestration/host-permissions.json", sessionArtifacts.hostPermissions);
+  writeJson(outDir, "attachments/source-materials.json", sessionArtifacts.sourceMaterialUx);
+  writeText(outDir, "attachments/source-materials.md", sessionArtifacts.sourceMaterialMarkdown);
+  writeJson(outDir, "lifecycle/blockers-explained.json", sessionArtifacts.blockedExplanation);
+  writeText(outDir, "lifecycle/blockers-explained.md", sessionArtifacts.blockedExplanationMarkdown);
   writeJson(outDir, "00-manifest/implementation-readiness.json", readiness);
   writeJson(outDir, "lifecycle/state-machine.json", buildStateMachine(assessment));
   writeJson(outDir, "lifecycle/start-request.json", startRequest);

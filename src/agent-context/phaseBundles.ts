@@ -23,6 +23,9 @@ export interface AgentContextRead {
   artifact_id: string;
   path: string;
   reason: string;
+  read_mode: "bounded_artifact" | "human_open";
+  max_bytes: number;
+  counts_against_machine_budget: boolean;
 }
 
 export interface AgentContextMcpCall {
@@ -62,6 +65,7 @@ export interface AgentContextSummary {
   blockers: string[];
   warnings: string[];
   start_here: string;
+  consumer_plane: string;
   phase_bundle_index: string;
   compact_read_policy: {
     default_tool: "archetype_summarize_package";
@@ -87,9 +91,11 @@ export interface AgentContextPackage {
   bundles: AgentContextPhaseBundle[];
 }
 
-export const AGENT_CONTEXT_DEFAULT_MAX_ARTIFACT_BYTES = 12000;
+export const AGENT_CONTEXT_DEFAULT_MAX_ARTIFACT_BYTES = 6000;
 
 export const AGENT_CONTEXT_ARTIFACTS: AgentContextArtifactSeed[] = [
+  { id: "consumer-plane", path: "agent-context/consumer-plane.json", type: "json" },
+  { id: "consumer-plane-report", path: "agent-context/consumer-plane.md", type: "markdown" },
   { id: "agent-context-summary", path: "agent-context/context-summary.json", type: "json" },
   { id: "agent-context-summary-report", path: "agent-context/context-summary.md", type: "markdown" },
   { id: "agent-context-phase-index", path: "agent-context/phase-bundles/index.json", type: "json" },
@@ -119,15 +125,24 @@ export function agentContextBundlePath(phaseId: AgentContextPhaseId): string {
 }
 
 function read(artifactId: string, path: string, reason: string): AgentContextRead {
-  return { artifact_id: artifactId, path, reason };
+  const humanOpen = path.endsWith(".html");
+  return {
+    artifact_id: artifactId,
+    path,
+    reason,
+    read_mode: humanOpen ? "human_open" : "bounded_artifact",
+    max_bytes: humanOpen ? 0 : AGENT_CONTEXT_DEFAULT_MAX_ARTIFACT_BYTES,
+    counts_against_machine_budget: !humanOpen
+  };
 }
 
-function mcpRead(artifactId: string): AgentContextMcpCall {
+function mcpRead(readItem: AgentContextRead): AgentContextMcpCall {
   return {
     tool: "archetype_read_artifact",
     args: {
-      artifactId,
-      maxBytes: AGENT_CONTEXT_DEFAULT_MAX_ARTIFACT_BYTES
+      artifactId: readItem.artifact_id,
+      maxBytes: readItem.max_bytes,
+      includeContent: readItem.read_mode !== "human_open"
     }
   };
 }
@@ -164,14 +179,19 @@ function phaseReads(phaseId: AgentContextPhaseId): { required: AgentContextRead[
   if (phaseId === "draft_review") {
     return {
       required: [
+        read("agent-control-plane", "governance/agent-control-plane.json", "Phase permission, blockers, and legal next action."),
+        read("design-directions", "draft/design-directions.json", "Differentiated visual directions and selected draft direction."),
+        read("design-quality-gate", "draft/design-quality-gate.json", "Anti-generic design checks before approval."),
+        read("design-system-preview", "draft/design-system-preview.html", "Browser-reviewable design-system preview."),
+        read("design-system-review", "draft/design-system-review.md", "Human-readable design review and state coverage."),
+        read("contract-approval-request", "draft/contract-approval-request.json", "Draft approval surface with facts, candidates, and blockers.")
+      ],
+      optional: [
+        read("design-craft-rubric", "draft/design-craft-rubric.md", "Visual craft review criteria before approval."),
         read("product-model-draft", "draft/product-model.draft.json", "Candidate product scope."),
         read("experience-architecture-draft", "draft/experience-architecture.draft.json", "Candidate routes, screens, and states."),
         read("design-system-draft", "draft/design-system.draft.json", "Candidate design-system contract."),
         read("frontend-contract-draft", "draft/frontend-contract.draft.json", "Candidate frontend contract."),
-        read("design-system-preview", "draft/design-system-preview.html", "Browser-reviewable design-system preview.")
-      ],
-      optional: [
-        read("design-system-review", "draft/design-system-review.md", "Review notes for design-system changes."),
         read("assumption-ledger", "draft/assumption-ledger.md", "Candidate assumptions requiring approval.")
       ]
     };
@@ -179,24 +199,27 @@ function phaseReads(phaseId: AgentContextPhaseId): { required: AgentContextRead[
   if (phaseId === "contract_approval") {
     return {
       required: [
+        read("agent-control-plane", "governance/agent-control-plane.json", "Phase permission, blockers, and legal next action."),
         read("contract-approval-request", "draft/contract-approval-request.json", "Bound approval request."),
         read("lifecycle-contract-state", "lifecycle/contract-state.json", "Draft/canonical gate state."),
         read("assumption-ledger", "draft/assumption-ledger.md", "Assumptions that must remain candidate until approval.")
       ],
       optional: [
-        read("design-system-review", "draft/design-system-review.md", "Human review notes before approval.")
+        read("design-system-review", "draft/design-system-review.md", "Human review notes before approval."),
+        read("design-quality-gate", "draft/design-quality-gate.json", "Design approval blocker list and anti-generic rules.")
       ]
     };
   }
   if (phaseId === "test_first") {
     return {
       required: [
-        read("canonical-spec-json", "spec/archetype-spec.json", "Canonical source for behavior."),
+        read("agent-control-plane", "governance/agent-control-plane.json", "Phase permission, blockers, and legal next action."),
         read("test-first-contract", "test-first/test-first-contract.json", "Suites and tests to author first."),
         read("test-quality-standard", "test-first/test-quality-standard.json", "Forbidden marker-only and weak test patterns."),
         read("initial-red-test-run", "test-results/initial-red-test-run.md", "Required red-first evidence.")
       ],
       optional: [
+        read("canonical-spec-json", "spec/archetype-spec.json", "Canonical source for behavior when test details need exact source."),
         read("test-first-plan", "test-first/test-first-plan.md", "Human-readable test plan.")
       ]
     };
@@ -204,15 +227,17 @@ function phaseReads(phaseId: AgentContextPhaseId): { required: AgentContextRead[
   if (phaseId === "implementation") {
     return {
       required: [
-        read("implementation-contract", "implementation-contract.md", "Implementation instructions and constraints."),
+        read("agent-control-plane", "governance/agent-control-plane.json", "Phase permission, blockers, and legal next action."),
         read("route-map", "experience/route-map.json", "Approved routes."),
         read("screen-inventory", "screens/screen-inventory.json", "Approved screens and states."),
-        read("design-tokens", "design-system/tokens.json", "Approved token usage."),
+        read("design-quality-gate", "04-design-system/design-quality-gate.json", "Approved anti-generic design gate."),
         read("component-contracts", "design-system/component-contracts.json", "Approved component APIs."),
         read("implementation-rules", "frontend-agent-contract/implementation-rules.json", "Agent implementation guardrails."),
         read("acceptance-criteria", "frontend-agent-contract/acceptance-criteria.json", "Behavior acceptance criteria.")
       ],
       optional: [
+        read("implementation-contract", "implementation-contract.md", "Long-form implementation instructions and constraints."),
+        read("design-tokens", "design-system/tokens.json", "Approved token usage."),
         read("frontend-agent-instructions", "frontend-agent-contract/frontend-agent-instructions.md", "Long-form implementation handoff.")
       ]
     };
@@ -323,7 +348,7 @@ function buildBundle(packageType: AgentContextPackageType, phaseId: AgentContext
     exit_gate: metadata.exit_gate,
     required_reads: reads.required,
     optional_reads: reads.optional,
-    mcp_query_plan: reads.required.slice(0, 5).map((item) => mcpRead(item.artifact_id)),
+    mcp_query_plan: reads.required.slice(0, 5).map((item) => mcpRead(item)),
     full_artifact_policy: "Start from this compact bundle. Read full artifacts only when the bundle points to them or when verification evidence requires exact source text.",
     blocked_reason: blockedReason(packageType, phaseId)
   };
@@ -347,7 +372,7 @@ function lengthOfUnknownArray(value: unknown): number {
 
 function buildPackage(
   packageType: AgentContextPackageType,
-  base: Omit<AgentContextSummary, "schema_version" | "start_here" | "phase_bundle_index" | "compact_read_policy" | "phase_bundles">
+  base: Omit<AgentContextSummary, "schema_version" | "start_here" | "consumer_plane" | "phase_bundle_index" | "compact_read_policy" | "phase_bundles">
 ): AgentContextPackage {
   const phaseIds: AgentContextPhaseId[] = [
     "clarification",
@@ -368,7 +393,8 @@ function buildPackage(
   const summary: AgentContextSummary = {
     schema_version: "1.0",
     ...base,
-    start_here: "agent-context/context-summary.json",
+    start_here: "agent-context/consumer-plane.json",
+    consumer_plane: "agent-context/consumer-plane.json",
     phase_bundle_index: "agent-context/phase-bundles/index.json",
     compact_read_policy: {
       default_tool: "archetype_summarize_package",
@@ -445,9 +471,10 @@ export function agentContextSummaryMarkdown(summary: AgentContextSummary): strin
     "",
     "## Start Here",
     "",
-    `- Summary: ${summary.start_here}`,
+    `- Consumer plane: ${summary.consumer_plane}`,
+    `- Summary: agent-context/context-summary.json`,
     `- Phase bundle index: ${summary.phase_bundle_index}`,
-    "- Policy: start from the compact phase bundle, then request full artifacts only when the bundle names them.",
+    "- Policy: start from the consumer plane, then read the current compact phase bundle, then request full artifacts only when the bundle names them.",
     "",
     "## Phase Bundles",
     "",

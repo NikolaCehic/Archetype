@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "76e2a6c1780f46d4",
+        "id": "69d7a215f65293ca",
         "type": "tabs",
         "children": [
           {
-            "id": "c4ac5081e670064c",
+            "id": "db410396a2de79dc",
             "type": "leaf",
             "state": {
               "type": "graph",
@@ -70,7 +70,8 @@
               "title": "Files"
             }
           }
-        ]
+        ],
+        "currentTab": 2
       }
     ],
     "direction": "horizontal",
@@ -175,8 +176,9 @@
       "bases:Create new base": false
     }
   },
-  "active": "11eeb7cbc0a2e82f",
+  "active": "db410396a2de79dc",
   "lastOpenFiles": [
+    "08 Glossary/Glossary.md",
     "Untitled",
     "10 Post-Pivot Imports/Imported File Inventory.md",
     "10 Post-Pivot Imports/Current Repo/docs/demo-script.md",

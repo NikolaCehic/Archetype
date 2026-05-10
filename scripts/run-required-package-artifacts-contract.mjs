@@ -76,7 +76,7 @@ for (const expected of ["Source scope: HL-12", "Every complete package preserves
 }
 
 const summarize = runJson(["summarize", "--out", outputDir]);
-for (const artifact of ["lifecycle/implementation-phases.json", "draft/design-system-preview.html", "draft/design-system-review.md", "governance/convergence-standard.json", "lifecycle/approval-request.md", "lifecycle/approval-decision.json", "reviews/specialist-review-summary.md", "test-results/initial-red-test-run.md", "lifecycle/final-readiness-report.md"]) {
+for (const artifact of ["lifecycle/implementation-phases.json", "draft/design-directions.json", "draft/design-quality-gate.json", "draft/design-craft-rubric.md", "draft/design-system-preview.html", "draft/design-system-review.md", "governance/convergence-standard.json", "lifecycle/approval-request.md", "lifecycle/approval-decision.json", "reviews/specialist-review-summary.md", "test-results/initial-red-test-run.md", "lifecycle/final-readiness-report.md"]) {
   assert(summarize.entrypoints.includes(artifact), `summarize missing required artifact entrypoint ${artifact}.`);
 }
 

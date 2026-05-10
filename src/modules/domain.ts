@@ -89,20 +89,24 @@ export function inferDomainProfile(input: ArchetypeInput): DomainProfile {
     };
   }
 
-  if (includesAny(text, ["web3", "wallet", "token", "chain", "gas", "transaction hash"])) {
+  if (includesAny(text, ["web3", "wallet", "token", "chain", "gas", "transaction hash", "crypto", "portfolio analysis", "portfolio analytics", "defi", "trader", "trading"])) {
     return {
       domain: "web3",
-      productType: "Web3 wallet analytics app",
+      productType: "Crypto portfolio analytics app",
       category: "crypto analytics",
-      entities: ["Wallet", "Token", "Transaction", "Network", "Position"],
-      workflows: ["connect_wallet", "review_portfolio", "compare_networks", "inspect_transaction", "estimate_gas_fee"],
+      entities: ["Wallet", "Token", "Transaction", "Network", "Position", "Performance"],
+      workflows: ["connect_wallet", "review_portfolio", "review_positions", "inspect_activity", "compare_performance", "configure_wallet_safety"],
       routes: [
+        { route: "/connect", screen_id: "wallet.connect", layout: "AuthShell", nav_label: "Connect", nav_group: "setup", priority: "primary", auth_requirement: "public_until_wallet_connected", role_requirement: ["wallet_user"], deep_linking: true, evidence_refs: ["decision_connect_wallet"] },
         { route: "/portfolio", screen_id: "portfolio.overview", layout: "AnalyticsShell", nav_label: "Portfolio", nav_group: "core", priority: "primary", auth_requirement: "wallet_connected", role_requirement: ["wallet_user"], deep_linking: true, evidence_refs: ["decision_wallet_analytics"] },
-        { route: "/transactions", screen_id: "transactions.list", layout: "AnalyticsShell", nav_label: "Transactions", nav_group: "core", priority: "primary", auth_requirement: "wallet_connected", role_requirement: ["wallet_user"], deep_linking: true, evidence_refs: ["decision_transaction_workflow"] }
+        { route: "/positions", screen_id: "positions.list", layout: "AnalyticsShell", nav_label: "Positions", nav_group: "core", priority: "primary", auth_requirement: "wallet_connected", role_requirement: ["wallet_user"], deep_linking: true, evidence_refs: ["decision_positions_workflow"] },
+        { route: "/activity", screen_id: "activity.timeline", layout: "AnalyticsShell", nav_label: "Activity", nav_group: "core", priority: "primary", auth_requirement: "wallet_connected", role_requirement: ["wallet_user"], deep_linking: true, evidence_refs: ["decision_transaction_workflow"] },
+        { route: "/performance", screen_id: "performance.compare", layout: "AnalyticsShell", nav_label: "Performance", nav_group: "analysis", priority: "secondary", auth_requirement: "wallet_connected", role_requirement: ["wallet_user"], deep_linking: true, evidence_refs: ["decision_performance_workflow"] },
+        { route: "/settings", screen_id: "settings.wallet", layout: "SettingsShell", nav_label: "Settings", nav_group: "utility", priority: "utility", auth_requirement: "wallet_connected", role_requirement: ["wallet_user"], deep_linking: true, evidence_refs: ["decision_wallet_safety_settings"] }
       ],
-      patterns: ["WalletConnectionStatus", "TransactionHashDisplay", "NetworkBadge", "GasFeeEstimator", "TokenBalanceCard", "SignaturePrompt"],
+      patterns: ["WalletConnectionStatus", "TransactionHashDisplay", "NetworkBadge", "GasFeeEstimator", "TokenBalanceCard", "SignaturePrompt", "PositionRiskPanel", "PerformanceChartPanel"],
       riskFlags: ["finance"],
-      visualDirection: "Technical, high-signal, trust-oriented, with explicit network, wallet, and transaction states."
+      visualDirection: "Technical, high-signal, trust-oriented, with explicit wallet, network, portfolio, transaction, performance, and risk states."
     };
   }
 

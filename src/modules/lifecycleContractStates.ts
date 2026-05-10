@@ -231,6 +231,16 @@ export function buildContractDraftArtifacts(pkg: ArchetypePackage): {
     artifact_version: "1.0",
     ...policy,
     visual_direction: pkg.designSystem.visualDirection,
+    selected_direction_id: pkg.designSystem.selectedDirectionId,
+    design_directions: {
+      options: pkg.designSystem.designDirectionOptions,
+      selected_direction_id: pkg.designSystem.selectedDirectionId,
+      selection_policy: "Human approval of the draft binds the selected direction. Request changes to switch direction or revise the palette before canonical generation.",
+      implementation_blocked_until_review: true
+    },
+    design_quality_gate: pkg.designSystem.designQualityGate,
+    visual_craft_rubric: pkg.designSystem.visualCraftRubric,
+    shadcn_integration: pkg.designSystem.shadcnIntegration,
     tokens: {
       primitive: pkg.designSystem.primitiveTokens,
       semantic: pkg.designSystem.semanticTokens,
@@ -299,6 +309,15 @@ export function buildContractDraftArtifacts(pkg: ArchetypePackage): {
       }),
       blockers: frontendPracticeBlockers
     },
+    design_quality_gate: {
+      source_scope: "design-quality-gate",
+      status: pkg.designSystem.designQualityGate.status,
+      selected_direction_id: pkg.designSystem.selectedDirectionId,
+      required_review_surfaces: pkg.designSystem.designQualityGate.required_review_surfaces,
+      checks: pkg.designSystem.designQualityGate.checks,
+      blockers: pkg.designSystem.designQualityGate.blockers,
+      anti_slop_rules: pkg.designSystem.designQualityGate.anti_slop_rules
+    },
     forbidden: [
       "The creator role may not approve its own draft.",
       "Warnings may not be converted into acceptance without evidence."
@@ -320,6 +339,7 @@ export function buildContractDraftArtifacts(pkg: ArchetypePackage): {
     unresolved_unknowns: unresolvedUnknowns,
     risks,
     request: "Approve this draft contract for canonical spec generation, or edit the candidate assumptions and unresolved unknowns first.",
+    design_review_request: "Review the browser design-system preview, selected direction, route proposals, shadcn/Tailwind contract, and anti-generic design checks before approving.",
     forbidden: [
       "Generate canonical spec without approval.",
       "Hide assumptions in generated artifacts."

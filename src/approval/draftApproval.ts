@@ -9,12 +9,32 @@ export interface DraftApprovalArtifactHash {
   bytes: number;
 }
 
+export interface DraftContractFingerprint {
+  fingerprint_version: "1.0";
+  route_count: number;
+  routes: Array<{
+    route: string;
+    screen_id: string;
+  }>;
+  screen_count: number;
+  screens: Array<{
+    screen_id: string;
+    route: string;
+  }>;
+  component_count: number;
+  component_names: string[];
+  token_digest: string;
+  frontend_contract_digest: string;
+  fingerprint_digest: string;
+}
+
 export interface DraftApprovalProof {
   approval_artifact_version: "1.0";
   approval_kind: "draft_contract_approval";
   draft_package_id: string;
   draft_source_hash: string;
   draft_package_checksum: string;
+  contract_fingerprint: DraftContractFingerprint;
   approved_artifact_refs: string[];
   approved_assumption_ids: string[];
   approved_by: string;
@@ -72,6 +92,61 @@ function normalizeArtifactRefs(artifactRefs: string[] | undefined): string[] {
   return [...new Set([...(artifactRefs ?? []), ...REQUIRED_DRAFT_APPROVAL_REFS])].sort();
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function stringField(value: unknown, key: string): string {
+  const field = asRecord(value)[key];
+  return typeof field === "string" ? field : "";
+}
+
+function buildDraftContractFingerprint(draftDir: string): DraftContractFingerprint {
+  const experience = readJson<Record<string, unknown>>(path.join(draftDir, "draft", "experience-architecture.draft.json"));
+  const design = readJson<Record<string, unknown>>(path.join(draftDir, "draft", "design-system.draft.json"));
+  const frontend = readJson<Record<string, unknown>>(path.join(draftDir, "draft", "frontend-contract.draft.json"));
+  const routes = asArray(experience.routes).map((route) => ({
+    route: stringField(route, "route"),
+    screen_id: stringField(route, "screen_id")
+  })).filter((route) => route.route && route.screen_id);
+  const screens = asArray(experience.screens).map((screen) => ({
+    screen_id: stringField(screen, "screen_id"),
+    route: stringField(screen, "route")
+  })).filter((screen) => screen.screen_id && screen.route);
+  const componentNames = asArray(design.components)
+    .map((component) => stringField(component, "name"))
+    .filter(Boolean)
+    .sort();
+  const tokenDigest = hashContent(asRecord(design.tokens));
+  const frontendContractDigest = hashContent({
+    routing: frontend.routing,
+    data_contracts: frontend.data_contracts,
+    data_operation_contracts: frontend.data_operation_contracts,
+    action_contracts: frontend.action_contracts,
+    form_contracts: frontend.form_contracts,
+    verification_strategy: frontend.verification_strategy
+  });
+  const withoutDigest = {
+    fingerprint_version: "1.0" as const,
+    route_count: routes.length,
+    routes,
+    screen_count: screens.length,
+    screens,
+    component_count: componentNames.length,
+    component_names: componentNames,
+    token_digest: tokenDigest,
+    frontend_contract_digest: frontendContractDigest
+  };
+  return {
+    ...withoutDigest,
+    fingerprint_digest: hashContent(withoutDigest)
+  };
+}
+
 export function verifyDraftApprovalProofDigest(proof: DraftApprovalProof): boolean {
   const { approval_digest: _digest, ...withoutDigest } = proof;
   return proof.approval_digest === proofDigest(withoutDigest);
@@ -113,10 +188,12 @@ export function createDraftApproval(input: {
 
   const approvedArtifactRefs = normalizeArtifactRefs(input.artifactRefs);
   const artifactHashes = approvedArtifactRefs.map((relativePath) => artifactHash(draftDir, relativePath));
+  const contractFingerprint = buildDraftContractFingerprint(draftDir);
   const draftPackageChecksum = hashContent({
     draft_package_id: internalManifest.package_id,
     draft_source_hash: sourceHash,
-    artifact_hashes: artifactHashes
+    artifact_hashes: artifactHashes,
+    contract_fingerprint: contractFingerprint
   });
   const proofWithoutDigest: Omit<DraftApprovalProof, "approval_digest"> = {
     approval_artifact_version: "1.0",
@@ -124,6 +201,7 @@ export function createDraftApproval(input: {
     draft_package_id: internalManifest.package_id,
     draft_source_hash: sourceHash,
     draft_package_checksum: draftPackageChecksum,
+    contract_fingerprint: contractFingerprint,
     approved_artifact_refs: approvedArtifactRefs,
     approved_assumption_ids: input.approvedAssumptionIds ?? [],
     approved_by: approvedBy,

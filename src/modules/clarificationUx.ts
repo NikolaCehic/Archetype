@@ -184,6 +184,17 @@ function testTypes(answer: string): string[] {
   return types.length > 0 ? types : positiveAnswer(answer) ? ["smoke", "e2e", "ui", "integration", "unit", "accessibility"] : ["declined"];
 }
 
+function materialIntakeStatus(answer: string): "provided" | "none" | "pending" {
+  const normalized = answer.toLowerCase();
+  if (/\b(no|none|nothing|do not have|don't have|do not|without|proceed without|nothing to attach)\b/u.test(normalized)) {
+    return "none";
+  }
+  if (/\b(spec|sop|prd|screenshot|wireframe|figma|design|api doc|route map|repo|repository|attached|@|\/|\.)\b/u.test(normalized)) {
+    return "provided";
+  }
+  return positiveAnswer(answer) ? "provided" : "none";
+}
+
 export function applyClarificationAnswer(input: {
   intake: ArchetypeInput;
   questionId: string;
@@ -215,6 +226,7 @@ export function applyClarificationAnswer(input: {
     dataBoundary: input.intake.dataBoundary ? { ...input.intake.dataBoundary } : undefined,
     testExecution: input.intake.testExecution ? { ...input.intake.testExecution, testTypes: input.intake.testExecution.testTypes ? [...input.intake.testExecution.testTypes] : undefined } : undefined,
     assumptionApproval: input.intake.assumptionApproval ? { ...input.intake.assumptionApproval, approvedAssumptionIds: input.intake.assumptionApproval.approvedAssumptionIds ? [...input.intake.assumptionApproval.approvedAssumptionIds] : undefined } : undefined,
+    materialIntake: input.intake.materialIntake ? { ...input.intake.materialIntake, requestedTypes: input.intake.materialIntake.requestedTypes ? [...input.intake.materialIntake.requestedTypes] : undefined } : undefined,
     safetyConstraints: input.intake.safetyConstraints ? [...input.intake.safetyConstraints] : undefined,
     materials: input.intake.materials ? [...input.intake.materials] : undefined,
     context: appendContext(input.intake, input.questionId, answer, answeredBy)
@@ -226,6 +238,15 @@ export function applyClarificationAnswer(input: {
     next.users = unique([...(next.users ?? []), ...splitAnswerList(answer)]);
   } else if (input.questionId === "target_stack") {
     next.stack = inferStack(answer, next.stack);
+  } else if (input.questionId === "source_materials_review") {
+    next.materialIntake = {
+      ...(next.materialIntake ?? {}),
+      status: materialIntakeStatus(answer),
+      requestedTypes: ["SPEC", "SOP", "PRD", "screenshots", "wireframes", "design_docs", "api_docs", "route_maps", "repo_files"],
+      respondedBy: answeredBy,
+      respondedAt: new Date().toISOString(),
+      notes: answer
+    };
   } else if (input.questionId === "must_have_flows") {
     next.goals = unique([...(next.goals ?? []), `Must-have flows or screens: ${answer}`]);
   } else if (input.questionId === "data_auth_boundary") {

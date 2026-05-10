@@ -48,22 +48,30 @@ Current public install path is GitHub-backed `npx`. If the package is later publ
 | --- | --- |
 | Product intent | Product model, assumptions, evidence ledger, missing-context gates |
 | UX architecture | User flows, route map, screen inventory, screen states |
-| Design system | Tokens, typography, states, components, browser preview |
+| Design system | Direction options, anti-generic quality gate, tokens, typography, states, components, browser preview |
 | Frontend contract | Data contracts, action contracts, forms, acceptance criteria |
+| Target architecture | Feature screens, shared UI/layout wrappers, adapter boundaries, route wiring, source manifest |
 | Test-first plan | Required unit, integration, UI, smoke, and E2E tests |
 | Verification | Playwright contract, scenario evidence, screenshot checks |
 | Repair | Drift findings, repair queue, revision loop |
 | Agent context | Compact read order, phase bundles, specialist role instructions |
+| Control plane | Machine-readable gates that decide the next legal agent action |
 | Data plane | Replayable run history, events, projections, artifact lineage |
 
 Important generated files include:
 
 - `lifecycle/`
 - `lifecycle/implementation-phases.json`
+- `governance/agent-control-plane.json`
 - `governance/forbidden-behaviors.json`
 - `governance/convergence-standard.json`
 - `draft/design-system-preview.html`
+- `draft/design-directions.json`
+- `draft/design-quality-gate.json`
+- `draft/design-craft-rubric.md`
 - `spec/archetype-spec.json`
+- `12-target-frontend/source-file-manifest.json`
+- `12-target-frontend/route-component-map.json`
 - `test-first/`
 - `verification/playwright-verification-contract.json`
 - `verification/playwright-evidence.json`
@@ -92,6 +100,8 @@ flowchart LR
 
 Archetype's default stance is conservative: if the context is too weak, it asks one question at a time instead of inventing the product. No canonical spec, tests, or implementation contract should exist until the context and approval gates are satisfied.
 
+Every package also includes `governance/agent-control-plane.json`. Agents must read it before moving phases: P0 blocked or failed gates stop implementation, candidate routes stay proposals until approval, and canonical output must match the approved draft fingerprint.
+
 ---
 
 ## A First Run Looks Like This
@@ -100,12 +110,29 @@ Archetype's default stance is conservative: if the context is too weak, it asks 
 2. In Codex or Claude Code, you describe the product in natural language.
 3. Archetype asks one clarification question if the context is weak.
 4. Archetype invites optional materials such as screenshots, `SPEC.md`, `PRD.md`, wireframes, or existing repo files.
-5. Archetype generates a draft contract and `draft/design-system-preview.html`.
+5. Archetype generates a draft contract, three source-derived design directions, `draft/design-quality-gate.json`, and `draft/design-system-preview.html`.
 6. You review the draft and approve or request changes.
 7. Archetype generates the canonical spec and agent contract.
 8. The coding agent writes tests first.
 9. The coding agent implements against the contract.
 10. Archetype verifies with Playwright evidence and creates repairs for drift.
+
+The target frontend contract uses a feature/shared/design-system architecture, not an `archetype/` scaffold namespace:
+
+```txt
+src/
+  app/                         route wiring only
+  features/<screen-id>/screens product screen composition
+  features/<workflow>/patterns workflow-specific patterns
+  shared/ui                    contract-bound shadcn-compatible primitives
+  shared/layout                shell and navigation primitives
+  shared/api                   data adapter interfaces and fixtures
+  shared/auth                  session and permission adapters
+  shared/content               copy contract boundary
+  design-system                generated tokens and typography
+```
+
+See [docs/target-frontend-architecture.md](docs/target-frontend-architecture.md).
 
 ---
 
@@ -135,22 +162,18 @@ Generate a draft or canonical contract package from an intake:
 npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.intake.json --out archetype-output --json
 ```
 
-Approve a reviewed draft:
+Submit a review decision. `approve` writes the bound proof and canonical package; `request_changes` records feedback and regenerates a draft; `reject` keeps implementation blocked:
 
 ```bash
-npx --yes --package github:NikolaCehic/Archetype archetype approve-draft --draft archetype-output --input archetype.intake.json --out archetype.approved.intake.json --approved-by "Your name" --json
-```
-
-Generate after approval:
-
-```bash
-npx --yes --package github:NikolaCehic/Archetype archetype generate --input archetype.approved.intake.json --out archetype-output --force --json
+npx --yes --package github:NikolaCehic/Archetype archetype review --draft archetype-output --input archetype.intake.json --decision approve --reviewer "Your name" --out archetype-output-approved --force --json
+npx --yes --package github:NikolaCehic/Archetype archetype review --draft archetype-output --input archetype.intake.json --decision request_changes --reviewer "Your name" --feedback "Make the reports route explicit." --out archetype-output-revised --force --json
 ```
 
 Validate, summarize, and verify:
 
 ```bash
 npx . validate --out archetype-output --json
+npx . next-action --out archetype-output --json
 npx . summarize --out archetype-output --compact --json
 npx . verify-target --out archetype-output --target tmp/generated-frontend --json
 npx . repair --out archetype-output --target tmp/generated-frontend --json
@@ -169,6 +192,55 @@ npx . repair --out archetype-output --target tmp/generated-frontend --json
 | Marketplace entry | `~/.agents/plugins/marketplace.json` | `archetype@archetype-local` |
 
 Fresh sessions should see the installed front door after the installer completes. If a host does not list the command immediately, restart the host session and run `archetype doctor --json`.
+
+---
+
+## Consumer Plane
+
+Archetype does not require a product webapp shell. The user-facing surface is `$archetype` in Codex, `/archetype` in Claude Code, and natural language in the host agent. Every generated package writes `agent-context/consumer-plane.json`, a compact contract that tells the host what to say, which one action is legal next, which artifacts to read first, which reads are forbidden, and how to stay token-bounded.
+
+Inspect it:
+
+```bash
+npx . next-action --out archetype-output --json
+```
+
+Agents should start from `agent-context/consumer-plane.json`, then `agent-context/context-summary.json`, then the active phase bundle.
+
+---
+
+## Review Console And Progressive Handoff
+
+Every generated package now includes a local decision cockpit:
+
+```txt
+archetype-output/review-console/index.html
+archetype-output/review-console/session.json
+```
+
+The console shows the current phase, what Archetype knows, what is missing, the one active question, attached materials, route proposals, design directions, design-quality gate, design-system preview links, approval checklist, blocked reasons, run timeline, and the next legal action. The user reviews decisions there instead of digging through artifacts.
+
+The design-quality gate rejects reusable preset directions, default blue-gray SaaS UI, untouched shadcn examples, generic card-grid dashboards, missing component states, and raw Tailwind visual literals. Every direction must cite user context, supplied materials when present, and route/screen alignment. See [Design Quality Gate](docs/design-quality-gate.md).
+
+For token-efficient handoff, create a phase package:
+
+```bash
+npx . phase-package --out archetype-output --phase draft_review --target archetype-phase-package --force --json
+```
+
+That writes a small phase-scoped package containing only the consumer plane, review console, current phase bundle, required reads, MCP descriptors, and permission/orchestration contracts. Deferred artifacts stay out until the next phase requires them.
+
+Generated packages also include:
+
+- `progressive/generation-plan.json`
+- `progressive/lazy-contract-index.json`
+- `progressive/token-budget.json`
+- `mcp/current-phase-resources.json`
+- `mcp/current-phase-prompts.json`
+- `orchestration/host-permissions.json`
+- `orchestration/subagent-ownership.json`
+- `attachments/source-materials.json`
+- `lifecycle/blockers-explained.json`
 
 ---
 
@@ -198,6 +270,29 @@ npx . data-plane replay --out archetype-output --run <run-id> --json
 
 See `docs/agent-data-plane.md`.
 
+## Agent Control Plane
+
+The control plane is the lifecycle authority. It decides whether the host agent may clarify, draft, request approval, generate canonical contracts, write tests, implement, verify, QA, or repair.
+
+It enforces:
+
+- source-material intake before drafting
+- one-question clarification
+- candidate routes before approval
+- bound human approval
+- approved draft to canonical parity
+- design-system interaction states
+- test-first and Playwright-backed verification obligations
+
+Inspect it:
+
+```bash
+npx . generate --input examples/saas-dashboard-intake.json --out archetype-output --force --json
+cat archetype-output/governance/agent-control-plane.json
+```
+
+See `docs/agent-control-plane.md`.
+
 ---
 
 ## MCP Tools
@@ -218,6 +313,8 @@ Core tools exposed to agent hosts:
 | `archetype_create_intake` | Create structured intake from product context |
 | `archetype_answer_clarification` | Continue one-question clarification |
 | `archetype_generate_package` | Generate draft or canonical artifacts |
+| `archetype_consumer_next_action` | Return the next user-facing action and bounded read plan |
+| `archetype_phase_package` | Create a small phase-scoped handoff package |
 | `archetype_validate_package` | Validate required artifacts and contracts |
 | `archetype_summarize_package` | Produce token-bounded agent context |
 | `archetype_read_artifact` | Read bounded package artifacts |
@@ -227,9 +324,12 @@ Core tools exposed to agent hosts:
 | `archetype_data_plane_timeline` | Read run events in order |
 | `archetype_data_plane_artifacts` | List artifact records |
 | `archetype_data_plane_read_artifact` | Read a recorded artifact |
+| `archetype_data_plane_lifecycle` | Read lifecycle/readiness projections |
 | `archetype_data_plane_replay_run` | Reconstruct projections from events |
 
 See `docs/use-with-mcp.md` and `mcp.example.json`.
+
+The MCP server also exposes resources and prompts. Agents can list `resources/list`, `resources/templates/list`, `prompts/list`, and `prompts/get` to fetch phase-scoped review and handoff context before using tools.
 
 ---
 
@@ -245,7 +345,9 @@ See `docs/use-with-mcp.md` and `mcp.example.json`.
 | `docs/release-readiness.md` | Publish and release-grade verification path |
 | `docs/demo-script.md` | Reproducible demo run |
 | `docs/use-with-mcp.md` | MCP server and tool usage |
+| `docs/consumer-plane.md` | Natural-language consumer surface and agent read policy |
 | `docs/agent-data-plane.md` | Local deterministic Agent Data Plane |
+| `docs/target-frontend-architecture.md` | Feature/shared/design-system target app structure |
 | `docs/artifact-registry.md` | Central artifact registry and required outputs |
 
 ---
@@ -272,11 +374,16 @@ archetype-output/
   reviews/
   frontend-agent-contract/
   agent-context/
+  review-console/
+  progressive/
+  mcp/
+  orchestration/
+  attachments/
   10-revision/
   data-plane/
 ```
 
-Agents should start from `agent-context/context-summary.json`, then read the active phase bundle before opening full artifacts.
+Agents should start from `agent-context/consumer-plane.json`, then `agent-context/context-summary.json`, then read the active phase bundle before opening full artifacts.
 
 ---
 
@@ -335,14 +442,12 @@ npm run demo:run
 
 ---
 
-## Roadmap
+## Future Hardening
 
-- Harder clarification scoring for weak prompts.
-- Better first-run UX for Codex and Claude Code host differences.
-- More production-grade frontend practice skills and QA agents.
-- Stronger red/green proof for generated test-first contracts.
-- More compact artifact read paths for lower token cost.
-- Expanded malformed-data and accessibility scenario catalogs.
+- Native host permission adapters when Codex or Claude Code expose stable plugin hook APIs for hard tool-use blocking.
+- Richer visual diff rendering inside `review-console/index.html`.
+- More golden replay fixtures from real `$archetype` and `/archetype` sessions.
+- Published npm package once the GitHub package path has soaked through fresh-user installs.
 
 ---
 

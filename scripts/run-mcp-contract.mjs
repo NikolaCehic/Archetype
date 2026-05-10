@@ -112,6 +112,8 @@ try {
   });
   assert(init.serverInfo?.name === "archetype-mcp", "initialize should return Archetype server info.");
   assert(init.capabilities?.tools, "initialize should advertise tools capability.");
+  assert(init.capabilities?.resources, "initialize should advertise resources capability.");
+  assert(init.capabilities?.prompts, "initialize should advertise prompts capability.");
   notify("notifications/initialized");
 
   const listed = await request("tools/list");
@@ -122,6 +124,9 @@ try {
     "archetype_create_intake",
     "archetype_answer_clarification",
     "archetype_generate_package",
+    "archetype_consumer_next_action",
+    "archetype_submit_review",
+    "archetype_phase_package",
     "archetype_data_plane_status",
     "archetype_data_plane_timeline",
     "archetype_data_plane_artifacts",
@@ -150,6 +155,8 @@ try {
   });
   assert(lifecycleRun.packageType === "clarification", "run lifecycle should stop weak natural language at clarification.");
   assert(lifecycleRun.nextAction?.type === "ask_clarification", "run lifecycle should expose one-question next action.");
+  assert(lifecycleRun.consumerPlane?.next_action?.type === "ask_one_question", "run lifecycle should expose consumer-plane next action.");
+  assert(existsSync(lifecycleRun.consumerPlanePath), "run lifecycle should write agent-context/consumer-plane.json.");
   assert(existsSync(lifecycleRun.runStatePath), "run lifecycle should write lifecycle/run-state.json.");
   assert(existsSync(lifecycleRun.sourceGraphPath), "run lifecycle should write lifecycle/source-graph.json.");
 
@@ -291,9 +298,59 @@ try {
   assert(validate.status === "pass", "validate should pass.");
   assert(validate.checkedFiles > 0, "validate should check files.");
 
+  const consumerNextAction = await callTool("archetype_consumer_next_action", { outputDir });
+  assert(consumerNextAction.source_scope === "consumer-plane", "consumer next action should return the consumer plane.");
+  assert(consumerNextAction.next_action?.type === "present_draft_review", "consumer next action should expose draft review.");
+  assert(consumerNextAction.contract?.natural_language_only_for_user === true, "consumer plane should preserve natural-language UX.");
+
+  const resources = await request("resources/list");
+  assert((resources.resources ?? []).some((resource) => resource.uri === "archetype://docs/consumer-plane"), "resources/list should expose consumer-plane docs.");
+  const templates = await request("resources/templates/list");
+  assert((templates.resourceTemplates ?? []).some((template) => String(template.uriTemplate).includes("review-console/session.json")), "resources/templates/list should expose review console template.");
+  const prompts = await request("prompts/list");
+  assert((prompts.prompts ?? []).some((prompt) => prompt.name === "archetype_current_phase"), "prompts/list should expose current phase prompt.");
+  const currentPrompt = await request("prompts/get", {
+    name: "archetype_current_phase",
+    arguments: { outputDir }
+  });
+  assert(String(currentPrompt.messages?.[0]?.content?.text ?? "").includes("Consumer plane"), "prompts/get should include consumer-plane context.");
+  const phasePackage = await callTool("archetype_phase_package", {
+    outputDir,
+    targetDir: path.join(workspace, "draft-phase-package"),
+    phase: "draft_review",
+    overwrite: true
+  });
+  assert(phasePackage.status === "pass", "phase package tool should pass.");
+  assert(phasePackage.includedArtifacts.includes("review-console/session.json"), "phase package should include review console session.");
+  const mcpReviewApproval = await callTool("archetype_submit_review", {
+    draftDir: path.join(workspace, "draft-phase-package"),
+    inputPath: intakePath,
+    outputDir: path.join(workspace, "review-approved-output"),
+    decision: "approve",
+    reviewer: "MCP review primitive",
+    overwrite: true
+  });
+  assert(mcpReviewApproval.status === "success", "MCP review approve should succeed.");
+  assert(mcpReviewApproval.packageType === "canonical_contract", "MCP review approve should generate canonical contract.");
+  assert(mcpReviewApproval.implementationAuthorized === true, "MCP review approve should authorize implementation.");
+  const mcpReviewChange = await callTool("archetype_submit_review", {
+    draftDir: outputDir,
+    inputPath: intakePath,
+    outputDir: path.join(workspace, "review-change-output"),
+    decision: "request_changes",
+    reviewer: "MCP review primitive",
+    feedback: "Add a clearer reports route and make the decision copy less generic before approval.",
+    overwrite: true
+  });
+  assert(mcpReviewChange.status === "warning", "MCP review request_changes should warn.");
+  assert(mcpReviewChange.packageType === "draft_contract", "MCP review request_changes should regenerate a draft package.");
+  assert(mcpReviewChange.implementationAuthorized === false, "MCP review request_changes must keep implementation blocked.");
+
   const compactSummarize = await callTool("archetype_summarize_package", { outputDir });
+  assert(compactSummarize.entrypoints.includes("agent-context/consumer-plane.json"), "compact summarize should include consumer plane.");
   assert(compactSummarize.entrypoints.includes("agent-context/context-summary.json"), "compact summarize should include context summary.");
-  assert(compactSummarize.entrypoints.length === 2, "compact summarize should keep entrypoints token-bounded.");
+  assert(compactSummarize.entrypoints.length === 3, "compact summarize should keep entrypoints token-bounded.");
+  assert(compactSummarize.consumerPlane?.nextAction === "present_draft_review", "compact summarize should expose consumer-plane next action.");
   assert(compactSummarize.phaseBundles.some((phase) => phase.phaseId === "draft_review"), "compact summarize should expose phase bundles.");
 
   const summarize = await callTool("archetype_summarize_package", { outputDir, mode: "compat" });
@@ -305,6 +362,7 @@ try {
   assert(summarize.entrypoints.includes("lifecycle/contract-state.json"), "summarize should include contract state entrypoint.");
   assert(summarize.entrypoints.includes("draft/design-system-preview.html"), "summarize should include design preview entrypoint.");
   assert(summarize.entrypoints.includes("draft/design-system-review.md"), "summarize should include design review entrypoint.");
+  assert(summarize.entrypoints.includes("draft/design-quality-gate.json"), "summarize should include design quality gate entrypoint.");
   assert(summarize.entrypoints.includes("draft/frontend-contract.draft.json"), "summarize should include frontend draft entrypoint.");
   assert(!summarize.entrypoints.includes("test-first/test-first-contract.json"), "draft summarize should not include test-first contract entrypoint.");
   assert(summarize.entrypoints.includes("governance/non-negotiable-principles.json"), "summarize should include non-negotiable principles entrypoint.");
@@ -312,10 +370,17 @@ try {
   assert(summarize.entrypoints.includes("governance/forbidden-behaviors.json"), "summarize should include forbidden behavior entrypoint.");
   assert(summarize.entrypoints.includes("governance/convergence-standard.json"), "summarize should include convergence standard entrypoint.");
 
-  const artifact = await callTool("archetype_read_artifact", {
+  const deferredArtifactRead = await expectToolError("archetype_read_artifact", {
     outputDir,
     artifactId: "frontend-contract-draft",
     maxBytes: 60000
+  });
+  assert(JSON.stringify(deferredArtifactRead).includes("deferred by the consumer-plane read plan"), "read artifact should block deferred content by default.");
+  const artifact = await callTool("archetype_read_artifact", {
+    outputDir,
+    artifactId: "frontend-contract-draft",
+    maxBytes: 60000,
+    allowDeferred: true
   });
   assert(artifact.status === "success", "read artifact should succeed.");
   assert(artifact.bounded === true, "read artifact should report bounded reads.");
@@ -348,11 +413,13 @@ try {
   assert(approvedGenerate.readinessTier === "ready_for_implementation", "human-approved MCP package should be ready for implementation.");
   assert(typeof approvedGenerate.dataPlaneRunId === "string" && approvedGenerate.dataPlaneRunId.length > 0, "approved generate should return a data-plane run ID.");
   const approvedCompactSummarize = await callTool("archetype_summarize_package", { outputDir: approvedOutputDir });
+  assert(approvedCompactSummarize.entrypoints.includes("agent-context/consumer-plane.json"), "approved compact summarize should include consumer plane.");
   assert(approvedCompactSummarize.entrypoints.includes("agent-context/context-summary.json"), "approved compact summarize should include context summary.");
   assert(approvedCompactSummarize.phaseBundles.some((phase) => phase.phaseId === "implementation"), "approved compact summarize should expose implementation bundle.");
   const approvedSummarize = await callTool("archetype_summarize_package", { outputDir: approvedOutputDir, mode: "compat" });
   assert(approvedSummarize.entrypoints.includes("test-first/test-quality-standard.json"), "approved MCP summarize should expose the test quality standard.");
   assert(approvedSummarize.entrypoints.includes("draft/design-system-preview.html"), "approved MCP summarize should expose the design preview.");
+  assert(approvedSummarize.entrypoints.includes("draft/design-quality-gate.json"), "approved MCP summarize should expose the design quality gate.");
   assert(approvedSummarize.entrypoints.includes("governance/forbidden-behaviors.json"), "approved MCP summarize should expose the forbidden behavior contract.");
   assert(approvedSummarize.entrypoints.includes("governance/convergence-standard.json"), "approved MCP summarize should expose the convergence standard.");
 

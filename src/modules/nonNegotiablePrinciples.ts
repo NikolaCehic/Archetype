@@ -93,6 +93,9 @@ function approvalProofBlockers(input: ArchetypeInput, options: ContractApprovalS
     if (!Array.isArray(proof.artifact_hashes) || proof.artifact_hashes.length === 0) {
       blockers.push("HL-01 approval gate blocked: approval proof must include draft artifact hashes.");
     }
+    if (!proof.contract_fingerprint || proof.contract_fingerprint.fingerprint_version !== "1.0" || !proof.contract_fingerprint.fingerprint_digest) {
+      blockers.push("HL-01 approval gate blocked: approval proof must include a draft contract fingerprint.");
+    }
     const refs = new Set(approval.artifactRefs ?? []);
     for (const ref of proof.approved_artifact_refs) {
       if (!refs.has(ref)) blockers.push(`HL-01 approval gate blocked: intake approval is missing proof artifact ref ${ref}.`);
@@ -131,6 +134,17 @@ export function buildContractApprovalState(input: ArchetypeInput, options: Contr
     source_hash: approval?.sourceHash ?? null,
     package_checksum: approval?.packageChecksum ?? null,
     approved_assumption_ids: approval?.approvedAssumptionIds ?? [],
+    contract_fingerprint: proofBlockers.length === 0 && approval?.approvalArtifactPath
+      ? (() => {
+        const approvalArtifactPath = resolveApprovalArtifactPath(approval.approvalArtifactPath, options);
+        if (!approvalArtifactPath || !existsSync(approvalArtifactPath)) return null;
+        try {
+          return readDraftApprovalProof(approvalArtifactPath).contract_fingerprint;
+        } catch {
+          return null;
+        }
+      })()
+      : null,
     blockers
   };
 }

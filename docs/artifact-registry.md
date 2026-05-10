@@ -20,15 +20,32 @@ The registry makes a new artifact a single-entry change plus an optional writer 
 
 ## Package Kinds
 
-`draft` artifacts are review-only. They include context, evidence, governance, draft contracts, design-system preview, and approval request surfaces.
+`draft` artifacts are review-only. They include context, evidence, governance, draft contracts, design direction options, the design-quality gate, design-system preview, and approval request surfaces.
 
 `canonical` artifacts are generated only after bound approval. They include the canonical spec, test-first contracts, Playwright verification, target generation contracts, QA evidence, and repair artifacts.
 
 Both draft and canonical packages include `agent-context/` artifacts. These are compact first-read bundles for agents and carry hot read priority:
 
+- `agent-context/consumer-plane.json`
 - `agent-context/context-summary.json`
 - `agent-context/phase-bundles/index.json`
 - one phase bundle per lifecycle phase
+
+Both package kinds also include the session and progressive handoff artifacts. These are hot review and token-control surfaces:
+
+- `review-console/session.json`
+- `review-console/index.html`
+- `review-console/run-timeline.json`
+- `progressive/generation-plan.json`
+- `progressive/lazy-contract-index.json`
+- `progressive/token-budget.json`
+- `mcp/current-phase-resources.json`
+- `mcp/current-phase-prompts.json`
+- `orchestration/host-permissions.json`
+- `orchestration/team-handoffs.json`
+- `orchestration/subagent-ownership.json`
+
+Phase packages are derived from the registry and lazy contract index. They copy only the consumer plane, review console, current phase bundle, required reads, MCP descriptors, attachment UX, blocker explanations, and orchestration/permission contracts into a small generated handoff directory.
 
 ## Public Helpers
 

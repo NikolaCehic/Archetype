@@ -1,6 +1,6 @@
 # Release Readiness
 
-Release readiness means a user or AI agent can install Archetype into Codex and Claude Code, verify setup, start the MCP server, and understand the lifecycle without reverse-engineering the repository.
+Release readiness means a user or AI agent can install Archetype into Codex and Claude Code, verify setup, start the MCP server, review the current lifecycle state, and continue through the harness without reverse-engineering the repository.
 
 ## One-Command Install
 
@@ -47,11 +47,15 @@ npm run clean:tmp-heavy
 
 `npm run check` and `npm run test` use the build-once `scripts/run-contract-suite.mjs` runner. The split suites are:
 
-- `check:fast`: cheap lifecycle, natural-language run primitive, registry, context, role, and governance contracts.
+- `check:fast`: cheap lifecycle, natural-language run primitive, registry, context, consumer plane, review console, progressive handoff, role, and governance contracts.
 - `check:contracts`: runtime contracts including real verification, CLI, MCP, QA, Playwright, and repair.
 - `check:release`: package, plugin, install, distribution, and golden release checks.
 
 Each suite writes `tmp/contract-suite/<suite>-timings.json` and `.md` with per-contract timing, workspace disk usage, token-budget estimates, and the target dependency cache path. Target frontend installs share the `ARCHETYPE_TARGET_NPM_CACHE_DIR` target dependency cache when set. Use `npm run clean:tmp-heavy` to remove heavy temporary `node_modules`, `.next`, Playwright report, and test-result folders without deleting every diagnostic artifact.
+
+`npm run session-console:contract` proves the Review Console, progressive/lazy contract index, phase token budget, MCP resource/prompt descriptors, orchestration contracts, attachment UX, blocker explanations, and phase-package handoff are present. It also proves phase-package output is smaller than the full output and refuses unsafe overlapping source/target paths.
+
+Release artifacts must expose the same current-phase surfaces through CLI, MCP tools, MCP resources, MCP prompts, skills, docs, and plugin command wrappers.
 
 ## Completion Gate
 

@@ -59,11 +59,12 @@ function unique(values: string[]): string[] {
 
 function routeToAppPath(route: string): string {
   const routePath = route.split("?")[0]?.split("#")[0] ?? route;
+  if (routePath === "/") return "src/app/page.tsx";
   const parts = routePath
     .split("/")
     .filter(Boolean)
     .map((part) => part.startsWith(":") ? `[${part.slice(1)}]` : part);
-  return `src/app/${parts.join("/") || "(home)"}/page.tsx`;
+  return `src/app/${parts.join("/")}/page.tsx`;
 }
 
 function readJsonSafe(filePath: string): JsonRecord {

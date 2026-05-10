@@ -104,6 +104,8 @@ function buildE2ETests(experience: JsonRecord, routes: JsonRecord[]): JsonRecord
       assertions: [
         "The user can enter the flow from its declared entry route.",
         "Every declared route transition in the flow is browser-observable.",
+        "Primary CTAs are clicked through deterministic handlers instead of only checked for visibility.",
+        "CTA focus-visible, active/pressed, disabled, loading, and success/error feedback states are asserted when the flow exposes actions.",
         "Recovery or empty/error behavior is visible when the flow cannot complete."
       ],
       source_spec_paths: [`experience.flows[${index}]`],
@@ -132,7 +134,7 @@ function buildUITests(screens: JsonRecord[]): JsonRecord[] {
       assertions: [
         "The state can be forced or reached through a deterministic fixture.",
         "The declared state marker is visible.",
-        "The state preserves focus, accessible names, and recovery behavior when applicable."
+        "The state preserves focus, accessible names, active/current state, and recovery behavior when applicable."
       ],
       source_spec_paths: [`experience.screens[${screenIndex}].states.${state}`],
       evidence_artifacts: ["playwright-report", "test-results/archetype-screen-states.json"]
@@ -220,7 +222,7 @@ function buildUnitTests(designSystem: JsonRecord): JsonRecord[] {
     target_file: targetFileForSuite("unit"),
     contract_kind: "component",
     component: String(component.name ?? component.id ?? `component_${index + 1}`),
-    assertions: ["Component renders declared slots, variants, states, and selectors.", "Component uses only declared token dependencies."],
+    assertions: ["Component renders declared slots, variants, states, and selectors.", "Interactive components prove hover, focus-visible, active, disabled, and loading states.", "Component uses only declared token dependencies."],
     source_spec_paths: [`design_system.components.contracts.contracts[${index}]`],
     evidence_artifacts: ["coverage/unit", "test-results/archetype-components.json"],
     must_exist_before_implementation: true,
@@ -268,6 +270,8 @@ function buildAccessibilityTests(screens: JsonRecord[]): JsonRecord[] {
       assertions: [
         "Keyboard focus is visible and ordered.",
         "Interactive controls have accessible names.",
+        "Current navigation exposes aria-current or equivalent semantics.",
+        "CTA focus-visible and active states are observable without relying on color alone.",
         "Status is not communicated through color alone."
       ],
       source_spec_paths: [`experience.screens[${index}].accessibility`, "design_system.accessibility"],

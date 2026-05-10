@@ -3515,3 +3515,384 @@ Phase 08 convergence review:
 I do not know how to make the natural-language lifecycle primitive phase more complete without moving into the next six-agent audit finding.
 I cannot identify a Phase 08 mismatch after proving CLI run, MCP run, safe material ingestion, source graph hashes, one-question clarification, draft design-system preview, approval continuation, Agent Data Plane recording, docs/skills alignment, plugin contracts, release contract, and the fast suite.
 ```
+
+## Hardening Phase 09 - Agent Control Plane
+
+Source:
+
+- `docs/agent-lifecycle.md`
+- `docs/agent-control-plane.md`
+- `obsidian-vault/13 Quality Reviews/Archetype Six-Agent Scope Audit Convergence - 2026-05-07.md`
+- Recent failed fresh-session replay where Archetype generated UI from weak context, accepted invented routes, and did not make source-material intake or test-state coverage explicit enough.
+
+Extracted requirements:
+
+- Add a deterministic Agent Control Plane separate from the Agent Data Plane.
+- Require source-material intake before drafting: SPEC, SOP, PRD, screenshots, wireframes, design docs, API docs, route maps, repo files, or explicit none.
+- Keep clarification one question at a time.
+- Treat routes as candidate proposals until human approval.
+- Bind approval to source hash, draft package checksum, artifact hashes, and the draft contract fingerprint.
+- Check canonical parity before implementation.
+- Require design-system component states for hover, focus-visible, active/current, disabled, loading, selected, and error where applicable.
+- Require test-first and Playwright obligations that prove behavior, CTA states, malformed data, accessibility, route transitions, and visual evidence.
+
+Phase critique:
+
+- The data plane recorded what happened, but it did not decide what a host agent may do next.
+- Existing lifecycle gates lived across multiple artifacts, so Codex or Claude Code could miss the authoritative stop/go surface.
+- Material intake was described in docs, but the context matrix did not require a first-class source-material decision.
+- Approval was strongly bound to artifacts, but the approved draft structure itself needed a compact parity fingerprint.
+- Test contracts proved broad behavior but did not force CTA interaction-state coverage explicitly enough.
+- The generated package lacked one machine-readable governance artifact that agents could read before each phase transition.
+
+Corrections applied:
+
+- Added `src/control-plane/` with typed control-plane report, gates, route proposals, specialist gates, and Markdown rendering.
+- Exported `governance/agent-control-plane.json` and `governance/agent-control-plane.md` for draft and canonical packages.
+- Registered control-plane artifacts in the artifact registry, required complete package paths, and compact read order.
+- Added material intake to core input, context readiness, clarification application, lifecycle inference, and source-material questions.
+- Added draft contract fingerprints to approval proofs and canonical control-plane parity checks.
+- Hardened design-system contracts and preview review coverage for active/current/selected/control-state coverage.
+- Hardened test-first, Playwright, verification, and target-test audit signals for CTA hover/focus/active/disabled/loading/error behavior.
+- Added `scripts/run-agent-control-plane-contract.mjs`, `npm run agent-control-plane:contract`, and the build-once fast/full suite entry.
+- Updated README, quickstart, Codex, Claude Code, MCP, lifecycle docs, and front-door skills to read the control plane before phase transitions.
+
+Repair notes:
+
+- The first test-quality contract still expected the old required-behavior count. The repair raised the contract expectation and asserted CTA state behavior explicitly.
+- The control plane must block on P0 failed gates and expose P0 blocked gates as phase stops; host skills must treat both as non-overridable.
+- Material-intake confirmation can come from attached materials, reference images, or an explicit no-materials answer; vague silence is not enough.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run lifecycle:contract`: pass.
+- `npm run clarification-ux:contract`: pass.
+- `npm run context-readiness:contract`: pass.
+- `npm run safety-approval:contract`: pass.
+- `npm run design-preview:contract`: pass.
+- `npm run test-quality:contract`: pass.
+- `npm run playwright:contract`: pass.
+- `npm run required-artifacts:contract`: pass.
+- `npm run artifact-registry:contract`: pass.
+- `npm run token-context:contract`: pass.
+- `npm run natural-lifecycle:contract`: pass.
+- `npm run agent-control-plane:contract`: pass.
+- `npm run check:fast`: pass.
+- `npm run check:contracts`: pass.
+- `npm run check:release`: pass.
+
+Self-healing rules:
+
+- Agent permission belongs in `governance/agent-control-plane.json`; documentation alone is not an enforcement boundary.
+- Every fresh-session UX failure should become either a gate, a contract assertion, or a verifier signal.
+- Do not treat route maps, component sets, or design tokens as canonical unless approval binds their fingerprint.
+- Source-material intake must be an explicit lifecycle decision, not implied by user silence.
+- Tests must exercise controls through real interaction states; marker-only or static presence checks are insufficient.
+
+## Hardening Phase 10 - Agent Consumer Plane
+
+Source:
+
+- `docs/agent-lifecycle.md`
+- `docs/agent-control-plane.md`
+- `docs/agent-data-plane.md`
+- `docs/consumer-plane.md`
+- Fresh-session critique: Archetype remained too token-heavy and still depended on host-agent instruction choreography after output generation.
+
+Extracted requirements:
+
+- Keep Archetype usable through `$archetype`, `/archetype`, and natural language without introducing a product webapp.
+- Add an agent-friendly consumer plane that tells hosts what to say, what to read, what to avoid, and what to do next.
+- Keep the user away from internal commands and artifact-layout knowledge.
+- Make compact reads start from the consumer plane, then context summary, then phase bundle.
+- Reduce default bounded artifact reads from 12 KB to 6 KB.
+- Add deterministic CLI and MCP access to the next-action contract.
+
+Phase critique:
+
+- The control plane decided phase legality, but it was too internal for the host-user interaction.
+- The data plane recorded events, but it did not answer "what should the agent say now?"
+- Compact summary still made agents reason from multiple artifacts before knowing the user-facing next step.
+- Docs and skills could say "be natural," but no generated artifact enforced the natural-language consumer contract.
+
+Corrections applied:
+
+- Added `src/consumer-plane/` with typed `ConsumerPlaneReport`, next-action selection, read-plan policy, token budget, and markdown rendering.
+- Generated `agent-context/consumer-plane.json` and `agent-context/consumer-plane.md` for clarification, draft, and canonical packages.
+- Added CLI command `archetype next-action --out <dir> --json`.
+- Added MCP tool `archetype_consumer_next_action`.
+- Updated lifecycle results to return `consumerPlanePath` and `consumerPlane`.
+- Updated compact package summaries and artifact read order to start from `agent-context/consumer-plane.json`.
+- Tightened phase bundles and read defaults so agents defer broad artifact reads until the active phase names them.
+- Added `scripts/run-consumer-plane-contract.mjs`, `npm run consumer-plane:contract`, and the fast/full suite entry.
+- Updated README, Codex, Claude Code, MCP, lifecycle, artifact-registry docs, and front-door skills.
+
+Repair notes:
+
+- The first typecheck failed because `consumer_plane` was added to `AgentContextSummary` but not omitted from the `buildPackage` input type. The repair updated the type boundary instead of weakening the summary type.
+- Tests that asserted two compact entrypoints were wrong after the consumer plane became first-class. The repair changed them to assert the exact three-entrypoint contract.
+- Skill mirrors must be edited together; root and Claude skill hashes remain identical.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run consumer-plane:contract`: pass.
+- `npm run token-context:contract`: pass.
+- `npm run agent-control-plane:contract`: pass.
+- `npm run natural-lifecycle:contract`: pass.
+- `npm run artifact-registry:contract`: pass.
+- `npm run required-artifacts:contract`: pass.
+- `npm run cli:contract`: pass.
+- `npm run mcp:contract`: pass.
+- `npm run plugin:codex:contract`: pass.
+- `npm run plugin:claude:contract`: pass.
+- `npm run release:contract`: pass.
+- `npm run install:contract`: pass.
+
+Self-healing rules:
+
+- Natural-language UX needs a generated consumer artifact, not only host instructions.
+- The first read for an agent should answer "what do I do next?" before exposing broader context.
+- Token optimization starts with narrower entrypoints and smaller default reads, then uses phase bundles and data-plane queries for targeted evidence.
+- Any new front-door behavior must be available through CLI, MCP, docs, skills, and contract tests together.
+
+## Hardening Phase 11 - Review Console, Progressive Handoff, MCP Resources
+
+Source:
+
+- `docs/agent-lifecycle.md`
+- `docs/consumer-plane.md`
+- `docs/agent-control-plane.md`
+- Fresh-session critique: the user saw too many artifacts, no clear cockpit, no explicit design review surface, and too much host-agent interpretation before app code generation.
+
+Extracted requirements:
+
+- The user should review decisions, not a generated folder tree.
+- Agents should start from the consumer plane, review console, lazy index, and current phase bundle before reading broad artifacts.
+- Current-phase handoff should be small and enforce deferred reads.
+- MCP must expose tools, resources, and prompts so agents can query current context without filesystem scanning.
+- Host permissions and subagent handoffs must be generated artifacts, not only role markdown.
+- Unsafe phase-package paths must be rejected before recursive delete/write.
+
+Corrections applied:
+
+- Added `src/session/` to generate `review-console/*`, `progressive/*`, `mcp/*`, `orchestration/*`, attachment UX, blocker explanations, and a user-facing run timeline for clarification, draft, and canonical packages.
+- Added `src/progressive/` with `createPhasePackage`, plus CLI command `archetype phase-package` and MCP tool `archetype_phase_package`.
+- Added MCP resources and prompts for docs, package resource templates, current-phase prompts, draft-review prompts, and test-first handoff prompts.
+- Added a first-class Design Review Diff section to `review-console/index.html` so visual preview and decision diff are visible in the cockpit, not buried in the artifact list.
+- Updated artifact registry, validators, docs, skills, plugin command wrapper, release doctor, MCP contract, install contract, and the build-once suite.
+- Removed nondeterministic `generatedAt` from phase-package manifests and bound phase packages to the source package timestamp/id instead.
+- Added overlap checks so phase-package targets cannot equal, contain, or live inside the source output directory.
+
+Repair notes:
+
+- A phase package is not a substitute for approval. It is a compact handoff surface for the current phase.
+- A Review Console is not a webapp product surface; it is local HTML generated as an artifact so `$archetype` and `/archetype` remain natural-language first.
+- Token reduction needs both smaller generated handoffs and hard read rules. Documentation alone is too weak.
+
+Verification evidence:
+
+- `npm run typecheck`: pass.
+- `npm run session-console:contract`: pass after deterministic/overlap repair.
+- `npm run cli:contract`: pass.
+- `npm run mcp:contract`: pass.
+- `npm run plugin:codex:contract`: pass.
+- `npm run plugin:claude:contract`: pass.
+- `npm run release:contract`: pass.
+- `npm run install:contract`: pass.
+- `npm run check:fast`: pass.
+- `npm run check:contracts`: pass.
+- `npm run check:release`: pass.
+
+Self-healing rules:
+
+- Whenever a generated artifact becomes the intended first-read path, add it to registry read order, contracts, docs, and plugin skills in the same loop.
+- Never add a recursive write command without a contract that proves same-directory and nested-directory failures.
+- If a user-facing lifecycle step is confusing in a fresh host session, produce a compact review artifact or MCP prompt for that step instead of expecting the host agent to infer it.
+- Do not run contract suites that mutate `dist/` or `npm pack` artifacts in parallel. Parallelize read-only inspections, but run build/package/install verification sequentially to avoid false failures from shared output deletion.
+
+## Hardening Phase 12 - Review Primitive, Read Enforcement, Natural-Language Phase Package
+
+Source:
+
+- Fresh-session critique: Archetype still depended on the host agent knowing how to approve/revise, exposed too much draft output before user approval, and allowed broad artifact reads.
+- Six-agent audit findings: approval could be structurally spoofed, MCP reads were too broad, phase packages were not self-contained enough for approval, and the user saw artifacts where they needed decisions.
+
+Extracted requirements:
+
+- Approval, request changes, and reject must be first-class deterministic decisions.
+- Natural-language `$archetype` and `/archetype` should produce a small current-phase review surface before broad canonical/app handoff.
+- Agents must not read deferred artifacts by default.
+- Review console artifacts must not leak internal approval command choreography.
+- MCP must expose the review primitive and strict prompt/resource behavior.
+
+Corrections applied:
+
+- Added `src/review/` and `archetype review` / `archetype_submit_review` for `approve`, `request_changes`, and `reject`.
+- Bound `approve` to the existing draft/source hash proof and canonical export. `request_changes` records feedback as source material and regenerates a draft. `reject` records the decision and keeps implementation blocked.
+- Changed consumer-plane and review-console artifacts to expose allowed user actions instead of an `approval_command_hint`.
+- Made draft phase packages self-contained for bound approval and added contract checks for approve/request/reject outcomes.
+- Enforced MCP artifact reads against the consumer-plane read plan. Deferred reads require an explicit `allowDeferred` override.
+- Added phase read modes so giant human-review surfaces like HTML previews do not count as machine-context reads.
+- Changed natural-language lifecycle draft output to a small current-phase package instead of a broad draft tree before approval.
+- Made MCP prompts strict about `outputDir` and missing context artifacts instead of silently returning `{}`.
+
+Repair notes:
+
+- `generate` may still create a broad draft package for explicit developer workflows; the natural-language lifecycle now uses the compact phase package path.
+- Backward-compatible `approve-draft` remains for older tests and users, but docs/skills now teach the review primitive.
+- Phase packages are current-phase only by default; this prevents agents from jumping ahead into blocked implementation phases.
+
+Verification evidence:
+
+- `npm run build`: pass.
+- `node scripts/run-natural-lifecycle-contract.mjs`: pass.
+- `node scripts/run-token-bounded-context-contract.mjs`: pass.
+- `node scripts/run-session-console-contract.mjs`: pass.
+- `node scripts/run-agent-control-plane-contract.mjs`: pass.
+- `node scripts/run-mcp-contract.mjs`: pass.
+- `npm run check:fast`: pass.
+- `npm run check:contracts`: pass.
+- `npm run check:release`: pass.
+
+Self-healing rules:
+
+- Do not make approval a prompt convention. It must be a command/tool primitive with typed decisions and proof artifacts.
+- Do not expose internal command strings inside user decision artifacts. Show decisions and host actions, not shell choreography.
+- Any artifact reader callable by agents must enforce the consumer-plane read plan by default.
+- Natural-language lifecycle output should be the smallest useful decision package; broad generation belongs behind approval or explicit developer commands.
+
+## Hardening Phase 13 - Design Quality Gate, Directions, And Anti-Generic UI Enforcement
+
+Source:
+
+- Fresh generated marketing dashboard critique: the generated frontend could still look like a default blue-gray SaaS template even when the harness lifecycle was structurally correct.
+- User correction: Archetype is not viable if it only orchestrates agents and produces a generic UI that one prompt could produce.
+- Design-system hardening requirement: the output must include premium, human-readable directions, tokens, shadcn/Tailwind rules, component states, route/screen bindings, and verification gates before implementation.
+
+Extracted requirements:
+
+- Design quality must be a typed artifact, not prose buried in role files.
+- Draft review must expose differentiated visual directions, a selected direction, a browser-viewable preview, and a machine-readable anti-generic gate.
+- Canonical implementation must carry the same design-quality gate and shadcn integration contract.
+- Validators and contract scripts must fail if directions, gate, rubric, preview traceability, state coverage, or anti-slop rules drift.
+- Agent roles, skills, docs, registry, phase bundles, and summaries must all point to the same design-quality artifacts.
+
+Corrections applied:
+
+- Added typed design-quality entities to the compiler model and generated `draft/design-directions.json`, `draft/design-quality-gate.json`, and `draft/design-craft-rubric.md`.
+- Added canonical `04-design-system/design-quality-gate.json`, `04-design-system/design-craft-rubric.md`, and `04-design-system/shadcn-integration.json`.
+- Replaced default blue/gray token defaults with selected direction palettes and CSS-variable/Tailwind mappings.
+- Extended the design preview with directions, quality gate, anti-slop rules, tokens, typography, components, and states.
+- Updated validation to block missing or weak design-quality artifacts, missing component states, generic blue-gray SaaS output, untouched shadcn defaults, raw Tailwind visual literals, and broken preview traceability.
+- Updated consumer-plane, phase bundles, package summaries, artifact registry, docs, skills, and design/pixel/contract agent role files so agents read the gate before styling.
+- Updated contract scripts so future regressions fail in design preview, lifecycle, CLI, MCP, consumer-plane, plugin, distribution, agent-role, data-plane, and required-artifact checks.
+
+Repair notes:
+
+- The gate improves the contract and handoff, but final product quality still depends on the coding host honoring the generated contract and verification evidence.
+- Visual inspiration from external systems should become evidence and contract structure, not copied source code or borrowed visual assets without explicit license review.
+- A design-system preview is a review surface, not app code. Implementation authority remains the approved canonical contract plus test-first evidence.
+
+Verification evidence:
+
+- `npm run build`: pass.
+- `node scripts/run-design-system-preview-contract.mjs`: pass.
+- `node scripts/run-lifecycle-contract-states-contract.mjs`: pass.
+- `node scripts/run-consumer-plane-contract.mjs`: pass.
+- `node scripts/run-agent-role-files-contract.mjs`: pass.
+- `node scripts/run-codex-plugin-contract.mjs`: pass.
+- `node scripts/run-claude-plugin-contract.mjs`: pass.
+- `node scripts/run-cli-contract.mjs`: pass.
+- `node scripts/run-mcp-contract.mjs`: pass.
+- `node scripts/run-required-package-artifacts-contract.mjs`: pass.
+- `node scripts/run-data-plane-contract.mjs`: pass.
+- `npm run check:fast`: pass.
+- `npm run check`: pass.
+
+Self-healing rules:
+
+- Never rely on "make it premium" prose as the only design-quality enforcement. Add typed artifacts, export them, validate them, and make agents read them.
+- Any new human review surface needs a machine-readable counterpart and a contract test.
+- If a default aesthetic is unacceptable, encode the rejection as data and validation, not only as role guidance.
+- shadcn is a primitive source, not a finished design. Generated contracts must constrain variants, states, CSS variables, Tailwind usage, and accessibility behavior.
+- When adding design artifacts, update registry, phase bundles, summaries, docs, plugin skills, agent roles, and installation/package contracts in the same loop.
+
+## Hardening Phase 14 - Source-Derived Design Synthesis
+
+Source:
+
+- User correction: fixed design directions like Graphite Command Surface, Editorial Workbench, and Instrument Panel are still demos. They do not solve arbitrary idea prompts or supplied SPEC/PRD/screenshots/design docs.
+
+Extracted requirements:
+
+- Design directions must be generated from the user's idea, product goals, users, supplied materials, visual evidence extraction, and generated route/screen workload.
+- SPEC, PRD, screenshots, brand notes, design files, and other materials must become source bindings in the design direction artifacts when present.
+- Fixed reusable Archetype direction ids or names must fail validation.
+- The preview must show source strength and source signature so a human can see why a direction exists.
+
+Corrections applied:
+
+- Changed `buildDesignDirectionOptions` to take ingestion artifacts and experience artifacts.
+- Added `source_signature`, `source_strength`, `derived_from`, `material_alignment`, and `route_screen_alignment` to every design direction.
+- Replaced fixed demo ids with product-derived ids such as `direction-<product>-source-faithful`.
+- Added DQ-08 for source-bound directions and DQ-09 for rejecting reusable preset directions.
+- Updated validation and contract tests so old demo names/ids fail.
+- Updated preview, docs, skills, and design-system agent role language to make source-derived design mandatory.
+
+Verification evidence:
+
+- `npm run build`: pass.
+- `node scripts/run-design-system-preview-contract.mjs`: pass.
+- `node scripts/run-lifecycle-contract-states-contract.mjs`: pass.
+- `node scripts/run-agent-role-files-contract.mjs`: pass.
+- `node scripts/run-codex-plugin-contract.mjs`: pass.
+- `node scripts/run-claude-plugin-contract.mjs`: pass.
+- `npm run check:fast`: pass.
+
+Self-healing rules:
+
+- Never add fixed named design directions as universal options.
+- Every generated design option must explain which source evidence, material, route, screen, and user/workload shaped it.
+- If visual/design materials exist, design directions must cite them. If they do not exist, the direction must say it is candidate context-derived work and invite better material before approval.
+- A design-quality gate must reject reusable demo direction names with the same force it rejects default blue-gray UI.
+
+## Hardening Phase 15 - Target Frontend Architecture
+
+Source:
+
+- User correction: even with better design directions, Archetype cannot claim real frontend generation if the target project structure is an `archetype/` scaffold namespace instead of a maintainable application architecture.
+
+Extracted requirements:
+
+- The implementation contract must define a real frontend layering model before a coding agent writes product UI.
+- Route files must not become product UI dumping grounds.
+- Shared UI, layout, data, auth, content, design-system tokens, feature screens, and workflow patterns need explicit ownership.
+- Agent instructions and generated target manifests must agree on the same architecture.
+
+Corrections applied:
+
+- Replaced `src/components/archetype`, `src/patterns/archetype`, `src/lib/archetype`, and `src/styles/archetype` target outputs with a feature/shared/design-system layout.
+- Added generated feature screen files under `src/features/<screen-id>/screens`.
+- Moved reusable component wrappers to `src/shared/ui` and shell primitives to `src/shared/layout`.
+- Moved adapters to `src/shared/api` and `src/shared/auth`, copy contracts to `src/shared/content`, and tokens to `src/design-system`.
+- Updated route files so they normalize route/search params, bind declared state, and delegate to feature screens.
+- Added manifest architecture metadata, screen coverage, layer rules, and revised codegen tasks.
+- Updated implementation skills, frontend architect role files, docs, and contract tests to enforce the new structure.
+
+Verification evidence:
+
+- `npm run build`: pass.
+- `npm run test-first:contract`: pass.
+- `npm run cli:contract`: pass, including write-target and verify-target.
+- `npm run plugin:codex:contract`: pass.
+- `npm run plugin:claude:contract`: pass.
+- `npm run agent-roles:contract`: pass.
+
+Self-healing rules:
+
+- A target frontend manifest is not production-oriented if its top-level source architecture is named after the harness.
+- Route files should wire routes and states; feature screens should own product composition.
+- Shared UI primitives can be shadcn-compatible, but untouched shadcn examples are still forbidden.
+- Every future output-structure change must update `12-target-frontend`, `write-target`, implementation skills, frontend architect roles, docs, and at least one contract test together.

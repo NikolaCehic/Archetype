@@ -14,6 +14,7 @@ export const REQUIRED_TEST_BEHAVIORS = [
   "Export produces a declared artifact, callback, or mock adapter result.",
   "Required states are reachable through deterministic fixtures.",
   "Route transitions and deep links are browser-observable.",
+  "CTA hover, focus-visible, active/pressed, disabled, loading, success, and error states are tested when actions exist.",
   "Keyboard, focus, accessible names, landmarks, and live/status regions are tested.",
   "Long labels, malformed data, and permission mismatches are tested.",
   "Visual evidence covers desktop, tablet, and mobile."

@@ -178,6 +178,9 @@ for (const requiredPath of [
   "spec/archetype-spec.json",
   "test-first/test-first-contract.json",
   "verification/playwright-verification-contract.json",
+  "draft/design-directions.json",
+  "draft/design-quality-gate.json",
+  "draft/design-craft-rubric.md",
   "draft/design-system-preview.html",
   "data-plane"
 ]) {
