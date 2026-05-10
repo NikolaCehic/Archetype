@@ -410,8 +410,26 @@ export function buildTargetFrontendArtifacts(input: {
       forbidden_behavior: ["Do not remove the required test-first target file."]
     }
   ];
+  const testFirstTraceabilityFiles = [
+    {
+      path: "tests/integration/archetype-contracts.spec.ts",
+      kind: "test_first_traceability",
+      suite_id: "contract_integration",
+      tests: 0,
+      reads: ["test-first/test-first-contract.json", "test-first/vitest-contract.spec.ts", "06-frontend-agent-contract/data-operation-contracts.json", "06-frontend-agent-contract/action-contracts.json", "06-frontend-agent-contract/form-contracts.json"],
+      forbidden_behavior: ["Do not remove integration test ids from the test-first contract.", "Do not replace action/data/form assertions with marker-only checks."]
+    },
+    {
+      path: "tests/unit/archetype-components.spec.ts",
+      kind: "test_first_traceability",
+      suite_id: "component_unit",
+      tests: 0,
+      reads: ["test-first/test-first-contract.json", "test-first/vitest-contract.spec.ts", "04-design-system/components/component-contracts.json", "04-design-system/patterns/pattern-contracts.json", "04-design-system/tokens/token-contracts.json"],
+      forbidden_behavior: ["Do not remove component, pattern, or token test ids from the test-first contract.", "Do not replace component assertions with marker-only checks."]
+    }
+  ];
 
-  const files = [...supportFiles, ...playwrightVerificationFiles, ...testFiles, ...routeFiles, ...screenFiles, ...componentFiles, ...patternFiles];
+  const files = [...supportFiles, ...playwrightVerificationFiles, ...testFirstTraceabilityFiles, ...testFiles, ...routeFiles, ...screenFiles, ...componentFiles, ...patternFiles];
 
   const routeComponentMap = {
     contract_version: "1.0",
@@ -462,7 +480,7 @@ export function buildTargetFrontendArtifacts(input: {
       {
         task_id: "create_verification_tests",
         order: 2,
-        writes: [...supportFiles.filter((file) => file.kind === "test_config").map((file) => file.path), ...playwrightVerificationFiles.map((file) => file.path), ...testFiles.map((file) => file.path)],
+        writes: [...supportFiles.filter((file) => file.kind === "test_config").map((file) => file.path), ...playwrightVerificationFiles.map((file) => file.path), ...testFirstTraceabilityFiles.map((file) => file.path), ...testFiles.map((file) => file.path)],
         reads: ["test-first/test-first-contract.json", "verification/playwright-verification-contract.json", "06-frontend-agent-contract/verification-contracts.json", "12-target-frontend/route-component-map.json"],
         acceptance: "Every required test file exists before product UI implementation and no proof obligation is dropped."
       },
@@ -555,7 +573,7 @@ export function buildTargetFrontendArtifacts(input: {
       screens: screenFiles.length,
       components: componentFiles.length,
       patterns: patternFiles.length,
-      tests: testFiles.length + playwrightVerificationFiles.length,
+      tests: testFiles.length + playwrightVerificationFiles.length + testFirstTraceabilityFiles.length,
       backend_endpoint_mappings: productionIntegrationContracts.backend_api?.endpoint_mappings?.length ?? 0,
       auth_guards: (productionIntegrationContracts.authentication_authorization?.route_guards?.length ?? 0) + (productionIntegrationContracts.authentication_authorization?.action_guards?.length ?? 0),
       copy_surfaces: productionIntegrationContracts.content_brand?.copy_surfaces?.length ?? 0
@@ -617,7 +635,7 @@ export function buildTargetFrontendArtifacts(input: {
     `- Feature screen files: ${screenFiles.length}`,
     `- Component files: ${componentFiles.length}`,
     `- Pattern files: ${patternFiles.length}`,
-    `- Verification test files: ${testFiles.length + playwrightVerificationFiles.length}`,
+    `- Verification test files: ${testFiles.length + playwrightVerificationFiles.length + testFirstTraceabilityFiles.length}`,
     "",
     "## Target Architecture",
     "",

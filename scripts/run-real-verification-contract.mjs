@@ -169,34 +169,47 @@ function writeSharedTargetFiles(targetDir) {
   );
 }
 
-function writeIndependentGoodTarget(targetDir, contract) {
-  rmSync(targetDir, { recursive: true, force: true });
-  const routes = routeModel(contract);
-  assert(routes.length > 0, "Independent good target requires route scenarios.");
-  writeSharedTargetFiles(targetDir);
-  writeText(path.join(targetDir, "src", "app", "[[...slug]]", "page.tsx"), [
+function pascalCase(value) {
+  return String(value)
+    .split(/[^a-zA-Z0-9]+/g)
+    .filter(Boolean)
+    .map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`)
+    .join("") || "ArchetypeFixture";
+}
+
+function routeStatesForScreen(contract, screenId) {
+  const scenarios = Array.isArray(contract.scenarios) ? contract.scenarios : [];
+  return [...new Set([
+    "default",
+    ...scenarios
+      .filter((scenario) => scenario.type === "screen_state" && scenario.screen_id === screenId)
+      .map((scenario) => String(scenario.state ?? "default"))
+  ])];
+}
+
+function routePageSource(route, contract, acceptMalformedState) {
+  const screenId = String(route.screen_id ?? "screen");
+  const routePath = String(route.route ?? "/");
+  const states = routeStatesForScreen(contract, screenId);
+  return [
     "type RouteProps = {",
-    "  params?: Promise<{ slug?: string[] }>;",
     "  searchParams?: Promise<Record<string, string | string[] | undefined>>;",
     "};",
     "",
-    `const routes = ${JSON.stringify(routes, null, 2)} as const;`,
+    `const screenId = ${JSON.stringify(screenId)};`,
+    `const routePath = ${JSON.stringify(routePath)};`,
+    `const allowedStates = ${JSON.stringify(states)} as const;`,
     "",
-    "function pathFromSlug(slug?: string[]) {",
-    "  return slug && slug.length > 0 ? `/${slug.join(\"/\")}` : \"/\";",
-    "}",
-    "",
-    "export default async function IndependentArchetypeTarget({ params, searchParams }: RouteProps) {",
-    "  const resolvedParams = await params;",
+    "export default async function IndependentArchetypeTarget({ searchParams }: RouteProps) {",
     "  const resolvedSearch = await searchParams;",
-    "  const pathname = pathFromSlug(resolvedParams?.slug);",
-    "  const route = routes.find((item) => item.path === pathname) ?? routes[0];",
     "  const requestedState = typeof resolvedSearch?.archetype_state === \"string\" ? resolvedSearch.archetype_state : \"default\";",
-    "  const state = (route.states as readonly string[]).includes(requestedState) ? requestedState : \"default\";",
+    acceptMalformedState
+      ? "  const state = requestedState;"
+      : "  const state = (allowedStates as readonly string[]).includes(requestedState) ? requestedState : \"default\";",
     "  return (",
-    "    <main data-archetype-screen={route.screen_id} data-state={state} data-route={route.route}>",
+    "    <main data-archetype-screen={screenId} data-state={state} data-route={routePath}>",
     "      <span className=\"eyebrow\">independent target</span>",
-    "      <h1>{route.screen_id.replace(/[._-]/g, \" \")}</h1>",
+    "      <h1>{screenId.replace(/[._-]/g, \" \")}</h1>",
     "      <section className=\"panel\" role=\"status\" aria-live=\"polite\" data-archetype-state={state}>",
     "        <span className=\"eyebrow\">state</span>",
     "        <strong>{state.replace(/[_-]/g, \" \")}</strong>",
@@ -207,48 +220,96 @@ function writeIndependentGoodTarget(targetDir, contract) {
     "    </main>",
     "  );",
     "}"
-  ].join("\n"));
+  ].join("\n");
+}
+
+function screenSource(file) {
+  const name = pascalCase(String(file.screen_id ?? "Screen"));
+  return [
+    `export function ${name}Screen() {`,
+    "  return (",
+    `    <section data-archetype-feature-screen="${String(file.screen_id ?? "screen")}" data-feature-module="${String(file.feature_module ?? "fixture")}">`,
+    `      <h2>${String(file.screen_id ?? "screen").replace(/[._-]/g, " ")}</h2>`,
+    "    </section>",
+    "  );",
+    "}"
+  ].join("\n");
+}
+
+function componentSource(file) {
+  const name = pascalCase(String(file.component ?? path.basename(String(file.path ?? "Component"), ".tsx")));
+  return [
+    `export function ${name}() {`,
+    `  return <section data-archetype-component="${path.basename(String(file.path ?? "component"), ".tsx")}">${name}</section>;`,
+    "}"
+  ].join("\n");
+}
+
+function patternSource(file) {
+  const name = pascalCase(String(file.pattern ?? path.basename(String(file.path ?? "Pattern"), ".tsx")));
+  return [
+    `export function ${name}() {`,
+    `  return <section data-archetype-pattern="${path.basename(String(file.path ?? "pattern"), ".tsx")}">${name}</section>;`,
+    "}"
+  ].join("\n");
+}
+
+function testTraceSource() {
+  const testFirst = readJson(path.join(outputDir, "test-first", "test-first-contract.json"));
+  const actions = readJson(path.join(outputDir, "06-frontend-agent-contract", "action-contracts.json"));
+  const testIds = (testFirst.suites ?? []).flatMap((suite) => (suite.tests ?? []).map((test) => String(test.test_id ?? ""))).filter(Boolean);
+  const actionIds = (actions.actions ?? []).map((action) => String(action.action_id ?? "")).filter(Boolean);
+  return [
+    "/*",
+    "Archetype test-first traceability fixture.",
+    "Test IDs:",
+    ...testIds.map((testId) => `- ${testId}`),
+    "Action IDs:",
+    ...actionIds.map((actionId) => `- ${actionId}`),
+    "*/",
+    "export {};"
+  ].join("\n");
+}
+
+function writeIndependentTarget(targetDir, contract, acceptMalformedState) {
+  rmSync(targetDir, { recursive: true, force: true });
+  const routes = routeModel(contract);
+  assert(routes.length > 0, "Independent target requires route scenarios.");
+  writeSharedTargetFiles(targetDir);
+  const manifest = readJson(path.join(outputDir, "12-target-frontend", "source-file-manifest.json"));
+  const routeMap = readJson(path.join(outputDir, "12-target-frontend", "route-component-map.json"));
+  const routeByFile = new Map((routeMap.routes ?? []).map((route) => [String(route.route_file ?? ""), route]));
+  const traceSource = testTraceSource();
+  for (const file of manifest.files ?? []) {
+    const relativePath = String(file.path ?? "");
+    if (relativePath.length === 0) continue;
+    const absolutePath = path.join(targetDir, relativePath);
+    if (relativePath === "package.json" || relativePath === "tsconfig.json") continue;
+    if (relativePath === "next-env.d.ts" || relativePath === "next.config.mjs" || relativePath === "src/app/layout.tsx" || relativePath === "src/app/globals.css" || relativePath === "playwright.config.ts" || relativePath === "tests/e2e/archetype-route-smoke.spec.ts") continue;
+    if (file.kind === "route") {
+      writeText(absolutePath, routePageSource(routeByFile.get(relativePath) ?? file, contract, acceptMalformedState));
+    } else if (file.kind === "screen") {
+      writeText(absolutePath, screenSource(file));
+    } else if (file.kind === "component") {
+      writeText(absolutePath, componentSource(file));
+    } else if (file.kind === "pattern") {
+      writeText(absolutePath, patternSource(file));
+    } else if (String(file.kind).includes("test") || relativePath.endsWith(".spec.ts")) {
+      writeText(absolutePath, traceSource);
+    } else if (relativePath.endsWith(".css")) {
+      writeText(absolutePath, readFileSync(path.join(targetDir, "src", "app", "globals.css"), "utf8"));
+    } else {
+      writeText(absolutePath, "export {};");
+    }
+  }
+}
+
+function writeIndependentGoodTarget(targetDir, contract) {
+  writeIndependentTarget(targetDir, contract, false);
 }
 
 function writeIndependentBadTarget(targetDir, contract) {
-  rmSync(targetDir, { recursive: true, force: true });
-  const routes = routeModel(contract);
-  assert(routes.length > 0, "Independent bad target requires route scenarios.");
-  writeSharedTargetFiles(targetDir);
-  writeText(path.join(targetDir, "src", "app", "[[...slug]]", "page.tsx"), [
-    "type RouteProps = {",
-    "  params?: Promise<{ slug?: string[] }>;",
-    "  searchParams?: Promise<Record<string, string | string[] | undefined>>;",
-    "};",
-    "",
-    `const routes = ${JSON.stringify(routes, null, 2)} as const;`,
-    "",
-    "function pathFromSlug(slug?: string[]) {",
-    "  return slug && slug.length > 0 ? `/${slug.join(\"/\")}` : \"/\";",
-    "}",
-    "",
-    "export default async function BrokenIndependentTarget({ params, searchParams }: RouteProps) {",
-    "  const resolvedParams = await params;",
-    "  const resolvedSearch = await searchParams;",
-    "  const pathname = pathFromSlug(resolvedParams?.slug);",
-    "  const route = routes.find((item) => item.path === pathname) ?? routes[0];",
-    "  const requestedState = typeof resolvedSearch?.archetype_state === \"string\" ? resolvedSearch.archetype_state : \"default\";",
-    "  const state = requestedState;",
-    "  return (",
-    "    <main data-archetype-screen={route.screen_id} data-state={state} data-route={route.route}>",
-    "      <span className=\"eyebrow\">independent broken target</span>",
-    "      <h1>{route.screen_id.replace(/[._-]/g, \" \")}</h1>",
-    "      <section className=\"panel\" role=\"status\" aria-live=\"polite\" data-archetype-state={state}>",
-    "        <span className=\"eyebrow\">state</span>",
-    "        <strong>{state.replace(/[_-]/g, \" \")}</strong>",
-    "      </section>",
-    "      <section className=\"panel\">",
-    "        <p>This fixture intentionally accepts malformed forced state as real UI state.</p>",
-    "      </section>",
-    "    </main>",
-    "  );",
-    "}"
-  ].join("\n"));
+  writeIndependentTarget(targetDir, contract, true);
 }
 
 createApprovedIntakeFixture({ root, workspace, approvedInputPath, approvedBy: "Real verification contract" });

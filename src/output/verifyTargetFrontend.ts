@@ -39,11 +39,41 @@ export interface TargetVerificationResult {
   blockers: string[];
   warnings: string[];
   proof_artifacts: string[];
+  contract_fidelity: ContractFidelityAudit;
   repair: {
     status: "pending" | "pass" | "fail" | "warning";
     taskCount: number;
     artifacts: string[];
   };
+}
+
+interface ContractFidelityCheck {
+  id: string;
+  status: "pass" | "fail" | "warning";
+  details: string;
+  expected?: unknown;
+  observed?: unknown;
+}
+
+export interface ContractFidelityAudit {
+  audit_version: string;
+  status: "pass" | "fail";
+  generated_at: string;
+  checks: ContractFidelityCheck[];
+  summary: {
+    manifest_files: number;
+    missing_manifest_files: number;
+    required_test_files: number;
+    missing_required_test_files: number;
+    required_test_ids: number;
+    missing_required_test_ids: number;
+    action_contracts: number;
+    missing_action_test_refs: number;
+    forbidden_stack_files: number;
+  };
+  blockers: string[];
+  warnings: string[];
+  proof_artifacts: string[];
 }
 
 function ensureDir(filePath: string): void {
@@ -71,6 +101,14 @@ function readJsonOrEmpty(filePath: string): Record<string, unknown> {
   } catch {
     return {};
   }
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null ? value as Record<string, unknown> : {};
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
 }
 
 function tail(value: string, max = 12000): string {
@@ -226,6 +264,181 @@ function auditTargetTestQuality(outputDir: string, targetDir: string): { blocker
     warnings.push("Target tests passed HL-11 marker-only audit; Playwright still needs to provide browser evidence.");
   }
   return { blockers, warnings };
+}
+
+function listTargetFiles(targetDir: string, directory = targetDir): string[] {
+  if (!existsSync(directory)) return [];
+  const ignored = new Set(["node_modules", ".git", ".next", "dist", "build", "coverage", "playwright-report", "test-results"]);
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    if (ignored.has(entry.name)) return [];
+    const absolutePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) return listTargetFiles(targetDir, absolutePath);
+    if (!entry.isFile()) return [];
+    return [path.relative(targetDir, absolutePath).split(path.sep).join("/")];
+  });
+}
+
+function readTargetText(targetDir: string, relativePath: string): string {
+  const filePath = path.join(targetDir, relativePath);
+  if (!existsSync(filePath)) return "";
+  return readFileSync(filePath, "utf8");
+}
+
+function forbiddenPathMatches(pattern: string, filePath: string): boolean {
+  if (pattern.endsWith("/**")) return filePath.startsWith(pattern.slice(0, -3));
+  return filePath === pattern;
+}
+
+function checkRecord(id: string, condition: boolean, details: string, expected?: unknown, observed?: unknown): ContractFidelityCheck {
+  return {
+    id,
+    status: condition ? "pass" : "fail",
+    details,
+    ...(expected === undefined ? {} : { expected }),
+    ...(observed === undefined ? {} : { observed })
+  };
+}
+
+function testIdsFromContract(testFirstContract: Record<string, unknown>): string[] {
+  return asArray(testFirstContract.suites)
+    .map(asRecord)
+    .flatMap((suite) => asArray(suite.tests).map(asRecord))
+    .map((test) => String(test.test_id ?? ""))
+    .filter((value) => value.trim().length > 0);
+}
+
+function actionIdsFromContract(actionContracts: Record<string, unknown>): string[] {
+  return asArray(actionContracts.actions)
+    .map(asRecord)
+    .map((action) => String(action.action_id ?? ""))
+    .filter((value) => value.trim().length > 0);
+}
+
+function requiredTestFilesFromContract(testFirstContract: Record<string, unknown>): string[] {
+  return asArray(testFirstContract.required_target_test_files)
+    .map((item) => String(asRecord(item).path ?? item))
+    .filter((value) => value.trim().length > 0);
+}
+
+function playwrightScenarioTypes(playwrightContract: Record<string, unknown>): Set<string> {
+  return new Set(asArray(playwrightContract.scenarios).map((scenario) => String(asRecord(scenario).type ?? "")).filter(Boolean));
+}
+
+function concatTargetTestSource(targetDir: string, requiredFiles: string[]): string {
+  return requiredFiles.map((filePath) => readTargetText(targetDir, filePath)).join("\n");
+}
+
+function emptyContractFidelityAudit(status: "pass" | "fail" = "fail", blocker = "Contract fidelity audit did not run."): ContractFidelityAudit {
+  return {
+    audit_version: "1.0",
+    status,
+    generated_at: new Date().toISOString(),
+    checks: [],
+    summary: {
+      manifest_files: 0,
+      missing_manifest_files: 0,
+      required_test_files: 0,
+      missing_required_test_files: 0,
+      required_test_ids: 0,
+      missing_required_test_ids: 0,
+      action_contracts: 0,
+      missing_action_test_refs: 0,
+      forbidden_stack_files: 0
+    },
+    blockers: status === "pass" ? [] : [blocker],
+    warnings: [],
+    proof_artifacts: ["14-target-execution/target-execution-report.json"]
+  };
+}
+
+export function auditTargetContractFidelity(outputDir: string, targetDir: string): ContractFidelityAudit {
+  const sourceManifest = readJsonOrEmpty(path.join(outputDir, "12-target-frontend", "source-file-manifest.json"));
+  const routeComponentMap = readJsonOrEmpty(path.join(outputDir, "12-target-frontend", "route-component-map.json"));
+  const testFirstContract = readJsonOrEmpty(path.join(outputDir, "test-first", "test-first-contract.json"));
+  const playwrightContract = readJsonOrEmpty(path.join(outputDir, "verification", "playwright-verification-contract.json"));
+  const actionContracts = readJsonOrEmpty(path.join(outputDir, "06-frontend-agent-contract", "action-contracts.json"));
+  const manifestFiles = asArray(sourceManifest.files).map(asRecord);
+  const manifestPaths = manifestFiles.map((file) => String(file.path ?? "")).filter(Boolean);
+  const targetFiles = listTargetFiles(targetDir);
+  const targetFileSet = new Set(targetFiles);
+  const missingManifestFiles = manifestPaths.filter((filePath) => !targetFileSet.has(filePath));
+  const forbiddenPatterns = asArray(asRecord(sourceManifest.target_stack).forbidden_stack_files).map(String).filter(Boolean);
+  const forbiddenStackFiles = targetFiles.filter((filePath) => forbiddenPatterns.some((pattern) => forbiddenPathMatches(pattern, filePath)));
+  const routeEntries = asArray(routeComponentMap.routes).map(asRecord);
+  const routeTraceFailures = routeEntries.filter((route) => {
+    const routeFile = String(route.route_file ?? "");
+    const screenId = String(route.screen_id ?? "");
+    const screenFile = String(route.screen_file ?? "");
+    const routeSource = readTargetText(targetDir, routeFile);
+    return routeFile.length === 0 || routeSource.length === 0 || (!routeSource.includes(screenId) && !routeSource.includes(path.posix.basename(screenFile).replace(/\.(tsx|ts|jsx|js)$/u, "")));
+  });
+  const screenTraceFailures = manifestFiles.filter((file) => file.kind === "screen").filter((file) => {
+    const filePath = String(file.path ?? "");
+    const screenId = String(file.screen_id ?? "");
+    const source = readTargetText(targetDir, filePath);
+    return source.length === 0 || !source.includes("data-archetype-feature-screen") || !source.includes(screenId);
+  });
+  const componentTraceFailures = manifestFiles.filter((file) => file.kind === "component").filter((file) => {
+    const source = readTargetText(targetDir, String(file.path ?? ""));
+    return source.length === 0 || !source.includes("data-archetype-component");
+  });
+  const patternTraceFailures = manifestFiles.filter((file) => file.kind === "pattern").filter((file) => {
+    const source = readTargetText(targetDir, String(file.path ?? ""));
+    return source.length === 0 || !source.includes("data-archetype-pattern");
+  });
+  const requiredTestFiles = requiredTestFilesFromContract(testFirstContract);
+  const missingRequiredTestFiles = requiredTestFiles.filter((filePath) => !targetFileSet.has(filePath));
+  const targetTestSource = concatTargetTestSource(targetDir, requiredTestFiles);
+  const requiredTestIds = testIdsFromContract(testFirstContract);
+  const missingRequiredTestIds = requiredTestIds.filter((testId) => !targetTestSource.includes(testId));
+  const actionIds = actionIdsFromContract(actionContracts);
+  const missingActionTestRefs = actionIds.filter((actionId) => !targetTestSource.includes(actionId));
+  const requiredScenarioTypes = ["route", "screen_state", "flow", "responsive", "accessibility", "interaction_state", "visual_smoke", "malformed_data"];
+  const scenarioTypes = playwrightScenarioTypes(playwrightContract);
+  const missingScenarioTypes = requiredScenarioTypes.filter((type) => !scenarioTypes.has(type));
+  const checks = [
+    checkRecord("source_manifest.present", manifestPaths.length > 0, "Source manifest contains target files.", "files.length > 0", manifestPaths.length),
+    checkRecord("source_manifest.files_exist", missingManifestFiles.length === 0, "Every source-file-manifest path exists in the target.", [], missingManifestFiles),
+    checkRecord("source_manifest.forbidden_stack_files_absent", forbiddenStackFiles.length === 0, "Target does not contain files forbidden by the resolved stack.", [], forbiddenStackFiles),
+    checkRecord("route_component_map.route_traceability", routeTraceFailures.length === 0, "Every route file traces to its declared screen.", [], routeTraceFailures.map((item) => item.route_file)),
+    checkRecord("source_manifest.screen_traceability", screenTraceFailures.length === 0, "Every feature screen file keeps the declared screen trace marker.", [], screenTraceFailures.map((item) => item.path)),
+    checkRecord("source_manifest.component_traceability", componentTraceFailures.length === 0, "Every shared component file keeps its component trace marker.", [], componentTraceFailures.map((item) => item.path)),
+    checkRecord("source_manifest.pattern_traceability", patternTraceFailures.length === 0, "Every feature pattern file keeps its pattern trace marker.", [], patternTraceFailures.map((item) => item.path)),
+    checkRecord("test_first.required_files_exist", missingRequiredTestFiles.length === 0, "Every test-first required target test file exists.", [], missingRequiredTestFiles),
+    checkRecord("test_first.required_test_ids_present", missingRequiredTestIds.length === 0, "Target tests preserve every generated test-first test id.", [], missingRequiredTestIds.slice(0, 25)),
+    checkRecord("action_contracts.test_traceability", missingActionTestRefs.length === 0, "Target tests reference every declared action contract id.", [], missingActionTestRefs),
+    checkRecord("playwright_contract.required_families", missingScenarioTypes.length === 0, "Playwright contract contains every required verification family.", [], missingScenarioTypes)
+  ];
+  const blockers = checks
+    .filter((check) => check.status === "fail")
+    .map((check) => `${check.id}: ${check.details}`);
+  return {
+    audit_version: "1.0",
+    status: blockers.length > 0 ? "fail" : "pass",
+    generated_at: new Date().toISOString(),
+    checks,
+    summary: {
+      manifest_files: manifestPaths.length,
+      missing_manifest_files: missingManifestFiles.length,
+      required_test_files: requiredTestFiles.length,
+      missing_required_test_files: missingRequiredTestFiles.length,
+      required_test_ids: requiredTestIds.length,
+      missing_required_test_ids: missingRequiredTestIds.length,
+      action_contracts: actionIds.length,
+      missing_action_test_refs: missingActionTestRefs.length,
+      forbidden_stack_files: forbiddenStackFiles.length
+    },
+    blockers,
+    warnings: blockers.length === 0 ? ["Contract fidelity audit passed source manifest, route map, test-first, action, and Playwright family checks."] : [],
+    proof_artifacts: [
+      "12-target-frontend/source-file-manifest.json",
+      "12-target-frontend/route-component-map.json",
+      "test-first/test-first-contract.json",
+      "verification/playwright-verification-contract.json",
+      "06-frontend-agent-contract/action-contracts.json",
+      "14-target-execution/target-execution-report.json"
+    ]
+  };
 }
 
 function e2eFindingsMarkdown(results: Array<Record<string, unknown>>, summary: Record<string, unknown>): string {
@@ -503,7 +716,7 @@ function collectPlaywrightEvidenceDetails(outputDir: string, targetDir: string):
       ...(typeof screenshot.bytes === "number" ? { screenshot_bytes: screenshot.bytes } : {})
     };
   });
-  const behaviorTypes = ["route", "screen_state", "flow", "responsive"];
+  const behaviorTypes = ["route", "screen_state", "flow", "responsive", "interaction_state"];
   const visualResults = scenarioResults.filter((result) => result.type === "visual_smoke");
   const visualGrade = visualResults.length > 0 && visualResults.every((result) => result.status === "pass" && (result.screenshot_bytes ?? 0) > 0) ? "pass" : "fail";
   const summary = {
@@ -518,6 +731,7 @@ function collectPlaywrightEvidenceDetails(outputDir: string, targetDir: string):
     scaffold_verified: existsSync(path.join(targetDir, "package.json")) ? "pass" : "fail",
     browser_smoke_verified: gradeScenarioType(scenarioResults, "route"),
     behavior_verified: gradeScenarioFamily(scenarioResults, behaviorTypes),
+    interaction_state_verified: gradeScenarioType(scenarioResults, "interaction_state"),
     accessibility_verified: gradeScenarioType(scenarioResults, "accessibility"),
     visual_verified: visualGrade,
     malformed_data_verified: gradeScenarioType(scenarioResults, "malformed_data"),
@@ -540,6 +754,7 @@ function collectPlaywrightEvidenceDetails(outputDir: string, targetDir: string):
     ...(grades.scenario_coverage === "pass" ? [] : ["Playwright raw results do not cover every verification scenario."]),
     ...(grades.browser_smoke_verified === "pass" ? [] : ["Browser route smoke scenarios did not all pass."]),
     ...(grades.behavior_verified === "pass" ? [] : ["Browser behavior scenarios did not all pass."]),
+    ...(grades.interaction_state_verified === "pass" ? [] : ["Interaction-state scenarios did not all pass."]),
     ...(grades.accessibility_verified === "pass" ? [] : ["Accessibility scenarios did not all pass."]),
     ...(grades.visual_verified === "pass" ? [] : ["Visual-smoke screenshots are missing or failed."]),
     ...(grades.malformed_data_verified === "pass" ? [] : ["Malformed-data browser scenarios did not all pass."])
@@ -671,6 +886,7 @@ function writeFinalReadinessReport(outputDir: string, report: TargetVerification
 export function verifyTargetFrontendExecution(outputDir: string, targetDir: string, options: TargetVerifyOptions = {}): TargetVerificationResult {
   const blockers: string[] = [];
   const warnings: string[] = [];
+  let contractFidelity = emptyContractFidelityAudit("fail");
   if (!existsSync(outputDir)) blockers.push(`Output directory does not exist: ${outputDir}`);
   if (!existsSync(targetDir)) blockers.push(`Target directory does not exist: ${targetDir}`);
   if (!existsSync(path.join(targetDir, "package.json"))) blockers.push("Target package.json is missing. Run write-target first.");
@@ -706,6 +922,11 @@ export function verifyTargetFrontendExecution(outputDir: string, targetDir: stri
       const testQuality = auditTargetTestQuality(outputDir, targetDir);
       blockers.push(...testQuality.blockers);
       warnings.push(...testQuality.warnings);
+    }
+    if (commands.every((item) => item.status === "pass") && blockers.length === 0) {
+      contractFidelity = auditTargetContractFidelity(outputDir, targetDir);
+      blockers.push(...contractFidelity.blockers);
+      warnings.push(...contractFidelity.warnings);
     }
     if (commands.every((item) => item.status === "pass") && blockers.length === 0 && scripts["archetype:playwright"]) {
       commands.push(runCommand("playwright", "npm", ["run", "archetype:playwright"], targetDir, {
@@ -753,6 +974,7 @@ export function verifyTargetFrontendExecution(outputDir: string, targetDir: stri
     proof_artifacts: [
       "14-target-execution/target-execution-report.json",
       "14-target-execution/target-execution-report.md",
+      "14-target-execution/contract-fidelity-audit.json",
       "verification/playwright-evidence.json",
       "verification/playwright-evidence.md",
       "target:test-results/archetype-playwright-results.json",
@@ -760,6 +982,7 @@ export function verifyTargetFrontendExecution(outputDir: string, targetDir: stri
       "target:playwright-report",
       "target:.next"
     ],
+    contract_fidelity: contractFidelity,
     repair: {
       status: "pending",
       taskCount: 0,
@@ -775,6 +998,7 @@ export function verifyTargetFrontendExecution(outputDir: string, targetDir: stri
 
   const reportPath = path.join(outputDir, "14-target-execution", "target-execution-report.json");
   const markdownPath = path.join(outputDir, "14-target-execution", "target-execution-report.md");
+  writeJson(path.join(outputDir, "14-target-execution", "contract-fidelity-audit.json"), contractFidelity);
   writeJson(reportPath, report);
   writeText(markdownPath, targetExecutionMarkdown(report as unknown as Record<string, unknown>));
   writePlaywrightEvidence(outputDir, targetDir, report);

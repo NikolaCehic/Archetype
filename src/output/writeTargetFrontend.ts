@@ -86,6 +86,8 @@ function packageJson(targetKind: SourceTargetKind): string {
       build: "tsc --noEmit && vite build",
       preview: "vite preview --host 127.0.0.1",
       typecheck: "tsc --noEmit",
+      test: "vitest run",
+      "archetype:unit": "vitest run",
       "archetype:playwright": "playwright test --config=playwright.config.ts"
     },
     dependencies: {
@@ -101,7 +103,8 @@ function packageJson(targetKind: SourceTargetKind): string {
       "@types/react-dom": "19.2.3",
       "@playwright/test": "1.59.1",
       "tailwindcss": "4.2.4",
-      "typescript": "5.9.3"
+      "typescript": "5.9.3",
+      "vitest": "^4.0.0"
     }
   };
   if (targetKind === "vite_react_router") return JSON.stringify(vitePackage, null, 2);
@@ -112,6 +115,8 @@ function packageJson(targetKind: SourceTargetKind): string {
       build: "next build",
       start: "next start",
       typecheck: "tsc --noEmit",
+      test: "vitest run",
+      "archetype:unit": "vitest run",
       "archetype:playwright": "playwright test --config=playwright.config.ts"
     },
     dependencies: {
@@ -125,7 +130,8 @@ function packageJson(targetKind: SourceTargetKind): string {
       "@types/react-dom": "19.2.3",
       "@playwright/test": "1.59.1",
       "tailwindcss": "4.2.4",
-      "typescript": "5.9.3"
+      "typescript": "5.9.3",
+      "vitest": "^4.0.0"
     },
     overrides: {
       "postcss": "8.5.10"
@@ -522,20 +528,18 @@ function sourceForFile(outputDir: string, file: SourceManifestFile, routeMap: { 
   if (file.kind === "route") return targetKind === "vite_react_router" ? viteRouteSource(file) : nextRouteSource(file);
   if (file.kind === "playwright_verification") return readFileSync(path.join(outputDir, "verification", "playwright-verification.spec.ts"), "utf8");
   if (file.kind === "playwright_traceability") {
-    return [
-      "// Playwright scenarios are centralized in tests/e2e/archetype-route-smoke.spec.ts.",
-      "// This traceability file is required by test-first/test-first-contract.json.",
-      "export {};"
-    ].join("\n");
+    return readFileSync(path.join(outputDir, "test-first", "playwright-contract.spec.ts"), "utf8");
+  }
+  if (file.kind === "test_first_traceability") {
+    return readFileSync(path.join(outputDir, "test-first", "vitest-contract.spec.ts"), "utf8");
   }
   if (file.kind === "test") {
     if (file.suite_id === "route_smoke") return readFileSync(path.join(outputDir, "verification", "playwright-verification.spec.ts"), "utf8");
     if (file.suite_id === "user_flows_e2e" || file.suite_id === "screen_state_ui" || file.suite_id === "accessibility_ui") {
-      return [
-        "// Playwright scenarios are centralized in tests/e2e/archetype-route-smoke.spec.ts.",
-        "// This file remains as the required test-first target file for traceability.",
-        "export {};"
-      ].join("\n");
+      return readFileSync(path.join(outputDir, "test-first", "playwright-contract.spec.ts"), "utf8");
+    }
+    if (file.suite_id === "contract_integration" || file.suite_id === "component_unit") {
+      return readFileSync(path.join(outputDir, "test-first", "vitest-contract.spec.ts"), "utf8");
     }
     return [
       `// Verification suite: ${file.suite_id ?? "unknown"}`,

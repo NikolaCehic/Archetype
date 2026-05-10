@@ -50,6 +50,7 @@ const tasks = [
   task("agent-roles", "scripts/run-agent-role-files-contract.mjs", "tmp/agent-role-files-contract", ["fast", "full"]),
   task("qa-team", "scripts/run-qa-team-contract.mjs", "tmp/qa-team-contract", ["contracts", "full"]),
   task("test-quality", "scripts/run-test-quality-standard-contract.mjs", "tmp/test-quality-standard-contract", ["contracts", "full"]),
+  task("contract-fidelity", "scripts/run-contract-fidelity-contract.mjs", "tmp/contract-fidelity-contract", ["fast", "full"]),
   task("required-artifacts", "scripts/run-required-package-artifacts-contract.mjs", "tmp/required-package-artifacts-contract", ["contracts", "full"]),
   task("forbidden-behaviors", "scripts/run-forbidden-behaviors-contract.mjs", "tmp/forbidden-behaviors-contract", ["contracts", "full"]),
   task("marketing-replay", "scripts/run-marketing-dashboard-replay-contract.mjs", "tmp/marketing-dashboard-replay-contract", ["fast", "full"]),

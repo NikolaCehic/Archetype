@@ -78,6 +78,7 @@ function buildSmokeTests(routes: JsonRecord[]): JsonRecord[] {
 
 function buildE2ETests(experience: JsonRecord, routes: JsonRecord[]): JsonRecord[] {
   const flowRecords = records(experience.flows);
+  const routeByScreenId = new Map(routes.map((route) => [String(route.screen_id ?? ""), String(route.route ?? "/")]));
   const sourceFlows = flowRecords.length > 0
     ? flowRecords
     : routes.slice(0, Math.max(1, Math.min(routes.length, 3))).map((route) => ({
@@ -90,6 +91,18 @@ function buildE2ETests(experience: JsonRecord, routes: JsonRecord[]): JsonRecord
   return sourceFlows.map((flow, index) => {
     const routeRefs = unique(asArray(flow.route_refs).map(String));
     const screenRefs = unique(asArray(flow.screen_refs).map(String));
+    const steps = screenRefs.length > 0
+      ? screenRefs.map((screenId, stepIndex) => ({
+        route: routeRefs[stepIndex] ?? routeByScreenId.get(screenId) ?? routeRefs[0] ?? "/",
+        screen_id: screenId
+      }))
+      : routeRefs.map((routeRef) => {
+        const matchingRoute = routes.find((route) => String(route.route ?? "/") === routeRef);
+        return {
+          route: routeRef,
+          screen_id: String(matchingRoute?.screen_id ?? "")
+        };
+      }).filter((step) => step.screen_id.length > 0);
     return {
       test_id: `e2e.${slugify(String(flow.flow_id ?? flow.name ?? `flow_${index + 1}`))}`,
       suite_type: "e2e",
@@ -99,6 +112,7 @@ function buildE2ETests(experience: JsonRecord, routes: JsonRecord[]): JsonRecord
       title: String(flow.name ?? `User flow ${index + 1}`),
       route_refs: routeRefs,
       screen_refs: screenRefs,
+      steps,
       must_exist_before_implementation: true,
       expected_red_before_implementation: true,
       assertions: [
@@ -461,7 +475,8 @@ function buildPlaywrightSpec(contract: JsonRecord): string {
       testId: item.test_id,
       title: item.title,
       routeRefs: item.route_refs,
-      screenRefs: item.screen_refs
+      screenRefs: item.screen_refs,
+      steps: item.steps
     })), null, 2) + " as const;",
     "",
     "const accessibilityTests = " + JSON.stringify(accessibilityTests.map((item) => ({
@@ -493,10 +508,10 @@ function buildPlaywrightSpec(contract: JsonRecord): string {
     "test.describe(\"Archetype user flows\", () => {",
     "  for (const item of flowTests) {",
     "    test(item.testId, async ({ page }) => {",
-    "      const firstRoute = item.routeRefs[0] ?? \"/\";",
-    "      await page.goto(firstRoute);",
-    "      for (const screenId of item.screenRefs) {",
-    "        await expect(page.locator(`[data-archetype-screen=\"${screenId}\"]`).first()).toBeVisible();",
+    "      const steps = item.steps.length > 0 ? item.steps : item.screenRefs.map((screenId, index) => ({ route: item.routeRefs[index] ?? item.routeRefs[0] ?? \"/\", screen_id: screenId }));",
+    "      for (const step of steps) {",
+    "        await page.goto(step.route);",
+    "        await expect(page.locator(`[data-archetype-screen=\"${step.screen_id}\"]`).first()).toBeVisible();",
     "      }",
     "    });",
     "  }",
@@ -526,6 +541,11 @@ function buildVitestSpec(contract: JsonRecord): string {
       testId: item.test_id,
       suiteType: item.suite_type,
       contractKind: item.contract_kind,
+      operationId: item.operation_id,
+      actionId: item.action_id,
+      formId: item.form_id,
+      component: item.component,
+      pattern: item.pattern,
       sourceSpecPaths: item.source_spec_paths,
       assertions: item.assertions
     })), null, 2) + " as const;",

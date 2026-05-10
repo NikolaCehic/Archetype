@@ -539,6 +539,7 @@ function pendingEvidence(contract: JsonRecord): JsonRecord {
       scaffold_verified: "pending",
       browser_smoke_verified: "pending",
       behavior_verified: "pending",
+      interaction_state_verified: "pending",
       accessibility_verified: "pending",
       visual_verified: "pending",
       malformed_data_verified: "pending",

@@ -101,8 +101,9 @@ assert(verify.repair.taskCount === 0, "verify-target should not leave repair tas
 
 const evidence = readJson(evidencePath);
 assert(evidence.status === "pass", "Playwright evidence should be pass after verify-target.");
-assert(evidence.summary.passed === contract.coverage.total_scenarios, "Playwright evidence pass count should match contract scenario count.");
-assert(evidence.summary.failed === 0, "Playwright evidence should have zero failures.");
+assert(evidence.scenario_summary.passed === contract.coverage.total_scenarios, "Playwright contract scenario pass count should match contract scenario count.");
+assert(evidence.scenario_summary.failed === 0, "Playwright contract scenario evidence should have zero failures.");
+assert(evidence.summary.failed === 0, "Raw Playwright run should have zero failures.");
 assert(evidence.coverage.total_scenarios === contract.coverage.total_scenarios, "Playwright evidence coverage should match contract.");
 assert(evidence.evidence_grades.runtime_overall === "pass", "Playwright evidence runtime grade should pass.");
 assert(evidence.evidence_grades.behavior_verified === "pass", "Playwright evidence behavior grade should pass.");

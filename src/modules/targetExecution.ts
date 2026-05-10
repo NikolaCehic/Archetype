@@ -34,6 +34,8 @@ export function targetExecutionMarkdown(report: Record<string, unknown>): string
   const warnings = Array.isArray(report.warnings) ? report.warnings.map(String) : [];
   const proofArtifacts = Array.isArray(report.proof_artifacts) ? report.proof_artifacts.map(String) : [];
   const repair = typeof report.repair === "object" && report.repair !== null ? report.repair as Record<string, unknown> : {};
+  const contractFidelity = typeof report.contract_fidelity === "object" && report.contract_fidelity !== null ? report.contract_fidelity as Record<string, unknown> : {};
+  const fidelitySummary = typeof contractFidelity.summary === "object" && contractFidelity.summary !== null ? contractFidelity.summary as Record<string, unknown> : {};
   return [
     "# Target Frontend Execution Report",
     "",
@@ -50,6 +52,15 @@ export function targetExecutionMarkdown(report: Record<string, unknown>): string
     "## Blockers",
     "",
     blockers.length > 0 ? blockers.map((item) => `- ${item}`).join("\n") : "None.",
+    "",
+    "## Contract Fidelity",
+    "",
+    `Status: ${String(contractFidelity.status ?? "pending")}`,
+    `Manifest files: ${String(fidelitySummary.manifest_files ?? 0)}`,
+    `Missing manifest files: ${String(fidelitySummary.missing_manifest_files ?? 0)}`,
+    `Missing required test IDs: ${String(fidelitySummary.missing_required_test_ids ?? 0)}`,
+    `Missing action test refs: ${String(fidelitySummary.missing_action_test_refs ?? 0)}`,
+    `Forbidden stack files: ${String(fidelitySummary.forbidden_stack_files ?? 0)}`,
     "",
     "## Warnings",
     "",

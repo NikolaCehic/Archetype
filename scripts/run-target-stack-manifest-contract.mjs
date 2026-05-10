@@ -132,6 +132,13 @@ function writeFixtureOutput(outputDir, artifacts) {
   writeJson(path.join(outputDir, "02-product-model", "permission-matrix.json"), { permissions: [] });
   writeText(path.join(outputDir, "verification", "playwright.config.ts"), "export default {};");
   writeText(path.join(outputDir, "verification", "playwright-verification.spec.ts"), "export {};");
+  writeJson(path.join(outputDir, "test-first", "test-first-contract.json"), {
+    required_target_test_files: [],
+    suites: []
+  });
+  writeText(path.join(outputDir, "test-first", "playwright-contract.spec.ts"), "import { test } from \"@playwright/test\";\ntest.describe(\"target-stack fixture\", () => {});");
+  writeText(path.join(outputDir, "test-first", "vitest-contract.spec.ts"), "import { describe } from \"vitest\";\ndescribe(\"target-stack fixture\", () => {});");
+  writeJson(path.join(outputDir, "06-frontend-agent-contract", "action-contracts.json"), { actions: [] });
 }
 
 const explicitVite = buildArtifacts({

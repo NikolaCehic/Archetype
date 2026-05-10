@@ -4024,3 +4024,12 @@ Self-healing rules:
 - Next.js manifests must keep `src/app`, `next.config.mjs`, and `next-env.d.ts`, and must exclude Vite-only entry files.
 - Contract tests must assert both sides of the split: explicit Vite, inferred React Router, and explicit Next. A single happy-path stack test would let this drift return.
 - Repair evidence must resolve target files from `12-target-frontend/source-file-manifest.json`; hardcoding `src/app` in repair tasks reintroduces stack drift after verification fails.
+
+## 2026-05-10 - Issue 2 Fix: Contract Fidelity Verification
+
+- Build, typecheck, and Playwright can all pass while the target ignores the approved source manifest. `verify-target` must reconcile manifest paths, route-component-map, test-first IDs, action IDs, and required Playwright scenario families before browser verification.
+- Contract fidelity must run before Playwright. If source architecture or test traceability drift is already known, browser smoke tests should not be allowed to create false confidence.
+- Generated targets must materialize test-first traceability files for Playwright, integration, and unit obligations. Missing test files are a harness failure, not a downstream user repair.
+- Flow tests must follow route/screen pairs. Asserting every flow screen on the first route makes multi-route apps fail for the wrong reason and hides real contract drift.
+- Independent verification fixtures must also satisfy source-manifest fidelity. A hand-written target is only "good" if it proves both runtime behavior and contract traceability.
+- Playwright evidence should distinguish raw Playwright spec counts from contract scenario counts. `scenario_summary` is the contract truth; raw summaries can include extra target tests.
