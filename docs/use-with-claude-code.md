@@ -15,7 +15,7 @@ Claude Code should:
 - treat `/archetype` as the full lifecycle by default
 - prefer MCP tool `archetype_run_lifecycle` or CLI fallback `archetype run "<brief>"` as the executable lifecycle primitive
 - ask clarification questions when product context is incomplete
-- invite optional `@` files, screenshots, wireframes, `SPEC.md`, `PRD.md`, brand notes, or repo context
+- treat source-material intake as a blocking gate: invite optional `@` files, screenshots, wireframes, `SPEC.md`, `PRD.md`, brand notes, or repo context, or record an explicit decision to proceed without them
 - read the imported `@` files itself
 - create `archetype.intake.json`
 - generate `archetype-output`
@@ -28,6 +28,8 @@ Claude Code should:
 - use the Agent Data Plane for deterministic run status, timeline, artifact lineage, verification, and repair queries when available
 
 The lifecycle primitive returns `nextAction` and `consumerPlane`. If `consumerPlane.next_action.type` is `ask_one_question`, ask only that one question. If it is `present_draft_review`, surface `review-console/index.html`, `review-console/session.json`, `draft/design-system-preview.html`, `draft/design-directions.json`, `draft/design-quality-gate.json`, `draft/design-craft-rubric.md`, and the approval request. If it is `start_tests_first`, begin from the compact phase bundles and write tests before UI code. `archetype_consumer_next_action` returns the same host-facing contract without rereading broad artifacts.
+
+For a weak prompt, Claude Code should normally ask the primary-user question first, then the source-material gate. If the user says materials exist, Claude Code must wait for `@` attachments/imports or pass material paths/content through `archetype_run_lifecycle`; it must not scaffold an isolated frontend while materials are still pending.
 
 The user-facing review surface is the Review Console, not the artifact tree. It shows the current phase, what Archetype knows, what is missing, the one active question, attached materials, route proposals, design-system preview links, approval checklist, blocked reasons, run timeline, and the next legal action.
 

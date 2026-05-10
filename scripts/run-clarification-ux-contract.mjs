@@ -6,8 +6,10 @@ const root = process.cwd();
 const workspace = path.join(root, "tmp", "clarification-ux-contract");
 const weakInputPath = path.join(workspace, "weak-marketing.intake.json");
 const answeredInputPath = path.join(workspace, "answered-primary-user.intake.json");
+const materialAnsweredInputPath = path.join(workspace, "answered-material-intake.intake.json");
 const weakOutputDir = path.join(workspace, "weak-output");
 const answeredOutputDir = path.join(workspace, "answered-output");
+const materialAnsweredOutputDir = path.join(workspace, "material-answered-output");
 
 rmSync(workspace, { recursive: true, force: true });
 mkdirSync(workspace, { recursive: true });
@@ -76,7 +78,7 @@ const applied = runJson([
 ]);
 assert(applied.status === "warning", "one answer should update context but still warn while more required dimensions are missing.");
 assert(applied.answeredQuestionId === "primary_users", "answer command must report the answered question id.");
-assert(applied.nextQuestionId === "target_stack", "after answering primary user, the next highest-impact missing decision should be target stack.");
+assert(applied.nextQuestionId === "source_materials_review", "after answering primary user, the next blocker should be source-material intake.");
 assert(applied.clarificationTurn.question_count === 1, "answer command must return the next single clarification turn.");
 assert(existsSync(answeredInputPath), "answer command must write the updated intake.");
 
@@ -86,10 +88,27 @@ assert(answeredInput.context.includes("Clarification answer (primary_users"), "a
 
 const answeredGenerate = runJson(["generate", "--input", answeredInputPath, "--out", answeredOutputDir]);
 assert(answeredGenerate.packageType === "clarification", "answered-but-incomplete intake should still produce clarification.");
-assert(answeredGenerate.nextQuestion === "What target frontend stack or existing repo should the agent use?", "regeneration must ask the next single question after context update.");
+assert(answeredGenerate.nextQuestion.includes("SPEC"), "regeneration must ask the source-material gate after the primary-user answer.");
 const answeredTurn = readJson(path.join(answeredOutputDir, "lifecycle", "clarification-turn.json"));
 assert(answeredTurn.question_count === 1, "regenerated clarification package must still ask one question.");
-assert(answeredTurn.selection.selected_decision_id === "target_stack", "regenerated turn must update selection from the previous answer.");
+assert(answeredTurn.selection.selected_decision_id === "source_materials_review", "regenerated turn must move to source-material intake.");
+
+const materialApplied = runJson([
+  "answer-clarification",
+  "--input", answeredInputPath,
+  "--out", materialAnsweredInputPath,
+  "--question-id", "source_materials_review",
+  "--answer", "Proceed without source materials for this test.",
+  "--answered-by", "clarification-ux-contract"
+]);
+assert(materialApplied.status === "warning", "material answer should still warn while other required dimensions are missing.");
+assert(materialApplied.nextQuestionId === "target_stack", "after explicit no-materials decision, next blocker should be target stack.");
+const materialAnsweredInput = readJson(materialAnsweredInputPath);
+assert(materialAnsweredInput.materialIntake.status === "none", "explicit no-materials answer must be stored as materialIntake none.");
+const materialAnsweredGenerate = runJson(["generate", "--input", materialAnsweredInputPath, "--out", materialAnsweredOutputDir]);
+assert(materialAnsweredGenerate.packageType === "clarification", "material-answered intake should still clarify remaining context.");
+const materialAnsweredTurn = readJson(path.join(materialAnsweredOutputDir, "lifecycle", "clarification-turn.json"));
+assert(materialAnsweredTurn.selection.selected_decision_id === "target_stack", "source-material completion must unblock target stack.");
 
 for (const relativePath of [
   "skills/archetype/SKILL.md",
@@ -106,6 +125,8 @@ console.log(JSON.stringify({
   status: "pass",
   weakOutputDir,
   answeredOutputDir,
+  materialAnsweredOutputDir,
   firstQuestion: turn.current_question.question,
-  nextQuestion: answeredTurn.current_question.question
+  nextQuestion: answeredTurn.current_question.question,
+  afterMaterialQuestion: materialAnsweredTurn.current_question.question
 }, null, 2));

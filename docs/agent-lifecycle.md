@@ -15,7 +15,7 @@ Agent hosts should prefer MCP tool `archetype_run_lifecycle` for `$archetype` an
 ```txt
 idea
   -> clarify missing context one question at a time
-  -> ask for optional materials
+  -> source-material gate: attach/import materials or explicitly proceed without them
   -> intake source evidence
   -> generate draft contract
   -> generate source-derived design directions and design-quality gate
@@ -36,6 +36,8 @@ idea
 Clarify means context completion. The agent reads the idea, screenshots, briefs, repo files, `SPEC.md`, `PRD.md`, wireframes, and other optional materials, then asks exactly one highest-impact question for the missing, conflicted, or blocked decision that prevents a deterministic contract.
 
 After the user answers, the agent applies that answer with `archetype_answer_clarification` or `archetype answer-clarification`, updates the intake and context matrix, then repeats until the next lifecycle gate is safe.
+
+The source-material gate is blocking. For a weak idea, the expected early sequence is: identify the primary user, ask whether the user has `SPEC.md`, SOP, PRD, screenshots, wireframes, design docs, API docs, route maps, or repo files, then wait for actual attachments/imports or an explicit "proceed without source materials" decision. The lifecycle must not draft, scaffold, write tests, or implement while that gate is unresolved.
 
 With the lifecycle primitive, the same update can be done without separate command choreography:
 

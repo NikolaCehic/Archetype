@@ -8,7 +8,9 @@ const richOutputDir = path.join(workspace, "rich-output");
 const weakInputPath = path.join(workspace, "weak-marketing.intake.json");
 const weakOutputDir = path.join(workspace, "weak-output");
 const answeredInputPath = path.join(workspace, "answered-primary-user.intake.json");
+const materialAnsweredInputPath = path.join(workspace, "answered-material-intake.intake.json");
 const answeredOutputDir = path.join(workspace, "answered-output");
+const materialAnsweredOutputDir = path.join(workspace, "material-answered-output");
 
 rmSync(workspace, { recursive: true, force: true });
 mkdirSync(workspace, { recursive: true });
@@ -141,12 +143,27 @@ const applied = runJson([
   "--answer", "Marketing operations manager",
   "--answered-by", "lifecycle-intake-states-contract"
 ]);
-assert(applied.nextQuestionId === "target_stack", "after primary user answer, next Scope 05 clarification blocker should be target stack.");
+assert(applied.nextQuestionId === "source_materials_review", "after primary user answer, next Scope 05 clarification blocker should be source-material intake.");
 const answeredGenerate = runJson(["generate", "--input", answeredInputPath, "--out", answeredOutputDir]);
 assert(answeredGenerate.packageType === "clarification", "partially answered prompt should remain clarification.");
 assertIntakeOutputs(answeredOutputDir);
 const answeredClarificationState = readJson(path.join(answeredOutputDir, "lifecycle", "clarification-state.json"));
-assert(answeredClarificationState.current_question.id === "target_stack", "answered clarification state must move to target stack.");
+assert(answeredClarificationState.current_question.id === "source_materials_review", "answered clarification state must move to source-material intake.");
+
+const materialApplied = runJson([
+  "answer-clarification",
+  "--input", answeredInputPath,
+  "--out", materialAnsweredInputPath,
+  "--question-id", "source_materials_review",
+  "--answer", "Proceed without source materials.",
+  "--answered-by", "lifecycle-intake-states-contract"
+]);
+assert(materialApplied.nextQuestionId === "target_stack", "after no-materials answer, next Scope 05 clarification blocker should be target stack.");
+const materialAnsweredGenerate = runJson(["generate", "--input", materialAnsweredInputPath, "--out", materialAnsweredOutputDir]);
+assert(materialAnsweredGenerate.packageType === "clarification", "material-answered prompt should remain clarification until remaining blockers are answered.");
+assertIntakeOutputs(materialAnsweredOutputDir);
+const materialAnsweredClarificationState = readJson(path.join(materialAnsweredOutputDir, "lifecycle", "clarification-state.json"));
+assert(materialAnsweredClarificationState.current_question.id === "target_stack", "material completion must unblock target stack.");
 
 const summary = {
   status: "pass",
@@ -155,7 +172,8 @@ const summary = {
   answeredOutputDir,
   richRequestType: richStart.input.request_type,
   weakQuestion: weakClarificationState.current_question.question,
-  answeredNextQuestion: answeredClarificationState.current_question.question
+  answeredNextQuestion: answeredClarificationState.current_question.question,
+  afterMaterialQuestion: materialAnsweredClarificationState.current_question.question
 };
 writeFileSync(path.join(workspace, "lifecycle-intake-states-summary.json"), `${JSON.stringify(summary, null, 2)}\n`);
 console.log(JSON.stringify(summary, null, 2));

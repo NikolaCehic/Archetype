@@ -173,7 +173,7 @@ try {
     answeredBy: "mcp-contract"
   });
   assert(answerClarification.status === "warning", "answer clarification should update weak intake while more context remains missing.");
-  assert(answerClarification.nextQuestionId === "target_stack", "answer clarification should return the next one-question blocker.");
+  assert(answerClarification.nextQuestionId === "source_materials_review", "answer clarification should return source-material intake before target stack.");
   assert(answerClarification.clarificationTurn?.question_count === 1, "answer clarification should return one current question.");
 
   const createIntake = await callTool("archetype_create_intake", {

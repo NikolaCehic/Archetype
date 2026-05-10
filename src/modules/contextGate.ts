@@ -34,6 +34,19 @@ export const HL04_CLARIFICATION_RULE = "Clarification is not a bulk form.";
 export const HL04_SELECTION_RULE = "Select the highest-impact missing or conflicted blocker from the context matrix.";
 export const DEFAULT_MARKETING_DASHBOARD_QUESTION = "Who is the primary user of this marketing admin dashboard?";
 
+const DECISION_PRIORITY: Record<string, number> = {
+  product_outcome: 0,
+  primary_users: 1,
+  source_materials_review: 2,
+  target_stack: 3,
+  must_have_flows: 4,
+  data_auth_boundary: 5,
+  safety_constraints: 6,
+  design_direction: 7,
+  test_execution_permission: 8,
+  assumption_approval: 9
+};
+
 export interface ContextMatrixDecision {
   id: string;
   dimension: string;
@@ -274,7 +287,11 @@ function firstQuestion(decisions: ContextMatrixDecision[]): Question | null {
   };
   const blocker = decisions
     .filter((item) => item.required && ["missing", "conflicted", "blocked"].includes(item.status) && item.question)
-    .sort((a, b) => order[a.impact] - order[b.impact])[0];
+    .sort((a, b) => {
+      const impactOrder = order[a.impact] - order[b.impact];
+      if (impactOrder !== 0) return impactOrder;
+      return (DECISION_PRIORITY[a.id] ?? 99) - (DECISION_PRIORITY[b.id] ?? 99);
+    })[0];
   return blocker?.question ?? null;
 }
 
@@ -311,7 +328,9 @@ export function assessContextGate(input: ArchetypeInput): ContextGateAssessment 
   ]);
   const contextMentionsVisualDirection = mentionsAny(context, ["premium", "dark", "light", "dense", "polished", "brand", "monochrome", "enterprise", "playful", "minimal"]);
   const materialCount = (input.materials ?? []).length + (input.referenceImages ?? []).length;
+  const materialStatus = input.materialIntake?.status;
   const materialDecisionKnown = hasMaterialIntakeDecision(input, context);
+  const materialDecisionStatus: ContextDecisionStatus = materialDecisionKnown ? "confirmed" : materialStatus === "pending" ? "blocked" : "missing";
   const boundaryKnown = hasDataBoundary(input, context);
   const testPermissionKnown = hasTestExecutionPermission(input, context);
   const assumptionApprovalKnown = hasAssumptionApproval(input, context);
@@ -347,11 +366,13 @@ export function assessContextGate(input: ArchetypeInput): ContextGateAssessment 
   );
   const sourceMaterialsQuestion = question(
     "source_materials_review",
-    "Do you have any SPEC, SOP, PRD, screenshots, wireframes, design docs, API docs, route maps, or repo files to attach, or should Archetype proceed without source materials?",
+    materialStatus === "pending"
+      ? "Please attach or @mention the SPEC, SOP, PRD, screenshots, wireframes, design docs, API docs, route maps, or repo files now, or say Archetype should proceed without source materials."
+      : "Do you have any SPEC, SOP, PRD, screenshots, wireframes, design docs, API docs, route maps, or repo files to attach, or should Archetype proceed without source materials?",
     "Archetype needs a deliberate source-material decision before it can treat missing documentation as permission to draft assumptions.",
     true,
     ["SPEC.md", "SOP", "PRD", "screenshots", "wireframes", "design docs", "API docs", "route maps", "repo files", "explicit none"],
-    "high",
+    "critical",
     ["materialIntake", "materials", "referenceImages", "context"]
   );
   const flowsQuestion = question(
@@ -453,9 +474,9 @@ export function assessContextGate(input: ArchetypeInput): ContextGateAssessment 
       "source_materials_review",
       "Source materials, documentation, or explicit no-materials decision",
       "SPEC/SOP/PRD/design/API/route/repo material intake",
-      materialDecisionKnown ? "confirmed" : "missing",
+      materialDecisionStatus,
       true,
-      "high",
+      "critical",
       materialDecisionKnown
         ? hasMaterials(input)
           ? "imported_material_fact"
@@ -465,12 +486,17 @@ export function assessContextGate(input: ArchetypeInput): ContextGateAssessment 
         ? hasMaterials(input)
           ? [`${materialCount} source material or reference image item(s) supplied.`]
           : ["User explicitly chose to proceed without attaching source materials."]
+        : materialStatus === "pending"
+          ? ["User indicated source materials may exist, but none have been ingested yet."]
         : [],
       materialDecisionKnown
         ? "The lifecycle has an explicit source-material boundary."
+        : materialStatus === "pending"
+          ? "Archetype is waiting for the user to attach or @mention source materials, or explicitly proceed without them."
         : "Without asking for source materials or an explicit none, the draft may miss authoritative SPEC, SOP, PRD, design, API, route, or repo context.",
       materialDecisionKnown
         ? hasMaterials(input) ? ["source_materials"] : ["source_user_context"]
+        : materialStatus === "pending" ? ["source_user_context"]
         : [],
       materialDecisionKnown ? undefined : sourceMaterialsQuestion
     ),

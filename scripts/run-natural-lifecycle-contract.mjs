@@ -82,6 +82,7 @@ const answeredRun = runJson([
 ]);
 assert(answeredRun.packageType === "clarification", "one answer should update state and continue if more blockers remain.");
 assert(answeredRun.nextQuestionId && answeredRun.nextQuestionId !== weakRun.nextQuestionId, "answer run should select the next one-question blocker.");
+assert(answeredRun.nextQuestionId === "source_materials_review", "after primary user, lifecycle should ask the source-material gate before drafting or stack selection.");
 
 const richBrief = [
   "Build a premium dense dark marketing analytics admin dashboard for marketing managers and growth analysts.",

@@ -3896,3 +3896,38 @@ Self-healing rules:
 - Route files should wire routes and states; feature screens should own product composition.
 - Shared UI primitives can be shadcn-compatible, but untouched shadcn examples are still forbidden.
 - Every future output-structure change must update `12-target-frontend`, `write-target`, implementation skills, frontend architect roles, docs, and at least one contract test together.
+
+## Hardening Phase 16 - Source Material Gate Priority
+
+Source:
+
+- Live Codex test showed Archetype asked only the primary-user question and then the host planned direct frontend scaffolding. The lifecycle contained a source-material question, but it was not physically early enough or strong enough to stop host interpretation.
+
+Extracted requirements:
+
+- Source-material intake must be a blocking lifecycle gate, not an optional note.
+- After the initial user/audience question, Archetype must ask whether the user has SPEC, SOP, PRD, screenshots, wireframes, design docs, API docs, route maps, or repo files.
+- A text answer saying materials exist is not proof that materials were ingested.
+- Fallback host behavior must not replace a blocked lifecycle state with an ad hoc scaffold plan.
+
+Corrections applied:
+
+- Promoted `source_materials_review` to critical impact and added deterministic decision priority after `primary_users`.
+- Changed material answers so non-decline answers become `pending`, not falsely `provided`; actual materials become provided only through material ingestion.
+- Added a blocked pending-material question that asks the user to attach or @mention files, or explicitly proceed without them.
+- Updated Codex/Claude skill and command instructions to forbid drafting, scaffolding, tests, or implementation before the material gate is satisfied.
+- Updated clarification, lifecycle, natural-language, and MCP contracts to prove the sequence: primary user -> source-material gate -> target stack after explicit no-materials decision.
+
+Verification evidence:
+
+- `npm run build`: pass.
+- `npm run clarification-ux:contract`: pass.
+- `npm run lifecycle-intake:contract`: pass.
+- `npm run natural-lifecycle:contract`: pass.
+- `npm run mcp:contract`: pass.
+
+Self-healing rules:
+
+- Never treat "I have a spec/design" as `provided` unless the file/content was actually ingested.
+- Any weak-context lifecycle must stop on source-material intake before drafting or implementation.
+- Plugin fallback instructions must name forbidden host substitutions explicitly, especially scaffold plans.

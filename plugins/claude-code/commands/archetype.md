@@ -16,7 +16,7 @@ Use the `archetype` skill instructions as the operating contract. The user shoul
 ## Required Behavior
 
 1. Clarify only the missing context that blocks a deterministic frontend contract, exactly one question at a time.
-2. Ask the source-material gate explicitly: `SPEC.md`, SOP, PRD, screenshots, wireframes, design docs, API docs, route maps, repo files, or explicit permission to proceed without source materials. Read any attached `@` files yourself.
+2. Ask the source-material gate explicitly: `SPEC.md`, SOP, PRD, screenshots, wireframes, design docs, API docs, route maps, repo files, or explicit permission to proceed without source materials. Read any attached `@` files yourself. This gate is blocking: do not draft, scaffold, write tests, or implement until it is satisfied.
 3. Prefer MCP tool `archetype_run_lifecycle` with `$ARGUMENTS` and any imported materials. It creates or updates `archetype.intake.json`, safely ingests materials, writes `lifecycle/source-graph.json`, writes `lifecycle/run-state.json`, writes `agent-context/consumer-plane.json`, and returns `nextAction` plus `consumerPlane`.
 4. Generate `archetype-output` with the Archetype MCP tools when available; when clarification is required, apply each answer with `archetype_run_lifecycle` or `archetype_answer_clarification`.
 5. Read `agent-context/consumer-plane.json` or call `archetype_consumer_next_action` before deciding what to say next. Prefer MCP resources/prompts when the host only needs the current phase, review copy, or test-first handoff.
@@ -31,3 +31,4 @@ Use the `archetype` skill instructions as the operating contract. The user shoul
 13. Repair implementation drift first, and revise the contract only when user-approved evidence proves the spec is wrong.
 
 Use CLI fallbacks internally when MCP is unavailable. Do not ask the user to run `generate`, `validate`, `verify-target`, or `repair` manually.
+When fallback returns a `clarification` package, ask only the returned question and stop. When it returns a `draft_contract` package, use the review console and stop for approval. Never replace a blocked lifecycle state with an ad hoc scaffold plan.

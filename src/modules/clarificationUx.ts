@@ -21,6 +21,19 @@ const IMPACT_ORDER: Record<ContextMatrixDecision["impact"], number> = {
   low: 3
 };
 
+const DECISION_PRIORITY: Record<string, number> = {
+  product_outcome: 0,
+  primary_users: 1,
+  source_materials_review: 2,
+  target_stack: 3,
+  must_have_flows: 4,
+  data_auth_boundary: 5,
+  safety_constraints: 6,
+  design_direction: 7,
+  test_execution_permission: 8,
+  assumption_approval: 9
+};
+
 export const HL04_ALGORITHM = [
   "Read idea, imported files, screenshots, and repo context.",
   "Build context matrix.",
@@ -36,7 +49,11 @@ export const HL04_ALGORITHM = [
 function candidateBlockers(contextMatrix: ContextMatrix): ClarificationTurnArtifact["selection"]["candidate_blockers"] {
   return contextMatrix.decisions
     .filter((item) => item.required && ["missing", "conflicted", "blocked"].includes(item.status))
-    .sort((a, b) => IMPACT_ORDER[a.impact] - IMPACT_ORDER[b.impact])
+    .sort((a, b) => {
+      const impactOrder = IMPACT_ORDER[a.impact] - IMPACT_ORDER[b.impact];
+      if (impactOrder !== 0) return impactOrder;
+      return (DECISION_PRIORITY[a.id] ?? 99) - (DECISION_PRIORITY[b.id] ?? 99);
+    })
     .map((item) => ({
       decision_id: item.id,
       label: item.label,
@@ -189,10 +206,7 @@ function materialIntakeStatus(answer: string): "provided" | "none" | "pending" {
   if (/\b(no|none|nothing|do not have|don't have|do not|without|proceed without|nothing to attach)\b/u.test(normalized)) {
     return "none";
   }
-  if (/\b(spec|sop|prd|screenshot|wireframe|figma|design|api doc|route map|repo|repository|attached|@|\/|\.)\b/u.test(normalized)) {
-    return "provided";
-  }
-  return positiveAnswer(answer) ? "provided" : "none";
+  return "pending";
 }
 
 export function applyClarificationAnswer(input: {

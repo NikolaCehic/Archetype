@@ -21,6 +21,7 @@ Examples:
 - Do not require the user to say "ask me what is missing" or "implement and verify"; that is the default `$archetype` lifecycle.
 - Ask exactly one clarification question at a time when essential context is missing.
 - Ask the source-material question as a first-class gate: does the user have `SPEC.md`, SOP, PRD, screenshots, wireframes, design docs, brand notes, API docs, route maps, existing repo files, or test policy, or should Archetype explicitly proceed without source materials?
+- Treat source-material intake as blocking. After the initial audience/user question, do not draft, scaffold, write tests, or implement until attached/imported materials have been read or the user explicitly says to proceed without source materials.
 - Read `agent-context/consumer-plane.json` first whenever it exists. It is the consumer contract for what to say, what to read, what to avoid, and which lifecycle action is legal next.
 - Use `review-console/index.html` and `review-console/session.json` as the human review cockpit. The user reviews decisions, not an artifact tree.
 - Treat `draft/design-directions.json`, `draft/design-quality-gate.json`, `draft/design-craft-rubric.md`, and `draft/design-system-preview.html` as a hard design review gate. Do not allow reusable preset directions, generic blue-gray SaaS UI, untouched shadcn defaults, or missing component states to pass. Design directions must cite source context, supplied materials when present, and route/screen alignment.
@@ -48,7 +49,7 @@ If the answer is obvious from imported material, use the material as evidence in
 7. Read `agent-context/consumer-plane.json` first. Then read `agent-context/context-summary.json`, `agent-context/phase-bundles/index.json`, and only the current phase bundle before opening larger artifacts.
 7.1. Read `governance/agent-control-plane.json` before any phase transition. If a P0 gate is blocked or failed, follow its `next_action` instead of improvising.
 8. Summarize readiness with `archetype_summarize_package`; use compact mode by default and legacy/full entrypoints only when exact source text is required. Use `archetype_consumer_next_action`, MCP resources, or MCP prompts when the host only needs the next user-facing step.
-9. If clarification blockers exist, ask only the current question, apply the answer with `archetype_answer_clarification`, regenerate, and repeat.
+9. If clarification blockers exist, ask only the current question, apply the answer with `archetype_answer_clarification` or `archetype_run_lifecycle`, regenerate, and repeat. If the current question is `source_materials_review`, stop for attachments/imports or an explicit no-materials answer; do not scaffold a frontend as a substitute.
 10. If the package is `draft_contract`, start from `agent-context/phase-bundles/draft-review.json` and `agent-context/phase-bundles/contract-approval.json`, then read the draft artifacts those bundles name.
     Draft review can require `draft/design-system-preview.html`, `draft/design-directions.json`, `draft/design-quality-gate.json`, `draft/design-craft-rubric.md`, `draft/frontend-contract.draft.json`, and `draft/contract-approval-request.json`.
 11. For a draft contract, tell the user to open `review-console/index.html`. Present the review console decisions, route proposals, design directions, anti-generic design-quality gate, design preview, approval checklist, confirmed facts, candidate assumptions, unresolved unknowns, risks, blockers, warnings, and recommendations. Ask for approval or edits. Do not read or invent canonical spec files because they are intentionally absent.
@@ -72,6 +73,8 @@ Use the matching file in `agents/` when the lifecycle needs a product architect,
 
 If MCP is unavailable, use the CLI internally. Do not make the user run these commands manually.
 
+Fallback still obeys the same gates: a `clarification` package means ask the one returned question and stop; a `draft_contract` package means review/approval and stop; only an approved canonical package may enter tests-first implementation. Never create an ad hoc "scaffold isolated frontend app" plan from fallback output.
+
 ```bash
 npx --yes --package github:NikolaCehic/Archetype archetype doctor --json
 npx --yes --package github:NikolaCehic/Archetype archetype run "natural-language idea" --out archetype-output --force --json
@@ -88,7 +91,8 @@ The user should experience Archetype as one guided agent workflow:
 
 ```txt
 natural-language $archetype idea
-        -> clarification and optional material request
+        -> one-question clarification
+        -> source-material intake or explicit no-materials decision
         -> context completion
         -> draft contract review and human approval
         -> canonical spec and contract generation
