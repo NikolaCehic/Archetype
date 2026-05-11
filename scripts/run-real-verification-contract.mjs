@@ -115,11 +115,18 @@ function routeModel(contract) {
   const scenarios = Array.isArray(contract.scenarios) ? contract.scenarios : [];
   const routeScenarios = scenarios.filter((scenario) => scenario.type === "route");
   const stateScenarios = scenarios.filter((scenario) => scenario.type === "screen_state");
+  const actionStateScenarios = scenarios.filter((scenario) => scenario.type === "action_state_policy");
   const stateByScreen = new Map();
   for (const state of stateScenarios) {
     const screenId = String(state.screen_id ?? "screen");
     const states = stateByScreen.get(screenId) ?? new Set(["default"]);
     states.add(String(state.state ?? "default"));
+    stateByScreen.set(screenId, states);
+  }
+  for (const state of actionStateScenarios) {
+    const screenId = String(state.screen_id ?? "screen");
+    const states = stateByScreen.get(screenId) ?? new Set(["default"]);
+    states.add(String(state.terminal_state ?? "success_confirmation"));
     stateByScreen.set(screenId, states);
   }
   return routeScenarios.map((scenario, index) => {
@@ -186,7 +193,10 @@ function routeStatesForScreen(contract, screenId) {
     "default",
     ...scenarios
       .filter((scenario) => scenario.type === "screen_state" && scenario.screen_id === screenId)
-      .map((scenario) => String(scenario.state ?? "default"))
+      .map((scenario) => String(scenario.state ?? "default")),
+    ...scenarios
+      .filter((scenario) => scenario.type === "action_state_policy" && scenario.screen_id === screenId)
+      .map((scenario) => String(scenario.terminal_state ?? "success_confirmation"))
   ])];
 }
 
@@ -195,7 +205,8 @@ function actionContractsForScreen(actionContracts, screenId) {
     .filter((action) => String(action.screen_id ?? "") === screenId)
     .map((action) => ({
       action_id: String(action.action_id ?? ""),
-      label: String(action.label ?? action.action_id ?? "Action")
+      label: String(action.label ?? action.action_id ?? "Action"),
+      available_states: Array.isArray(action.availability_policy?.available_states) ? action.availability_policy.available_states.map(String) : ["default"]
     }))
     .filter((action) => action.action_id.length > 0);
 }
@@ -213,7 +224,8 @@ function routePageSource(route, contract, actionContracts, acceptMalformedState)
     `const screenId = ${JSON.stringify(screenId)};`,
     `const routePath = ${JSON.stringify(routePath)};`,
     `const allowedStates = ${JSON.stringify(states)} as const;`,
-    `const actions = ${JSON.stringify(actions, null, 2)} as const;`,
+    "type ActionFixture = { action_id: string; label: string; available_states: readonly string[] };",
+    `const actions: readonly ActionFixture[] = ${JSON.stringify(actions, null, 2)};`,
     "",
     "export default async function IndependentArchetypeTarget({ searchParams }: RouteProps) {",
     "  const resolvedSearch = await searchParams;",
@@ -222,6 +234,7 @@ function routePageSource(route, contract, actionContracts, acceptMalformedState)
     acceptMalformedState
       ? "  const state = requestedState;"
       : "  const state = (allowedStates as readonly string[]).includes(requestedState) ? requestedState : \"default\";",
+    "  const visibleActions = actions.filter((action) => action.available_states.includes(state));",
     "  return (",
     "    <main data-archetype-screen={screenId} data-state={state} data-route={routePath}>",
     "      <span className=\"eyebrow\">independent target</span>",
@@ -231,7 +244,7 @@ function routePageSource(route, contract, actionContracts, acceptMalformedState)
     "        <strong>{state.replace(/[_-]/g, \" \")}</strong>",
     "      </section>",
     "      <section className=\"panel action-row\" data-archetype-control-contract=\"declared-actions\">",
-    "        {actions.map((action) => (",
+    "        {visibleActions.map((action) => (",
     "          <a key={action.action_id} href={`?archetype_action=${encodeURIComponent(action.action_id)}`} data-archetype-action={action.action_id}>",
     "            {action.label}",
     "          </a>",

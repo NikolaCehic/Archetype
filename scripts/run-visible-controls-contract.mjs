@@ -104,8 +104,8 @@ writeText(firstScreenPath, originalScreenSource);
 const restoredScreenSource = readFileSync(firstScreenPath, "utf8");
 const firstActionId = String(actionContracts.actions[0].action_id);
 const inertActionSource = restoredScreenSource.replace(
-  `onClick={() => setLastAction("${firstActionId}")}`,
-  `onClick={() => setLastAction("${firstActionId}.wrong_result")}`
+  "onClick={() => setLastAction(action.actionId)}",
+  "onClick={() => setLastAction(`${action.actionId}.wrong_result`)}"
 );
 assert(inertActionSource !== restoredScreenSource, "inert sabotage must disconnect the first action from its declared runtime proof.");
 writeText(firstScreenPath, inertActionSource);

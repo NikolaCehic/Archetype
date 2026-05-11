@@ -191,7 +191,7 @@ function buildGates(pkg: ArchetypePackage, packageType: PackageType): AgentContr
   const testQualityStandardPresent = packageType === "canonical_contract" && asArray(pkg.testFirst.contractJson.suites).length > 0;
   const playwrightContract = asRecord(pkg.playwright.contractJson);
   const testBehaviorCount = stringArray(playwrightContract.required_test_behaviors).length;
-  const requiredTestBehaviorCount = 10;
+  const requiredTestBehaviorCount = 11;
 
   return [
     gate({

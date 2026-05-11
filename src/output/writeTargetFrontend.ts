@@ -387,6 +387,16 @@ function screenSource(file: SourceManifestFile, routeMap: { routes?: Array<Recor
   const actions = (((route?.actions as string[] | undefined) ?? [])
     .map((actionId) => actionContracts.actions?.find((action) => action.action_id === actionId) ?? { action_id: actionId, label: actionId })
     .filter((action) => typeof action.action_id === "string" && action.action_id.length > 0));
+  const actionDefinitions = actions.map((action) => {
+    const availability = typeof action.availability_policy === "object" && action.availability_policy !== null
+      ? action.availability_policy as { available_states?: unknown }
+      : {};
+    return {
+      actionId: String(action.action_id),
+      label: String(action.label ?? String(action.action_id).split(".").slice(-1)[0] ?? "Action"),
+      availableStates: Array.isArray(availability.available_states) ? availability.available_states.map(String) : ["default"]
+    };
+  });
   const imports = [
     "import { useState } from \"react\";",
     ...components.map((component) => `import { ${safeIdentifier(String(component.name ?? "Component"), "ArchetypeComponent")} } from "${relativeImport(file.path, String(component.file ?? ""))}";`),
@@ -394,15 +404,6 @@ function screenSource(file: SourceManifestFile, routeMap: { routes?: Array<Recor
   ];
   const componentCalls = components.map((component) => `        <${safeIdentifier(String(component.name ?? "Component"), "ArchetypeComponent")} state={state} />`);
   const patternCalls = patterns.map((pattern) => `        <${safeIdentifier(String(pattern.name ?? "Pattern"), "ArchetypePattern")} />`);
-  const actionControls = actions.map((action) => {
-    const actionId = String(action.action_id);
-    const label = String(action.label ?? actionId.split(".").slice(-1)[0] ?? "Action");
-    return [
-      `        <button type="button" className="archetype-action" data-archetype-action="${actionId}" onClick={() => setLastAction("${actionId}")}>`,
-      `          ${label}`,
-      "        </button>"
-    ].join("\n");
-  });
   const componentName = screenComponentName(String(file.screen_id ?? "Screen"));
   return [
     "\"use client\";",
@@ -413,8 +414,17 @@ function screenSource(file: SourceManifestFile, routeMap: { routes?: Array<Recor
     "  state?: string;",
     "}",
     "",
+    "interface ActionDefinition {",
+    "  actionId: string;",
+    "  label: string;",
+    "  availableStates: readonly string[];",
+    "}",
+    "",
+    `const actionDefinitions: readonly ActionDefinition[] = ${JSON.stringify(actionDefinitions, null, 2)};`,
+    "",
     `export function ${componentName}({ state = "default" }: FeatureScreenProps) {`,
     "  const [lastAction, setLastAction] = useState<string | null>(null);",
+    "  const visibleActions = actionDefinitions.filter((action) => action.availableStates.includes(state));",
     "  return (",
     `    <section data-archetype-feature-screen="${file.screen_id}" data-feature-module="${file.feature_module ?? ""}" className="archetype-feature-screen">`,
     "      <header className=\"archetype-page-header\">",
@@ -425,15 +435,21 @@ function screenSource(file: SourceManifestFile, routeMap: { routes?: Array<Recor
     "        <span className=\"archetype-eyebrow\">state</span>",
     "        <strong>{state.replace(/[_-]/g, \" \")}</strong>",
     "      </section>",
-    actionControls.length > 0 ? "      <div className=\"archetype-action-bar\" aria-label=\"Screen actions\">" : "",
-    ...actionControls,
-    actionControls.length > 0 ? "      </div>" : "",
-    actionControls.length > 0 ? "      {lastAction ? (" : "",
-    actionControls.length > 0 ? "        <section className=\"archetype-action-result\" role=\"status\" aria-live=\"polite\" data-archetype-action-result={lastAction}>" : "",
-    actionControls.length > 0 ? "          <span className=\"archetype-eyebrow\">action completed</span>" : "",
-    actionControls.length > 0 ? "          <strong>{lastAction}</strong>" : "",
-    actionControls.length > 0 ? "        </section>" : "",
-    actionControls.length > 0 ? "      ) : null}" : "",
+    actions.length > 0 ? "      {visibleActions.length > 0 ? (" : "",
+    actions.length > 0 ? "        <div className=\"archetype-action-bar\" aria-label=\"Screen actions\">" : "",
+    actions.length > 0 ? "          {visibleActions.map((action) => (" : "",
+    actions.length > 0 ? "            <button key={action.actionId} type=\"button\" className=\"archetype-action\" data-archetype-action={action.actionId} onClick={() => setLastAction(action.actionId)}>" : "",
+    actions.length > 0 ? "              {action.label}" : "",
+    actions.length > 0 ? "            </button>" : "",
+    actions.length > 0 ? "          ))}" : "",
+    actions.length > 0 ? "        </div>" : "",
+    actions.length > 0 ? "      ) : null}" : "",
+    actions.length > 0 ? "      {lastAction ? (" : "",
+    actions.length > 0 ? "        <section className=\"archetype-action-result\" role=\"status\" aria-live=\"polite\" data-archetype-action-result={lastAction}>" : "",
+    actions.length > 0 ? "          <span className=\"archetype-eyebrow\">action completed</span>" : "",
+    actions.length > 0 ? "          <strong>{lastAction}</strong>" : "",
+    actions.length > 0 ? "        </section>" : "",
+    actions.length > 0 ? "      ) : null}" : "",
     "      <div className=\"archetype-composition\">",
     ...patternCalls,
     ...componentCalls,

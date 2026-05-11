@@ -159,6 +159,7 @@ try {
     "scripts/run-spec-contract.mjs",
     "scripts/run-test-first-contract.mjs",
     "scripts/run-test-quality-standard-contract.mjs",
+    "scripts/run-action-state-policy-contract.mjs",
     "scripts/run-required-package-artifacts-contract.mjs",
     "scripts/run-forbidden-behaviors-contract.mjs",
     "scripts/run-marketing-dashboard-replay-contract.mjs",

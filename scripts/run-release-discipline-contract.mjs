@@ -54,7 +54,7 @@ const releasePlan = runJson(["release"]);
 for (const expected of ["safety-approval", "phase-safe", "artifact-registry", "release-discipline", "natural-lifecycle", "repo-audit"]) {
   assert(fastPlan.tasks.some((task) => task.id === expected), `fast suite missing ${expected}.`);
 }
-for (const expected of ["real-verification", "cli", "mcp", "qa-team", "test-quality", "playwright", "repair"]) {
+for (const expected of ["real-verification", "cli", "mcp", "qa-team", "test-quality", "action-state-policy", "playwright", "repair"]) {
   assert(contractsPlan.tasks.some((task) => task.id === expected), `contracts suite missing ${expected}.`);
 }
 for (const expected of ["plugin-claude", "plugin-codex", "distribution", "release", "plugin-install", "install", "golden"]) {

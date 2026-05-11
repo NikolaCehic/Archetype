@@ -52,6 +52,7 @@ const tasks = [
   task("test-quality", "scripts/run-test-quality-standard-contract.mjs", "tmp/test-quality-standard-contract", ["contracts", "full"]),
   task("contract-fidelity", "scripts/run-contract-fidelity-contract.mjs", "tmp/contract-fidelity-contract", ["fast", "full"]),
   task("visible-controls", "scripts/run-visible-controls-contract.mjs", "tmp/visible-controls-contract", ["contracts", "full"]),
+  task("action-state-policy", "scripts/run-action-state-policy-contract.mjs", "tmp/action-state-policy-contract", ["contracts", "full"]),
   task("required-artifacts", "scripts/run-required-package-artifacts-contract.mjs", "tmp/required-package-artifacts-contract", ["contracts", "full"]),
   task("forbidden-behaviors", "scripts/run-forbidden-behaviors-contract.mjs", "tmp/forbidden-behaviors-contract", ["contracts", "full"]),
   task("marketing-replay", "scripts/run-marketing-dashboard-replay-contract.mjs", "tmp/marketing-dashboard-replay-contract", ["fast", "full"]),

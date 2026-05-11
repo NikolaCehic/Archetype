@@ -193,6 +193,28 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
       ]
     };
   });
+  const actionStatePolicyScenarios = routes.map((route, index) => {
+    const screenId = String(route.screen_id ?? `screen_${index + 1}`);
+    const routePath = String(route.route ?? "/");
+    const terminalState = "success_confirmation";
+    return {
+      scenario_id: `PW-ACTION-STATE-${String(index + 1).padStart(3, "0")}`,
+      type: "action_state_policy",
+      route: routePath,
+      resolved_route: `${routeUrl(routePath)}?archetype_state=${encodeURIComponent(terminalState)}`,
+      screen_id: screenId,
+      terminal_state: terminalState,
+      action_ids: actionContracts
+        .filter((action) => String(action.screen_id ?? "") === screenId)
+        .map((action) => String(action.action_id ?? ""))
+        .filter(Boolean),
+      assertions: [
+        "Terminal states hide or disable active action controls.",
+        "Visible terminal-state action controls expose disabled, aria-disabled=true, or data-archetype-action-unavailable.",
+        "Resolve, handoff, rerun, cancel, run, create, update, delete, export, and filter controls are not active after terminal completion."
+      ]
+    };
+  });
   const visualScenarios = routes.flatMap((route, index) =>
     viewports.map((viewport) => {
       const routePath = String(route.route ?? "/");
@@ -239,6 +261,7 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
     ...interactionStateScenarios,
     ...actionScenarios,
     ...visibleControlPolicyScenarios,
+    ...actionStatePolicyScenarios,
     ...visualScenarios,
     ...malformedDataScenarios
   ];
@@ -274,6 +297,7 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
       interaction_state_scenarios: interactionStateScenarios.length,
       action_scenarios: actionScenarios.length,
       visible_control_policy_scenarios: visibleControlPolicyScenarios.length,
+      action_state_policy_scenarios: actionStatePolicyScenarios.length,
       visual_smoke_scenarios: visualScenarios.length,
       malformed_data_scenarios: malformedDataScenarios.length,
       total_scenarios: scenarios.length,
@@ -281,7 +305,7 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
     },
     pass_criteria: [
       "Install, typecheck, and production build pass.",
-      "Playwright route, state, flow, responsive, accessibility, interaction-state, malformed-data, and visual-smoke scenarios pass.",
+      "Playwright route, state, flow, responsive, accessibility, interaction-state, action, visible-control, action-state, malformed-data, and visual-smoke scenarios pass.",
       "Evidence JSON and markdown are written back into archetype-output.",
       "Every warning that remains is named as external production confirmation or target limitation."
     ],
@@ -317,6 +341,7 @@ function buildPlanMarkdown(contract: JsonRecord): string {
     `- Interaction-state scenarios: ${String(coverage.interaction_state_scenarios ?? 0)}`,
     `- Action scenarios: ${String(coverage.action_scenarios ?? 0)}`,
     `- Visible-control policy scenarios: ${String(coverage.visible_control_policy_scenarios ?? 0)}`,
+    `- Action-state policy scenarios: ${String(coverage.action_state_policy_scenarios ?? 0)}`,
     `- Visual-smoke scenarios: ${String(coverage.visual_smoke_scenarios ?? 0)}`,
     `- Malformed-data scenarios: ${String(coverage.malformed_data_scenarios ?? 0)}`,
     `- Total scenarios: ${String(coverage.total_scenarios ?? 0)}`,
@@ -380,6 +405,7 @@ function buildSpecSource(contract: JsonRecord): string {
   const interactionStateScenarios = specData(contract, "interaction_state");
   const actionScenarios = specData(contract, "action");
   const visibleControlPolicyScenarios = specData(contract, "visible_control_policy");
+  const actionStatePolicyScenarios = specData(contract, "action_state_policy");
   const visualScenarios = specData(contract, "visual_smoke");
   const malformedDataScenarios = specData(contract, "malformed_data");
   return [
@@ -396,6 +422,7 @@ function buildSpecSource(contract: JsonRecord): string {
     "const interactionStateScenarios = " + JSON.stringify(interactionStateScenarios, null, 2) + " as ArchetypeScenario[];",
     "const actionScenarios = " + JSON.stringify(actionScenarios, null, 2) + " as ArchetypeScenario[];",
     "const visibleControlPolicyScenarios = " + JSON.stringify(visibleControlPolicyScenarios, null, 2) + " as ArchetypeScenario[];",
+    "const actionStatePolicyScenarios = " + JSON.stringify(actionStatePolicyScenarios, null, 2) + " as ArchetypeScenario[];",
     "const visualScenarios = " + JSON.stringify(visualScenarios, null, 2) + " as ArchetypeScenario[];",
     "const malformedDataScenarios = " + JSON.stringify(malformedDataScenarios, null, 2) + " as ArchetypeScenario[];",
     "",
@@ -538,6 +565,32 @@ function buildSpecSource(contract: JsonRecord): string {
     "        }).map((element) => `${element.tagName.toLowerCase()}:${(element.textContent ?? element.getAttribute('aria-label') ?? '').trim()}`);",
     "      }, scenario.action_ids);",
     "      expect(unbound).toEqual([]);",
+    "    });",
+    "  }",
+    "});",
+    "",
+    "test.describe(\"Archetype action-state policy\", () => {",
+    "  for (const scenario of actionStatePolicyScenarios) {",
+    "    test(scenario.scenario_id, async ({ page }) => {",
+    "      await page.goto(scenario.resolved_route);",
+    "      const root = page.locator(`[data-archetype-screen=\"${scenario.screen_id}\"]`);",
+    "      await expect(root).toBeVisible();",
+    "      await expect(root).toHaveAttribute(\"data-state\", scenario.terminal_state);",
+    "      const activeTerminalActions = await root.locator('[data-archetype-action]').evaluateAll((elements, declaredActionIds) => {",
+    "        const declared = Array.isArray(declaredActionIds) ? declaredActionIds.map(String) : [];",
+    "        const isVisible = (element: Element) => {",
+    "          const rect = element.getBoundingClientRect();",
+    "          const style = window.getComputedStyle(element);",
+    "          return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';",
+    "        };",
+    "        return elements.filter(isVisible).filter((element) => {",
+    "          const actionId = element.getAttribute('data-archetype-action');",
+    "          if (!actionId || !declared.includes(actionId)) return false;",
+    "          const disabled = element.hasAttribute('disabled') || element.getAttribute('aria-disabled') === 'true' || element.hasAttribute('data-archetype-action-unavailable');",
+    "          return !disabled;",
+    "        }).map((element) => `${element.getAttribute('data-archetype-action') ?? 'unknown'}:${(element.textContent ?? '').trim()}`);",
+    "      }, scenario.action_ids);",
+    "      expect(activeTerminalActions).toEqual([]);",
     "    });",
     "  }",
     "});",

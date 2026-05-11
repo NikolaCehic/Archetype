@@ -4,6 +4,7 @@ export const FORBIDDEN_TEST_PATTERNS = [
   "Only checking `[data-archetype-screen]`.",
   "Clicking a generic primary button and accepting any success message.",
   "Leaving visible controls unbound to declared action, form, route-link, or control contracts.",
+  "Leaving terminal-state controls active after resolve, handoff, rerun, cancel, completion, or archive.",
   "Testing contract arrays without importing target behavior.",
   "Treating screenshot byte size as visual quality.",
   "Mirroring implementation constants as expected values without independent contract expectations."
@@ -17,6 +18,7 @@ export const REQUIRED_TEST_BEHAVIORS = [
   "Route transitions and deep links are browser-observable.",
   "CTA hover, focus-visible, active/pressed, disabled, loading, success, and error states are tested when actions exist.",
   "Every visible interactive control is either declared or fails visible-control policy verification.",
+  "Terminal states hide or disable unavailable actions and fail action-state policy verification when controls remain active.",
   "Keyboard, focus, accessible names, landmarks, and live/status regions are tested.",
   "Long labels, malformed data, and permission mismatches are tested.",
   "Visual evidence covers desktop, tablet, and mobile."

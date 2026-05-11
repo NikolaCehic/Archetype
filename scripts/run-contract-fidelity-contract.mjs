@@ -93,6 +93,7 @@ function writeFixture() {
       { scenario_id: "PW-INTERACTION-001", type: "interaction_state" },
       { scenario_id: "PW-ACTION-001", type: "action" },
       { scenario_id: "PW-CONTROLS-001", type: "visible_control_policy" },
+      { scenario_id: "PW-ACTION-STATE-001", type: "action_state_policy" },
       { scenario_id: "PW-VISUAL-001-desktop", type: "visual_smoke" },
       { scenario_id: "PW-MALFORMED-001", type: "malformed_data" }
     ]

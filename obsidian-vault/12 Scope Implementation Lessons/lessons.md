@@ -4042,3 +4042,12 @@ Self-healing rules:
 - Independent "good target" fixtures must implement declared action contracts. Route/state completeness without action proof is another form of inert-control drift.
 - Playwright runtime config should execute the canonical contract verifier, not duplicate copied traceability specs. Duplicate browser suites made verification slow, flaky, and harder to diagnose.
 - Test-quality standards must name visible inert controls as a forbidden pattern and require visible-control policy verification as a first-class behavior family.
+
+## 2026-05-11 - Issue 4 Fix: Terminal Action-State Policy
+
+- Action availability must be state-specific. A declared action that is valid in `default` is not automatically valid in `success_confirmation`, `resolved`, `cancelled`, `handed_off`, `completed`, or `archived`.
+- Terminal states should hide unavailable actions by default. If a control remains visible in a terminal state, it must be explicitly disabled through `disabled`, `aria-disabled=true`, or `data-archetype-action-unavailable`.
+- Generated targets must implement `availability_policy.available_states`, not just render all action contracts. Otherwise actions like Resolve block, Handoff, Rerun, Cancel, Run, Export, and Filter remain active after terminal completion.
+- Playwright must include action-state policy scenarios that force terminal state through the URL and fail when active action controls remain visible.
+- Negative tests must sabotage the real generated action filter, not an old static action handler string. Renderer changes require sabotage tests to follow the current implementation shape.
+- Independent verification fixtures must support contextual terminal states, not only required screen states, or they normalize terminal verification back to `default` and hide action-state drift.

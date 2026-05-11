@@ -47,6 +47,47 @@ function entityForScreen(screen: ExperienceArtifacts["screenSpecs"][number], pro
   return screen.data_needs[0] ?? profile.entities[0];
 }
 
+const ACTION_KNOWN_STATES = [
+  "default",
+  "loading",
+  "empty",
+  "error",
+  "permission_denied",
+  "offline",
+  "partial_data",
+  "stale_data",
+  "filtered_empty",
+  "validation_error",
+  "success_confirmation"
+];
+
+const ACTION_TERMINAL_STATES = [
+  "success_confirmation",
+  "resolved",
+  "cancelled",
+  "handed_off",
+  "completed",
+  "archived"
+];
+
+function uniqueStrings(values: string[]): string[] {
+  return [...new Set(values.filter((value) => value.trim().length > 0))];
+}
+
+function actionAvailableStates(actionType: string): string[] {
+  if (actionType === "filter") return ["default", "partial_data", "stale_data", "filtered_empty"];
+  if (actionType === "export") return ["default", "partial_data", "stale_data", "filtered_empty"];
+  if (actionType === "create") return ["default", "empty", "partial_data", "stale_data", "filtered_empty", "validation_error"];
+  if (actionType === "update") return ["default", "partial_data", "stale_data", "validation_error"];
+  if (actionType === "delete") return ["default", "partial_data", "stale_data"];
+  return ["default", "partial_data", "stale_data"];
+}
+
+function actionUnavailableStates(actionType: string): string[] {
+  const available = new Set(actionAvailableStates(actionType));
+  return uniqueStrings([...ACTION_KNOWN_STATES.filter((state) => !available.has(state)), ...ACTION_TERMINAL_STATES]);
+}
+
 function routeParams(route: string): string[] {
   return route
     .split("/")
@@ -154,6 +195,8 @@ function buildActionContracts(experience: ExperienceArtifacts, routePaths: Set<s
       const actionTarget = actionValue(action, "action");
       const navigateTarget = actionTarget.startsWith("navigate:") ? actionTarget.replace("navigate:", "") : null;
       const isAllowedRouteTarget = !navigateTarget || routePaths.has(navigateTarget);
+      const availableStates = actionAvailableStates(actionType);
+      const unavailableStates = actionUnavailableStates(actionType);
       return {
         action_id: `${screen.screen_id}.${actionId}`,
         screen_id: screen.screen_id,
@@ -164,6 +207,15 @@ function buildActionContracts(experience: ExperienceArtifacts, routePaths: Set<s
         permission: actionValue(action, "permission"),
         required_selector: `[data-archetype-action="${screen.screen_id}.${actionId}"]`,
         result_selector: `[data-archetype-action-result="${screen.screen_id}.${actionId}"]`,
+        availability_policy: {
+          available_states: availableStates,
+          unavailable_states: unavailableStates,
+          terminal_states: ACTION_TERMINAL_STATES,
+          default_terminal_behavior: "hide_control",
+          disabled_terminal_behavior: "allowed_only_with_disabled_or_aria_disabled_and_data_archetype_action_unavailable",
+          allowed_in_terminal_states: false,
+          rule: "Actions are available only in declared states. Terminal states must not expose active controls for resolve, handoff, rerun, cancel, create, update, delete, export, or filter actions unless a new contract explicitly allows recovery."
+        },
         visible_control_contract: {
           control_must_be_visible_when_available: true,
           control_must_have_accessible_name: true,
@@ -195,6 +247,7 @@ function buildActionContracts(experience: ExperienceArtifacts, routePaths: Set<s
           "Do not create hidden mutations outside data-operation-contracts.json.",
           "Do not render a visible control without a matching data-archetype-action or declared control contract.",
           "Do not render a declared action as a visual-only or inert control.",
+          "Do not expose active action controls in terminal states such as success_confirmation, resolved, cancelled, handed_off, completed, or archived.",
           "Do not hide permission or validation failures."
         ],
         evidence_refs: screen.evidence_refs
@@ -208,6 +261,18 @@ function buildActionContracts(experience: ExperienceArtifacts, routePaths: Set<s
 
   return {
     contract_version: "1.0",
+    action_state_policy: {
+      policy_id: "terminal-states-disable-conflicting-actions",
+      rule: "Terminal states must hide or disable action controls that would mutate, re-run, resolve, hand off, cancel, export, or otherwise change a completed item unless that terminal-state action is explicitly declared.",
+      terminal_states: ACTION_TERMINAL_STATES,
+      required_runtime_proof: [
+        "Each action declares available_states and unavailable_states.",
+        "A terminal state route or fixture proves declared actions are absent or disabled.",
+        "Disabled visible terminal controls expose disabled, aria-disabled=true, or data-archetype-action-unavailable.",
+        "Resolve block, Handoff, Rerun, Cancel, Create, Update, Delete, Export, Filter, and Run controls are not active in terminal states by default."
+      ],
+      forbidden_terminal_controls: ["Resolve block", "Handoff", "Rerun", "Cancel", "Run", "Create", "Update", "Delete", "Export", "Filter"]
+    },
     visible_control_policy: {
       policy_id: "visible-controls-require-action-contracts",
       rule: "Every visible interactive control must map to an action, form field, route link, or explicit control contract, and every action must produce runtime proof.",

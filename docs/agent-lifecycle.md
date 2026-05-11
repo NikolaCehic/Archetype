@@ -166,7 +166,7 @@ The design-quality gate is a hard anti-generic UI contract. It requires source-d
 
 Test-driven implementation starts from `test-first/test-first-contract.json` only after the canonical spec package exists.
 
-The test quality standard lives at `test-first/test-quality-standard.json`. Tests that only prove `[data-archetype-screen]` or marker presence fail `verify-target`; valid tests must prove visible behavior, deterministic states, accessible names and landmarks, route/deep-link behavior, malformed data handling, and desktop/tablet/mobile visual evidence.
+The test quality standard lives at `test-first/test-quality-standard.json`. Tests that only prove `[data-archetype-screen]` or marker presence fail `verify-target`; valid tests must prove visible behavior, deterministic states, accessible names and landmarks, route/deep-link behavior, malformed data handling, terminal-state action availability, and desktop/tablet/mobile visual evidence.
 
 Complete packages preserve approval and evidence traceability through `lifecycle/approval-request.md`, `lifecycle/approval-decision.json`, `reviews/specialist-review-summary.md`, `test-results/initial-red-test-run.md`, and `lifecycle/final-readiness-report.md`.
 

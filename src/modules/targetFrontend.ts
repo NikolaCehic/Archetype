@@ -185,7 +185,7 @@ export function buildTargetFrontendArtifacts(input: {
     uses_patterns: screen.required_patterns.map(patternPath),
     required_states: Object.keys(screen.states),
     test_selector: `[data-archetype-screen="${screen.screen_id}"]`,
-    forbidden_behavior: ["Do not implement screen UI in the route file.", "Do not omit declared screen states.", "Do not bypass data, action, form, or permission contracts."]
+    forbidden_behavior: ["Do not implement screen UI in the route file.", "Do not omit declared screen states.", "Do not bypass data, action, form, or permission contracts.", "Do not keep unavailable actions active in terminal states."]
   }));
 
   const componentFiles = ((componentContracts.contracts ?? []).map((component) => ({
@@ -383,7 +383,7 @@ export function buildTargetFrontendArtifacts(input: {
       suite_id: "playwright_verification",
       tests: 0,
       reads: ["test-first/test-quality-standard.json", "verification/playwright-verification-contract.json"],
-      forbidden_behavior: ["Do not remove browser-observable route, state, flow, responsive, accessibility, or visual-smoke checks."]
+      forbidden_behavior: ["Do not remove browser-observable route, state, flow, responsive, accessibility, action-state, or visual-smoke checks."]
     },
     {
       path: "tests/e2e/archetype-user-flows.spec.ts",

@@ -39,6 +39,7 @@ for (const file of [
   "scripts/run-agent-role-files-contract.mjs",
   "scripts/run-qa-team-contract.mjs",
   "scripts/run-test-quality-standard-contract.mjs",
+  "scripts/run-action-state-policy-contract.mjs",
   "scripts/run-required-package-artifacts-contract.mjs",
   "scripts/run-forbidden-behaviors-contract.mjs",
   "scripts/run-marketing-dashboard-replay-contract.mjs",
@@ -99,6 +100,7 @@ assert(pkg.scripts?.["frontend-practices:contract"], "package must expose fronte
 assert(pkg.scripts?.["agent-roles:contract"], "package must expose agent-roles:contract.");
 assert(pkg.scripts?.["qa-team:contract"], "package must expose qa-team:contract.");
 assert(pkg.scripts?.["test-quality:contract"], "package must expose test-quality:contract.");
+assert(pkg.scripts?.["action-state-policy:contract"], "package must expose action-state-policy:contract.");
 assert(pkg.scripts?.["required-artifacts:contract"], "package must expose required-artifacts:contract.");
 assert(pkg.scripts?.["forbidden-behaviors:contract"], "package must expose forbidden-behaviors:contract.");
 assert(pkg.scripts?.["marketing-replay:contract"], "package must expose marketing-replay:contract.");
@@ -201,5 +203,5 @@ console.log(JSON.stringify({
     "docs/demo-script.md",
     "RELEASE_NOTES.md"
   ],
-  scripts: ["demo:run", "distribution:contract", "release:contract", "plugin-install:contract", "repo:audit", "install:contract", "lifecycle:contract", "clarification-ux:contract", "lifecycle-intake:contract", "lifecycle-contract:contract", "design-preview:contract", "lifecycle-execution:contract", "frontend-practices:contract", "agent-roles:contract", "qa-team:contract", "test-quality:contract", "required-artifacts:contract", "forbidden-behaviors:contract", "marketing-replay:contract", "implementation-phases:contract", "convergence:contract", "spec:contract", "test-first:contract", "playwright:contract", "repair:contract"]
+  scripts: ["demo:run", "distribution:contract", "release:contract", "plugin-install:contract", "repo:audit", "install:contract", "lifecycle:contract", "clarification-ux:contract", "lifecycle-intake:contract", "lifecycle-contract:contract", "design-preview:contract", "lifecycle-execution:contract", "frontend-practices:contract", "agent-roles:contract", "qa-team:contract", "test-quality:contract", "action-state-policy:contract", "required-artifacts:contract", "forbidden-behaviors:contract", "marketing-replay:contract", "implementation-phases:contract", "convergence:contract", "spec:contract", "test-first:contract", "playwright:contract", "repair:contract"]
 }, null, 2));
