@@ -39,6 +39,7 @@ After approval, the selected direction and quality gate are preserved in:
 04-design-system/design-directions.json
 04-design-system/design-quality-gate.json
 04-design-system/design-craft-rubric.md
+04-design-system/visual-reference-contract.json
 04-design-system/shadcn-integration.json
 design-system/tokens.json
 frontend-agent-contract/implementation-rules.json
@@ -55,7 +56,8 @@ Archetype rejects:
 - raw Tailwind color and spacing literals in product implementation
 - missing hover, focus-visible, active, disabled, loading, empty, error, and success behavior where applicable
 - route or screen proposals that contradict the brief, imported source material, or human review feedback
-- visual completion claims without Playwright or screenshot evidence
+- visual completion claims without Playwright, screenshot evidence, and source-bound visual-reference assertions
+- screenshot or design-file ingestion that records only paths, hashes, byte size, or broad inspiration instead of density, navigation, layout, component, state, and assertion-id obligations
 
 ## Agent Rule
 
@@ -70,6 +72,8 @@ The directions are not Archetype demo themes. Each generated direction must cite
 - extracted visual evidence signals when screenshots or design files exist
 - generated route and screen contracts
 - material alignment explaining how uploaded evidence influences layout, components, states, and density
+
+When screenshots, wireframes, or design files exist, `01-evidence/visual-evidence-extraction.json` and `04-design-system/visual-reference-contract.json` must carry source-bound assertions. `DQ-11` fails unless those materials become browser-verifiable density, navigation, layout, component, state, typography, or data-display obligations. `verification/playwright-verification-contract.json` must then include `visual_reference` scenarios that check each assertion id in the target DOM and capture screenshot proof. Screenshot byte size is evidence that a screenshot exists; it is not visual fidelity.
 
 If no visual or design material is supplied, the direction is explicitly candidate context-derived work. Archetype should invite the user to add screenshots, brand files, design docs, or product documentation before approval when visual fidelity matters.
 

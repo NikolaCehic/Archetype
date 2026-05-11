@@ -71,9 +71,9 @@ const standardMarkdown = readFileSync(standardMarkdownPath, "utf8");
 assert(standard.source_scope === "HL-11", "test quality standard must identify HL-11.");
 assert(standard.rule === "Marker-only tests fail the verifier.", "test quality standard must encode marker-only verifier rule.");
 assert(standard.marker_only_tests_fail_verifier === true, "test quality standard must force marker-only verifier failure.");
-assert(Array.isArray(standard.forbidden_test_patterns) && standard.forbidden_test_patterns.length === 7, "test quality standard must expose all forbidden patterns.");
-assert(Array.isArray(standard.required_test_behaviors) && standard.required_test_behaviors.length === 11, "test quality standard must expose all required behaviors.");
-for (const expected of ["[data-archetype-screen]", "generic primary button", "visible controls unbound", "terminal-state controls active", "screenshot byte size", "Search filters real visible results", "CTA hover, focus-visible, active/pressed, disabled, loading, success, and error states", "Every visible interactive control", "Terminal states hide or disable unavailable actions", "Visual evidence covers desktop, tablet, and mobile"]) {
+assert(Array.isArray(standard.forbidden_test_patterns) && standard.forbidden_test_patterns.length === 8, "test quality standard must expose all forbidden patterns.");
+assert(Array.isArray(standard.required_test_behaviors) && standard.required_test_behaviors.length === 12, "test quality standard must expose all required behaviors.");
+for (const expected of ["[data-archetype-screen]", "generic primary button", "visible controls unbound", "terminal-state controls active", "screenshot byte size", "visual-reference assertions", "Search filters real visible results", "CTA hover, focus-visible, active/pressed, disabled, loading, success, and error states", "Every visible interactive control", "Terminal states hide or disable unavailable actions", "Visual evidence covers desktop, tablet, and mobile", "Supplied visual references become source-bound"]) {
   assert(JSON.stringify(standard).includes(expected), `test quality standard missing ${expected}.`);
 }
 for (const section of ["## Forbidden Test Patterns", "## Required Test Behaviors", "## Exit Condition"]) {
@@ -91,7 +91,7 @@ for (const scenario of visualScenarios) {
 }
 
 const playwrightSpec = readFileSync(playwrightSpecPath, "utf8");
-for (const signal of ["getByRole(\"heading\"", "innerText()", "getByRole(\"status\"", "getByRole(\"main\"", "keyboard.press", "setViewportSize", "boundingBox", "screenshot", "Archetype malformed-data verification"]) {
+for (const signal of ["getByRole(\"heading\"", "innerText()", "getByRole(\"status\"", "getByRole(\"main\"", "keyboard.press", "setViewportSize", "boundingBox", "screenshot", "Archetype malformed-data verification", "Archetype visual-reference verification"]) {
   assert(playwrightSpec.includes(signal), `Playwright spec missing non-marker behavior signal ${signal}.`);
 }
 

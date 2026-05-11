@@ -211,21 +211,42 @@ function actionContractsForScreen(actionContracts, screenId) {
     .filter((action) => action.action_id.length > 0);
 }
 
+function visualReferenceForScreen(contract, screenId) {
+  const scenario = (contract.scenarios ?? []).find((item) => item.type === "visual_reference" && item.screen_id === screenId);
+  const visual = scenario?.visual_contract ?? {};
+  return {
+    required: Boolean(scenario),
+    density_profile: String(visual.density_profile ?? "unknown"),
+    navigation_patterns: Array.isArray(visual.navigation_patterns) ? visual.navigation_patterns.map(String) : [],
+    layout_patterns: Array.isArray(visual.layout_patterns) ? visual.layout_patterns.map(String) : [],
+    component_candidates: Array.isArray(visual.component_candidates) ? visual.component_candidates.map(String) : [],
+    interaction_states: Array.isArray(visual.interaction_states) ? visual.interaction_states.map(String) : [],
+    verification_assertions: Array.isArray(visual.verification_assertions)
+      ? visual.verification_assertions.filter((item) => typeof item === "object" && item !== null)
+      : [],
+    assertion_count: Number(visual.assertion_count ?? 0)
+  };
+}
+
 function routePageSource(route, contract, actionContracts, acceptMalformedState) {
   const screenId = String(route.screen_id ?? "screen");
   const routePath = String(route.route ?? "/");
   const states = routeStatesForScreen(contract, screenId);
   const actions = actionContractsForScreen(actionContracts, screenId);
+  const visualReference = visualReferenceForScreen(contract, screenId);
   return [
     "type RouteProps = {",
     "  searchParams?: Promise<Record<string, string | string[] | undefined>>;",
     "};",
+    "type VisualAssertionFixture = { assertion_id?: string; category?: string; signal?: string; expected_value?: string; verification_target?: string };",
     "",
     `const screenId = ${JSON.stringify(screenId)};`,
     `const routePath = ${JSON.stringify(routePath)};`,
     `const allowedStates = ${JSON.stringify(states)} as const;`,
     "type ActionFixture = { action_id: string; label: string; available_states: readonly string[] };",
     `const actions: readonly ActionFixture[] = ${JSON.stringify(actions, null, 2)};`,
+    `const visualReference = ${JSON.stringify(visualReference, null, 2)} as const;`,
+    "const visualReferenceAssertions: readonly VisualAssertionFixture[] = visualReference.verification_assertions;",
     "",
     "export default async function IndependentArchetypeTarget({ searchParams }: RouteProps) {",
     "  const resolvedSearch = await searchParams;",
@@ -239,6 +260,40 @@ function routePageSource(route, contract, actionContracts, acceptMalformedState)
     "    <main data-archetype-screen={screenId} data-state={state} data-route={routePath}>",
     "      <span className=\"eyebrow\">independent target</span>",
     "      <h1>{screenId.replace(/[._-]/g, \" \")}</h1>",
+    "      <section",
+    "        data-archetype-feature-screen={screenId}",
+    "        data-archetype-visual-required={String(visualReference.required)}",
+    "        data-archetype-visual-density={visualReference.density_profile}",
+    "        data-archetype-visual-navigation={visualReference.navigation_patterns.join(\" \")}",
+    "        data-archetype-visual-layouts={visualReference.layout_patterns.join(\" \")}",
+    "        data-archetype-visual-components={visualReference.component_candidates.join(\" \")}",
+    "        data-archetype-visual-states={visualReference.interaction_states.join(\" \")}",
+    "        data-archetype-visual-assertion-count={visualReference.assertion_count}",
+    "        className=\"panel\"",
+    "      >",
+    "        <span className=\"eyebrow\">visual reference contract</span>",
+    "        <strong>{visualReference.density_profile}</strong>",
+    "        {visualReferenceAssertions.map((assertion) => (",
+    "          <section key={String(assertion.assertion_id)} data-archetype-visual-assertion={String(assertion.assertion_id)} data-archetype-visual-category={String(assertion.category)} data-archetype-visual-target={String(assertion.verification_target)} className=\"panel\">",
+    "            <strong>{String(assertion.signal ?? assertion.expected_value ?? assertion.assertion_id)}</strong>",
+    "          </section>",
+    "        ))}",
+    "        {visualReference.navigation_patterns.map((navigation) => (",
+    "          <section key={navigation} data-archetype-visual-navigation={navigation} className=\"panel\">",
+    "            <strong>{navigation}</strong>",
+    "          </section>",
+    "        ))}",
+    "        {visualReference.layout_patterns.map((layout) => (",
+    "          <section key={layout} data-archetype-visual-layout={layout} className=\"panel\">",
+    "            <strong>{layout}</strong>",
+    "          </section>",
+    "        ))}",
+    "        {visualReference.component_candidates.map((component) => (",
+    "          <section key={component} data-archetype-visual-component={component} className=\"panel\">",
+    "            <strong>{component}</strong>",
+    "          </section>",
+    "        ))}",
+    "      </section>",
     "      <section className=\"panel\" role=\"status\" aria-live=\"polite\" data-archetype-state={state}>",
     "        <span className=\"eyebrow\">state</span>",
     "        <strong>{state.replace(/[_-]/g, \" \")}</strong>",

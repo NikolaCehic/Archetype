@@ -40,6 +40,7 @@ The role exists because a frontend can pass route tests while still feeling gene
 
 - `04-design-system/visual-direction.md`
 - `04-design-system/design-quality-gate.json`
+- `04-design-system/visual-reference-contract.json`
 - `04-design-system/shadcn-integration.json`
 - `04-design-system/tokens/primitive-tokens.json`
 - `04-design-system/tokens/semantic-tokens.json`
@@ -80,6 +81,7 @@ The role exists because a frontend can pass route tests while still feeling gene
 - Token and component-state drift tasks for repair.
 - State-specific polish corrections for loading, empty, error, permission_denied, offline, partial_data, stale_data, filtered_empty, validation_error, and success_confirmation states when required.
 - Visual-smoke pass/fail evidence for verifier review.
+- Visual-reference pass/fail evidence for every supplied screenshot, wireframe, or design-file assertion id.
 - A readiness decision that clearly separates `ready_for_visual_verification`, `needs_visual_repair`, and `blocked_missing_visual_evidence`.
 
 ## Blockers
@@ -89,7 +91,8 @@ The role exists because a frontend can pass route tests while still feeling gene
 - Any violation of `04-design-system/design-quality-gate.json`, including default blue-gray SaaS styling, untouched shadcn examples, generic card-grid screens, raw Tailwind visual literals, or missing component states.
 - Missing screenshot evidence across required viewports.
 - Visual-smoke tests that only check selectors or markers.
-- Screenshot evidence that is not tied to route, screen, state, viewport, and artifact references.
+- Screenshot evidence that is not tied to route, screen, state, viewport, artifact references, and source-bound visual assertion ids.
+- Supplied screenshots, wireframes, or design files that remain only as paths, hashes, or broad inspiration instead of `visual_reference` assertions.
 - Typography that relies on viewport-width scaling, negative letter spacing, unreadable line lengths, or shrinking text until it technically fits.
 - Components that resize, jump, or change layout because labels, icons, badges, menus, loading text, or hover states alter dimensions.
 - Required empty, error, loading, permission, offline, partial, stale, filtered-empty, validation, or success states that visually collapse into generic panels.
@@ -106,8 +109,9 @@ The role exists because a frontend can pass route tests while still feeling gene
    - Identify the required routes, screens, states, components, and viewport matrix before looking at screenshots.
 
 3. Verify screenshot coverage.
-   - Read `verification/playwright-verification-contract.json`, `verification/playwright-evidence.json`, `qa/scenario-catalog.json`, and `qa/visual-regression-report.md`.
+   - Read `04-design-system/visual-reference-contract.json`, `verification/playwright-verification-contract.json`, `verification/playwright-evidence.json`, `qa/scenario-catalog.json`, and `qa/visual-regression-report.md`.
    - Confirm visual-smoke evidence exists for mobile, tablet, and desktop for each required route.
+   - When visual references exist, confirm `visual_reference` scenarios pass and every source-bound assertion id is represented in browser evidence.
    - If evidence is missing, return `blocked_missing_visual_evidence` instead of judging polish from memory.
 
 4. Inspect layout fit and responsive behavior.

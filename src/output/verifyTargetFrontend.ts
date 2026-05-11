@@ -393,7 +393,22 @@ export function auditTargetContractFidelity(outputDir: string, targetDir: string
   const missingRequiredTestIds = requiredTestIds.filter((testId) => !targetTestSource.includes(testId));
   const actionIds = actionIdsFromContract(actionContracts);
   const missingActionTestRefs = actionIds.filter((actionId) => !targetTestSource.includes(actionId));
-  const requiredScenarioTypes = ["route", "screen_state", "flow", "responsive", "accessibility", "interaction_state", "action", "visible_control_policy", "action_state_policy", "visual_smoke", "malformed_data"];
+  const visualEvidence = readJsonOrEmpty(path.join(outputDir, "01-evidence", "visual-evidence-extraction.json"));
+  const visualSourceCount = Number(visualEvidence.source_count ?? 0);
+  const requiredScenarioTypes = [
+    "route",
+    "screen_state",
+    "flow",
+    "responsive",
+    "accessibility",
+    "interaction_state",
+    "action",
+    "visible_control_policy",
+    "action_state_policy",
+    "visual_smoke",
+    ...(visualSourceCount > 0 ? ["visual_reference"] : []),
+    "malformed_data"
+  ];
   const scenarioTypes = playwrightScenarioTypes(playwrightContract);
   const missingScenarioTypes = requiredScenarioTypes.filter((type) => !scenarioTypes.has(type));
   const checks = [
@@ -660,6 +675,7 @@ function scenarioTypeForId(scenarioId: string): string {
   if (scenarioId.startsWith("PW-ACTION-STATE")) return "action_state_policy";
   if (scenarioId.startsWith("PW-ACTION")) return "action";
   if (scenarioId.startsWith("PW-CONTROLS")) return "visible_control_policy";
+  if (scenarioId.startsWith("PW-VISREF")) return "visual_reference";
   if (scenarioId.startsWith("PW-VISUAL")) return "visual_smoke";
   if (scenarioId.startsWith("PW-MALFORMED")) return "malformed_data";
   return "unknown";
@@ -721,7 +737,13 @@ function collectPlaywrightEvidenceDetails(outputDir: string, targetDir: string):
   });
   const behaviorTypes = ["route", "screen_state", "flow", "responsive", "interaction_state", "action", "visible_control_policy", "action_state_policy"];
   const visualResults = scenarioResults.filter((result) => result.type === "visual_smoke");
+  const visualReferenceResults = scenarioResults.filter((result) => result.type === "visual_reference");
   const visualGrade = visualResults.length > 0 && visualResults.every((result) => result.status === "pass" && (result.screenshot_bytes ?? 0) > 0) ? "pass" : "fail";
+  const visualReferenceGrade = visualReferenceResults.length === 0
+    ? "pass"
+    : visualReferenceResults.every((result) => result.status === "pass" && (result.screenshot_bytes ?? 0) > 0)
+      ? "pass"
+      : "fail";
   const summary = {
     contract_scenarios: scenarios.length,
     raw_specs: rawSpecs.specs.size,
@@ -740,6 +762,7 @@ function collectPlaywrightEvidenceDetails(outputDir: string, targetDir: string):
     action_state_policy_verified: gradeScenarioType(scenarioResults, "action_state_policy"),
     accessibility_verified: gradeScenarioType(scenarioResults, "accessibility"),
     visual_verified: visualGrade,
+    visual_reference_verified: visualReferenceGrade,
     malformed_data_verified: gradeScenarioType(scenarioResults, "malformed_data"),
     scenario_coverage: rawSpecs.rawAvailable && rawSpecs.specs.size >= scenarios.length && scenarioResults.every((result) => result.status !== "missing") ? "pass" : "fail"
   };
@@ -766,6 +789,7 @@ function collectPlaywrightEvidenceDetails(outputDir: string, targetDir: string):
     ...(grades.action_state_policy_verified === "pass" ? [] : ["Action-state policy scenarios did not all pass."]),
     ...(grades.accessibility_verified === "pass" ? [] : ["Accessibility scenarios did not all pass."]),
     ...(grades.visual_verified === "pass" ? [] : ["Visual-smoke screenshots are missing or failed."]),
+    ...(grades.visual_reference_verified === "pending" || grades.visual_reference_verified === "pass" ? [] : ["Visual-reference assertions from supplied visual materials did not all pass."]),
     ...(grades.malformed_data_verified === "pass" ? [] : ["Malformed-data browser scenarios did not all pass."])
   ];
   return {

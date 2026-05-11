@@ -27,9 +27,28 @@ interface SourceManifestFile {
   pattern?: string;
   suite_id?: string;
   required_states?: string[];
+  visual_reference_contract?: {
+    required?: boolean;
+    density_profile?: string;
+    navigation_patterns?: string[];
+    layout_patterns?: string[];
+    component_candidates?: string[];
+    interaction_states?: string[];
+    verification_assertions?: VisualReferenceAssertionProof[];
+    assertion_count?: number;
+  };
 }
 
 type SourceTargetKind = "next_app_router" | "vite_react_router";
+
+interface VisualReferenceAssertionProof {
+  assertion_id: string;
+  category: string;
+  signal: string;
+  expected_value: string;
+  verification_target: string;
+  failure_message: string;
+}
 
 interface SourceManifest {
   target_stack?: Record<string, unknown>;
@@ -265,6 +284,47 @@ function patternSource(name: string, selector: string): string {
   ].join("\n");
 }
 
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.map(String).filter((item) => item.trim().length > 0) : [];
+}
+
+function recordArray(value: unknown): Array<Record<string, unknown>> {
+  return Array.isArray(value)
+    ? value.filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    : [];
+}
+
+function visualAssertionProofs(value: unknown): VisualReferenceAssertionProof[] {
+  return recordArray(value)
+    .map((item, index) => ({
+      assertion_id: String(item.assertion_id ?? `visual_assertion_${index + 1}`),
+      category: String(item.category ?? "visual"),
+      signal: String(item.signal ?? item.expected_value ?? `visual assertion ${index + 1}`),
+      expected_value: String(item.expected_value ?? item.signal ?? ""),
+      verification_target: String(item.verification_target ?? "screen_root"),
+      failure_message: String(item.failure_message ?? "Source-bound visual reference assertion is missing from the generated screen.")
+    }))
+    .filter((item) => item.assertion_id.trim().length > 0);
+}
+
+function visualReferenceForScreen(file: SourceManifestFile, route: Record<string, unknown> | undefined): Required<NonNullable<SourceManifestFile["visual_reference_contract"]>> {
+  const fromRoute = typeof route?.visual_reference === "object" && route.visual_reference !== null
+    ? route.visual_reference as Record<string, unknown>
+    : {};
+  const fromFile = file.visual_reference_contract ?? {};
+  const assertions = visualAssertionProofs(fromFile.verification_assertions ?? fromRoute.verification_assertions);
+  return {
+    required: fromFile.required === true || fromRoute.required === true,
+    density_profile: String(fromFile.density_profile ?? fromRoute.density_profile ?? "unknown"),
+    navigation_patterns: stringArray(fromFile.navigation_patterns ?? fromRoute.navigation_patterns),
+    layout_patterns: stringArray(fromFile.layout_patterns ?? fromRoute.layout_patterns),
+    component_candidates: stringArray(fromFile.component_candidates ?? fromRoute.component_candidates),
+    interaction_states: stringArray(fromFile.interaction_states ?? fromRoute.interaction_states),
+    verification_assertions: assertions,
+    assertion_count: Number(fromFile.assertion_count ?? fromRoute.assertion_count ?? assertions.length)
+  };
+}
+
 function screenComponentName(screenId: string): string {
   return `${safeIdentifier(screenId, "Archetype")}Screen`;
 }
@@ -382,6 +442,7 @@ function appSource(routeMap: { routes?: Array<Record<string, unknown>> }): strin
 
 function screenSource(file: SourceManifestFile, routeMap: { routes?: Array<Record<string, unknown>> }, actionContracts: { actions?: Array<Record<string, unknown>> }): string {
   const route = routeMap.routes?.find((item) => item.screen_id === file.screen_id);
+  const visualReference = visualReferenceForScreen(file, route);
   const components = ((route?.components as Array<{ name?: string; file?: string }> | undefined) ?? []).slice(0, 8);
   const patterns = ((route?.patterns as Array<{ name?: string; file?: string }> | undefined) ?? []).slice(0, 8);
   const actions = (((route?.actions as string[] | undefined) ?? [])
@@ -404,6 +465,10 @@ function screenSource(file: SourceManifestFile, routeMap: { routes?: Array<Recor
   ];
   const componentCalls = components.map((component) => `        <${safeIdentifier(String(component.name ?? "Component"), "ArchetypeComponent")} state={state} />`);
   const patternCalls = patterns.map((pattern) => `        <${safeIdentifier(String(pattern.name ?? "Pattern"), "ArchetypePattern")} />`);
+  const visualNavigationCalls = visualReference.navigation_patterns.map((navigation) => `        <section data-archetype-visual-navigation="${navigation}" className="archetype-visual-obligation"><span className="archetype-eyebrow">navigation evidence</span><strong>${navigation.replace(/[_-]/g, " ")}</strong></section>`);
+  const visualLayoutCalls = visualReference.layout_patterns.map((layout) => `        <section data-archetype-visual-layout="${layout}" className="archetype-visual-obligation"><span className="archetype-eyebrow">layout evidence</span><strong>${layout.replace(/[_-]/g, " ")}</strong></section>`);
+  const visualComponentCalls = visualReference.component_candidates.map((component) => `        <section data-archetype-visual-component="${component}" className="archetype-visual-obligation"><span className="archetype-eyebrow">visual component evidence</span><strong>${component}</strong></section>`);
+  const visualStateCalls = visualReference.interaction_states.map((state) => `        <section data-archetype-visual-state="${state}" className="archetype-visual-obligation"><span className="archetype-eyebrow">state evidence</span><strong>${state.replace(/[_-]/g, " ")}</strong></section>`);
   const componentName = screenComponentName(String(file.screen_id ?? "Screen"));
   return [
     "\"use client\";",
@@ -420,13 +485,24 @@ function screenSource(file: SourceManifestFile, routeMap: { routes?: Array<Recor
     "  availableStates: readonly string[];",
     "}",
     "",
+    "interface VisualReferenceAssertion {",
+    "  assertion_id: string;",
+    "  category: string;",
+    "  signal: string;",
+    "  expected_value: string;",
+    "  verification_target: string;",
+    "  failure_message: string;",
+    "}",
+    "",
     `const actionDefinitions: readonly ActionDefinition[] = ${JSON.stringify(actionDefinitions, null, 2)};`,
+    `const visualReference = ${JSON.stringify(visualReference, null, 2)} as const;`,
+    "const visualReferenceAssertions: readonly VisualReferenceAssertion[] = visualReference.verification_assertions;",
     "",
     `export function ${componentName}({ state = "default" }: FeatureScreenProps) {`,
     "  const [lastAction, setLastAction] = useState<string | null>(null);",
     "  const visibleActions = actionDefinitions.filter((action) => action.availableStates.includes(state));",
     "  return (",
-    `    <section data-archetype-feature-screen="${file.screen_id}" data-feature-module="${file.feature_module ?? ""}" className="archetype-feature-screen">`,
+    `    <section data-archetype-feature-screen="${file.screen_id}" data-feature-module="${file.feature_module ?? ""}" data-archetype-visual-required={String(visualReference.required)} data-archetype-visual-density={visualReference.density_profile} data-archetype-visual-navigation={visualReference.navigation_patterns.join(" ")} data-archetype-visual-layouts={visualReference.layout_patterns.join(" ")} data-archetype-visual-components={visualReference.component_candidates.join(" ")} data-archetype-visual-states={visualReference.interaction_states.join(" ")} data-archetype-visual-assertion-count={visualReference.assertion_count} className="archetype-feature-screen">`,
     "      <header className=\"archetype-page-header\">",
     `        <span className="archetype-eyebrow">${file.route}</span>`,
     `        <h1>${String(file.screen_id ?? "Screen").replace(/[._-]/g, " ")}</h1>`,
@@ -453,6 +529,22 @@ function screenSource(file: SourceManifestFile, routeMap: { routes?: Array<Recor
     "      <div className=\"archetype-composition\">",
     ...patternCalls,
     ...componentCalls,
+    "        {visualReference.required ? (",
+    "          <section className=\"archetype-visual-obligations\" aria-label=\"Visual reference obligations\">",
+    "            <span className=\"archetype-eyebrow\">visual reference contract</span>",
+    "            <strong>{visualReference.density_profile.replace(/[_-]/g, \" \")}</strong>",
+    "            {visualReferenceAssertions.map((assertion) => (",
+    "              <section key={assertion.assertion_id} data-archetype-visual-assertion={assertion.assertion_id} data-archetype-visual-category={assertion.category} data-archetype-visual-target={assertion.verification_target} className=\"archetype-visual-obligation\">",
+    "                <span className=\"archetype-eyebrow\">source-bound assertion</span>",
+    "                <strong>{assertion.signal.replace(/[_-]/g, \" \")}</strong>",
+    "              </section>",
+    "            ))}",
+    ...visualNavigationCalls,
+    ...visualLayoutCalls,
+    ...visualComponentCalls,
+    ...visualStateCalls,
+    "          </section>",
+    "        ) : null}",
     "      </div>",
     "    </section>",
     "  );",
@@ -534,6 +626,8 @@ function styleSource(outputDir: string): string {
     ".archetype-action:active { transform: translateY(1px); }",
     ".archetype-action-result { border: 1px solid var(--color-border-subtle, #d8dee8); border-radius: var(--radius-md, 8px); padding: var(--space-3, 12px); margin: var(--space-3, 12px) 0; background: var(--color-surface, #f8fafc); }",
     ".archetype-surface, .archetype-pattern { border: 1px solid var(--color-border-subtle, #d8dee8); border-radius: var(--radius-md, 8px); padding: var(--space-4, 16px); margin: var(--space-3, 12px) 0; background: var(--color-surface, #f8fafc); }",
+    ".archetype-visual-obligations { display: grid; gap: var(--space-3, 12px); border: 1px solid var(--color-border-subtle, #d8dee8); border-radius: var(--radius-md, 8px); padding: var(--space-4, 16px); margin: var(--space-3, 12px) 0; background: var(--color-surface-subtle, #eef2f7); }",
+    ".archetype-visual-obligation { border: 1px solid var(--color-border-subtle, #d8dee8); border-radius: var(--radius-sm, 6px); padding: var(--space-3, 12px); background: var(--color-surface, #f8fafc); }",
     ".archetype-eyebrow { display: block; font-size: 12px; color: var(--color-text-muted, #566270); margin-bottom: 4px; }"
   ].join("\n");
 }

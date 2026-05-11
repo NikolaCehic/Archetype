@@ -492,6 +492,7 @@ export function buildDesignQualityGate(input: {
   componentContracts: Record<string, unknown>;
   primitiveTokens: Record<string, unknown>;
   semanticTokens: Record<string, unknown>;
+  visualEvidence?: IngestionArtifacts["visualEvidence"];
 }): DesignQualityGateArtifact {
   const components = Array.isArray(input.componentContracts.contracts) ? input.componentContracts.contracts as Array<Record<string, unknown>> : [];
   const allStates = new Set(
@@ -520,6 +521,9 @@ export function buildDesignQualityGate(input: {
     direction.material_alignment.some((item) => !item.includes("No visual material supplied"))
     && direction.evidence_refs.some((ref) => !["source_user_context", "source_user_goals", "source_brand"].includes(ref))
   );
+  const visualContract = input.visualEvidence?.aggregate.visual_contract;
+  const visualReferencesRequireAssertions = visualContract?.required === true;
+  const visualAssertions = input.visualEvidence?.aggregate.verification_assertions ?? [];
   const routeMismatchBlockers = routeSourceMismatchBlockers(input);
   const checks = [
     check("DQ-01", "Three differentiated design directions exist", input.directions.length >= 3 ? "pass" : "fail", "The draft must show alternatives before a direction becomes canonical.", ["draft/design-directions.json"]),
@@ -531,7 +535,8 @@ export function buildDesignQualityGate(input: {
     check("DQ-07", "shadcn plus Tailwind implementation is contract-bound", "pass", "shadcn is the primitive layer; Tailwind consumes generated CSS variables and semantic tokens.", ["04-design-system/design-quality-gate.json"]),
     check("DQ-08", "Design directions are bound to source evidence", sourceBoundDirections && materialBoundDirections ? "pass" : "fail", sourceBoundDirections && materialBoundDirections ? "Directions expose source signatures, evidence refs, material alignment, and route/screen alignment." : "One or more directions are not bound to user/material evidence.", ["draft/design-directions.json", "01-evidence/visual-evidence-extraction.json"]),
     check("DQ-09", "Reusable preset directions are forbidden", hasPresetDirection ? "fail" : "pass", hasPresetDirection ? "A reusable preset direction name or id was generated." : "Direction ids and names are source-derived for this product.", ["draft/design-directions.json"]),
-    check("DQ-10", "Route proposals respect source and review feedback", routeMismatchBlockers.length === 0 ? "pass" : "fail", routeMismatchBlockers.length === 0 ? "Routes and screens do not contradict source or human review feedback." : routeMismatchBlockers.join(" "), ["draft/design-directions.json", "draft/experience-architecture.draft.json"])
+    check("DQ-10", "Route proposals respect source and review feedback", routeMismatchBlockers.length === 0 ? "pass" : "fail", routeMismatchBlockers.length === 0 ? "Routes and screens do not contradict source or human review feedback." : routeMismatchBlockers.join(" "), ["draft/design-directions.json", "draft/experience-architecture.draft.json"]),
+    check("DQ-11", "Visual references create verification assertions", !visualReferencesRequireAssertions || visualAssertions.length > 0 ? "pass" : "fail", !visualReferencesRequireAssertions ? "No visual reference material was supplied." : `Visual references produced ${visualAssertions.length} source-bound Playwright assertions.`, ["01-evidence/visual-evidence-extraction.json", "verification/playwright-verification-contract.json"])
   ];
   const blockers = checks.filter((item) => item.status === "fail").map((item) => `${item.id}: ${item.detail}`);
   return {
@@ -549,6 +554,7 @@ export function buildDesignQualityGate(input: {
       "No gradient text, decorative glassmorphism, side-stripe cards, or hero-metric templates.",
       "No route, component, token, or layout invention after contract approval.",
       "No visual completion claims without browser screenshots or Playwright visual-smoke evidence.",
+      "No screenshot ingestion without source-bound visual reference assertions.",
       "No reusable Archetype demo directions; every direction must cite source context, materials when present, and route/screen alignment."
     ],
     required_review_surfaces: [
@@ -564,6 +570,7 @@ export function buildDesignQualityGate(input: {
       "Ask for one clarification question when design feedback is ambiguous.",
       "Bind approved direction to tokens, typography, components, routes, and tests.",
       "Write tests for focus, active, disabled, loading, error, empty, and malformed-data states before implementation.",
+      "Write visual-reference assertions when screenshots, wireframes, or design files are supplied.",
       "Report a design-system gap instead of inventing missing visual behavior."
     ],
     playwright_preview_requirement: {

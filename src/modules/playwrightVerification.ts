@@ -235,6 +235,41 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
       };
     })
   );
+  const visualContract = asRecord(asRecord(pkg.ingestion.visualEvidence.aggregate).visual_contract);
+  const visualAssertions = records(asRecord(pkg.ingestion.visualEvidence.aggregate).verification_assertions);
+  const visualReferenceRequired = visualContract.required === true && visualAssertions.length > 0;
+  const visualReferenceScenarios = visualReferenceRequired
+    ? routes.map((route, index) => {
+      const routePath = String(route.route ?? "/");
+      const screenId = String(route.screen_id ?? `screen_${index + 1}`);
+      return {
+        scenario_id: `PW-VISREF-${String(index + 1).padStart(3, "0")}`,
+        type: "visual_reference",
+        route: routePath,
+        resolved_route: routeUrl(routePath),
+        screen_id: screenId,
+        viewport: { viewport_id: "desktop", width: 1440, height: 960 },
+        screenshot_path: `test-results/archetype-visual-smoke/${screenId}-visual-reference.png`,
+        visual_contract: {
+          source_ids: asArray(visualContract.source_ids).map(String),
+          density_profile: String(visualContract.density_profile ?? "unknown"),
+          navigation_patterns: asArray(visualContract.navigation_patterns).map(String),
+          layout_patterns: asArray(visualContract.layout_patterns).map(String),
+          component_candidates: asArray(visualContract.component_candidates).map(String),
+          interaction_states: asArray(visualContract.interaction_states).map(String),
+          verification_assertions: visualAssertions,
+          assertion_count: Number(visualContract.assertion_count ?? visualAssertions.length)
+        },
+        assertion_ids: visualAssertions.map((assertion) => String(assertion.assertion_id ?? "")).filter(Boolean),
+        assertions: [
+          "Supplied visual references are represented as source-bound browser assertions.",
+          "Screen root exposes visual density, layout, component, and state obligations.",
+          "Required layout and component signals are visible in the target DOM.",
+          "Screenshot proof is captured for the visual-reference assertion pass."
+        ]
+      };
+    })
+    : [];
   const malformedDataScenarios = routes.map((route, index) => {
     const routePath = String(route.route ?? "/");
     const screenId = String(route.screen_id ?? `screen_${index + 1}`);
@@ -263,6 +298,7 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
     ...visibleControlPolicyScenarios,
     ...actionStatePolicyScenarios,
     ...visualScenarios,
+    ...visualReferenceScenarios,
     ...malformedDataScenarios
   ];
 
@@ -299,13 +335,15 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
       visible_control_policy_scenarios: visibleControlPolicyScenarios.length,
       action_state_policy_scenarios: actionStatePolicyScenarios.length,
       visual_smoke_scenarios: visualScenarios.length,
+      visual_reference_scenarios: visualReferenceScenarios.length,
+      visual_reference_assertions: visualAssertions.length,
       malformed_data_scenarios: malformedDataScenarios.length,
       total_scenarios: scenarios.length,
       viewports
     },
     pass_criteria: [
       "Install, typecheck, and production build pass.",
-      "Playwright route, state, flow, responsive, accessibility, interaction-state, action, visible-control, action-state, malformed-data, and visual-smoke scenarios pass.",
+      "Playwright route, state, flow, responsive, accessibility, interaction-state, action, visible-control, action-state, malformed-data, visual-smoke, and visual-reference scenarios pass.",
       "Evidence JSON and markdown are written back into archetype-output.",
       "Every warning that remains is named as external production confirmation or target limitation."
     ],
@@ -343,6 +381,8 @@ function buildPlanMarkdown(contract: JsonRecord): string {
     `- Visible-control policy scenarios: ${String(coverage.visible_control_policy_scenarios ?? 0)}`,
     `- Action-state policy scenarios: ${String(coverage.action_state_policy_scenarios ?? 0)}`,
     `- Visual-smoke scenarios: ${String(coverage.visual_smoke_scenarios ?? 0)}`,
+    `- Visual-reference scenarios: ${String(coverage.visual_reference_scenarios ?? 0)}`,
+    `- Visual-reference assertions: ${String(coverage.visual_reference_assertions ?? 0)}`,
     `- Malformed-data scenarios: ${String(coverage.malformed_data_scenarios ?? 0)}`,
     `- Total scenarios: ${String(coverage.total_scenarios ?? 0)}`,
     "",
@@ -407,6 +447,7 @@ function buildSpecSource(contract: JsonRecord): string {
   const visibleControlPolicyScenarios = specData(contract, "visible_control_policy");
   const actionStatePolicyScenarios = specData(contract, "action_state_policy");
   const visualScenarios = specData(contract, "visual_smoke");
+  const visualReferenceScenarios = specData(contract, "visual_reference");
   const malformedDataScenarios = specData(contract, "malformed_data");
   return [
     "import { expect, test } from \"@playwright/test\";",
@@ -424,6 +465,7 @@ function buildSpecSource(contract: JsonRecord): string {
     "const visibleControlPolicyScenarios = " + JSON.stringify(visibleControlPolicyScenarios, null, 2) + " as ArchetypeScenario[];",
     "const actionStatePolicyScenarios = " + JSON.stringify(actionStatePolicyScenarios, null, 2) + " as ArchetypeScenario[];",
     "const visualScenarios = " + JSON.stringify(visualScenarios, null, 2) + " as ArchetypeScenario[];",
+    "const visualReferenceScenarios = " + JSON.stringify(visualReferenceScenarios, null, 2) + " as ArchetypeScenario[];",
     "const malformedDataScenarios = " + JSON.stringify(malformedDataScenarios, null, 2) + " as ArchetypeScenario[];",
     "",
     "test.describe(\"Archetype route verification\", () => {",
@@ -624,6 +666,58 @@ function buildSpecSource(contract: JsonRecord): string {
     "      await page.screenshot({ path: scenario.screenshot_path, fullPage: true });",
     "    });",
     "  }",
+    "});",
+    "",
+    "test.describe(\"Archetype visual-reference verification\", () => {",
+    "  for (const scenario of visualReferenceScenarios) {",
+    "    test(scenario.scenario_id, async ({ page }) => {",
+    "      await page.setViewportSize({ width: scenario.viewport.width, height: scenario.viewport.height });",
+    "      await page.goto(scenario.resolved_route);",
+    "      const root = page.locator(`[data-archetype-screen=\"${scenario.screen_id}\"]`);",
+    "      await expect(root).toBeVisible();",
+    "      const feature = root.locator(\"[data-archetype-feature-screen]\").first();",
+    "      await expect(feature).toBeVisible();",
+    "      const contract = scenario.visual_contract ?? {};",
+    "      const density = String(contract.density_profile ?? \"unknown\");",
+    "      if (density !== \"unknown\") {",
+    "        await expect(feature).toHaveAttribute(\"data-archetype-visual-density\", density);",
+    "      }",
+    "      const assertionCount = Number(contract.assertion_count ?? 0);",
+    "      const assertions = Array.isArray(contract.verification_assertions) ? contract.verification_assertions : [];",
+    "      const renderedAssertionCount = Number(await feature.getAttribute(\"data-archetype-visual-assertion-count\") ?? \"0\");",
+    "      expect(assertions.length).toBe(assertionCount);",
+    "      expect(renderedAssertionCount).toBeGreaterThanOrEqual(assertionCount);",
+    "      for (const assertion of assertions) {",
+    "        const assertionId = String(assertion.assertion_id ?? \"\");",
+    "        expect(assertionId.length).toBeGreaterThan(0);",
+    "        const proof = root.locator(`[data-archetype-visual-assertion=\"${assertionId}\"]`).first();",
+    "        await expect(proof, String(assertion.failure_message ?? `Missing visual assertion ${assertionId}`)).toBeVisible();",
+    "        await expect(proof).toHaveAttribute(\"data-archetype-visual-category\", String(assertion.category ?? \"\"));",
+    "      }",
+    "      for (const navigation of contract.navigation_patterns ?? []) {",
+    "        const region = root.locator(`[data-archetype-visual-navigation=\"${navigation}\"]`).first();",
+    "        await expect(region).toBeVisible();",
+    "      }",
+    "      for (const layout of contract.layout_patterns ?? []) {",
+    "        const region = root.locator(`[data-archetype-visual-layout=\"${layout}\"]`).first();",
+    "        await expect(region).toBeVisible();",
+    "        const box = await region.boundingBox();",
+    "        expect(box?.width ?? 0).toBeGreaterThan(0);",
+    "        expect(box?.height ?? 0).toBeGreaterThan(0);",
+    "      }",
+    "      for (const component of contract.component_candidates ?? []) {",
+    "        const surface = root.locator(`[data-archetype-visual-component=\"${component}\"]`).first();",
+    "        await expect(surface).toBeVisible();",
+    "      }",
+    "      for (const state of contract.interaction_states ?? []) {",
+    "        await expect(feature).toHaveAttribute(\"data-archetype-visual-states\", new RegExp(`(^| )${state}( |$)`));",
+    "      }",
+    "      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);",
+    "      expect(overflow).toBeLessThanOrEqual(4);",
+    "      await mkdir(\"test-results/archetype-visual-smoke\", { recursive: true });",
+    "      await page.screenshot({ path: scenario.screenshot_path, fullPage: true });",
+    "    });",
+    "  }",
     "});"
   ].join("\n");
 }
@@ -696,6 +790,7 @@ function pendingEvidence(contract: JsonRecord): JsonRecord {
       visible_controls_verified: "pending",
       accessibility_verified: "pending",
       visual_verified: "pending",
+      visual_reference_verified: "pending",
       malformed_data_verified: "pending",
       scenario_coverage: "pending",
       runtime_overall: "pending",

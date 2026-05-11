@@ -11,7 +11,7 @@ const cacheDir = process.env.ARCHETYPE_TARGET_NPM_CACHE_DIR ?? path.join(root, "
 const gib = 1024 * 1024 * 1024;
 const budgets = {
   fast: { maxDurationMs: 4 * 60 * 1000, maxWorkspaceBytes: 2 * gib, maxContextTokens: 300000 },
-  contracts: { maxDurationMs: 18 * 60 * 1000, maxWorkspaceBytes: 7 * gib, maxContextTokens: 300000 },
+  contracts: { maxDurationMs: 20 * 60 * 1000, maxWorkspaceBytes: 7 * gib, maxContextTokens: 300000 },
   release: { maxDurationMs: 12 * 60 * 1000, maxWorkspaceBytes: 5 * gib, maxContextTokens: 300000 },
   full: { maxDurationMs: 28 * 60 * 1000, maxWorkspaceBytes: 8 * gib, maxContextTokens: 300000 }
 };
@@ -53,6 +53,7 @@ const tasks = [
   task("contract-fidelity", "scripts/run-contract-fidelity-contract.mjs", "tmp/contract-fidelity-contract", ["fast", "full"]),
   task("visible-controls", "scripts/run-visible-controls-contract.mjs", "tmp/visible-controls-contract", ["contracts", "full"]),
   task("action-state-policy", "scripts/run-action-state-policy-contract.mjs", "tmp/action-state-policy-contract", ["contracts", "full"]),
+  task("visual-reference", "scripts/run-visual-reference-contract.mjs", "tmp/visual-reference-contract", ["contracts", "full"]),
   task("required-artifacts", "scripts/run-required-package-artifacts-contract.mjs", "tmp/required-package-artifacts-contract", ["contracts", "full"]),
   task("forbidden-behaviors", "scripts/run-forbidden-behaviors-contract.mjs", "tmp/forbidden-behaviors-contract", ["contracts", "full"]),
   task("marketing-replay", "scripts/run-marketing-dashboard-replay-contract.mjs", "tmp/marketing-dashboard-replay-contract", ["fast", "full"]),

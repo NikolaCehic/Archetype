@@ -185,6 +185,20 @@ export interface VisualEvidenceSignal {
   confidence: "high" | "medium" | "low";
 }
 
+export interface VisualEvidenceAssertion {
+  assertion_id: string;
+  source_id: string;
+  source_label: string;
+  category: Exclude<VisualEvidenceSignal["category"], "safety">;
+  signal: string;
+  expected_value: string;
+  required: boolean;
+  verification_target: "screen_root" | "layout_region" | "component_surface" | "state_surface" | "token_surface";
+  playwright_assertion: string;
+  failure_message: string;
+  evidence_refs: string[];
+}
+
 export interface VisualEvidenceExtraction {
   source_id: string;
   source_label: string;
@@ -197,6 +211,7 @@ export interface VisualEvidenceExtraction {
   component_candidates: string[];
   interaction_states: string[];
   visual_signals: VisualEvidenceSignal[];
+  verification_assertions: VisualEvidenceAssertion[];
   safety_constraints: string[];
   evidence_refs: string[];
 }
@@ -213,6 +228,18 @@ export interface VisualEvidenceReport {
     interaction_states: string[];
     safety_constraints: string[];
     build_implications: string[];
+    verification_assertions: VisualEvidenceAssertion[];
+    visual_contract: {
+      required: boolean;
+      source_ids: string[];
+      density_profile: string;
+      navigation_patterns: string[];
+      layout_patterns: string[];
+      component_candidates: string[];
+      interaction_states: string[];
+      verification_assertions: VisualEvidenceAssertion[];
+      assertion_count: number;
+    };
   };
 }
 
@@ -375,6 +402,7 @@ export interface DesignSystemArtifacts {
   selectedDirectionId: string;
   designQualityGate: DesignQualityGateArtifact;
   visualCraftRubric: string;
+  visualReferenceContract: Record<string, unknown>;
   shadcnIntegration: Record<string, unknown>;
   contentRules: string;
   primitiveTokens: Record<string, unknown>;

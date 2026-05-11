@@ -65,6 +65,7 @@ function qaOwnerForScenario(type: string): string {
     malformed_data: "malformed-data-qa.md",
     accessibility: "accessibility-qa.md",
     visual_smoke: "visual-regression-qa.md",
+    visual_reference: "visual-regression-qa.md",
     contract_drift: "contract-drift-qa.md"
   };
   return owners[type] ?? "qa-lead.md";
@@ -134,7 +135,7 @@ function buildScenarioCatalog(input: {
         "qa/playwright-results.json",
         "verification/playwright-evidence.json",
         ...(type === "accessibility" ? ["qa/accessibility-results.md"] : []),
-        ...(type === "visual_smoke" ? ["qa/visual-regression-report.md"] : [])
+        ...(type === "visual_smoke" || type === "visual_reference" ? ["qa/visual-regression-report.md"] : [])
       ],
       status: scenarioStatusFromResult(evidenceResult, evidenceStatus),
       runtime_evidence: evidenceResult ? {
@@ -304,13 +305,19 @@ function buildAccessibilityResults(input: { playwrightContract: JsonRecord; play
 
 function buildVisualRegressionReport(input: { playwrightContract: JsonRecord; playwrightEvidence: JsonRecord }): string {
   const visualScenarios = records(input.playwrightContract.scenarios).filter((scenario) => scenario.type === "visual_smoke");
+  const visualReferenceScenarios = records(input.playwrightContract.scenarios).filter((scenario) => scenario.type === "visual_reference");
   const grades = asRecord(input.playwrightEvidence.evidence_grades);
-  const status = String(grades.visual_verified ?? input.playwrightEvidence.status ?? "pending");
+  const visualSmokeStatus = String(grades.visual_verified ?? input.playwrightEvidence.status ?? "pending");
+  const visualReferenceStatus = String(grades.visual_reference_verified ?? "pending");
+  const status = visualReferenceScenarios.length > 0 && visualReferenceStatus !== "pass" ? "fail" : visualSmokeStatus;
   const results = records(input.playwrightEvidence.scenario_results).filter((result) => result.type === "visual_smoke");
+  const visualReferenceResults = records(input.playwrightEvidence.scenario_results).filter((result) => result.type === "visual_reference");
   const screenshotBytes = results.reduce((total, result) => total + Number(result.screenshot_bytes ?? 0), 0);
+  const visualReferenceBytes = visualReferenceResults.reduce((total, result) => total + Number(result.screenshot_bytes ?? 0), 0);
   return markdownReport("# QA Visual Regression Report", [
     `Status: ${status}`,
-    `Evidence grade: ${status}`,
+    `Evidence grade: ${visualSmokeStatus}`,
+    `Visual-reference grade: ${visualReferenceStatus}`,
     "Source scope: HL-10",
     "Owner agent: visual-regression-qa.md",
     "Rule: QA produces evidence, not vibes.",
@@ -326,15 +333,23 @@ function buildVisualRegressionReport(input: { playwrightContract: JsonRecord; pl
     "",
     ...visualScenarios.map((scenario) => `- ${String(scenario.scenario_id)}: ${String(scenario.screenshot_path ?? "screenshot required")}`),
     "",
+    "## Visual Reference Assertions",
+    "",
+    visualReferenceScenarios.length > 0
+      ? visualReferenceScenarios.map((scenario) => `- ${String(scenario.scenario_id)}: ${String(asRecord(scenario.visual_contract).assertion_count ?? 0)} source-bound assertions`).join("\n")
+      : "No visual reference material was supplied.",
+    "",
     "## Runtime Screenshot Proof",
     "",
     `- Runtime screenshot results: ${results.length}`,
     `- Total screenshot bytes: ${screenshotBytes}`,
+    `- Visual-reference runtime results: ${visualReferenceResults.length}`,
+    `- Visual-reference screenshot bytes: ${visualReferenceBytes}`,
     "",
     "## Result",
     "",
-    status === "pass"
-      ? "Visual-smoke screenshots were captured as browser evidence."
+    status === "pass" && (visualReferenceScenarios.length === 0 || visualReferenceStatus === "pass")
+      ? "Visual-smoke screenshots and visual-reference assertions were captured as browser evidence."
       : "Visual regression QA is pending or failed until screenshot evidence exists."
   ]);
 }

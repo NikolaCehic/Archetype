@@ -7,6 +7,7 @@ export const FORBIDDEN_TEST_PATTERNS = [
   "Leaving terminal-state controls active after resolve, handoff, rerun, cancel, completion, or archive.",
   "Testing contract arrays without importing target behavior.",
   "Treating screenshot byte size as visual quality.",
+  "Treating supplied screenshots, wireframes, or design files as ingested evidence without visual-reference assertions.",
   "Mirroring implementation constants as expected values without independent contract expectations."
 ];
 
@@ -21,7 +22,8 @@ export const REQUIRED_TEST_BEHAVIORS = [
   "Terminal states hide or disable unavailable actions and fail action-state policy verification when controls remain active.",
   "Keyboard, focus, accessible names, landmarks, and live/status regions are tested.",
   "Long labels, malformed data, and permission mismatches are tested.",
-  "Visual evidence covers desktop, tablet, and mobile."
+  "Visual evidence covers desktop, tablet, and mobile.",
+  "Supplied visual references become source-bound density, layout, component, state, and token assertions verified in the browser."
 ];
 
 export function buildTestQualityStandardArtifact(): JsonRecord {

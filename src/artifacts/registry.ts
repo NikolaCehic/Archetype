@@ -261,6 +261,7 @@ const CANONICAL_ARTIFACT_PATHS: ArtifactSeed[] = [
   { path: "04-design-system/design-directions.json" },
   { path: "04-design-system/design-quality-gate.json" },
   { path: "04-design-system/design-craft-rubric.md" },
+  { path: "04-design-system/visual-reference-contract.json" },
   { path: "04-design-system/shadcn-integration.json" },
   { path: "04-design-system/content-rules.md" },
   { path: "04-design-system/tokens/primitive-tokens.json" },

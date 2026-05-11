@@ -67,6 +67,8 @@ assert(contract.coverage.action_scenarios > 0, "Playwright contract must include
 assert(contract.coverage.visible_control_policy_scenarios >= routeMap.routes.length, "Playwright contract must include visible-control policy scenarios.");
 assert(contract.coverage.action_state_policy_scenarios >= routeMap.routes.length, "Playwright contract must include action-state policy scenarios.");
 assert(contract.coverage.visual_smoke_scenarios >= routeMap.routes.length, "Playwright contract must include visual-smoke scenarios.");
+assert(contract.coverage.visual_reference_scenarios >= routeMap.routes.length, "Playwright contract must include visual-reference scenarios when fixture screenshots exist.");
+assert(contract.coverage.visual_reference_assertions > 0, "Playwright contract must preserve source-bound visual-reference assertion count.");
 assert(contract.coverage.malformed_data_scenarios >= routeMap.routes.length, "Playwright contract must include malformed-data scenarios.");
 assert(contract.scenarios.length === contract.coverage.total_scenarios, "Playwright scenarios must match coverage total.");
 
@@ -75,7 +77,7 @@ assert(pendingEvidence.status === "pending", "Generated Playwright evidence shou
 assert(pendingEvidence.source_contract === "verification/playwright-verification-contract.json", "Pending evidence must point to contract.");
 
 const playwrightSpec = readFileSync(specPath, "utf8");
-for (const expected of ["@playwright/test", "Archetype route verification", "Archetype screen-state verification", "Archetype flow verification", "Archetype responsive verification", "Archetype accessibility verification", "Archetype action verification", "Archetype visible-control policy", "Archetype action-state policy", "Archetype malformed-data verification", "Archetype visual-smoke verification"]) {
+for (const expected of ["@playwright/test", "Archetype route verification", "Archetype screen-state verification", "Archetype flow verification", "Archetype responsive verification", "Archetype accessibility verification", "Archetype action verification", "Archetype visible-control policy", "Archetype action-state policy", "Archetype malformed-data verification", "Archetype visual-smoke verification", "Archetype visual-reference verification", "data-archetype-visual-assertion"]) {
   assert(playwrightSpec.includes(expected), `Playwright spec missing ${expected}.`);
 }
 const playwrightConfig = readFileSync(configPath, "utf8");
@@ -115,12 +117,14 @@ assert(evidence.evidence_grades.visible_controls_verified === "pass", "Playwrigh
 assert(evidence.evidence_grades.action_state_policy_verified === "pass", "Playwright evidence action-state grade should pass.");
 assert(evidence.evidence_grades.accessibility_verified === "pass", "Playwright evidence accessibility grade should pass.");
 assert(evidence.evidence_grades.visual_verified === "pass", "Playwright evidence visual grade should pass.");
+assert(evidence.evidence_grades.visual_reference_verified === "pass", "Playwright evidence visual-reference grade should pass.");
 assert(evidence.evidence_grades.malformed_data_verified === "pass", "Playwright evidence malformed-data grade should pass.");
 assert(evidence.evidence_grades.production_integrated === "pending", "Playwright evidence must not claim production integration.");
 assert(evidence.scenario_results.length === contract.coverage.total_scenarios, "Playwright evidence should ingest one result per scenario.");
 assert(evidence.scenario_results.some((scenario) => scenario.type === "action" && scenario.status === "pass"), "Playwright evidence should include passing declared-action runtime results.");
 assert(evidence.scenario_results.some((scenario) => scenario.type === "visible_control_policy" && scenario.status === "pass"), "Playwright evidence should include passing visible-control policy runtime results.");
 assert(evidence.scenario_results.some((scenario) => scenario.type === "action_state_policy" && scenario.status === "pass"), "Playwright evidence should include passing action-state policy runtime results.");
+assert(evidence.scenario_results.some((scenario) => scenario.type === "visual_reference" && scenario.status === "pass"), "Playwright evidence should include passing visual-reference assertion runtime results.");
 assert(evidence.scenario_results.some((scenario) => scenario.type === "malformed_data" && scenario.status === "pass"), "Playwright evidence should include passing malformed-data runtime results.");
 assert(evidence.visual_screenshot_summary.length === contract.coverage.visual_smoke_scenarios, "Playwright evidence should summarize every visual screenshot.");
 assert(existsSync(path.join(targetDir, "test-results", "archetype-playwright-results.json")), "target should contain Playwright JSON results.");
@@ -131,7 +135,7 @@ const executionState = readJson(path.join(outputDir, "lifecycle", "execution-sta
 assert(executionState.current_state === "completion", "execution state should move to completion after passing verification.");
 assert(executionState.ready_for_completion === true, "execution state should mark ready_for_completion after passing verification and empty repair queue.");
 const screenshots = execFileSync("find", [path.join(targetDir, "test-results", "archetype-visual-smoke"), "-type", "f"], { encoding: "utf8" }).trim().split("\n").filter(Boolean);
-assert(screenshots.length === contract.coverage.visual_smoke_scenarios, "visual-smoke screenshot count should match contract.");
+assert(screenshots.length === contract.coverage.visual_smoke_scenarios + contract.coverage.visual_reference_scenarios, "visual-smoke plus visual-reference screenshot count should match contract.");
 
 const e2e = readJson(path.join(outputDir, "13-e2e", "e2e-results.json"));
 for (const scenarioId of ["E2E-066", "E2E-067", "E2E-069"]) {

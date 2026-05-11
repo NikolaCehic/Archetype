@@ -4051,3 +4051,13 @@ Self-healing rules:
 - Playwright must include action-state policy scenarios that force terminal state through the URL and fail when active action controls remain visible.
 - Negative tests must sabotage the real generated action filter, not an old static action handler string. Renderer changes require sabotage tests to follow the current implementation shape.
 - Independent verification fixtures must support contextual terminal states, not only required screen states, or they normalize terminal verification back to `default` and hide action-state drift.
+
+## 2026-05-11 - Issue 5 Fix: Visual References Must Become Browser-Verified Assertions
+
+- Screenshot paths, hashes, dimensions, or byte size are ingestion proof, not visual fidelity proof.
+- Supplied screenshots, wireframes, and design files must become source-bound assertions with stable ids, categories, expected values, failure messages, and verification targets.
+- The canonical visual chain is now `01-evidence/visual-evidence-extraction.json` -> `04-design-system/visual-reference-contract.json` -> `verification/playwright-verification-contract.json` -> target DOM assertion ids -> `verification/playwright-evidence.json`.
+- Playwright must verify every source-bound visual assertion id, not only the presence of one generic visual marker.
+- Visual-reference verification must include negative proof. Removing the generated visual assertion, navigation, layout, or component evidence from the target must fail `verify-target`.
+- Low-level generated-target fixtures need explicit typed assertion arrays. Empty visual-reference arrays otherwise infer to `never[]` in generated TypeScript and create false failures unrelated to visual fidelity.
+- Visual QA agents must read `04-design-system/visual-reference-contract.json` before judging visual polish when source visuals are present.

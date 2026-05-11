@@ -4,6 +4,7 @@ import type {
   NormalizedSource,
   SafetyFinding,
   SourceMaterialInput,
+  VisualEvidenceAssertion,
   VisualEvidenceExtraction,
   VisualEvidenceReport,
   VisualEvidenceSignal
@@ -145,6 +146,121 @@ function signal(
   return { category, signal: signalName, evidence, implication, confidence };
 }
 
+function visualAssertion(input: {
+  source: NormalizedSource;
+  category: VisualEvidenceAssertion["category"];
+  signalName: string;
+  expectedValue: string;
+  verificationTarget: VisualEvidenceAssertion["verification_target"];
+  playwrightAssertion: string;
+  failureMessage: string;
+}): VisualEvidenceAssertion {
+  const evidenceRefs = [stableId("observation", input.source.source_id)];
+  return {
+    assertion_id: stableId("visual_assertion", input.source.source_id, input.category, input.signalName, input.expectedValue),
+    source_id: input.source.source_id,
+    source_label: input.source.source_label,
+    category: input.category,
+    signal: input.signalName,
+    expected_value: input.expectedValue,
+    required: true,
+    verification_target: input.verificationTarget,
+    playwright_assertion: input.playwrightAssertion,
+    failure_message: input.failureMessage,
+    evidence_refs: evidenceRefs
+  };
+}
+
+function visualAssertionsForSource(input: {
+  source: NormalizedSource;
+  density: VisualEvidenceExtraction["density"];
+  navigationPatterns: string[];
+  layoutPatterns: string[];
+  componentCandidates: string[];
+  interactionStates: string[];
+  text: string;
+}): VisualEvidenceAssertion[] {
+  const assertions: VisualEvidenceAssertion[] = [];
+  if (input.density !== "unknown") {
+    assertions.push(visualAssertion({
+      source: input.source,
+      category: "density",
+      signalName: "density_profile",
+      expectedValue: input.density,
+      verificationTarget: "screen_root",
+      playwrightAssertion: "Screen root exposes data-archetype-visual-density and the rendered layout has measurable bounds without horizontal overflow.",
+      failureMessage: `Visual reference ${input.source.source_label} requires ${input.density} density, but the target did not expose or render that density contract.`
+    }));
+  }
+  for (const pattern of input.navigationPatterns) {
+    assertions.push(visualAssertion({
+      source: input.source,
+      category: "navigation",
+      signalName: pattern,
+      expectedValue: pattern,
+      verificationTarget: "layout_region",
+      playwrightAssertion: "A matching data-archetype-visual-layout region or navigation component is visible.",
+      failureMessage: `Visual reference ${input.source.source_label} requires navigation pattern ${pattern}, but the target did not render a matching navigation/layout obligation.`
+    }));
+  }
+  for (const pattern of input.layoutPatterns) {
+    assertions.push(visualAssertion({
+      source: input.source,
+      category: "layout",
+      signalName: pattern,
+      expectedValue: pattern,
+      verificationTarget: "layout_region",
+      playwrightAssertion: "A visible region with data-archetype-visual-layout is present and non-empty.",
+      failureMessage: `Visual reference ${input.source.source_label} requires layout pattern ${pattern}, but the target did not render a matching layout region.`
+    }));
+  }
+  for (const component of input.componentCandidates) {
+    assertions.push(visualAssertion({
+      source: input.source,
+      category: "component",
+      signalName: component,
+      expectedValue: component,
+      verificationTarget: "component_surface",
+      playwrightAssertion: "A visible component surface with data-archetype-visual-component or data-archetype-component is present.",
+      failureMessage: `Visual reference ${input.source.source_label} requires component candidate ${component}, but the target did not render a matching component surface.`
+    }));
+  }
+  for (const state of input.interactionStates) {
+    assertions.push(visualAssertion({
+      source: input.source,
+      category: "state",
+      signalName: state,
+      expectedValue: state,
+      verificationTarget: "state_surface",
+      playwrightAssertion: "The screen exposes the state in data-archetype-visual-states and renders state/status proof.",
+      failureMessage: `Visual reference ${input.source.source_label} requires state ${state}, but the target did not expose state proof.`
+    }));
+  }
+  if (hasAny(input.text, ["label", "status", "compact", "dense"])) {
+    assertions.push(visualAssertion({
+      source: input.source,
+      category: "typography",
+      signalName: "label_heavy_hierarchy",
+      expectedValue: "label_heavy_hierarchy",
+      verificationTarget: "token_surface",
+      playwrightAssertion: "The screen exposes typography hierarchy obligations through visual reference metadata.",
+      failureMessage: `Visual reference ${input.source.source_label} requires label-heavy hierarchy, but the target did not expose typography proof.`
+    }));
+  }
+  if (hasAny(input.text, ["chart", "metric", "kpi", "analytics", "report"])) {
+    assertions.push(visualAssertion({
+      source: input.source,
+      category: "data_display",
+      signalName: "quantitative_surfaces",
+      expectedValue: "quantitative_surfaces",
+      verificationTarget: "component_surface",
+      playwrightAssertion: "The screen renders quantitative component obligations such as chart, metric, table, or fallback evidence.",
+      failureMessage: `Visual reference ${input.source.source_label} requires quantitative surfaces, but the target did not render matching component proof.`
+    }));
+  }
+  return assertions;
+}
+
 function visualExtractionForSource(source: NormalizedSource): VisualEvidenceExtraction | null {
   if (!["image_reference", "screenshot", "design_file"].includes(source.source_type)) return null;
   const evidenceText = [source.source_label, source.summary, ...source.observations, ...source.design_implications].join(" ");
@@ -221,6 +337,15 @@ function visualExtractionForSource(source: NormalizedSource): VisualEvidenceExtr
     signals.push(signal("data_display", "quantitative_surfaces", evidenceText, "Require chart, metric, and tabular data contracts with loading and empty states."));
   }
   signals.push(signal("safety", "abstract_reference_only", evidenceText, "Extract structural evidence only; do not copy distinctive brand, layout, copy, imagery, or protected expression.", "high"));
+  const verificationAssertions = visualAssertionsForSource({
+    source,
+    density,
+    navigationPatterns,
+    layoutPatterns,
+    componentCandidates,
+    interactionStates,
+    text
+  });
 
   return {
     source_id: source.source_id,
@@ -234,6 +359,7 @@ function visualExtractionForSource(source: NormalizedSource): VisualEvidenceExtr
     component_candidates: componentCandidates,
     interaction_states: interactionStates,
     visual_signals: signals,
+    verification_assertions: verificationAssertions,
     safety_constraints: ["abstract_reference_only", "no_distinctive_copying", "human_review_for_visual_similarity"],
     evidence_refs: [stableId("observation", source.source_id)]
   };
@@ -250,6 +376,7 @@ function buildVisualEvidence(normalizedSources: NormalizedSource[]): VisualEvide
     return counts;
   }, {});
   const densityProfile = Object.entries(densityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "unknown";
+  const verificationAssertions = uniqAssertions(sources.flatMap((source) => source.verification_assertions));
   return {
     extraction_version: "1.0",
     source_count: sources.length,
@@ -264,9 +391,32 @@ function buildVisualEvidence(normalizedSources: NormalizedSource[]): VisualEvide
       build_implications: uniq([
         sources.length ? "Visual materials must produce explicit layout, component, and state contracts instead of vague inspiration." : "",
         ...sources.flatMap((source) => source.visual_signals.map((item) => item.implication))
-      ])
+      ]),
+      verification_assertions: verificationAssertions,
+      visual_contract: {
+        required: sources.length > 0,
+        source_ids: sources.map((source) => source.source_id),
+        density_profile: densityProfile,
+        navigation_patterns: all("navigation_patterns"),
+        layout_patterns: all("layout_patterns"),
+        component_candidates: all("component_candidates"),
+        interaction_states: all("interaction_states"),
+        verification_assertions: verificationAssertions,
+        assertion_count: verificationAssertions.length
+      }
     }
   };
+}
+
+function uniqAssertions(assertions: VisualEvidenceAssertion[]): VisualEvidenceAssertion[] {
+  const seen = new Set<string>();
+  const result: VisualEvidenceAssertion[] = [];
+  for (const assertion of assertions) {
+    if (seen.has(assertion.assertion_id)) continue;
+    seen.add(assertion.assertion_id);
+    result.push(assertion);
+  }
+  return result;
 }
 
 function visualEvidenceMarkdown(report: VisualEvidenceReport): string {
@@ -283,6 +433,7 @@ function visualEvidenceMarkdown(report: VisualEvidenceReport): string {
     `- Components: ${report.aggregate.component_candidates.join(", ") || "none"}`,
     `- States: ${report.aggregate.interaction_states.join(", ") || "none"}`,
     `- Safety constraints: ${report.aggregate.safety_constraints.join(", ") || "none"}`,
+    `- Verification assertions: ${report.aggregate.verification_assertions.length}`,
     "",
     "## Source Extractions",
     ""
@@ -298,9 +449,13 @@ function visualEvidenceMarkdown(report: VisualEvidenceReport): string {
       `- Layouts: ${source.layout_patterns.join(", ") || "none"}`,
       `- Components: ${source.component_candidates.join(", ") || "none"}`,
       `- States: ${source.interaction_states.join(", ") || "none"}`,
+      `- Verification assertions: ${source.verification_assertions.length}`,
       "",
       "Signals:",
       ...source.visual_signals.map((item) => `- [${item.category}] ${item.signal}: ${item.implication}`),
+      "",
+      "Verification assertions:",
+      ...source.verification_assertions.map((item) => `- ${item.assertion_id}: ${item.playwright_assertion}`),
       ""
     );
   }

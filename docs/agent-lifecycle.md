@@ -164,9 +164,11 @@ Draft design-system review is encoded in `draft/design-directions.json`, `draft/
 
 The design-quality gate is a hard anti-generic UI contract. It requires source-derived design directions, a selected direction, source signatures, material alignment, route/screen alignment, shadcn and Tailwind integration rules, state coverage, browser-reviewable preview, and Playwright preview evidence. Reusable preset directions, default blue-gray SaaS UI, untouched shadcn examples, generic card-grid dashboards, missing interaction states, and route/source mismatches are blockers. If human review says the draft is the wrong product, Archetype must revise and regenerate the draft instead of letting a host agent build a direct fallback app. See `docs/design-quality-gate.md`.
 
+Supplied visual materials are not allowed to remain as path or hash records. `01-evidence/visual-evidence-extraction.json` extracts source-bound visual assertions, `04-design-system/visual-reference-contract.json` preserves the required density, navigation, layout, component, state, and assertion-id obligations, and `verification/playwright-verification-contract.json` adds `visual_reference` scenarios. `verify-target` fails when the target does not expose each visual assertion id in the browser or when `visual_reference_verified` is not `pass`.
+
 Test-driven implementation starts from `test-first/test-first-contract.json` only after the canonical spec package exists.
 
-The test quality standard lives at `test-first/test-quality-standard.json`. Tests that only prove `[data-archetype-screen]` or marker presence fail `verify-target`; valid tests must prove visible behavior, deterministic states, accessible names and landmarks, route/deep-link behavior, malformed data handling, terminal-state action availability, and desktop/tablet/mobile visual evidence.
+The test quality standard lives at `test-first/test-quality-standard.json`. Tests that only prove `[data-archetype-screen]` or marker presence fail `verify-target`; valid tests must prove visible behavior, deterministic states, accessible names and landmarks, route/deep-link behavior, malformed data handling, terminal-state action availability, desktop/tablet/mobile visual evidence, and source-bound visual-reference assertions when supplied materials exist.
 
 Complete packages preserve approval and evidence traceability through `lifecycle/approval-request.md`, `lifecycle/approval-decision.json`, `reviews/specialist-review-summary.md`, `test-results/initial-red-test-run.md`, and `lifecycle/final-readiness-report.md`.
 
@@ -182,7 +184,7 @@ Phase sequencing is encoded in `lifecycle/implementation-phases.json`. It define
 
 Lifecycle convergence is encoded in `governance/convergence-standard.json`. The required answer is `No.` to weak-context code generation, inferred canonical scope without approval, marker-only tests passing, QA without Playwright evidence, and completion with unresolved repair tasks.
 
-Verification is complete only after `verify-target` writes per-scenario Playwright evidence, the repair queue is empty, and `lifecycle/execution-state.json` reports `ready_for_completion: true`. The evidence file grades runtime proof separately from production readiness: `runtime_overall` can pass only when route, state, flow, responsive, accessibility, visual screenshot, and malformed-data scenarios pass, while `manual_reviewed` and `production_integrated` remain pending until external review confirms them.
+Verification is complete only after `verify-target` writes per-scenario Playwright evidence, the repair queue is empty, and `lifecycle/execution-state.json` reports `ready_for_completion: true`. The evidence file grades runtime proof separately from production readiness: `runtime_overall` can pass only when route, state, flow, responsive, accessibility, visual screenshot, visual-reference, and malformed-data scenarios pass, while `manual_reviewed` and `production_integrated` remain pending until external review confirms them.
 
 QA is a lifecycle phase, not a mood. It produces `qa/scenario-catalog.json`, `qa/playwright-results.json`, `qa/malformed-data-results.json`, `qa/accessibility-results.md`, `qa/visual-regression-report.md`, `qa/contract-drift-report.md`, and `10-revision/repair-task-queue.json`.
 

@@ -990,9 +990,36 @@ export function buildDesignSystemArtifacts(
     experience,
     componentContracts,
     primitiveTokens,
-    semanticTokens
+    semanticTokens,
+    visualEvidence: ingestion?.visualEvidence
   });
   const visualCraftRubric = buildVisualCraftRubric(selectedDirection);
+  const visualEvidence = ingestion?.visualEvidence;
+  const visualReferenceContract = {
+    contract_version: "1.0",
+    source_scope: "visual-reference-verification",
+    required: (visualEvidence?.source_count ?? 0) > 0,
+    source_count: visualEvidence?.source_count ?? 0,
+    source_ids: visualEvidence?.aggregate.visual_contract.source_ids ?? [],
+    density_profile: visualEvidence?.aggregate.visual_contract.density_profile ?? "unknown",
+    navigation_patterns: visualEvidence?.aggregate.visual_contract.navigation_patterns ?? [],
+    layout_patterns: visualEvidence?.aggregate.visual_contract.layout_patterns ?? [],
+    component_candidates: visualEvidence?.aggregate.visual_contract.component_candidates ?? [],
+    interaction_states: visualEvidence?.aggregate.visual_contract.interaction_states ?? [],
+    verification_assertions: visualEvidence?.aggregate.verification_assertions ?? [],
+    assertion_count: visualEvidence?.aggregate.visual_contract.assertion_count ?? 0,
+    proof_required: [
+      "verification/playwright-verification-contract.json includes visual_reference scenarios when visual sources exist.",
+      "Target screens expose source-bound density, navigation, layout, component, state, and assertion-id obligations.",
+      "Playwright verifies every source-bound visual-reference assertion in browser DOM and screenshot proof.",
+      "qa/visual-regression-report.md reports visual-reference results separately from screenshot byte count."
+    ],
+    forbidden_shortcuts: [
+      "Do not treat screenshot path, hash, or byte size as visual fidelity.",
+      "Do not collapse screenshot evidence into vague inspiration.",
+      "Do not claim source-material adherence without browser-observable visual assertions."
+    ]
+  };
   const shadcnIntegration = buildShadcnIntegrationContract(selectedDirection);
 
   return {
@@ -1024,6 +1051,7 @@ export function buildDesignSystemArtifacts(
     selectedDirectionId: selectedDirection.id,
     designQualityGate,
     visualCraftRubric,
+    visualReferenceContract,
     shadcnIntegration,
     contentRules: [
       "# Content Rules",

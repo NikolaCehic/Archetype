@@ -270,7 +270,7 @@ function validateTestQualityStandard(input: {
       input.blockers.push(`Test quality standard verifier enforcement missing artifact ${artifact}.`);
     }
   }
-  for (const expected of ["getByRole", "innerText", "toContainText", "keyboard", "screenshot", "setViewportSize"]) {
+  for (const expected of ["getByRole", "innerText", "toContainText", "keyboard", "screenshot", "setViewportSize", "Archetype visual-reference verification"]) {
     if (!input.playwrightSpecSource.includes(expected)) {
       input.blockers.push(`Playwright verification spec must include non-marker test signal ${expected}.`);
     }
@@ -1207,6 +1207,7 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   const tokensPath = path.join(outputDir, "design-system", "tokens.json");
   const componentContractsPath = path.join(outputDir, "design-system", "component-contracts.json");
   const canonicalDesignQualityGatePath = path.join(outputDir, "04-design-system", "design-quality-gate.json");
+  const canonicalVisualReferenceContractPath = path.join(outputDir, "04-design-system", "visual-reference-contract.json");
   const canonicalShadcnIntegrationPath = path.join(outputDir, "04-design-system", "shadcn-integration.json");
   const screenInventoryPath = path.join(outputDir, "screens", "screen-inventory.json");
   const screenSpecsPath = path.join(outputDir, "screens", "screen-specs.json");
@@ -1216,6 +1217,7 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   const packageValidationPath = path.join(outputDir, "validation", "package-validation.json");
   const simulationReportPath = path.join(outputDir, "validation", "simulation-report.md");
   const evidenceLedgerPath = path.join(outputDir, "01-evidence", "evidence-ledger.json");
+  const visualEvidencePath = path.join(outputDir, "01-evidence", "visual-evidence-extraction.json");
   const missingContextPath = path.join(outputDir, "01-evidence", "missing-context.md");
 
   if (!existsSync(topManifestPath)) blockers.push("Missing manifest.json.");
@@ -1301,6 +1303,7 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   if (!existsSync(tokensPath)) blockers.push("Missing design-system/tokens.json.");
   if (!existsSync(componentContractsPath)) blockers.push("Missing design-system/component-contracts.json.");
   if (!existsSync(canonicalDesignQualityGatePath)) blockers.push("Missing 04-design-system/design-quality-gate.json.");
+  if (!existsSync(canonicalVisualReferenceContractPath)) blockers.push("Missing 04-design-system/visual-reference-contract.json.");
   if (!existsSync(canonicalShadcnIntegrationPath)) blockers.push("Missing 04-design-system/shadcn-integration.json.");
   if (!existsSync(screenInventoryPath)) blockers.push("Missing screens/screen-inventory.json.");
   if (!existsSync(screenSpecsPath)) blockers.push("Missing screens/screen-specs.json.");
@@ -1310,6 +1313,7 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   if (!existsSync(packageValidationPath)) blockers.push("Missing validation/package-validation.json.");
   if (!existsSync(simulationReportPath)) blockers.push("Missing validation/simulation-report.md.");
   if (!existsSync(evidenceLedgerPath)) blockers.push("Missing 01-evidence/evidence-ledger.json.");
+  if (!existsSync(visualEvidencePath)) blockers.push("Missing 01-evidence/visual-evidence-extraction.json.");
   if (!existsSync(missingContextPath)) blockers.push("Missing 01-evidence/missing-context.md.");
   if (blockers.length > 0) {
     return { status: "fail", outputDir, checkedFiles: 0, blockers, warnings };
@@ -1377,6 +1381,13 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
     playwright_preview_requirement?: { required?: boolean; viewports?: string[]; evidence_artifacts?: string[] };
     blockers?: unknown[];
   }>(designQualityGatePath, blockers, "Design quality gate");
+  const visualEvidence = readJsonSafe<{
+    source_count?: number;
+    aggregate?: {
+      verification_assertions?: unknown[];
+      visual_contract?: { assertion_count?: number };
+    };
+  }>(visualEvidencePath, blockers, "Visual evidence extraction");
   const implementationRules = readJsonSafe<Record<string, unknown>>(implementationRulesPath, blockers, "Implementation rules");
   const canonicalSpec = readJsonSafe<{
     source_of_truth?: boolean;
@@ -1443,6 +1454,8 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
       responsive_scenarios?: number;
       accessibility_scenarios?: number;
       visual_smoke_scenarios?: number;
+      visual_reference_scenarios?: number;
+      visual_reference_assertions?: number;
       total_scenarios?: number;
     };
   }>(playwrightContractPath, blockers, "Playwright verification contract");
@@ -1873,6 +1886,19 @@ export function validateExportedPackage(outputDir: string): PackageValidationRes
   }
   if ((playwrightContract.coverage?.visual_smoke_scenarios ?? 0) < routes.length) {
     blockers.push("Playwright verification must include visual-smoke scenarios.");
+  }
+  const visualSourceCount = visualEvidence?.source_count ?? 0;
+  const visualAssertionCount = Array.isArray(visualEvidence?.aggregate?.verification_assertions)
+    ? visualEvidence.aggregate.verification_assertions.length
+    : Number(visualEvidence?.aggregate?.visual_contract?.assertion_count ?? 0);
+  if (visualSourceCount > 0 && visualAssertionCount === 0) {
+    blockers.push("Visual evidence extraction must create source-bound verification assertions when visual sources exist.");
+  }
+  if (visualSourceCount > 0 && (playwrightContract.coverage?.visual_reference_scenarios ?? 0) < routes.length) {
+    blockers.push("Playwright verification must include visual-reference scenarios for supplied visual materials.");
+  }
+  if (visualSourceCount > 0 && (playwrightContract.coverage?.visual_reference_assertions ?? 0) < visualAssertionCount) {
+    blockers.push("Playwright verification must preserve every visual evidence assertion count.");
   }
   if ((playwrightContract.coverage?.total_scenarios ?? 0) <= routes.length) {
     blockers.push("Playwright verification total scenario count must exceed route count.");

@@ -487,6 +487,13 @@ function buildImplementationRules(pkg: ArchetypePackage): Record<string, unknown
       status: pkg.designSystem.designQualityGate.status,
       anti_slop_rules: pkg.designSystem.designQualityGate.anti_slop_rules
     },
+    visualReferenceContract: {
+      path: "04-design-system/visual-reference-contract.json",
+      required_before_completion: true,
+      required: pkg.designSystem.visualReferenceContract.required,
+      assertion_count: pkg.designSystem.visualReferenceContract.assertion_count,
+      proof_path: "verification/playwright-verification-contract.json"
+    },
     shadcnTailwindContract: {
       path: "04-design-system/shadcn-integration.json",
       required_before_implementation: true,
@@ -763,6 +770,7 @@ export function exportPackage(pkg: ArchetypePackage, outDir: string, options: Ex
   writeJson(outDir, "04-design-system/design-directions.json", pkg.designSystem.designDirectionOptions);
   writeJson(outDir, "04-design-system/design-quality-gate.json", pkg.designSystem.designQualityGate);
   writeText(outDir, "04-design-system/design-craft-rubric.md", pkg.designSystem.visualCraftRubric);
+  writeJson(outDir, "04-design-system/visual-reference-contract.json", pkg.designSystem.visualReferenceContract);
   writeJson(outDir, "04-design-system/shadcn-integration.json", pkg.designSystem.shadcnIntegration);
   writeText(outDir, "04-design-system/content-rules.md", pkg.designSystem.contentRules);
   writeJson(outDir, "04-design-system/tokens/primitive-tokens.json", pkg.designSystem.primitiveTokens);

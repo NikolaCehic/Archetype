@@ -141,6 +141,15 @@ export function buildTargetFrontendArtifacts(input: {
     authentication_authorization?: { route_guards?: unknown[]; action_guards?: unknown[] };
     content_brand?: { copy_surfaces?: unknown[] };
   };
+  const visualReferenceContract = (input.designSystem.visualReferenceContract ?? {}) as {
+    required?: boolean;
+    density_profile?: string;
+    navigation_patterns?: string[];
+    layout_patterns?: string[];
+    component_candidates?: string[];
+    interaction_states?: string[];
+    verification_assertions?: Array<Record<string, unknown>>;
+  };
   const targetPlan = targetStackPlan(buildManifest.frontend_stack ?? {});
 
   const routeFiles = input.experience.screenSpecs.map((screen) => ({
@@ -179,13 +188,25 @@ export function buildTargetFrontendArtifacts(input: {
       "06-frontend-agent-contract/component-usage-map.json",
       "06-frontend-agent-contract/data-operation-contracts.json",
       "06-frontend-agent-contract/action-contracts.json",
-      "06-frontend-agent-contract/form-contracts.json"
+      "06-frontend-agent-contract/form-contracts.json",
+      "04-design-system/visual-reference-contract.json",
+      "01-evidence/visual-evidence-extraction.json"
     ],
     uses_components: screen.required_components.map(componentPath),
     uses_patterns: screen.required_patterns.map(patternPath),
     required_states: Object.keys(screen.states),
+    visual_reference_contract: {
+      required: visualReferenceContract.required === true,
+      density_profile: visualReferenceContract.density_profile ?? "unknown",
+      navigation_patterns: visualReferenceContract.navigation_patterns ?? [],
+      layout_patterns: visualReferenceContract.layout_patterns ?? [],
+      component_candidates: visualReferenceContract.component_candidates ?? [],
+      interaction_states: visualReferenceContract.interaction_states ?? [],
+      verification_assertions: visualReferenceContract.verification_assertions ?? [],
+      assertion_count: visualReferenceContract.verification_assertions?.length ?? 0
+    },
     test_selector: `[data-archetype-screen="${screen.screen_id}"]`,
-    forbidden_behavior: ["Do not implement screen UI in the route file.", "Do not omit declared screen states.", "Do not bypass data, action, form, or permission contracts.", "Do not keep unavailable actions active in terminal states."]
+    forbidden_behavior: ["Do not implement screen UI in the route file.", "Do not omit declared screen states.", "Do not bypass data, action, form, or permission contracts.", "Do not keep unavailable actions active in terminal states.", "Do not drop visual-reference assertions when screenshots, wireframes, or design files exist."]
   }));
 
   const componentFiles = ((componentContracts.contracts ?? []).map((component) => ({
@@ -453,6 +474,16 @@ export function buildTargetFrontendArtifacts(input: {
       actions: (actionContracts.actions ?? []).filter((action) => action.screen_id === screen.screen_id).map((action) => action.action_id),
       forms: (formContracts.forms ?? []).filter((form) => form.screen_id === screen.screen_id).map((form) => form.form_id),
       states: Object.keys(screen.states),
+      visual_reference: {
+        required: visualReferenceContract.required === true,
+        density_profile: visualReferenceContract.density_profile ?? "unknown",
+        navigation_patterns: visualReferenceContract.navigation_patterns ?? [],
+        layout_patterns: visualReferenceContract.layout_patterns ?? [],
+        component_candidates: visualReferenceContract.component_candidates ?? [],
+        interaction_states: visualReferenceContract.interaction_states ?? [],
+        verification_assertions: visualReferenceContract.verification_assertions ?? [],
+        assertion_count: visualReferenceContract.verification_assertions?.length ?? 0
+      },
       test_selector: `[data-archetype-screen="${screen.screen_id}"]`,
       architecture_layers: {
         route: targetPlan.routeOwnership,
@@ -516,8 +547,8 @@ export function buildTargetFrontendArtifacts(input: {
         task_id: "create_feature_screens",
         order: 7,
         writes: screenFiles.map((file) => file.path),
-        reads: ["03-experience-architecture/route-map.json", "05-screen-specs/*.yaml", "06-frontend-agent-contract/component-usage-map.json", "12-target-frontend/route-component-map.json"],
-        acceptance: "Every feature screen composes declared shared UI, layout, patterns, data states, actions, forms, and accessibility behavior."
+        reads: ["03-experience-architecture/route-map.json", "05-screen-specs/*.yaml", "06-frontend-agent-contract/component-usage-map.json", "12-target-frontend/route-component-map.json", "04-design-system/visual-reference-contract.json"],
+        acceptance: "Every feature screen composes declared shared UI, layout, patterns, data states, actions, forms, visual-reference assertions, and accessibility behavior."
       },
       {
         task_id: "wire_app_routes",
@@ -574,6 +605,7 @@ export function buildTargetFrontendArtifacts(input: {
       components: componentFiles.length,
       patterns: patternFiles.length,
       tests: testFiles.length + playwrightVerificationFiles.length + testFirstTraceabilityFiles.length,
+      visual_reference_assertions: visualReferenceContract.verification_assertions?.length ?? 0,
       backend_endpoint_mappings: productionIntegrationContracts.backend_api?.endpoint_mappings?.length ?? 0,
       auth_guards: (productionIntegrationContracts.authentication_authorization?.route_guards?.length ?? 0) + (productionIntegrationContracts.authentication_authorization?.action_guards?.length ?? 0),
       copy_surfaces: productionIntegrationContracts.content_brand?.copy_surfaces?.length ?? 0
