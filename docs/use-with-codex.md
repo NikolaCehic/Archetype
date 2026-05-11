@@ -61,7 +61,7 @@ After implementation, Codex runs Playwright-backed verification through `archety
 
 If verification fails, Codex calls `archetype_plan_repair` or `archetype repair --out archetype-output --target . --json`, patches implementation tasks first, and revises the contract only when user-approved source evidence proves the canonical spec is wrong.
 
-For implementation, Codex must follow the `12-target-frontend` contract. The target app is stack-aware and feature/shared/design-system structured: Next.js App Router uses `src/app` for route wiring, Vite + React Router uses `src/routes` plus `src/App.tsx`, `src/features/<screen-id>/screens` owns product screens, `src/features/<workflow>/patterns` owns workflow patterns, `src/shared/ui` and `src/shared/layout` own reusable contract-bound UI, `src/shared/api` and `src/shared/auth` own external boundaries, and `src/design-system` owns tokens.
+For implementation, Codex must follow the `12-target-frontend` contract. The target app is stack-aware and feature/shared/design-system structured: Next.js App Router uses `src/app` for route wiring, Vite + React Router uses `src/routes` plus `src/App.tsx`, `src/features/<screen-id>/screens` owns product screens, `src/features/<workflow>/patterns` owns workflow patterns, `src/shared/ui` and `src/shared/layout` own reusable contract-bound UI, `src/shared/api` and `src/shared/auth` own external boundaries, and `src/design-system` owns tokens. If the user has not explicitly approved Next.js, the default generated target is Vite + React Router.
 
 ## Use The MCP Server
 

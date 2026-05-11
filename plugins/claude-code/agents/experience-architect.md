@@ -352,6 +352,7 @@ Every relevant screen should also include these contextual states:
 - The screen inventory lists pages but omits states, transitions, copy requirements, or acceptance criteria.
 - Navigation is chosen before IA hierarchy is defined.
 - Empty/error/loading/offline states use generic copy and no recovery action.
+- Visible actions use bare labels like `Filter`, `Export`, `Edit`, `Run`, `Save changes`, or `Create first item` instead of screen/domain-specific intent.
 - Permission-denied states leak protected data or fail to explain who can grant access.
 - User flows stop at happy paths and omit interruption or recovery behavior.
 - The agent asks a bulk UX questionnaire instead of one high-impact question.

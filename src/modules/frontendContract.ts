@@ -43,6 +43,22 @@ function actionValue(action: Record<string, unknown>, key: string): string {
   return typeof value === "string" ? value : "";
 }
 
+function normalizeFrontendStack(input: ArchetypeInput): Record<string, string> {
+  const frameworkText = input.stack?.framework?.trim() ?? "";
+  const routingText = input.stack?.routing?.trim() ?? "";
+  const combined = `${frameworkText} ${routingText}`.toLowerCase();
+  const isNext = combined.includes("next");
+  const framework = frameworkText || (isNext ? "Next.js" : "Vite + React");
+  const routing = routingText || (isNext ? "Next.js App Router" : "React Router");
+  return {
+    framework,
+    language: input.stack?.language?.trim() || "TypeScript",
+    styling: input.stack?.styling?.trim() || "Tailwind CSS + CSS variables",
+    routing,
+    source: input.stack ? "user_or_context_stack" : "default_vite_react_router"
+  };
+}
+
 function entityForScreen(screen: ExperienceArtifacts["screenSpecs"][number], profile: DomainProfile): string {
   return screen.data_needs[0] ?? profile.entities[0];
 }
@@ -86,6 +102,16 @@ function actionAvailableStates(actionType: string): string[] {
 function actionUnavailableStates(actionType: string): string[] {
   const available = new Set(actionAvailableStates(actionType));
   return uniqueStrings([...ACTION_KNOWN_STATES.filter((state) => !available.has(state)), ...ACTION_TERMINAL_STATES]);
+}
+
+function genericActionReason(action: Record<string, unknown>): string | null {
+  const label = actionValue(action, "label").trim().toLowerCase();
+  const target = actionValue(action, "action").trim().toLowerCase();
+  const genericLabels = new Set(["filter", "export", "edit", "run", "save changes", "create first item", "primary action"]);
+  if (genericLabels.has(label)) return `generic label "${actionValue(action, "label")}"`;
+  if (target === "apply_filter" || target === "export_current_view" || target === "open_edit_flow") return `generic target "${actionValue(action, "action")}"`;
+  if (label.length === 0) return "missing label";
+  return null;
 }
 
 function routeParams(route: string): string[] {
@@ -255,12 +281,31 @@ function buildActionContracts(experience: ExperienceArtifacts, routePaths: Set<s
     })
   );
 
-  const blockers = actions
+  const routeBlockers = actions
     .filter((action) => action.allowed_route_target && !action.route_target_declared)
     .map((action) => `${action.action_id}: navigate target ${action.allowed_route_target} is missing from route-map.json.`);
+  const genericBlockers = experience.screenSpecs.flatMap((screen) =>
+    screen.actions
+      .map((action) => {
+        const reason = genericActionReason(action);
+        return reason ? `${screen.screen_id}.${actionValue(action, "id") || "action"}: ${reason}. Actions must be screen/domain-specific.` : "";
+      })
+      .filter((item) => item.length > 0)
+  );
+  const blockers = [...routeBlockers, ...genericBlockers];
 
   return {
     contract_version: "1.0",
+    action_specificity_policy: {
+      policy_id: "domain-specific-visible-actions",
+      rule: "Visible actions must be derived from the screen, workflow, route capability, or supplied source material. Generic controls such as bare Filter, Export, Edit, Run, Save changes, or Create first item are blockers.",
+      forbidden_generic_labels: ["Filter", "Export", "Edit", "Run", "Save changes", "Create first item", "Primary action"],
+      required_evidence: [
+        "Each action label names the domain object or workflow it affects.",
+        "Each action target is specific enough to map to data, route, or state behavior.",
+        "Global utility actions are only emitted when the screen capability requires them."
+      ]
+    },
     action_state_policy: {
       policy_id: "terminal-states-disable-conflicting-actions",
       rule: "Terminal states must hide or disable action controls that would mutate, re-run, resolve, hand off, cancel, export, or otherwise change a completed item unless that terminal-state action is explicitly declared.",
@@ -815,12 +860,7 @@ export function buildFrontendContractArtifacts(
   experience: ExperienceArtifacts,
   designSystem: DesignSystemArtifacts
 ): FrontendContractArtifacts {
-  const stack = {
-    framework: input.stack?.framework ?? "React",
-    language: input.stack?.language ?? "TypeScript",
-    styling: input.stack?.styling ?? "Tailwind CSS + CSS variables",
-    routing: input.stack?.routing ?? "Next.js App Router"
-  };
+  const stack = normalizeFrontendStack(input);
 
   const componentUsageMap = Object.fromEntries(
     experience.screenSpecs.map((screen) => [

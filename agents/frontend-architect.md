@@ -126,6 +126,7 @@ The frontend architect must answer:
 2. Normalize the target stack.
    - Read `06-frontend-agent-contract/build-manifest.json`.
    - Confirm framework, language, styling system, routing model, package manager, build commands, and test commands.
+   - Treat Vite + React Router as the default only when no explicit approved stack exists; select Next.js only from explicit Next/App Router evidence.
    - If stack details conflict with the source manifest, block implementation.
 
 3. Validate route and screen architecture.

@@ -4061,3 +4061,11 @@ Self-healing rules:
 - Visual-reference verification must include negative proof. Removing the generated visual assertion, navigation, layout, or component evidence from the target must fail `verify-target`.
 - Low-level generated-target fixtures need explicit typed assertion arrays. Empty visual-reference arrays otherwise infer to `never[]` in generated TypeScript and create false failures unrelated to visual fidelity.
 - Visual QA agents must read `04-design-system/visual-reference-contract.json` before judging visual polish when source visuals are present.
+
+## 2026-05-11 - Issue 6 Fix: Stack Defaults And Generic Actions
+
+- The source manifest can still drift if the frontend contract defaults routing to `Next.js App Router`. Stack resolution must default to Vite + React Router when no explicit approved stack exists, and select Next only from explicit Next/App Router evidence.
+- Target-stack tests must cover default stack, partial Vite stack, React Router inference, and explicit Next. Testing only explicit Vite and explicit Next leaves the fallback bug alive.
+- Experience actions must be screen/domain-specific. Bare `Filter`, `Export`, `Edit`, `Run`, `Save changes`, `Create first item`, `apply_filter`, `export_current_view`, and `open_edit_flow` are generic-action drift.
+- Action specificity belongs in both experience architecture and frontend action contracts: the UX layer emits specific labels/targets, and the contract layer blocks generic labels or targets if they return.
+- Utility actions such as filter/export should only appear on screens with matching route capability, not globally on onboarding, workspace selection, billing, or settings surfaces.

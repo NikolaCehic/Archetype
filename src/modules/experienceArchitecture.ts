@@ -39,6 +39,15 @@ interface GeneratedFlowSpec {
   evidence_refs: string[];
 }
 
+interface GeneratedScreenAction {
+  id: string;
+  type: string;
+  label: string;
+  action: string;
+  permission: string;
+  source: "screen_semantics" | "domain_workflow" | "route_capability";
+}
+
 function humanizeId(value: string): string {
   return value
     .replace(/[._-]+/g, " ")
@@ -65,11 +74,16 @@ function routesForWorkflow(workflow: string, routes: RouteSpec[]): RouteSpec[] {
   return selected.slice(0, Math.max(1, Math.min(3, selected.length)));
 }
 
-function buildScreenStates(route: RouteSpec, subject: string, screenName: string, isSettings: boolean, entity: string): Record<string, unknown> {
+function buildScreenStates(route: RouteSpec, subject: string, screenName: string, isSettings: boolean, entity: string, primaryAction: GeneratedScreenAction): Record<string, unknown> {
   const stateAcceptanceRef = stableId("AC", subject, "states");
   const primaryContent = route.screen_id.includes("overview") || route.screen_id.includes("dashboard") ? "MetricGrid" : "DataTable";
   const baseAccessibility = "Announce state changes politely, keep focus order stable, and expose the state title through a heading or aria-live region.";
   const dataSource = slugify(entity);
+  const emptyAction = primaryAction.type === "create" || primaryAction.type === "update"
+    ? primaryAction.label
+    : supportsFilter(route)
+      ? `Clear ${entity.toLowerCase()} filters`
+      : `Review ${screenName.toLowerCase()}`;
 
   return {
     default: {
@@ -99,9 +113,9 @@ function buildScreenStates(route: RouteSpec, subject: string, screenName: string
       component: "EmptyState",
       description: "Explain that no records exist yet and provide the most useful setup action.",
       trigger: "primary query succeeds with zero records before user filters are applied",
-      user_feedback: isSettings ? "Explain which configuration has not been completed." : `Invite the user to create the first ${entity.toLowerCase()} item.`,
-      primary_action: isSettings ? "Save changes" : "Create first item",
-      recovery_action: isSettings ? "Review required settings" : "Create first item",
+      user_feedback: isSettings ? "Explain which configuration has not been completed." : `Explain why ${entity.toLowerCase()} data is empty and offer the declared next action.`,
+      primary_action: emptyAction,
+      recovery_action: emptyAction,
       required_components: ["EmptyState", "Button"],
       data_contract_expectation: `${dataSource}.load returns an empty collection with no active filters.`,
       accessibility: "Empty-state action is reachable by keyboard and has a specific accessible name.",
@@ -232,19 +246,102 @@ function inferPrimaryPattern(screenId: string, profile: DomainProfile): string[]
   return profile.patterns.slice(0, Math.min(3, profile.patterns.length));
 }
 
-function primaryActionFor(route: DomainProfile["routes"][number], profile: DomainProfile): { label: string; action: string; type: string } {
-  if (route.screen_id.includes("settings")) {
-    return { label: "Save changes", action: "submit:settings", type: "update" };
+function screenText(route: DomainProfile["routes"][number]): string {
+  return [route.route, route.screen_id, route.nav_label ?? "", route.nav_group, route.layout].join(" ").toLowerCase();
+}
+
+function screenSemanticText(route: DomainProfile["routes"][number]): string {
+  return [route.route, route.screen_id, route.nav_label ?? "", route.nav_group].join(" ").toLowerCase();
+}
+
+function entityForRoute(route: DomainProfile["routes"][number], profile: DomainProfile): string {
+  const text = screenSemanticText(route);
+  return profile.entities.find((candidate) => {
+    const normalized = candidate.toLowerCase().replace(/s$/, "");
+    return text.includes(normalized) || normalized.includes(text.split(/[^a-z0-9]+/).find((token) => token.length > 4) ?? "__no_token__");
+  }) ?? profile.entities[0];
+}
+
+function actionId(label: string, fallback: string): string {
+  const id = slugify(label).replace(/-/g, "_");
+  return id.length > 0 ? id : fallback;
+}
+
+function permissionForAction(type: string): string {
+  if (type === "filter" || type === "navigate") return "can_view_dashboard";
+  if (type === "export") return "can_export_reports";
+  return "can_manage_core_entities";
+}
+
+function action(label: string, type: string, actionTarget: string, source: GeneratedScreenAction["source"], id = actionId(label, "action")): GeneratedScreenAction {
+  return {
+    id,
+    type,
+    label,
+    action: actionTarget,
+    permission: permissionForAction(type),
+    source
+  };
+}
+
+function supportsFilter(route: DomainProfile["routes"][number]): boolean {
+  const text = screenSemanticText(route);
+  if (["onboarding", "settings", "billing", "workspace"].some((term) => text.includes(term))) return false;
+  return ["list", "queue", "overview", "dashboard", "report", "campaign", "logs", "artifacts", "activity", "positions", "shipments", "patients", "appointments", "records"].some((term) => text.includes(term));
+}
+
+function supportsExport(route: DomainProfile["routes"][number], profile: DomainProfile): boolean {
+  const text = screenSemanticText(route);
+  if (["onboarding", "settings", "billing", "workspace"].some((term) => text.includes(term))) return false;
+  return ["report", "campaign", "finance", "invoice", "expense", "portfolio", "performance"].some((term) => text.includes(term));
+}
+
+function exportLabel(entity: string): string {
+  return entity.toLowerCase().includes("report") ? "Export report" : `Export ${entity.toLowerCase()} report`;
+}
+
+function exportTarget(entity: string): string {
+  return entity.toLowerCase().includes("report") ? "export_report" : `export_${slugify(entity)}_report`;
+}
+
+function domainPrimaryAction(route: DomainProfile["routes"][number], profile: DomainProfile, entity: string): GeneratedScreenAction {
+  const text = screenSemanticText(route);
+  if (text.includes("settings")) return action(`Save ${route.nav_label?.toLowerCase() ?? "settings"}`, "update", `save_${slugify(route.screen_id)}`, "screen_semantics", "primary_action");
+  if (text.includes("onboarding")) return action("Continue onboarding", "update", "continue_onboarding", "screen_semantics", "primary_action");
+  if (text.includes("workspace")) return action("Select workspace", "update", "select_workspace", "screen_semantics", "primary_action");
+  if (text.includes("builder")) return action("Build report", "create", "open_report_builder", "domain_workflow", "primary_action");
+  if (text.includes("billing")) return action("Update billing plan", "update", "update_billing_plan", "domain_workflow", "primary_action");
+  if (text.includes("campaign")) return action("Create campaign", "create", "open_create_flow:Campaign", "domain_workflow", "primary_action");
+  if (text.includes("invoice") && text.includes("list")) return action("Create invoice", "create", "open_create_flow:Invoice", "domain_workflow", "primary_action");
+  if (text.includes("invoice") && text.includes("detail")) return action("Send invoice reminder", "update", "send_invoice_reminder", "domain_workflow", "primary_action");
+  if (text.includes("expense")) return action("Review expense exceptions", "filter", "filter_expense_exceptions", "domain_workflow", "primary_action");
+  if (text.includes("dispute")) return action("Resolve dispute", "update", "resolve_dispute", "domain_workflow", "primary_action");
+  if (text.includes("exception")) return action("Resolve delivery exception", "update", "resolve_delivery_exception", "domain_workflow", "primary_action");
+  if (text.includes("handoff")) return action("Resolve handoff", "update", "resolve_handoff", "domain_workflow", "primary_action");
+  if (text.includes("blocker")) return action("Resolve blocker", "update", "resolve_blocker", "domain_workflow", "primary_action");
+  if (text.includes("task") && text.includes("queue")) return action("Create task", "create", "open_create_flow:Task", "domain_workflow", "primary_action");
+  if (text.includes("agent")) return action("Inspect agent workload", "filter", "filter_agent_workload", "domain_workflow", "primary_action");
+  if (text.includes("logs")) return action("Search run logs", "filter", "search_run_logs", "screen_semantics", "primary_action");
+  if (text.includes("artifacts")) return action("Search artifacts", "filter", "search_artifacts", "screen_semantics", "primary_action");
+  if (text.includes("wallet") && text.includes("connect")) return action("Connect wallet", "update", "connect_wallet", "domain_workflow", "primary_action");
+  if (text.includes("position")) return action("Compare positions", "filter", "compare_positions", "domain_workflow", "primary_action");
+  if (text.includes("activity")) return action("Inspect activity", "filter", "inspect_activity", "domain_workflow", "primary_action");
+  if (route.route.includes(":")) return action(`Update ${entity.toLowerCase()}`, "update", `update_${slugify(entity)}`, "route_capability", "primary_action");
+  if (text.includes("report")) return action(exportLabel(entity), "export", exportTarget(entity), "screen_semantics", "primary_action");
+  if (text.includes("dashboard") || text.includes("overview")) return action(`Refresh ${profile.category} signals`, "filter", `refresh_${slugify(profile.category)}_signals`, "screen_semantics", "primary_action");
+  return action(`Filter ${entity.toLowerCase()} records`, "filter", `filter_${slugify(entity)}_records`, "screen_semantics", "primary_action");
+}
+
+function actionsForScreen(route: DomainProfile["routes"][number], profile: DomainProfile, entity: string): GeneratedScreenAction[] {
+  const primary = domainPrimaryAction(route, profile, entity);
+  const actions = [primary];
+  if (supportsFilter(route) && primary.type !== "filter") {
+    actions.push(action(`Filter ${entity.toLowerCase()} records`, "filter", `filter_${slugify(entity)}_records`, "route_capability", `filter_${slugify(entity)}`));
   }
-  if (route.screen_id.includes("dashboard") || route.screen_id.includes("overview")) {
-    const invoiceRoute = profile.routes.find((candidate) => candidate.screen_id === "invoices.list");
-    if (invoiceRoute) return { label: "Create invoice", action: "open_create_flow:Invoice", type: "create" };
+  if (supportsExport(route, profile) && primary.type !== "export") {
+    actions.push(action(exportLabel(entity), "export", exportTarget(entity), "route_capability", `export_${slugify(entity)}`));
   }
-  if (route.route.includes(":")) {
-    return { label: "Edit", action: "open_edit_flow", type: "update" };
-  }
-  const entity = profile.entities.find((candidate) => route.screen_id.toLowerCase().includes(candidate.toLowerCase().replace(/s$/, ""))) ?? profile.entities[0];
-  return { label: `Create ${entity.toLowerCase()}`, action: `open_create_flow:${entity}`, type: "create" };
+  return actions;
 }
 
 function buildScreenSpec(route: DomainProfile["routes"][number], input: ArchetypeInput, profile: DomainProfile): ScreenSpec {
@@ -255,7 +352,7 @@ function buildScreenSpec(route: DomainProfile["routes"][number], input: Archetyp
   const patterns = inferPrimaryPattern(route.screen_id, profile);
   const isDetail = route.route.includes(":");
   const isSettings = route.screen_id.includes("settings");
-  const entity = profile.entities.find((candidate) => route.screen_id.toLowerCase().includes(candidate.toLowerCase().replace(/s$/, ""))) ?? profile.entities[0];
+  const entity = entityForRoute(route, profile);
   const components = [
     route.layout,
     "PageHeader",
@@ -266,9 +363,10 @@ function buildScreenSpec(route: DomainProfile["routes"][number], input: Archetyp
     ...(isDetail ? ["DetailHeader", "Tabs"] : [])
   ];
   const subject = route.screen_id;
-  const primaryAction = primaryActionFor(route, profile);
+  const actions = actionsForScreen(route, profile, entity);
+  const primaryAction = actions[0];
   const stateAcceptanceId = stableId("AC", subject, "states");
-  const states = buildScreenStates(route, subject, screenName, isSettings, entity);
+  const states = buildScreenStates(route, subject, screenName, isSettings, entity, primaryAction);
 
   const acceptance: AcceptanceCriterion[] = [
     {
@@ -339,17 +437,13 @@ function buildScreenSpec(route: DomainProfile["routes"][number], input: Archetyp
     required_components: [...new Set(components)],
     required_patterns: patterns,
     data_needs: [entity, ...profile.entities.slice(0, 2)].filter((value, index, list) => list.indexOf(value) === index),
-    actions: [
-      { id: "primary_action", type: primaryAction.type, label: primaryAction.label, action: primaryAction.action, permission: "can_manage_core_entities" },
-      { id: "filter", type: "filter", label: "Filter", action: "apply_filter", permission: "can_view_dashboard" },
-      { id: "export", type: "export", label: "Export", action: "export_current_view", permission: "can_export_reports" }
-    ],
+    actions: actions.map((item) => ({ ...item })),
     states,
     interactions: [
-      { id: "primary_cta", trigger: "click", result: isSettings ? "submit_form" : "open_create_flow" },
-      { id: "filter_change", trigger: "filter_change", result: "update_visible_results" },
+      { id: "primary_cta", trigger: "click", result: primaryAction.action },
+      ...(actions.some((item) => item.type === "filter") ? [{ id: "filter_change", trigger: "filter_change", result: "update_visible_results" }] : []),
       { id: "retry_load", trigger: "click", result: "retry_data_fetch" },
-      { id: "clear_filters", trigger: "click", result: "reset_filter_state" },
+      ...(actions.some((item) => item.type === "filter") ? [{ id: "clear_filters", trigger: "click", result: "reset_filter_state" }] : []),
       { id: "refresh_stale_data", trigger: "click", result: "refresh_data_query" },
       { id: "retry_after_reconnect", trigger: "online", result: "retry_data_fetch" }
     ],

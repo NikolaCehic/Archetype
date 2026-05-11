@@ -147,6 +147,12 @@ const explicitVite = buildArtifacts({
   styling: "Tailwind CSS + shadcn/ui",
   routing: "React Router"
 });
+const defaultStack = buildArtifacts({});
+const partialVite = buildArtifacts({
+  framework: "Vite + React",
+  language: "TypeScript",
+  styling: "Tailwind CSS + shadcn/ui"
+});
 const inferredReactRouter = buildArtifacts({
   framework: "React",
   language: "TypeScript",
@@ -161,6 +167,8 @@ const next = buildArtifacts({
 });
 
 assertViteManifest(explicitVite, "explicit Vite");
+assertViteManifest(defaultStack, "default stack");
+assertViteManifest(partialVite, "partial Vite stack");
 assertViteManifest(inferredReactRouter, "React Router inference");
 assertNextManifest(next);
 
@@ -176,6 +184,8 @@ assert(!writerResult.files.includes("next.config.mjs"), "Vite write-target must 
 const summary = {
   status: "pass",
   explicitViteFiles: explicitVite.sourceFileManifest.file_count,
+  defaultStackFiles: defaultStack.sourceFileManifest.file_count,
+  partialViteFiles: partialVite.sourceFileManifest.file_count,
   inferredReactRouterFiles: inferredReactRouter.sourceFileManifest.file_count,
   nextFiles: next.sourceFileManifest.file_count,
   viteWriterFiles: writerResult.filesWritten
