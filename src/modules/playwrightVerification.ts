@@ -37,6 +37,7 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
   const routes = records(experience.routes);
   const screens = records(experience.screens);
   const screenById = new Map(screens.map((screen) => [String(screen.screen_id ?? ""), screen]));
+  const actionContracts = records(asRecord(pkg.frontendContract.actionContracts).actions);
   const flows = records(experience.flows);
   const routeScenarios = routes.map((route, index) => {
     const routePath = String(route.route ?? "/");
@@ -151,6 +152,47 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
       ]
     };
   });
+  const actionScenarios = actionContracts.map((action, index) => {
+    const routePath = String(action.route ?? screenById.get(String(action.screen_id ?? ""))?.route ?? "/");
+    const actionId = String(action.action_id ?? `action_${index + 1}`);
+    return {
+      scenario_id: `PW-ACTION-${String(index + 1).padStart(3, "0")}`,
+      type: "action",
+      route: routePath,
+      resolved_route: routeUrl(routePath),
+      screen_id: String(action.screen_id ?? `screen_${index + 1}`),
+      action_id: actionId,
+      label: String(action.label ?? actionId),
+      selector: String(action.required_selector ?? `[data-archetype-action="${actionId}"]`),
+      result_selector: String(action.result_selector ?? `[data-archetype-action-result="${actionId}"]`),
+      assertions: [
+        "Declared action control is visible.",
+        "Declared action control has an accessible name and keyboard focus.",
+        "Clicking the action produces browser-observable runtime proof.",
+        "The control is not visual-only or inert."
+      ]
+    };
+  });
+  const visibleControlPolicyScenarios = routes.map((route, index) => {
+    const screenId = String(route.screen_id ?? `screen_${index + 1}`);
+    const routePath = String(route.route ?? "/");
+    return {
+      scenario_id: `PW-CONTROLS-${String(index + 1).padStart(3, "0")}`,
+      type: "visible_control_policy",
+      route: routePath,
+      resolved_route: routeUrl(routePath),
+      screen_id: screenId,
+      action_ids: actionContracts
+        .filter((action) => String(action.screen_id ?? "") === screenId)
+        .map((action) => String(action.action_id ?? ""))
+        .filter(Boolean),
+      assertions: [
+        "Every visible button-like control inside the screen is declared.",
+        "Declared controls use action, form, route-link, or explicit control-contract markers.",
+        "No visual-only priority chip, export button, run button, filter, or CTA is left inert."
+      ]
+    };
+  });
   const visualScenarios = routes.flatMap((route, index) =>
     viewports.map((viewport) => {
       const routePath = String(route.route ?? "/");
@@ -195,6 +237,8 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
     ...responsiveScenarios,
     ...accessibilityScenarios,
     ...interactionStateScenarios,
+    ...actionScenarios,
+    ...visibleControlPolicyScenarios,
     ...visualScenarios,
     ...malformedDataScenarios
   ];
@@ -228,6 +272,8 @@ function buildContractJson(pkg: PlaywrightInput): JsonRecord {
       responsive_scenarios: responsiveScenarios.length,
       accessibility_scenarios: accessibilityScenarios.length,
       interaction_state_scenarios: interactionStateScenarios.length,
+      action_scenarios: actionScenarios.length,
+      visible_control_policy_scenarios: visibleControlPolicyScenarios.length,
       visual_smoke_scenarios: visualScenarios.length,
       malformed_data_scenarios: malformedDataScenarios.length,
       total_scenarios: scenarios.length,
@@ -269,6 +315,8 @@ function buildPlanMarkdown(contract: JsonRecord): string {
     `- Responsive scenarios: ${String(coverage.responsive_scenarios ?? 0)}`,
     `- Accessibility scenarios: ${String(coverage.accessibility_scenarios ?? 0)}`,
     `- Interaction-state scenarios: ${String(coverage.interaction_state_scenarios ?? 0)}`,
+    `- Action scenarios: ${String(coverage.action_scenarios ?? 0)}`,
+    `- Visible-control policy scenarios: ${String(coverage.visible_control_policy_scenarios ?? 0)}`,
     `- Visual-smoke scenarios: ${String(coverage.visual_smoke_scenarios ?? 0)}`,
     `- Malformed-data scenarios: ${String(coverage.malformed_data_scenarios ?? 0)}`,
     `- Total scenarios: ${String(coverage.total_scenarios ?? 0)}`,
@@ -296,12 +344,7 @@ function buildConfigSource(contract: JsonRecord): string {
     "",
     "export default defineConfig({",
     "  testDir: \"./tests\",",
-    "  testMatch: [",
-    "    \"**/archetype-route-smoke.spec.ts\",",
-    "    \"**/archetype-user-flows.spec.ts\",",
-    "    \"**/archetype-screen-states.spec.ts\",",
-    "    \"**/archetype-accessibility.spec.ts\"",
-    "  ],",
+    "  testMatch: [\"**/archetype-route-smoke.spec.ts\"],",
     "  timeout: 30000,",
     "  expect: { timeout: 10000 },",
     "  reporter: [",
@@ -335,6 +378,8 @@ function buildSpecSource(contract: JsonRecord): string {
   const responsiveScenarios = specData(contract, "responsive");
   const accessibilityScenarios = specData(contract, "accessibility");
   const interactionStateScenarios = specData(contract, "interaction_state");
+  const actionScenarios = specData(contract, "action");
+  const visibleControlPolicyScenarios = specData(contract, "visible_control_policy");
   const visualScenarios = specData(contract, "visual_smoke");
   const malformedDataScenarios = specData(contract, "malformed_data");
   return [
@@ -349,6 +394,8 @@ function buildSpecSource(contract: JsonRecord): string {
     "const responsiveScenarios = " + JSON.stringify(responsiveScenarios, null, 2) + " as ArchetypeScenario[];",
     "const accessibilityScenarios = " + JSON.stringify(accessibilityScenarios, null, 2) + " as ArchetypeScenario[];",
     "const interactionStateScenarios = " + JSON.stringify(interactionStateScenarios, null, 2) + " as ArchetypeScenario[];",
+    "const actionScenarios = " + JSON.stringify(actionScenarios, null, 2) + " as ArchetypeScenario[];",
+    "const visibleControlPolicyScenarios = " + JSON.stringify(visibleControlPolicyScenarios, null, 2) + " as ArchetypeScenario[];",
     "const visualScenarios = " + JSON.stringify(visualScenarios, null, 2) + " as ArchetypeScenario[];",
     "const malformedDataScenarios = " + JSON.stringify(malformedDataScenarios, null, 2) + " as ArchetypeScenario[];",
     "",
@@ -439,6 +486,58 @@ function buildSpecSource(contract: JsonRecord): string {
     "        });",
     "        expect(focusVisible).toBe(true);",
     "      }",
+    "    });",
+    "  }",
+    "});",
+    "",
+    "test.describe(\"Archetype action verification\", () => {",
+    "  for (const scenario of actionScenarios) {",
+    "    test(scenario.scenario_id, async ({ page }) => {",
+    "      await page.goto(scenario.resolved_route);",
+    "      await expect(page.locator(`[data-archetype-screen=\"${scenario.screen_id}\"]`)).toBeVisible();",
+    "      const control = page.locator(scenario.selector).first();",
+    "      await expect(control).toBeVisible();",
+    "      await expect(control).toHaveAttribute(\"data-archetype-action\", scenario.action_id);",
+    "      await expect(control).toBeEnabled();",
+    "      await control.focus();",
+    "      await expect(control).toBeFocused();",
+    "      const beforeUrl = page.url();",
+    "      const beforeStatus = await page.getByRole(\"status\").first().innerText().catch(() => \"\");",
+    "      await control.click();",
+    "      const result = page.locator(scenario.result_selector).first();",
+    "      const resultVisible = await result.isVisible().catch(() => false);",
+    "      const afterUrl = page.url();",
+    "      const afterStatus = await page.getByRole(\"status\").first().innerText().catch(() => \"\");",
+    "      expect(resultVisible || afterUrl !== beforeUrl || afterStatus !== beforeStatus).toBe(true);",
+    "    });",
+    "  }",
+    "});",
+    "",
+    "test.describe(\"Archetype visible-control policy\", () => {",
+    "  for (const scenario of visibleControlPolicyScenarios) {",
+    "    test(scenario.scenario_id, async ({ page }) => {",
+    "      await page.goto(scenario.resolved_route);",
+    "      const root = page.locator(`[data-archetype-screen=\"${scenario.screen_id}\"]`);",
+    "      await expect(root).toBeVisible();",
+    "      const unbound = await root.locator('button, [role=\"button\"], input, select, textarea, a[href]').evaluateAll((elements, declaredActionIds) => {",
+    "        const declared = Array.isArray(declaredActionIds) ? declaredActionIds.map(String) : [];",
+    "        const isVisible = (element: Element) => {",
+    "          const rect = element.getBoundingClientRect();",
+    "          const style = window.getComputedStyle(element);",
+    "          return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';",
+    "        };",
+    "        return elements.filter(isVisible).filter((element) => {",
+    "          const tag = element.tagName.toLowerCase();",
+    "          const actionId = element.getAttribute('data-archetype-action');",
+    "          if (actionId) return !declared.includes(actionId);",
+    "          if (tag === 'a' && element.getAttribute('href')) return false;",
+    "          if (element.getAttribute('data-archetype-control-contract')) return false;",
+    "          if (element.getAttribute('data-archetype-form-field')) return false;",
+    "          if (element.closest('[data-archetype-form]')) return false;",
+    "          return true;",
+    "        }).map((element) => `${element.tagName.toLowerCase()}:${(element.textContent ?? element.getAttribute('aria-label') ?? '').trim()}`);",
+    "      }, scenario.action_ids);",
+    "      expect(unbound).toEqual([]);",
     "    });",
     "  }",
     "});",
@@ -540,6 +639,8 @@ function pendingEvidence(contract: JsonRecord): JsonRecord {
       browser_smoke_verified: "pending",
       behavior_verified: "pending",
       interaction_state_verified: "pending",
+      actions_verified: "pending",
+      visible_controls_verified: "pending",
       accessibility_verified: "pending",
       visual_verified: "pending",
       malformed_data_verified: "pending",

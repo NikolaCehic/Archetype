@@ -71,9 +71,9 @@ const standardMarkdown = readFileSync(standardMarkdownPath, "utf8");
 assert(standard.source_scope === "HL-11", "test quality standard must identify HL-11.");
 assert(standard.rule === "Marker-only tests fail the verifier.", "test quality standard must encode marker-only verifier rule.");
 assert(standard.marker_only_tests_fail_verifier === true, "test quality standard must force marker-only verifier failure.");
-assert(Array.isArray(standard.forbidden_test_patterns) && standard.forbidden_test_patterns.length === 5, "test quality standard must expose all forbidden patterns.");
-assert(Array.isArray(standard.required_test_behaviors) && standard.required_test_behaviors.length === 9, "test quality standard must expose all required behaviors.");
-for (const expected of ["[data-archetype-screen]", "generic primary button", "screenshot byte size", "Search filters real visible results", "CTA hover, focus-visible, active/pressed, disabled, loading, success, and error states", "Visual evidence covers desktop, tablet, and mobile"]) {
+assert(Array.isArray(standard.forbidden_test_patterns) && standard.forbidden_test_patterns.length === 6, "test quality standard must expose all forbidden patterns.");
+assert(Array.isArray(standard.required_test_behaviors) && standard.required_test_behaviors.length === 10, "test quality standard must expose all required behaviors.");
+for (const expected of ["[data-archetype-screen]", "generic primary button", "visible controls unbound", "screenshot byte size", "Search filters real visible results", "CTA hover, focus-visible, active/pressed, disabled, loading, success, and error states", "Every visible interactive control", "Visual evidence covers desktop, tablet, and mobile"]) {
   assert(JSON.stringify(standard).includes(expected), `test quality standard missing ${expected}.`);
 }
 for (const section of ["## Forbidden Test Patterns", "## Required Test Behaviors", "## Exit Condition"]) {

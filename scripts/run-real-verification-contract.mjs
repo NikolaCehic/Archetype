@@ -160,6 +160,9 @@ function writeSharedTargetFiles(targetDir) {
     "html, body { margin: 0; min-height: 100%; font-family: Arial, sans-serif; background: #0b0c10; color: #f6f7fb; }",
     "main { min-height: 100vh; box-sizing: border-box; padding: 32px; overflow-x: hidden; }",
     ".panel { border: 1px solid #2a2d37; border-radius: 12px; padding: 20px; margin-top: 16px; background: #141722; }",
+    ".action-row { display: flex; flex-wrap: wrap; gap: 10px; }",
+    ".action-row a { border: 1px solid #3a4050; border-radius: 999px; color: #f6f7fb; padding: 9px 12px; text-decoration: none; }",
+    ".action-row a:focus-visible { outline: 2px solid #9bc4ff; outline-offset: 2px; }",
     ".eyebrow { display: block; color: #a7adbc; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }"
   ].join("\n"));
   writeText(path.join(targetDir, "playwright.config.ts"), readFileSync(path.join(outputDir, "verification", "playwright.config.ts"), "utf8"));
@@ -187,10 +190,21 @@ function routeStatesForScreen(contract, screenId) {
   ])];
 }
 
-function routePageSource(route, contract, acceptMalformedState) {
+function actionContractsForScreen(actionContracts, screenId) {
+  return (actionContracts.actions ?? [])
+    .filter((action) => String(action.screen_id ?? "") === screenId)
+    .map((action) => ({
+      action_id: String(action.action_id ?? ""),
+      label: String(action.label ?? action.action_id ?? "Action")
+    }))
+    .filter((action) => action.action_id.length > 0);
+}
+
+function routePageSource(route, contract, actionContracts, acceptMalformedState) {
   const screenId = String(route.screen_id ?? "screen");
   const routePath = String(route.route ?? "/");
   const states = routeStatesForScreen(contract, screenId);
+  const actions = actionContractsForScreen(actionContracts, screenId);
   return [
     "type RouteProps = {",
     "  searchParams?: Promise<Record<string, string | string[] | undefined>>;",
@@ -199,10 +213,12 @@ function routePageSource(route, contract, acceptMalformedState) {
     `const screenId = ${JSON.stringify(screenId)};`,
     `const routePath = ${JSON.stringify(routePath)};`,
     `const allowedStates = ${JSON.stringify(states)} as const;`,
+    `const actions = ${JSON.stringify(actions, null, 2)} as const;`,
     "",
     "export default async function IndependentArchetypeTarget({ searchParams }: RouteProps) {",
     "  const resolvedSearch = await searchParams;",
     "  const requestedState = typeof resolvedSearch?.archetype_state === \"string\" ? resolvedSearch.archetype_state : \"default\";",
+    "  const requestedAction = typeof resolvedSearch?.archetype_action === \"string\" ? resolvedSearch.archetype_action : null;",
     acceptMalformedState
       ? "  const state = requestedState;"
       : "  const state = (allowedStates as readonly string[]).includes(requestedState) ? requestedState : \"default\";",
@@ -214,6 +230,19 @@ function routePageSource(route, contract, acceptMalformedState) {
     "        <span className=\"eyebrow\">state</span>",
     "        <strong>{state.replace(/[_-]/g, \" \")}</strong>",
     "      </section>",
+    "      <section className=\"panel action-row\" data-archetype-control-contract=\"declared-actions\">",
+    "        {actions.map((action) => (",
+    "          <a key={action.action_id} href={`?archetype_action=${encodeURIComponent(action.action_id)}`} data-archetype-action={action.action_id}>",
+    "            {action.label}",
+    "          </a>",
+    "        ))}",
+    "      </section>",
+    "      {requestedAction ? (",
+    "        <section className=\"panel\" role=\"status\" aria-live=\"polite\" data-archetype-action-result={requestedAction}>",
+    "          <span className=\"eyebrow\">action result</span>",
+    "          <strong>{requestedAction.replace(/[._-]/g, \" \")}</strong>",
+    "        </section>",
+    "      ) : null}",
     "      <section className=\"panel\">",
     "        <p>This hand-written target implements the Archetype browser contract without using write-target source generation.</p>",
     "      </section>",
@@ -278,6 +307,7 @@ function writeIndependentTarget(targetDir, contract, acceptMalformedState) {
   writeSharedTargetFiles(targetDir);
   const manifest = readJson(path.join(outputDir, "12-target-frontend", "source-file-manifest.json"));
   const routeMap = readJson(path.join(outputDir, "12-target-frontend", "route-component-map.json"));
+  const actionContracts = readJson(path.join(outputDir, "06-frontend-agent-contract", "action-contracts.json"));
   const routeByFile = new Map((routeMap.routes ?? []).map((route) => [String(route.route_file ?? ""), route]));
   const traceSource = testTraceSource();
   for (const file of manifest.files ?? []) {
@@ -287,7 +317,7 @@ function writeIndependentTarget(targetDir, contract, acceptMalformedState) {
     if (relativePath === "package.json" || relativePath === "tsconfig.json") continue;
     if (relativePath === "next-env.d.ts" || relativePath === "next.config.mjs" || relativePath === "src/app/layout.tsx" || relativePath === "src/app/globals.css" || relativePath === "playwright.config.ts" || relativePath === "tests/e2e/archetype-route-smoke.spec.ts") continue;
     if (file.kind === "route") {
-      writeText(absolutePath, routePageSource(routeByFile.get(relativePath) ?? file, contract, acceptMalformedState));
+      writeText(absolutePath, routePageSource(routeByFile.get(relativePath) ?? file, contract, actionContracts, acceptMalformedState));
     } else if (file.kind === "screen") {
       writeText(absolutePath, screenSource(file));
     } else if (file.kind === "component") {

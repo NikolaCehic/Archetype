@@ -4033,3 +4033,12 @@ Self-healing rules:
 - Flow tests must follow route/screen pairs. Asserting every flow screen on the first route makes multi-route apps fail for the wrong reason and hides real contract drift.
 - Independent verification fixtures must also satisfy source-manifest fidelity. A hand-written target is only "good" if it proves both runtime behavior and contract traceability.
 - Playwright evidence should distinguish raw Playwright spec counts from contract scenario counts. `scenario_summary` is the contract truth; raw summaries can include extra target tests.
+
+## 2026-05-11 - Issue 3 Fix: Visible Inert Controls
+
+- Visible controls are product behavior, not decoration. Every visible `button`, `role=button`, form field, selectable control, or action-like link must map to an action, form, route-link, or explicit control contract.
+- Declared actions must produce browser-observable runtime proof. A matching `data-archetype-action` selector is insufficient unless clicking it changes URL, changes status text, or renders the declared `data-archetype-action-result`.
+- Verification must include negative proof. The visible-control contract now sabotages an unbound `Export JSON` button and a declared-but-disconnected action result, and both must fail `verify-target`.
+- Independent "good target" fixtures must implement declared action contracts. Route/state completeness without action proof is another form of inert-control drift.
+- Playwright runtime config should execute the canonical contract verifier, not duplicate copied traceability specs. Duplicate browser suites made verification slow, flaky, and harder to diagnose.
+- Test-quality standards must name visible inert controls as a forbidden pattern and require visible-control policy verification as a first-class behavior family.

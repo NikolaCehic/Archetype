@@ -380,18 +380,33 @@ function appSource(routeMap: { routes?: Array<Record<string, unknown>> }): strin
   ].join("\n");
 }
 
-function screenSource(file: SourceManifestFile, routeMap: { routes?: Array<Record<string, unknown>> }): string {
+function screenSource(file: SourceManifestFile, routeMap: { routes?: Array<Record<string, unknown>> }, actionContracts: { actions?: Array<Record<string, unknown>> }): string {
   const route = routeMap.routes?.find((item) => item.screen_id === file.screen_id);
   const components = ((route?.components as Array<{ name?: string; file?: string }> | undefined) ?? []).slice(0, 8);
   const patterns = ((route?.patterns as Array<{ name?: string; file?: string }> | undefined) ?? []).slice(0, 8);
+  const actions = (((route?.actions as string[] | undefined) ?? [])
+    .map((actionId) => actionContracts.actions?.find((action) => action.action_id === actionId) ?? { action_id: actionId, label: actionId })
+    .filter((action) => typeof action.action_id === "string" && action.action_id.length > 0));
   const imports = [
+    "import { useState } from \"react\";",
     ...components.map((component) => `import { ${safeIdentifier(String(component.name ?? "Component"), "ArchetypeComponent")} } from "${relativeImport(file.path, String(component.file ?? ""))}";`),
     ...patterns.map((pattern) => `import { ${safeIdentifier(String(pattern.name ?? "Pattern"), "ArchetypePattern")} } from "${relativeImport(file.path, String(pattern.file ?? ""))}";`)
   ];
   const componentCalls = components.map((component) => `        <${safeIdentifier(String(component.name ?? "Component"), "ArchetypeComponent")} state={state} />`);
   const patternCalls = patterns.map((pattern) => `        <${safeIdentifier(String(pattern.name ?? "Pattern"), "ArchetypePattern")} />`);
+  const actionControls = actions.map((action) => {
+    const actionId = String(action.action_id);
+    const label = String(action.label ?? actionId.split(".").slice(-1)[0] ?? "Action");
+    return [
+      `        <button type="button" className="archetype-action" data-archetype-action="${actionId}" onClick={() => setLastAction("${actionId}")}>`,
+      `          ${label}`,
+      "        </button>"
+    ].join("\n");
+  });
   const componentName = screenComponentName(String(file.screen_id ?? "Screen"));
   return [
+    "\"use client\";",
+    "",
     ...imports,
     imports.length ? "" : "",
     "interface FeatureScreenProps {",
@@ -399,6 +414,7 @@ function screenSource(file: SourceManifestFile, routeMap: { routes?: Array<Recor
     "}",
     "",
     `export function ${componentName}({ state = "default" }: FeatureScreenProps) {`,
+    "  const [lastAction, setLastAction] = useState<string | null>(null);",
     "  return (",
     `    <section data-archetype-feature-screen="${file.screen_id}" data-feature-module="${file.feature_module ?? ""}" className="archetype-feature-screen">`,
     "      <header className=\"archetype-page-header\">",
@@ -409,6 +425,15 @@ function screenSource(file: SourceManifestFile, routeMap: { routes?: Array<Recor
     "        <span className=\"archetype-eyebrow\">state</span>",
     "        <strong>{state.replace(/[_-]/g, \" \")}</strong>",
     "      </section>",
+    actionControls.length > 0 ? "      <div className=\"archetype-action-bar\" aria-label=\"Screen actions\">" : "",
+    ...actionControls,
+    actionControls.length > 0 ? "      </div>" : "",
+    actionControls.length > 0 ? "      {lastAction ? (" : "",
+    actionControls.length > 0 ? "        <section className=\"archetype-action-result\" role=\"status\" aria-live=\"polite\" data-archetype-action-result={lastAction}>" : "",
+    actionControls.length > 0 ? "          <span className=\"archetype-eyebrow\">action completed</span>" : "",
+    actionControls.length > 0 ? "          <strong>{lastAction}</strong>" : "",
+    actionControls.length > 0 ? "        </section>" : "",
+    actionControls.length > 0 ? "      ) : null}" : "",
     "      <div className=\"archetype-composition\">",
     ...patternCalls,
     ...componentCalls,
@@ -486,12 +511,18 @@ function styleSource(outputDir: string): string {
     ".archetype-screen { padding: var(--space-6, 24px); color: var(--color-text-primary, #17202a); }",
     ".archetype-page-header { margin-bottom: var(--space-5, 20px); }",
     ".archetype-state-panel { border: 1px dashed var(--color-border-subtle, #d8dee8); border-radius: var(--radius-md, 8px); padding: var(--space-3, 12px); margin: var(--space-3, 12px) 0; }",
+    ".archetype-action-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: var(--space-4, 16px) 0; }",
+    ".archetype-action { border: 1px solid var(--color-border-subtle, #d8dee8); border-radius: var(--radius-md, 8px); background: var(--color-surface, #f8fafc); color: inherit; padding: 8px 12px; font: inherit; cursor: pointer; }",
+    ".archetype-action:hover { border-color: currentColor; }",
+    ".archetype-action:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }",
+    ".archetype-action:active { transform: translateY(1px); }",
+    ".archetype-action-result { border: 1px solid var(--color-border-subtle, #d8dee8); border-radius: var(--radius-md, 8px); padding: var(--space-3, 12px); margin: var(--space-3, 12px) 0; background: var(--color-surface, #f8fafc); }",
     ".archetype-surface, .archetype-pattern { border: 1px solid var(--color-border-subtle, #d8dee8); border-radius: var(--radius-md, 8px); padding: var(--space-4, 16px); margin: var(--space-3, 12px) 0; background: var(--color-surface, #f8fafc); }",
     ".archetype-eyebrow { display: block; font-size: 12px; color: var(--color-text-muted, #566270); margin-bottom: 4px; }"
   ].join("\n");
 }
 
-function sourceForFile(outputDir: string, file: SourceManifestFile, routeMap: { routes?: Array<Record<string, unknown>> }, adapterInterfaces: string, targetKind: SourceTargetKind): string {
+function sourceForFile(outputDir: string, file: SourceManifestFile, routeMap: { routes?: Array<Record<string, unknown>> }, adapterInterfaces: string, targetKind: SourceTargetKind, actionContracts: { actions?: Array<Record<string, unknown>> }): string {
   if (file.path === "package.json") return packageJson(targetKind);
   if (file.path === "tsconfig.json") return tsconfigJson(targetKind);
   if (file.path === "next.config.mjs") return nextConfigSource();
@@ -524,7 +555,7 @@ function sourceForFile(outputDir: string, file: SourceManifestFile, routeMap: { 
   if (file.path === "tailwind.config.ts") return readFileSync(path.join(outputDir, "04-design-system", "tokens", "tailwind.config.ts"), "utf8");
   if (file.kind === "component") return componentSource(String(file.component ?? "Component"), file.path.split("/").pop()?.replace(".tsx", "") ?? "component");
   if (file.kind === "pattern") return patternSource(String(file.pattern ?? "Pattern"), file.path.split("/").pop()?.replace(".tsx", "") ?? "pattern");
-  if (file.kind === "screen") return screenSource(file, routeMap);
+  if (file.kind === "screen") return screenSource(file, routeMap, actionContracts);
   if (file.kind === "route") return targetKind === "vite_react_router" ? viteRouteSource(file) : nextRouteSource(file);
   if (file.kind === "playwright_verification") return readFileSync(path.join(outputDir, "verification", "playwright-verification.spec.ts"), "utf8");
   if (file.kind === "playwright_traceability") {
@@ -559,6 +590,7 @@ export function writeTargetFrontendSource(outputDir: string, targetDir: string, 
   const topManifestPath = path.join(outputDir, "manifest.json");
   const routeMapPath = path.join(outputDir, "12-target-frontend", "route-component-map.json");
   const adapterPath = path.join(outputDir, "12-target-frontend", "adapter-interfaces.ts");
+  const actionContractsPath = path.join(outputDir, "06-frontend-agent-contract", "action-contracts.json");
   if (!existsSync(topManifestPath)) blockers.push("Missing manifest.json.");
   if (existsSync(topManifestPath)) {
     const topManifest = readJson<{ implementationAuthorized?: boolean; contractApproval?: { status?: string } }>(topManifestPath);
@@ -569,6 +601,7 @@ export function writeTargetFrontendSource(outputDir: string, targetDir: string, 
   if (!existsSync(manifestPath)) blockers.push("Missing 12-target-frontend/source-file-manifest.json.");
   if (!existsSync(routeMapPath)) blockers.push("Missing 12-target-frontend/route-component-map.json.");
   if (!existsSync(adapterPath)) blockers.push("Missing 12-target-frontend/adapter-interfaces.ts.");
+  if (!existsSync(actionContractsPath)) blockers.push("Missing 06-frontend-agent-contract/action-contracts.json.");
   if (existsSync(targetDir) && !options.force) blockers.push("Target directory already exists. Pass --force to replace it.");
   if (options.force) {
     try {
@@ -584,11 +617,12 @@ export function writeTargetFrontendSource(outputDir: string, targetDir: string, 
   const manifest = readJson<SourceManifest>(manifestPath);
   const routeMap = readJson<{ routes?: Array<Record<string, unknown>> }>(routeMapPath);
   const adapterInterfaces = readFileSync(adapterPath, "utf8");
+  const actionContracts = readJson<{ actions?: Array<Record<string, unknown>> }>(actionContractsPath);
   const targetKind = targetKindFromManifest(manifest);
   const files = manifest.files ?? [];
   const written: string[] = [];
   for (const file of files) {
-    writeText(targetDir, file.path, sourceForFile(outputDir, file, routeMap, adapterInterfaces, targetKind));
+    writeText(targetDir, file.path, sourceForFile(outputDir, file, routeMap, adapterInterfaces, targetKind, actionContracts));
     written.push(file.path);
   }
 

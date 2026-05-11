@@ -162,6 +162,15 @@ function buildActionContracts(experience: ExperienceArtifacts, routePaths: Set<s
         action_type: actionType,
         action_target: actionTarget || (["create", "update"].includes(actionType) ? `open_${actionType}_flow` : actionType),
         permission: actionValue(action, "permission"),
+        required_selector: `[data-archetype-action="${screen.screen_id}.${actionId}"]`,
+        result_selector: `[data-archetype-action-result="${screen.screen_id}.${actionId}"]`,
+        visible_control_contract: {
+          control_must_be_visible_when_available: true,
+          control_must_have_accessible_name: true,
+          control_must_be_keyboard_focusable: true,
+          control_must_have_runtime_result: true,
+          allowed_control_states: ["default", "hover", "focus-visible", "active", "disabled", "loading", "success", "error"]
+        },
         preconditions: [
           "current route exists in route-map.json",
           "user has declared action permission",
@@ -184,6 +193,8 @@ function buildActionContracts(experience: ExperienceArtifacts, routePaths: Set<s
         forbidden_behavior: [
           "Do not navigate to a route missing from route-map.json.",
           "Do not create hidden mutations outside data-operation-contracts.json.",
+          "Do not render a visible control without a matching data-archetype-action or declared control contract.",
+          "Do not render a declared action as a visual-only or inert control.",
           "Do not hide permission or validation failures."
         ],
         evidence_refs: screen.evidence_refs
@@ -197,6 +208,22 @@ function buildActionContracts(experience: ExperienceArtifacts, routePaths: Set<s
 
   return {
     contract_version: "1.0",
+    visible_control_policy: {
+      policy_id: "visible-controls-require-action-contracts",
+      rule: "Every visible interactive control must map to an action, form field, route link, or explicit control contract, and every action must produce runtime proof.",
+      required_runtime_proof: [
+        "Visible action controls expose data-archetype-action.",
+        "Action IDs match 06-frontend-agent-contract/action-contracts.json.",
+        "Clicking a declared action changes URL, changes status text, or renders data-archetype-action-result.",
+        "Unbound buttons, role=button controls, inputs, selects, textareas, and action-like links are blockers."
+      ],
+      forbidden_controls: [
+        "Visual-only buttons without data-archetype-action.",
+        "Priority chips or filters that look clickable but do not update state or route.",
+        "Export, run, create, resolve, cancel, retry, filter, search, or handoff controls without runtime proof.",
+        "Icon-only controls without accessible names."
+      ]
+    },
     actions,
     blockers,
     warnings: [],

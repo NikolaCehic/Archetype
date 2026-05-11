@@ -393,7 +393,7 @@ export function auditTargetContractFidelity(outputDir: string, targetDir: string
   const missingRequiredTestIds = requiredTestIds.filter((testId) => !targetTestSource.includes(testId));
   const actionIds = actionIdsFromContract(actionContracts);
   const missingActionTestRefs = actionIds.filter((actionId) => !targetTestSource.includes(actionId));
-  const requiredScenarioTypes = ["route", "screen_state", "flow", "responsive", "accessibility", "interaction_state", "visual_smoke", "malformed_data"];
+  const requiredScenarioTypes = ["route", "screen_state", "flow", "responsive", "accessibility", "interaction_state", "action", "visible_control_policy", "visual_smoke", "malformed_data"];
   const scenarioTypes = playwrightScenarioTypes(playwrightContract);
   const missingScenarioTypes = requiredScenarioTypes.filter((type) => !scenarioTypes.has(type));
   const checks = [
@@ -657,6 +657,8 @@ function scenarioTypeForId(scenarioId: string): string {
   if (scenarioId.startsWith("PW-FLOW")) return "flow";
   if (scenarioId.startsWith("PW-RESP")) return "responsive";
   if (scenarioId.startsWith("PW-A11Y")) return "accessibility";
+  if (scenarioId.startsWith("PW-ACTION")) return "action";
+  if (scenarioId.startsWith("PW-CONTROLS")) return "visible_control_policy";
   if (scenarioId.startsWith("PW-VISUAL")) return "visual_smoke";
   if (scenarioId.startsWith("PW-MALFORMED")) return "malformed_data";
   return "unknown";
@@ -716,7 +718,7 @@ function collectPlaywrightEvidenceDetails(outputDir: string, targetDir: string):
       ...(typeof screenshot.bytes === "number" ? { screenshot_bytes: screenshot.bytes } : {})
     };
   });
-  const behaviorTypes = ["route", "screen_state", "flow", "responsive", "interaction_state"];
+  const behaviorTypes = ["route", "screen_state", "flow", "responsive", "interaction_state", "action", "visible_control_policy"];
   const visualResults = scenarioResults.filter((result) => result.type === "visual_smoke");
   const visualGrade = visualResults.length > 0 && visualResults.every((result) => result.status === "pass" && (result.screenshot_bytes ?? 0) > 0) ? "pass" : "fail";
   const summary = {
@@ -732,6 +734,8 @@ function collectPlaywrightEvidenceDetails(outputDir: string, targetDir: string):
     browser_smoke_verified: gradeScenarioType(scenarioResults, "route"),
     behavior_verified: gradeScenarioFamily(scenarioResults, behaviorTypes),
     interaction_state_verified: gradeScenarioType(scenarioResults, "interaction_state"),
+    actions_verified: gradeScenarioType(scenarioResults, "action"),
+    visible_controls_verified: gradeScenarioType(scenarioResults, "visible_control_policy"),
     accessibility_verified: gradeScenarioType(scenarioResults, "accessibility"),
     visual_verified: visualGrade,
     malformed_data_verified: gradeScenarioType(scenarioResults, "malformed_data"),
@@ -755,6 +759,8 @@ function collectPlaywrightEvidenceDetails(outputDir: string, targetDir: string):
     ...(grades.browser_smoke_verified === "pass" ? [] : ["Browser route smoke scenarios did not all pass."]),
     ...(grades.behavior_verified === "pass" ? [] : ["Browser behavior scenarios did not all pass."]),
     ...(grades.interaction_state_verified === "pass" ? [] : ["Interaction-state scenarios did not all pass."]),
+    ...(grades.actions_verified === "pass" ? [] : ["Declared action scenarios did not all pass."]),
+    ...(grades.visible_controls_verified === "pass" ? [] : ["Visible-control policy scenarios did not all pass."]),
     ...(grades.accessibility_verified === "pass" ? [] : ["Accessibility scenarios did not all pass."]),
     ...(grades.visual_verified === "pass" ? [] : ["Visual-smoke screenshots are missing or failed."]),
     ...(grades.malformed_data_verified === "pass" ? [] : ["Malformed-data browser scenarios did not all pass."])

@@ -3,6 +3,7 @@ type JsonRecord = Record<string, unknown>;
 export const FORBIDDEN_TEST_PATTERNS = [
   "Only checking `[data-archetype-screen]`.",
   "Clicking a generic primary button and accepting any success message.",
+  "Leaving visible controls unbound to declared action, form, route-link, or control contracts.",
   "Testing contract arrays without importing target behavior.",
   "Treating screenshot byte size as visual quality.",
   "Mirroring implementation constants as expected values without independent contract expectations."
@@ -15,6 +16,7 @@ export const REQUIRED_TEST_BEHAVIORS = [
   "Required states are reachable through deterministic fixtures.",
   "Route transitions and deep links are browser-observable.",
   "CTA hover, focus-visible, active/pressed, disabled, loading, success, and error states are tested when actions exist.",
+  "Every visible interactive control is either declared or fails visible-control policy verification.",
   "Keyboard, focus, accessible names, landmarks, and live/status regions are tested.",
   "Long labels, malformed data, and permission mismatches are tested.",
   "Visual evidence covers desktop, tablet, and mobile."
